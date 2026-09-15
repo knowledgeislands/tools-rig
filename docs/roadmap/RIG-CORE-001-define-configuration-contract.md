@@ -4,12 +4,12 @@ area: CORE
 title: Define configuration contract
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: [RIG-CORE-003]
 blocked_by: []
 baseline_ref: 4789f4ad53a123c79916499b37a7afa7717b4235
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-15T12:03:44Z
+updated_at: 2026-09-15T13:18:23Z
 ---
 
 # RIG-CORE-001: Define configuration contract
@@ -99,6 +99,10 @@ The delivered records answer what Rig is, how its initial schema remains inert a
 ### Mini recap
 
 Rig now has one catalogue-led product narrative, three supporting architecture and security decisions, five new specification areas, revised provider orchestration requirements, and canonical follow-on work for resolver, query, export, publication, and private migration. All scoped gates pass; only pre-existing out-of-scope GitHub configuration findings remain.
+
+## Done
+
+Accepted 2026-09-15 by Kris Brown on review packet above.
 
 ## Discussion
 
