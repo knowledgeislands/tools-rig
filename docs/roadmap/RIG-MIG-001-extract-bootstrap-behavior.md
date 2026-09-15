@@ -9,25 +9,35 @@ blocks: []
 blocked_by: [RIG-MIG-004]
 baseline_ref: null
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-15T11:53:55Z
+updated_at: 2026-09-15T13:04:11Z
 ---
 
 # RIG-MIG-001: Extract bootstrap behavior
 
 ## Goal
 
-The current dotfiles bootstrap dispatcher becomes a compatibility surface over the private Rig profile and its provider bindings.
+Rig provides a small top-level bootstrap command that preserves the useful outcomes of the current dotfiles dispatcher through the private profile and provider model.
 
 ## Context
 
-The existing implementation dispatches Homebrew, permissions, Node, Ruby, Zsh, Bun, SSH, uv, and completion components in a fixed order. Portable dispatch behaviour belongs in Rig; selected programs, native manifests, and scripts belong to private workstation configuration.
+The existing implementation dispatches Homebrew, permissions, Node, Ruby, Zsh, Bun, SSH, uv, and completion components in a fixed order. It supports install, update, cleanup, and backup actions. Portable selection, ordering, failure, and reporting behaviour belongs in Rig; selected programs, native manifests, action policy, and scripts belong to private workstation configuration.
+
+Feature parity concerns outcomes and safety rather than copying every private subsystem or nested command into the permanent public CLI. Portable machine checks move to `doctor` and `status`; macOS audit and launchd service operations remain optional private executable integrations.
 
 ## Boundary
 
-This item migrates bootstrap compatibility and cutover only. Machine auditing, managed service operations, and personal declaration design remain separate work.
+This item migrates bootstrap behaviour, compatibility, and cutover only. It does not implement the catalogue resolver or provider engine, expose host-specific machine and service internals as permanent top-level commands, or design personal declarations.
 
 ## Discussion
 
+### V1 command
+
+`rig bootstrap [--profile NAME] [--dry-run]` is the small permanent top-level command for first materialisation of a resolved rig. It uses provider capabilities and the same dependency plan as apply rather than maintaining a second orchestration engine.
+
+Install, update, cleanup, and backup outcomes remain available only where selected providers declare those capabilities. Any action-shaped compatibility accepted during cutover is documented as transitional rather than expanding every provider into a permanent command hierarchy.
+
 ### Compatibility
 
-The existing `rig bootstrap` command remains live through cutover. The standalone command needs equivalent Bats coverage for dispatch order, selected components, stale-manifest protection, and failure boundaries before the dotfiles source stops owning duplicate behaviour.
+The existing `rig bootstrap` command remains live through cutover. The standalone command needs equivalent Bats coverage for dispatch order, selected components, stale-manifest protection, unsupported capabilities, dry-run non-mutation, and failure boundaries before the dotfiles source stops owning duplicate behaviour.
+
+The same delivery updates top-level and command-specific help, completion, README command inventory, `rig(1)`, and the curated v1 changelog.

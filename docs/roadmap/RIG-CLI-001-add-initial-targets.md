@@ -5,11 +5,11 @@ title: Add provider adapters
 theme: cli
 horizon: triage
 status: draft
-blocks: [RIG-DIST-001, RIG-MIG-004]
+blocks: [RIG-CLI-004, RIG-DIST-001, RIG-MIG-004]
 blocked_by: [RIG-CORE-002]
 baseline_ref: null
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-15T11:53:55Z
+updated_at: 2026-09-15T13:04:11Z
 ---
 
 # RIG-CLI-001: Add provider adapters
