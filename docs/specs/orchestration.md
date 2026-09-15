@@ -1,16 +1,16 @@
-# Target orchestration — RIG-ORCH
+# Profile and provider orchestration — RIG-ORCH
 
-This area of the [Rig specifications](index.md) defines observable profile and target orchestration without prescribing a target's native implementation. It follows [PDR-RIG-001](../decisions/PDR-RIG-001-manager-of-managers.md).
+This area of the [Rig Specifications](index.md) defines profile and provider orchestration beneath the catalogue model in [PDR-RIG-001](../decisions/PDR-RIG-001-catalogue-led-working-setup.md). Executable transitions follow [XDR-RIG-001](../decisions/XDR-RIG-001-executable-provider-boundary.md).
 
 ## Profiles
 
 ### RIG-ORCH-001 — Configurable default profile
 
-Rig MUST allow a user to define the targets that constitute the default machine-bootstrap profile.
+Rig MUST allow a user to define which catalogue tools constitute the default profile.
 
 _Conformance:_ pending
 
-_Verify:_ Bats tests create isolated configuration, invoke Rig without an explicit profile, and assert only configured default targets are selected in declared order.
+_Verify:_ Bats tests create isolated configuration, invoke Rig without an explicit profile, and assert only the configured default tools are selected.
 
 ### RIG-ORCH-002 — Explicit profile selection
 
@@ -18,38 +18,78 @@ Rig MUST allow a user to select a non-default configured profile without changin
 
 _Conformance:_ pending
 
-_Verify:_ Bats tests invoke two named profiles against the same isolated configuration and assert their target selections remain independent.
+_Verify:_ Bats tests invoke two named profiles against the same isolated configuration and assert their resolved selections remain independent.
 
-## Targets
+### RIG-ORCH-007 — Profile composition
 
-### RIG-ORCH-003 — Native target authority
-
-Rig MUST delegate package resolution, manifest interpretation, and target state changes to the selected target's native command rather than maintaining a competing package database.
+Rig MUST allow a profile to include other declared profiles and expand required tool relationships transitively.
 
 _Conformance:_ pending
 
-_Verify:_ Bats tests substitute recording target commands and assert Rig forwards the configured native manifest and arguments without resolving packages itself.
+_Verify:_ Bats tests compose nested profiles with required tools and assert one de-duplicated resolved tool set.
+
+### RIG-ORCH-008 — Invalid profile graph
+
+Rig MUST reject unknown profile references, unknown tool references, and profile or required-tool cycles before invoking a provider.
+
+_Conformance:_ pending
+
+_Verify:_ Bats table tests exercise every invalid graph class and assert status 2 with an empty provider-call log.
+
+## Providers
+
+### RIG-ORCH-003 — Native provider authority
+
+Rig MUST delegate package resolution, manifest interpretation, and provider state changes to the selected provider rather than maintain a competing package database.
+
+_Conformance:_ pending
+
+_Verify:_ Bats tests substitute recording providers and assert Rig forwards configured native manifest and locator arguments without resolving packages itself.
 
 ### RIG-ORCH-004 — Capability-aware actions
 
-Rig MUST reject an action that a configured target does not declare as supported before invoking that target.
+Rig MUST reject an action that a configured provider does not declare as supported before invoking that provider.
 
 _Conformance:_ pending
 
-_Verify:_ Bats tests select a target without the requested capability and assert status 2 with no recorded target invocation.
+_Verify:_ Bats tests select a provider without the requested capability and assert status 2 with no recorded provider invocation.
 
-### RIG-ORCH-005 — Ordered failure boundary
+### RIG-ORCH-005 — Dependency order
 
-Rig MUST execute selected targets in resolved dependency order and MUST stop dependent execution after a target failure.
-
-_Conformance:_ pending
-
-_Verify:_ Bats tests configure three recording targets with dependencies, force the middle target to fail, and assert ordered execution excludes its dependent.
-
-### RIG-ORCH-006 — Initial target classes
-
-Rig MUST support Homebrew, uv, chezmoi, and an explicitly configured executable as initial target classes without requiring any target executable when its target is not selected.
+Rig MUST execute selected providers in resolved dependency order.
 
 _Conformance:_ pending
 
-_Verify:_ Bats tests exercise each target through fakes and run an unrelated profile with all four native executables absent.
+_Verify:_ Bats tests configure recording providers with dependencies and assert the exact invocation sequence.
+
+### RIG-ORCH-006 — Initial provider classes
+
+Rig MUST support Homebrew, uv, chezmoi, direct-download, and explicitly configured executable providers without requiring an unselected provider's executable.
+
+_Conformance:_ pending
+
+_Verify:_ Bats tests exercise each provider through fakes and run an unrelated profile while all five native executables are absent.
+
+### RIG-ORCH-009 — Platform binding selection
+
+Rig MUST select exactly one compatible provider binding for each materialisable tool on the active platform and reject zero or ambiguous compatible bindings.
+
+_Conformance:_ pending
+
+_Verify:_ Bats tests resolve disjoint macOS and Linux bindings, then assert missing and overlapping bindings fail before provider invocation.
+
+### RIG-ORCH-010 — Literal executable arguments
+
+Rig MUST invoke a custom provider as one configured executable with each configured argument preserved as a literal argument boundary.
+
+_Conformance:_ pending
+
+_Verify:_ Bats tests record custom-provider arguments containing spaces and shell metacharacters and assert no shell interpretation occurs.
+
+### RIG-ORCH-011 — Ordered failure boundary
+
+Rig MUST skip every dependent provider after its prerequisite fails while reporting the native failure result.
+
+_Conformance:_ pending
+
+_Verify:_ Bats tests force a middle provider to fail and assert its dependent is not invoked while independent completed work remains reported.

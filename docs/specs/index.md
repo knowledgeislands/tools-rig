@@ -1,4 +1,4 @@
-# Rig specifications
+# Rig Specifications
 
 This corpus records Rig's accepted, testable behaviour. Decision Records explain why the behaviour exists, Guides explain how to use it, and roadmap records schedule delivery.
 
@@ -20,5 +20,10 @@ An unnumbered `## Gaps` entry is a candidate behaviour, not an accepted requirem
 
 | File | Prefix | Covers |
 | --- | --- | --- |
-| orchestration.md | `RIG-ORCH` | Profiles, targets, actions, and native authority |
+| catalogue.md | `RIG-CAT` | Categories, tools, rationale, platforms, relationships, bindings |
+| configuration.md | `RIG-CONF` | Inert grammar, schema versions, files, deterministic loading |
+| orchestration.md | `RIG-ORCH` | Profiles, providers, capabilities, ordering, native authority |
 | portability.md | `RIG-PORT` | Runtime dependencies and XDG persistence |
+| publishing.md | `RIG-PUB` | Public profiles, static export, base URLs, trusted deployment |
+| queries.md | `RIG-QUERY` | Show, list, filtering, explanation, non-execution |
+| state.md | `RIG-STATE` | Expected and observed state, status, planning, explicit apply |

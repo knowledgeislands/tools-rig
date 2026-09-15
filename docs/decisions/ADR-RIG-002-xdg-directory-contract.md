@@ -20,7 +20,7 @@ Rig uses the XDG Base Directory locations with standard fallbacks: configuration
 
 ## Consequences
 
-Configuration, durable state, and disposable cache have separate backup and cleanup semantics. Tests can isolate every persisted surface through environment overrides. Documentation and target implementations must not introduce undeclared home-directory files.
+Configuration, durable state, and disposable cache have separate backup and cleanup semantics. Tests can isolate every persisted surface through environment overrides. Documentation and provider implementations must not introduce undeclared home-directory files.
 
 ## References
 

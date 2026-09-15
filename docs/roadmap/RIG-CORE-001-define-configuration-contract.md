@@ -4,12 +4,12 @@ area: CORE
 title: Define configuration contract
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: [RIG-CORE-003]
 blocked_by: []
-baseline_ref: null
+baseline_ref: 4789f4ad53a123c79916499b37a7afa7717b4235
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-15T11:53:55Z
+updated_at: 2026-09-15T12:03:44Z
 ---
 
 # RIG-CORE-001: Define configuration contract
@@ -34,11 +34,11 @@ This item decides and documents the product, configuration, trust, publication, 
 
 ## Steps
 
-- [ ] Revise the product decision and repository orientation around the catalogue-first model.
-- [ ] Record the declarative configuration grammar, executable-provider trust boundary, and static publication projection as living Decision Records.
-- [ ] Extend the Specifications for catalogue, profiles, providers, queries, state, and publication while retaining existing requirement identities.
-- [ ] Update existing roadmap records and capture missing follow-on work with consistent dependencies and issue-ledger allocations.
-- [ ] Run the complete repository verification gate and review the resulting documentation as one coherent contract.
+- [x] Revise the product decision and repository orientation around the catalogue-first model.
+- [x] Record the declarative configuration grammar, executable-provider trust boundary, and static publication projection as living Decision Records.
+- [x] Extend the Specifications for catalogue, profiles, providers, queries, state, and publication while retaining existing requirement identities.
+- [x] Update existing roadmap records and capture missing follow-on work with consistent dependencies and issue-ledger allocations.
+- [x] Run the complete repository verification gate and review the resulting documentation as one coherent contract.
 
 ## Files touched
 
@@ -69,6 +69,36 @@ No procedural guide is added because no executable user workflow exists yet.
 ### Roadmap
 
 Update the existing configuration, orchestration, provider, migration, and release records; capture the catalogue resolver, query, export, publication, and private-declaration work.
+
+## Review
+
+### Delivered
+
+Against immutable baseline `4789f4ad53a123c79916499b37a7afa7717b4235`, the delivery establishes the approved catalogue-first product, configuration, trust, state, query, migration, and personal-site publication contracts. It does not change `bin/rig`, the live chezmoi repository, GitHub settings, hosting, or release state.
+
+### Summary of changes
+
+`AGENTS.md` and `README.md` now orient contributors and readers around the catalogue. `PDR-RIG-001` is revised in place and retitled; `ADR-RIG-003`, `XDR-RIG-001`, and `ADR-RIG-004` record the inert grammar, executable boundary, and static publication projection. The Specifications add configuration, catalogue, query, state, and publication areas and revise orchestration terminology without reusing an existing requirement ID. The planning commit updated existing roadmap boundaries and captured five separate follow-on records.
+
+The material choices are an INI-shaped schema parsed without evaluation, explicit public-profile disclosure, offline static export separated from trusted deployment, and preservation of native provider authority and private dotfiles data.
+
+### Verification
+
+`ki repo audit --skill ki-authoring --repo .`, `ki repo audit --skill ki-decision-records --repo .`, `ki repo audit --skill ki-specs --repo .`, and `ki repo audit --skill ki-work-roadmap --repo .` pass. `shellcheck bin/rig install.sh`, all seven `bats tests/` cases, and `mandoc -T lint man/rig.1` pass. `git diff --check` passes and no reference to the retired PDR filename remains.
+
+The complete `ki repo audit --repo .` was run. Fourteen of fifteen declared skill audits pass; `ki-repo` reports ten live GitHub-setting findings that pre-date this item and are outside its approved boundary.
+
+### Outstanding concerns
+
+The repository's live GitHub metadata and settings remain divergent: the remote license and description are unset, and merge, auto-delete, dependency-graph, and secret-scanning settings do not match the declared repository contract. The user explicitly withheld authority to change live GitHub settings, so this delivery leaves all ten findings untouched. No item-scoped documentation or local verification concern remains.
+
+### Post-change review
+
+The delivered records answer what Rig is, how its initial schema remains inert and Bash-compatible, where executable trust begins, what is public, how expected state differs from provider evidence, and how the live implementation migrates without exposing personal data. Follow-on implementation remains bounded in separate dependency-linked records. The documentation-only scope held, existing runtime behaviour remains unchanged, and the item is ready for acceptance review with the external GitHub findings visible.
+
+### Mini recap
+
+Rig now has one catalogue-led product narrative, three supporting architecture and security decisions, five new specification areas, revised provider orchestration requirements, and canonical follow-on work for resolver, query, export, publication, and private migration. All scoped gates pass; only pre-existing out-of-scope GitHub configuration findings remain.
 
 ## Discussion
 

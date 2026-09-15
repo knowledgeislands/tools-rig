@@ -4,9 +4,11 @@ Rig is one standalone command-line tool. The runtime entry point is `bin/rig`; k
 
 ## Product boundary
 
-Rig orchestrates package and configuration systems. It owns profile selection, dependency ordering, action dispatch, and outcome reporting. Homebrew, uv, chezmoi, and custom targets retain their native manifests, resolution, installation semantics, and state.
+Rig is the declarative description and manager of a person's working setup. Its catalogue owns tool identity, category, purpose, rationale, relationships, and supported platforms; profiles select catalogue subsets; providers materialise them; state compares the selection with provider observations.
 
-Do not embed a workstation's personal package list or machine-specific paths in the executable. Portable behaviour belongs here; a workstation's choices belong in its Rig configuration.
+Rig's manager-of-managers model belongs beneath that catalogue. It owns profile resolution, provider selection, dependency ordering, capability checks, action dispatch, and outcome reporting. Homebrew, uv, chezmoi, downloads, custom executables, and publishers retain their native manifests, resolution, execution semantics, credentials, deployment, and state.
+
+Do not embed a workstation's personal catalogue, package list, profile, publication, or machine-specific path in the executable. Portable behaviour belongs here; a person's choices belong in their Rig configuration. A published rig is a derived public projection, never the authority for private configuration or observed machine state.
 
 ## XDG contract
 
