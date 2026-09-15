@@ -5,33 +5,37 @@ title: Build orchestration engine
 theme: orchestration
 horizon: triage
 status: draft
-blocks: [RIG-CLI-001, RIG-MIG-002, RIG-MIG-003]
-blocked_by: [RIG-CORE-001]
+blocks: [RIG-CLI-001]
+blocked_by: [RIG-CORE-003]
 baseline_ref: null
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-15T09:54:44Z
+updated_at: 2026-09-15T11:53:55Z
 ---
 
 # RIG-CORE-002: Build orchestration engine
 
 ## Goal
 
-Rig can resolve a selected profile into ordered targets and dispatch supported lifecycle actions with predictable failure and reporting behaviour.
+Rig can ask providers for observed state, compare it with a resolved profile, and dispatch supported materialisation actions in dependency order with predictable failure reporting.
 
 ## Context
 
-The existing dotfiles Rig has an install-safe ordered dispatcher. The standalone project must generalise that behaviour without hard-coding one machine's subsystem names.
+The existing dotfiles Rig has install-safe ordered dispatch and several provider-specific safety checks. The standalone engine must generalise those behaviours without hard-coding one machine's subsystem names, package choices, or host paths.
 
 ## Boundary
 
-This item builds the target engine but does not implement package-manager-specific adapters or migrate dotfiles.
+This item builds the provider and state engine after catalogue resolution exists. It does not implement package-manager-specific adapters, public query presentation, private workstation declarations, or site publication.
 
 ## Discussion
 
+### State model
+
+For each tool expected by a resolved profile, the engine should report `present`, `missing`, `drifted`, `unavailable`, or `unknown` with its responsible provider. Observation is capability-gated and read-only.
+
 ### Execution model
 
-The engine should fail closed on unknown targets, unsupported actions, dependency cycles, and failed prerequisites. A target failure should stop dependent work while preserving the native command's exit result in Rig's report.
+The engine fails closed on unknown providers, unsupported capabilities, ambiguous bindings, dependency cycles, and failed prerequisites. A provider failure stops dependent work while preserving the native command's result in Rig's report.
 
 ### Shell compatibility
 
-Implementation must remain compatible with Bash 3.2, which excludes associative arrays and newer conveniences from the core design.
+Implementation remains compatible with Bash 3.2 and avoids associative arrays and newer shell conveniences.
