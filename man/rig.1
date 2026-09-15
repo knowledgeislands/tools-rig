@@ -1,0 +1,99 @@
+.TH RIG 1 "September 15, 2026" "Rig 0.1.0" "User Commands"
+.SH NAME
+\&
+.PP
+rig \- configure and orchestrate machine-bootstrap targets
+.SH SYNOPSIS
+\&
+.B rig
+.I command
+.RI [ arguments ]
+.SH DESCRIPTION
+\&
+.PP
+Rig coordinates package and configuration systems while leaving each target
+responsible for its native manifests, resolution, and state.
+.PP
+The current repository scaffold exposes path discovery and completion
+generation.
+Profile and target orchestration are tracked as pending work.
+.SH COMMANDS
+\&
+.TP
+.B paths
+Print the resolved Rig configuration, data, state, and cache directories.
+.TP
+.BI "completion " bash|zsh
+Print completion source for the selected shell.
+.TP
+.B help
+Show command help.
+.SH OPTIONS
+\&
+.TP
+.BR \-h , " \-\-help"
+Show command help.
+.TP
+.BR \-V , " \-\-version"
+Print the Rig version.
+.SH ENVIRONMENT
+\&
+.TP
+.B RIG_CONFIG_HOME
+Override the Rig configuration directory.
+.TP
+.B RIG_DATA_HOME
+Override the Rig data directory.
+.TP
+.B RIG_STATE_HOME
+Override the Rig state directory.
+.TP
+.B RIG_CACHE_HOME
+Override the Rig cache directory.
+.TP
+.B XDG_CONFIG_HOME
+Set the base configuration directory when RIG_CONFIG_HOME is unset.
+The fallback is $HOME/.config.
+.TP
+.B XDG_DATA_HOME
+Set the base data directory when RIG_DATA_HOME is unset.
+The fallback is $HOME/.local/share.
+.TP
+.B XDG_STATE_HOME
+Set the base state directory when RIG_STATE_HOME is unset.
+The fallback is $HOME/.local/state.
+.TP
+.B XDG_CACHE_HOME
+Set the base cache directory when RIG_CACHE_HOME is unset.
+The fallback is $HOME/.cache.
+.SH FILES
+\&
+.TP
+.I ${XDG_CONFIG_HOME:-$HOME/.config}/rig
+Default configuration directory.
+.TP
+.I ${XDG_DATA_HOME:-$HOME/.local/share}/rig
+Default data directory.
+.TP
+.I ${XDG_STATE_HOME:-$HOME/.local/state}/rig
+Default state directory.
+.TP
+.I ${XDG_CACHE_HOME:-$HOME/.cache}/rig
+Default cache directory.
+.SH EXIT STATUS
+\&
+.TP
+.B 0
+Success.
+.TP
+.B 1
+Operational failure.
+.TP
+.B 2
+Invalid Rig command syntax.
+.SH SEE ALSO
+\&
+.BR bash (1),
+.BR brew (1),
+.BR chezmoi (1),
+.BR uv (1)

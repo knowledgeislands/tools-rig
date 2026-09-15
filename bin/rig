@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+
+# Rig — shell-only manager of package and configuration targets.
+
+set -u
+
+RIG_VERSION=0.1.0
+
+print_help() {
+  printf '%s\n' \
+    'Usage: rig <command> [arguments]' \
+    '' \
+    'Commands:' \
+    '  paths                 Print resolved Rig XDG directories.' \
+    '  completion bash|zsh   Print shell completion source.' \
+    '  help                  Show this help.' \
+    '' \
+    'Options:' \
+    '  -h, --help            Show this help.' \
+    '  -V, --version         Print the Rig version.'
+}
+
+syntax_error() {
+  printf 'rig: error: %s\n' "$1" >&2
+  print_help >&2
+  exit 2
+}
+
+require_home() {
+  if [ -z "${HOME:-}" ]; then
+    printf '%s\n' 'rig: error: HOME is required when an XDG directory is not set' >&2
+    exit 1
+  fi
+}
+
+print_paths() {
+  require_home
+
+  config_home=${RIG_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/rig}
+  data_home=${RIG_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/rig}
+  state_home=${RIG_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/rig}
+  cache_home=${RIG_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/rig}
+
+  printf '%s\n' \
+    "config=$config_home" \
+    "data=$data_home" \
+    "state=$state_home" \
+    "cache=$cache_home"
+}
+
+print_bash_completion() {
+  # The emitted completion deliberately retains runtime shell expressions.
+  # shellcheck disable=SC2016
+  printf '%s\n' \
+    '_rig() {' \
+    '  local current' \
+    '  current=${COMP_WORDS[COMP_CWORD]}' \
+    '  COMPREPLY=($(compgen -W "paths completion help" -- "$current"))' \
+    '}' \
+    'complete -F _rig rig'
+}
+
+print_zsh_completion() {
+  printf '%s\n' \
+    '#compdef rig' \
+    '' \
+    '_rig() {' \
+    '  local -a commands' \
+    '  commands=(' \
+    "    'paths:print resolved Rig XDG directories'" \
+    "    'completion:print shell completion source'" \
+    "    'help:show help'" \
+    '  )' \
+    "  _describe -t commands 'rig command' commands" \
+    '}' \
+    '' \
+    'compdef _rig rig'
+}
+
+command_name=${1:-help}
+
+case "$command_name" in
+  -h|--help|help)
+    [ "$#" -eq 1 ] || syntax_error "unexpected arguments for $command_name"
+    print_help
+    ;;
+  -V|--version)
+    [ "$#" -eq 1 ] || syntax_error "unexpected arguments for $command_name"
+    printf 'rig %s\n' "$RIG_VERSION"
+    ;;
+  paths)
+    [ "$#" -eq 1 ] || syntax_error 'usage: rig paths'
+    print_paths
+    ;;
+  completion)
+    [ "$#" -eq 2 ] || syntax_error 'usage: rig completion bash|zsh'
+    case "$2" in
+      bash) print_bash_completion ;;
+      zsh) print_zsh_completion ;;
+      *) syntax_error "unsupported shell: $2" ;;
+    esac
+    ;;
+  *)
+    syntax_error "unknown command: $command_name"
+    ;;
+esac

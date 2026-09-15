@@ -1,0 +1,81 @@
+# Knowledge Islands repository configuration.
+# Its presence declares conformance with the Knowledge Islands repository standard.
+
+# -----------------------------------------------------------------------------
+# Foundation
+# -----------------------------------------------------------------------------
+
+[repo]
+harnesses = ["knowledgeislands/ki-agentic-harness"]
+
+[skills.ki-repo]
+repository = "https://github.com/knowledgeislands/tools-rig"
+title = "Rig"
+description = "Configure and orchestrate package and configuration systems for bootstrapping machines."
+repo_code = "RIG"
+supported_runtimes = ["claude-code", "claude-desktop", "chatgpt-codex"]
+visibility = "public"
+license = "MIT"
+
+# Custom topics will be selected when the public surface settles.
+[skills.ki-repo.checks]
+topics = false
+
+[skills.ki-authoring]
+
+# -----------------------------------------------------------------------------
+# Repository shape
+# -----------------------------------------------------------------------------
+
+[skills.ki-repo-project]
+
+[skills.ki-repo-tools]
+
+# -----------------------------------------------------------------------------
+# Governance runtime
+# -----------------------------------------------------------------------------
+
+[skills.ki-guides]
+
+[skills.ki-specs]
+
+[skills.ki-decision-records]
+
+[skills.ki-tokenomics]
+
+[skills.ki-housekeeping-claude]
+
+[skills.ki-tokenomics-claude]
+
+[skills.ki-tokenomics-codex]
+
+# -----------------------------------------------------------------------------
+# Change management
+# -----------------------------------------------------------------------------
+
+[skills.ki-git]
+
+[skills.ki-work]
+adapter = "roadmap"
+
+[skills.ki-work-roadmap]
+
+[skills.ki-work-roadmap.areas]
+CLI = "cli"
+CORE = "orchestration"
+DIST = "distribution"
+MIG = "migration"
+
+# -----------------------------------------------------------------------------
+# Relationships
+# -----------------------------------------------------------------------------
+
+[skills.ki-agora]
+
+[skills.ki-agora.memberships.ki-all]
+home = "https://github.com/knowledgeislands/ki-agentic-harness"
+role = "maintainer"
+
+[skills.ki-agora.memberships.ki-fnd]
+home = "https://github.com/knowledgeislands/ki-agentic-harness"
+role = "maintainer"
