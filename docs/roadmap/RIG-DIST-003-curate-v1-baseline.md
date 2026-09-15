@@ -3,13 +3,13 @@ id: RIG-DIST-003
 area: DIST
 title: Curate v1 baseline
 theme: distribution
-horizon: triage
-status: draft
+horizon: now
+status: ready
 blocks: [RIG-DIST-001]
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-15T13:04:11Z
-updated_at: 2026-09-15T13:04:11Z
+updated_at: 2026-09-15T13:20:41Z
 ---
 
 # RIG-DIST-003: Curate v1 baseline
@@ -25,6 +25,50 @@ Rig currently reports version `0.1.0` but has no tag or GitHub release, and `CHA
 ## Boundary
 
 This item changes release documentation only. It does not bump the executable version, create a tag or GitHub release, advertise unimplemented commands as shipped, add the Homebrew formula, or alter runtime behaviour.
+
+## Current state
+
+`CHANGELOG.md` has one generic `Unreleased` heading and lists only the bootstrap command surface. It does not yet express the curated pre-v1 baseline used by the comparable KI tools.
+
+## Steps
+
+- [ ] Replace the generic heading with one `1.0.0 — in progress` baseline.
+- [ ] Separate capabilities available in the current executable from accepted direction still being built, without presenting planned commands as shipped.
+- [ ] Verify the changelog remains concise, accurate, and aligned with the current help and version output.
+
+## Files touched
+
+`CHANGELOG.md` and this canonical work record.
+
+## Verify
+
+Run `rig --help` and `rig --version` against the changelog claims, `ki repo audit --skill ki-authoring --repo .`, `ki repo audit --skill ki-repo-tools --repo .`, and `git diff --check`.
+
+## Dependencies / blocks
+
+No build dependency remains. This baseline must be delivered before `RIG-DIST-001`; later command items will maintain it as their public surfaces land.
+
+## Delegation
+
+One bounded worker may change `CHANGELOG.md` only. The coordinator owns lifecycle evidence, accuracy review, repository audits, and commits.
+
+## Documentation impact
+
+### Decision Records
+
+No Decision Record change is needed; release-document curation applies the accepted product direction.
+
+### Specifications
+
+No Specification change is needed because the changelog records delivery state rather than accepted behavior.
+
+### Guides
+
+No guide change is needed; no user procedure changes.
+
+### Roadmap
+
+Delivery satisfies the changelog prerequisite recorded by `RIG-DIST-001`; no additional work item is created.
 
 ## Discussion
 

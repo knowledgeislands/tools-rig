@@ -5,11 +5,11 @@ title: Define configuration contract
 theme: orchestration
 horizon: now
 status: done
-blocks: [RIG-CORE-003]
+blocks: []
 blocked_by: []
 baseline_ref: 4789f4ad53a123c79916499b37a7afa7717b4235
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-15T13:18:23Z
+updated_at: 2026-09-15T13:20:41Z
 ---
 
 # RIG-CORE-001: Define configuration contract
