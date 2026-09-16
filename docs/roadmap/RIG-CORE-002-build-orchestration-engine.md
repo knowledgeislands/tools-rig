@@ -6,10 +6,10 @@ theme: orchestration
 horizon: triage
 status: draft
 blocks: [RIG-CLI-001]
-blocked_by: [RIG-CORE-003]
+blocked_by: []
 baseline_ref: null
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-15T11:53:55Z
+updated_at: 2026-09-16T08:28:40Z
 ---
 
 # RIG-CORE-002: Build orchestration engine

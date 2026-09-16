@@ -6,10 +6,10 @@ theme: cli
 horizon: triage
 status: draft
 blocks: [RIG-DIST-002]
-blocked_by: [RIG-CORE-003]
+blocked_by: []
 baseline_ref: null
 created_at: 2026-09-15T11:53:55Z
-updated_at: 2026-09-15T11:53:55Z
+updated_at: 2026-09-16T08:28:40Z
 ---
 
 # RIG-CLI-003: Export public rig

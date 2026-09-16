@@ -1,10 +1,32 @@
 #!/usr/bin/env bash
 
-# Rig — shell-only manager of package and configuration targets.
+# Indexed arrays intentionally use explicit arithmetic indexes throughout.
+# The parser reads a path held in $file but never writes to that path.
+# shellcheck disable=SC2004,SC2094
 
-set -u
+# Rig — declarative description and manager of a working setup.
 
 RIG_VERSION=0.1.0
+
+# Indexed arrays keep the installed executable compatible with macOS Bash 3.2.
+RIG_SECTION_NAMES=()
+RIG_SECTION_TYPES=()
+RIG_SECTION_IDS=()
+RIG_SECTION_SECONDARY_IDS=()
+RIG_SECTION_FILES=()
+RIG_FIELD_SECTIONS=()
+RIG_FIELD_KEYS=()
+RIG_FIELD_VALUES=()
+RIG_SELECTED_TOOLS=()
+RIG_SELECTED_BINDINGS=()
+RIG_VISIT_NAMES=()
+RIG_VISIT_STATES=()
+RIG_VALUE=
+RIG_INDEX=
+RIG_COUNT=0
+RIG_RESOLVED_PROFILE=
+RIG_RESOLVED_PLATFORM=
+RIG_ROOT_FILE=
 
 print_help() {
   printf '%s\n' \
@@ -23,18 +45,25 @@ print_help() {
 syntax_error() {
   printf 'rig: error: %s\n' "$1" >&2
   print_help >&2
-  exit 2
+  return 2
+}
+
+rig_fail() {
+  printf 'rig: error: %s\n' "$1" >&2
+  return 2
 }
 
 require_home() {
   if [ -z "${HOME:-}" ]; then
     printf '%s\n' 'rig: error: HOME is required when an XDG directory is not set' >&2
-    exit 1
+    return 1
   fi
 }
 
 print_paths() {
-  require_home
+  local config_home data_home state_home cache_home
+
+  require_home || return
 
   config_home=${RIG_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/rig}
   data_home=${RIG_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/rig}
@@ -77,30 +106,721 @@ print_zsh_completion() {
     'compdef _rig rig'
 }
 
-command_name=${1:-help}
+rig_model_reset() {
+  RIG_SECTION_NAMES=()
+  RIG_SECTION_TYPES=()
+  RIG_SECTION_IDS=()
+  RIG_SECTION_SECONDARY_IDS=()
+  RIG_SECTION_FILES=()
+  RIG_FIELD_SECTIONS=()
+  RIG_FIELD_KEYS=()
+  RIG_FIELD_VALUES=()
+  RIG_SELECTED_TOOLS=()
+  RIG_SELECTED_BINDINGS=()
+  RIG_VISIT_NAMES=()
+  RIG_VISIT_STATES=()
+  RIG_VALUE=
+  RIG_INDEX=
+  RIG_COUNT=0
+  RIG_RESOLVED_PROFILE=
+  RIG_RESOLVED_PLATFORM=
+  RIG_ROOT_FILE=
+}
 
-case "$command_name" in
-  -h|--help|help)
-    [ "$#" -eq 1 ] || syntax_error "unexpected arguments for $command_name"
-    print_help
-    ;;
-  -V|--version)
-    [ "$#" -eq 1 ] || syntax_error "unexpected arguments for $command_name"
-    printf 'rig %s\n' "$RIG_VERSION"
-    ;;
-  paths)
-    [ "$#" -eq 1 ] || syntax_error 'usage: rig paths'
-    print_paths
-    ;;
-  completion)
-    [ "$#" -eq 2 ] || syntax_error 'usage: rig completion bash|zsh'
-    case "$2" in
-      bash) print_bash_completion ;;
-      zsh) print_zsh_completion ;;
-      *) syntax_error "unsupported shell: $2" ;;
+rig_trim() {
+  local value
+
+  value=$1
+  value=${value#"${value%%[![:blank:]]*}"}
+  value=${value%"${value##*[![:blank:]]}"}
+  RIG_VALUE=$value
+}
+
+rig_valid_id() {
+  case "$1" in
+    ''|[!a-z]*|*[!a-z0-9-]*) return 1 ;;
+  esac
+  return 0
+}
+
+rig_section_index() {
+  local wanted index
+
+  wanted=$1
+  index=0
+  while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+    if [ "${RIG_SECTION_NAMES[$index]}" = "$wanted" ]; then
+      RIG_INDEX=$index
+      return 0
+    fi
+    index=$((index + 1))
+  done
+  RIG_INDEX=
+  return 1
+}
+
+rig_parse_section_identity() {
+  local name rest first second
+
+  name=$1
+  RIG_SECTION_TYPE=
+  RIG_SECTION_ID=
+  RIG_SECTION_SECONDARY_ID=
+
+  if [ "$name" = rig ]; then
+    RIG_SECTION_TYPE=rig
+    return 0
+  fi
+
+  case "$name" in
+    category.*|tool.*|profile.*|provider.*|publication.*)
+      RIG_SECTION_TYPE=${name%%.*}
+      rest=${name#*.}
+      rig_valid_id "$rest" || return 1
+      RIG_SECTION_ID=$rest
+      ;;
+    binding.*)
+      RIG_SECTION_TYPE=binding
+      rest=${name#binding.}
+      [ "$rest" != "${rest#*.}" ] || return 1
+      first=${rest%%.*}
+      second=${rest#*.}
+      rig_valid_id "$first" || return 1
+      rig_valid_id "$second" || return 1
+      RIG_SECTION_ID=$first
+      RIG_SECTION_SECONDARY_ID=$second
+      ;;
+    *) return 1 ;;
+  esac
+  return 0
+}
+
+rig_add_section() {
+  local name file line index
+
+  name=$1
+  file=$2
+  line=$3
+  rig_parse_section_identity "$name" ||
+    rig_fail "$file:$line: invalid section identity [$name]" || return
+  if rig_section_index "$name"; then
+    rig_fail "$file:$line: duplicate section [$name]" || return
+  fi
+
+  index=${#RIG_SECTION_NAMES[@]}
+  RIG_SECTION_NAMES[$index]=$name
+  RIG_SECTION_TYPES[$index]=$RIG_SECTION_TYPE
+  RIG_SECTION_IDS[$index]=$RIG_SECTION_ID
+  RIG_SECTION_SECONDARY_IDS[$index]=$RIG_SECTION_SECONDARY_ID
+  RIG_SECTION_FILES[$index]=$file
+  RIG_INDEX=$index
+}
+
+rig_field_kind() {
+  local section_type key
+
+  section_type=$1
+  key=$2
+  RIG_FIELD_KIND=
+  case "$section_type:$key" in
+    rig:schema|rig:default-profile|\
+    category:name|category:purpose|\
+    tool:name|tool:category|tool:purpose|tool:rationale|\
+    provider:adapter|provider:command|provider:executable|provider:manifest|\
+    binding:kind|binding:locator|\
+    publication:profile|publication:title|publication:base-url|publication:publisher)
+      RIG_FIELD_KIND=scalar
+      ;;
+    tool:platform|tool:requires|tool:related|tool:alternative|\
+    profile:profile|profile:tool|\
+    provider:argument|provider:capability|\
+    binding:platform|binding:argument)
+      RIG_FIELD_KIND=repeatable
+      ;;
+    *) return 1 ;;
+  esac
+  return 0
+}
+
+rig_field_count() {
+  local section_index key index count
+
+  section_index=$1
+  key=$2
+  index=0
+  count=0
+  while [ "$index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+    if [ "${RIG_FIELD_SECTIONS[$index]}" -eq "$section_index" ] &&
+      [ "${RIG_FIELD_KEYS[$index]}" = "$key" ]; then
+      count=$((count + 1))
+    fi
+    index=$((index + 1))
+  done
+  RIG_COUNT=$count
+}
+
+rig_add_field() {
+  local section_index key value file line field_index section_type
+
+  section_index=$1
+  key=$2
+  value=$3
+  file=$4
+  line=$5
+  section_type=${RIG_SECTION_TYPES[$section_index]}
+
+  rig_field_kind "$section_type" "$key" ||
+    rig_fail "$file:$line: unknown field '$key' in [${RIG_SECTION_NAMES[$section_index]}]" || return
+  [ -n "$value" ] || rig_fail "$file:$line: field '$key' must not be empty" || return
+
+  if [ "$RIG_FIELD_KIND" = scalar ]; then
+    rig_field_count "$section_index" "$key"
+    [ "$RIG_COUNT" -eq 0 ] ||
+      rig_fail "$file:$line: duplicate scalar field '$key' in [${RIG_SECTION_NAMES[$section_index]}]" || return
+  fi
+
+  if [ "$section_type:$key" = provider:executable ] ||
+    [ "$section_type:$key" = provider:manifest ]; then
+    case "$value" in
+      \~/*)
+        [ -n "${HOME:-}" ] || rig_fail "$file:$line: HOME is required to expand '$key'" || return
+        value=$HOME/${value#\~/}
+        ;;
     esac
-    ;;
-  *)
-    syntax_error "unknown command: $command_name"
-    ;;
-esac
+  fi
+
+  field_index=${#RIG_FIELD_KEYS[@]}
+  RIG_FIELD_SECTIONS[$field_index]=$section_index
+  RIG_FIELD_KEYS[$field_index]=$key
+  RIG_FIELD_VALUES[$field_index]=$value
+}
+
+rig_parse_file() {
+  local file line line_number current_section key value
+
+  file=$1
+  current_section=
+  line_number=0
+  [ -f "$file" ] && [ -r "$file" ] || rig_fail "cannot read configuration file: $file" || return
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    line_number=$((line_number + 1))
+    rig_trim "$line"
+    line=$RIG_VALUE
+    case "$line" in
+      ''|'#'*|';'*) continue ;;
+    esac
+
+    case "$line" in
+      \[*\])
+        value=${line#\[}
+        value=${value%\]}
+        rig_add_section "$value" "$file" "$line_number" || return
+        current_section=$RIG_INDEX
+        ;;
+      *)
+        [ -n "$current_section" ] || rig_fail "$file:$line_number: field appears before a section" || return
+        [ "$line" != "${line#*=}" ] || rig_fail "$file:$line_number: malformed record" || return
+        key=${line%%=*}
+        value=${line#*=}
+        rig_trim "$key"
+        key=$RIG_VALUE
+        rig_trim "$value"
+        value=$RIG_VALUE
+        case "$key" in
+          ''|*[!a-z0-9-]*) rig_fail "$file:$line_number: invalid field name '$key'" || return ;;
+        esac
+        rig_add_field "$current_section" "$key" "$value" "$file" "$line_number" || return
+        ;;
+    esac
+  done <"$file"
+}
+
+rig_get_value() {
+  local section_name key occurrence section_index index seen
+
+  section_name=$1
+  key=$2
+  occurrence=${3:-1}
+  RIG_VALUE=
+  rig_section_index "$section_name" || return 1
+  section_index=$RIG_INDEX
+  index=0
+  seen=0
+  while [ "$index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+    if [ "${RIG_FIELD_SECTIONS[$index]}" -eq "$section_index" ] &&
+      [ "${RIG_FIELD_KEYS[$index]}" = "$key" ]; then
+      seen=$((seen + 1))
+      if [ "$seen" -eq "$occurrence" ]; then
+        RIG_VALUE=${RIG_FIELD_VALUES[$index]}
+        return 0
+      fi
+    fi
+    index=$((index + 1))
+  done
+  return 1
+}
+
+rig_require_field() {
+  local section_name key
+
+  section_name=$1
+  key=$2
+  if ! rig_get_value "$section_name" "$key"; then
+    rig_fail "[$section_name] requires field '$key'" || return
+  fi
+}
+
+rig_reference_exists() {
+  rig_section_index "$1.$2"
+}
+
+rig_validate_references_for_field() {
+  local section_index key target_type index target
+
+  section_index=$1
+  key=$2
+  target_type=$3
+  index=0
+  while [ "$index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+    if [ "${RIG_FIELD_SECTIONS[$index]}" -eq "$section_index" ] &&
+      [ "${RIG_FIELD_KEYS[$index]}" = "$key" ]; then
+      target=${RIG_FIELD_VALUES[$index]}
+      if ! rig_valid_id "$target" || ! rig_reference_exists "$target_type" "$target"; then
+        rig_fail "[${RIG_SECTION_NAMES[$section_index]}] references unknown $target_type '$target'" || return
+      fi
+    fi
+    index=$((index + 1))
+  done
+}
+
+rig_visit_get() {
+  local name index
+
+  name=$1
+  index=0
+  RIG_VALUE=
+  while [ "$index" -lt "${#RIG_VISIT_NAMES[@]}" ]; do
+    if [ "${RIG_VISIT_NAMES[$index]}" = "$name" ]; then
+      RIG_VALUE=${RIG_VISIT_STATES[$index]}
+      RIG_INDEX=$index
+      return 0
+    fi
+    index=$((index + 1))
+  done
+  RIG_INDEX=
+  return 1
+}
+
+rig_visit_set() {
+  local name state index
+
+  name=$1
+  state=$2
+  if rig_visit_get "$name"; then
+    RIG_VISIT_STATES[$RIG_INDEX]=$state
+  else
+    index=${#RIG_VISIT_NAMES[@]}
+    RIG_VISIT_NAMES[$index]=$name
+    RIG_VISIT_STATES[$index]=$state
+  fi
+}
+
+rig_profile_cycle_visit() {
+  local profile section_index field_index child state
+
+  profile=$1
+  if rig_visit_get "$profile"; then
+    state=$RIG_VALUE
+    [ "$state" != visiting ] || rig_fail "profile cycle includes '$profile'" || return
+    [ "$state" != visited ] || return 0
+  fi
+
+  rig_visit_set "$profile" visiting
+  rig_section_index "profile.$profile" || return 2
+  section_index=$RIG_INDEX
+  field_index=0
+  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+    if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] &&
+      [ "${RIG_FIELD_KEYS[$field_index]}" = profile ]; then
+      child=${RIG_FIELD_VALUES[$field_index]}
+      rig_profile_cycle_visit "$child" || return
+    fi
+    field_index=$((field_index + 1))
+  done
+  rig_visit_set "$profile" visited
+}
+
+rig_tool_cycle_visit() {
+  local tool section_index field_index child state
+
+  tool=$1
+  if rig_visit_get "$tool"; then
+    state=$RIG_VALUE
+    [ "$state" != visiting ] || rig_fail "required-tool cycle includes '$tool'" || return
+    [ "$state" != visited ] || return 0
+  fi
+
+  rig_visit_set "$tool" visiting
+  rig_section_index "tool.$tool" || return 2
+  section_index=$RIG_INDEX
+  field_index=0
+  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+    if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] &&
+      [ "${RIG_FIELD_KEYS[$field_index]}" = requires ]; then
+      child=${RIG_FIELD_VALUES[$field_index]}
+      rig_tool_cycle_visit "$child" || return
+    fi
+    field_index=$((field_index + 1))
+  done
+  rig_visit_set "$tool" visited
+}
+
+rig_validate_cycles() {
+  local index
+
+  RIG_VISIT_NAMES=()
+  RIG_VISIT_STATES=()
+  index=0
+  while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+    if [ "${RIG_SECTION_TYPES[$index]}" = profile ]; then
+      rig_profile_cycle_visit "${RIG_SECTION_IDS[$index]}" || return
+    fi
+    index=$((index + 1))
+  done
+
+  RIG_VISIT_NAMES=()
+  RIG_VISIT_STATES=()
+  index=0
+  while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+    if [ "${RIG_SECTION_TYPES[$index]}" = tool ]; then
+      rig_tool_cycle_visit "${RIG_SECTION_IDS[$index]}" || return
+    fi
+    index=$((index + 1))
+  done
+}
+
+rig_validate_model() {
+  local index section_name section_type section_id secondary_id adapter
+
+  rig_section_index rig || rig_fail 'missing [rig] section' || return
+  [ "${RIG_SECTION_FILES[$RIG_INDEX]}" = "$RIG_ROOT_FILE" ] ||
+    rig_fail '[rig] section must be declared in rig.conf' || return
+  rig_require_field rig schema || return
+  [ "$RIG_VALUE" = 1 ] || rig_fail "unsupported schema version '$RIG_VALUE'" || return
+  rig_require_field rig default-profile || return
+  rig_valid_id "$RIG_VALUE" || rig_fail "invalid default profile '$RIG_VALUE'" || return
+  rig_reference_exists profile "$RIG_VALUE" || rig_fail "[rig] references unknown profile '$RIG_VALUE'" || return
+
+  index=0
+  while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+    section_name=${RIG_SECTION_NAMES[$index]}
+    section_type=${RIG_SECTION_TYPES[$index]}
+    section_id=${RIG_SECTION_IDS[$index]}
+    secondary_id=${RIG_SECTION_SECONDARY_IDS[$index]}
+
+    case "$section_type" in
+      rig) ;;
+      category)
+        rig_require_field "$section_name" name || return
+        rig_require_field "$section_name" purpose || return
+        ;;
+      tool)
+        rig_require_field "$section_name" name || return
+        rig_require_field "$section_name" category || return
+        rig_valid_id "$RIG_VALUE" || rig_fail "[$section_name] has invalid category '$RIG_VALUE'" || return
+        rig_reference_exists category "$RIG_VALUE" || rig_fail "[$section_name] references unknown category '$RIG_VALUE'" || return
+        rig_require_field "$section_name" purpose || return
+        rig_require_field "$section_name" rationale || return
+        rig_field_count "$index" platform
+        [ "$RIG_COUNT" -gt 0 ] || rig_fail "[$section_name] requires field 'platform'" || return
+        rig_validate_references_for_field "$index" requires tool || return
+        rig_validate_references_for_field "$index" related tool || return
+        rig_validate_references_for_field "$index" alternative tool || return
+        ;;
+      profile)
+        rig_validate_references_for_field "$index" profile profile || return
+        rig_validate_references_for_field "$index" tool tool || return
+        ;;
+      provider)
+        rig_require_field "$section_name" adapter || return
+        adapter=$RIG_VALUE
+        if [ "$adapter" = custom ]; then
+          rig_require_field "$section_name" executable || return
+        fi
+        ;;
+      binding)
+        rig_reference_exists tool "$section_id" || rig_fail "[$section_name] references unknown tool '$section_id'" || return
+        rig_reference_exists provider "$secondary_id" || rig_fail "[$section_name] references unknown provider '$secondary_id'" || return
+        rig_require_field "$section_name" kind || return
+        rig_require_field "$section_name" locator || return
+        ;;
+      publication)
+        rig_require_field "$section_name" profile || return
+        rig_valid_id "$RIG_VALUE" && rig_reference_exists profile "$RIG_VALUE" ||
+          rig_fail "[$section_name] references unknown profile '$RIG_VALUE'" || return
+        rig_require_field "$section_name" title || return
+        rig_require_field "$section_name" base-url || return
+        rig_require_field "$section_name" publisher || return
+        rig_valid_id "$RIG_VALUE" && rig_reference_exists provider "$RIG_VALUE" ||
+          rig_fail "[$section_name] references unknown provider '$RIG_VALUE'" || return
+        ;;
+    esac
+    index=$((index + 1))
+  done
+
+  rig_validate_cycles
+}
+
+rig_load_config() {
+  local config_home root_file fragment
+  local LC_ALL=C
+
+  rig_model_reset
+  if [ -n "${RIG_CONFIG_HOME:-}" ]; then
+    config_home=$RIG_CONFIG_HOME
+  else
+    [ -n "${HOME:-}" ] || rig_fail 'HOME is required when RIG_CONFIG_HOME is not set' || return
+    config_home=${XDG_CONFIG_HOME:-$HOME/.config}/rig
+  fi
+
+  root_file=$config_home/rig.conf
+  RIG_ROOT_FILE=$root_file
+  rig_parse_file "$root_file" || return
+  for fragment in "$config_home"/conf.d/*.conf; do
+    [ -f "$fragment" ] || continue
+    rig_parse_file "$fragment" || return
+  done
+  rig_validate_model
+}
+
+rig_tool_supports_platform() {
+  local tool platform section_index field_index
+
+  tool=$1
+  platform=$2
+  rig_section_index "tool.$tool" || return 1
+  section_index=$RIG_INDEX
+  field_index=0
+  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+    if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] &&
+      [ "${RIG_FIELD_KEYS[$field_index]}" = platform ] &&
+      { [ "${RIG_FIELD_VALUES[$field_index]}" = any ] ||
+        [ "${RIG_FIELD_VALUES[$field_index]}" = "$platform" ]; }; then
+      return 0
+    fi
+    field_index=$((field_index + 1))
+  done
+  return 1
+}
+
+rig_array_contains() {
+  local wanted item
+
+  wanted=$1
+  shift
+  for item in "$@"; do
+    [ "$item" != "$wanted" ] || return 0
+  done
+  return 1
+}
+
+rig_select_tool() {
+  local tool platform required_by section_index field_index child
+
+  tool=$1
+  platform=$2
+  required_by=${3:-}
+  if ! rig_tool_supports_platform "$tool" "$platform"; then
+    [ -z "$required_by" ] && return 0
+    rig_fail "tool '$required_by' requires '$tool', which does not support platform '$platform'" || return
+  fi
+  rig_array_contains "$tool" "${RIG_SELECTED_TOOLS[@]}" && return 0
+  RIG_SELECTED_TOOLS[${#RIG_SELECTED_TOOLS[@]}]=$tool
+
+  rig_section_index "tool.$tool" || return 2
+  section_index=$RIG_INDEX
+  field_index=0
+  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+    if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] &&
+      [ "${RIG_FIELD_KEYS[$field_index]}" = requires ]; then
+      child=${RIG_FIELD_VALUES[$field_index]}
+      rig_select_tool "$child" "$platform" "$tool" || return
+    fi
+    field_index=$((field_index + 1))
+  done
+}
+
+rig_select_profile() {
+  local profile platform section_index field_index key target
+
+  profile=$1
+  platform=$2
+  rig_section_index "profile.$profile" || rig_fail "unknown profile '$profile'" || return
+  section_index=$RIG_INDEX
+  field_index=0
+  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+    if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ]; then
+      key=${RIG_FIELD_KEYS[$field_index]}
+      target=${RIG_FIELD_VALUES[$field_index]}
+      case "$key" in
+        profile) rig_select_profile "$target" "$platform" || return ;;
+        tool) rig_select_tool "$target" "$platform" || return ;;
+      esac
+    fi
+    field_index=$((field_index + 1))
+  done
+}
+
+rig_sort_selected_tools() {
+  local index scan value previous
+  local LC_ALL=C
+
+  index=1
+  while [ "$index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
+    value=${RIG_SELECTED_TOOLS[$index]}
+    scan=$index
+    while [ "$scan" -gt 0 ]; do
+      previous=${RIG_SELECTED_TOOLS[$((scan - 1))]}
+      [[ "$value" < "$previous" ]] || break
+      RIG_SELECTED_TOOLS[$scan]=$previous
+      scan=$((scan - 1))
+    done
+    RIG_SELECTED_TOOLS[$scan]=$value
+    index=$((index + 1))
+  done
+}
+
+rig_binding_supports_platform() {
+  local section_index platform field_index declared
+
+  section_index=$1
+  platform=$2
+  field_index=0
+  declared=0
+  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+    if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] &&
+      [ "${RIG_FIELD_KEYS[$field_index]}" = platform ]; then
+      declared=1
+      if [ "${RIG_FIELD_VALUES[$field_index]}" = any ] ||
+        [ "${RIG_FIELD_VALUES[$field_index]}" = "$platform" ]; then
+        return 0
+      fi
+    fi
+    field_index=$((field_index + 1))
+  done
+  [ "$declared" -eq 0 ]
+}
+
+rig_select_bindings() {
+  local platform tool_index tool section_index total matches binding_name
+
+  platform=$1
+  RIG_SELECTED_BINDINGS=()
+  tool_index=0
+  while [ "$tool_index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
+    tool=${RIG_SELECTED_TOOLS[$tool_index]}
+    section_index=0
+    total=0
+    matches=0
+    binding_name=
+    while [ "$section_index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+      if [ "${RIG_SECTION_TYPES[$section_index]}" = binding ] &&
+        [ "${RIG_SECTION_IDS[$section_index]}" = "$tool" ]; then
+        total=$((total + 1))
+        if rig_binding_supports_platform "$section_index" "$platform"; then
+          matches=$((matches + 1))
+          binding_name=${RIG_SECTION_NAMES[$section_index]}
+        fi
+      fi
+      section_index=$((section_index + 1))
+    done
+
+    if [ "$total" -eq 0 ]; then
+      RIG_SELECTED_BINDINGS[$tool_index]=
+      tool_index=$((tool_index + 1))
+      continue
+    fi
+    [ "$matches" -ne 0 ] || rig_fail "tool '$tool' has no compatible binding for platform '$platform'" || return
+    [ "$matches" -eq 1 ] || rig_fail "tool '$tool' has ambiguous bindings for platform '$platform'" || return
+    RIG_SELECTED_BINDINGS[$tool_index]=$binding_name
+    tool_index=$((tool_index + 1))
+  done
+}
+
+rig_resolve_profile() {
+  local profile platform
+
+  profile=${1:-}
+  platform=${2:-}
+  RIG_SELECTED_TOOLS=()
+  RIG_SELECTED_BINDINGS=()
+  RIG_RESOLVED_PROFILE=
+  RIG_RESOLVED_PLATFORM=
+  [ -n "$platform" ] || rig_fail 'a platform is required for profile resolution' || return
+  if [ -z "$profile" ]; then
+    rig_get_value rig default-profile || rig_fail 'configuration is not loaded' || return
+    profile=$RIG_VALUE
+  fi
+  rig_valid_id "$profile" || rig_fail "invalid profile '$profile'" || return
+
+  rig_select_profile "$profile" "$platform" || return
+  rig_sort_selected_tools
+  RIG_RESOLVED_PROFILE=$profile
+  RIG_RESOLVED_PLATFORM=$platform
+}
+
+rig_resolve_bindings() {
+  [ -n "$RIG_RESOLVED_PLATFORM" ] || rig_fail 'a profile must be resolved before bindings' || return
+  rig_select_bindings "$RIG_RESOLVED_PLATFORM"
+}
+
+rig_dump_resolution() {
+  local index binding provider
+
+  printf 'profile=%s\nplatform=%s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
+    printf 'tool=%s\n' "${RIG_SELECTED_TOOLS[$index]}"
+    binding=${RIG_SELECTED_BINDINGS[$index]:-}
+    if [ -n "$binding" ]; then
+      provider=${binding##*.}
+      printf 'binding=%s:%s\n' "${RIG_SELECTED_TOOLS[$index]}" "$provider"
+    fi
+    index=$((index + 1))
+  done
+}
+
+main() {
+  local command_name
+
+  set -u
+  command_name=${1:-help}
+  case "$command_name" in
+    -h|--help|help)
+      [ "$#" -eq 1 ] || syntax_error "unexpected arguments for $command_name" || return
+      print_help
+      ;;
+    -V|--version)
+      [ "$#" -eq 1 ] || syntax_error "unexpected arguments for $command_name" || return
+      printf 'rig %s\n' "$RIG_VERSION"
+      ;;
+    paths)
+      [ "$#" -eq 1 ] || syntax_error 'usage: rig paths' || return
+      print_paths
+      ;;
+    completion)
+      [ "$#" -eq 2 ] || syntax_error 'usage: rig completion bash|zsh' || return
+      case "$2" in
+        bash) print_bash_completion ;;
+        zsh) print_zsh_completion ;;
+        *) syntax_error "unsupported shell: $2" || return ;;
+      esac
+      ;;
+    *) syntax_error "unknown command: $command_name" || return ;;
+  esac
+}
+
+if [[ ${BASH_SOURCE[0]} = "$0" ]]; then
+  main "$@"
+fi

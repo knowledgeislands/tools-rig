@@ -22,19 +22,23 @@ _Verify:_ Bats tests invoke two named profiles against the same isolated configu
 
 ### RIG-ORCH-007 — Profile composition
 
-Rig MUST allow a profile to include other declared profiles and expand required tool relationships transitively.
+Rig MUST allow a profile to include other declared profiles and expand required tool relationships transitively. Resolution MUST fail when a selected tool supports the active platform but one of its required tools does not.
 
-_Conformance:_ pending
+_Conformance:_ conforming
 
-_Verify:_ Bats tests compose nested profiles with required tools and assert one de-duplicated resolved tool set.
+_Verify:_ Bats tests compose nested profiles with required tools, assert one de-duplicated resolved tool set, and reject an active-platform tool whose required tool is unavailable on that platform.
+
+_Evidence:_ `tests/rig.bats` resolves nested profiles and transitive requirements into one sorted set and rejects incompatible required tools.
 
 ### RIG-ORCH-008 — Invalid profile graph
 
 Rig MUST reject unknown profile references, unknown tool references, and profile or required-tool cycles before invoking a provider.
 
-_Conformance:_ pending
+_Conformance:_ conforming
 
 _Verify:_ Bats table tests exercise every invalid graph class and assert status 2 with an empty provider-call log.
+
+_Evidence:_ `rig_validate_cycles` rejects profile and required-tool cycles before resolution; `tests/rig.bats` covers cycles and unknown profile and tool references with status 2.
 
 ## Providers
 
@@ -72,11 +76,13 @@ _Verify:_ Bats tests exercise each provider through fakes and run an unrelated p
 
 ### RIG-ORCH-009 — Platform binding selection
 
-Rig MUST select exactly one compatible provider binding for each materialisable tool on the active platform and reject zero or ambiguous compatible bindings.
+Rig MUST select exactly one compatible provider binding when materialisation is requested for a tool on the active platform and reject zero or ambiguous compatible bindings. A binding with no platform or with platform `any` is compatible with every platform; other platform values match exactly.
 
-_Conformance:_ pending
+_Conformance:_ conforming
 
 _Verify:_ Bats tests resolve disjoint macOS and Linux bindings, then assert missing and overlapping bindings fail before provider invocation.
+
+_Evidence:_ `tests/rig.bats` covers exact, `any`, and platform-independent bindings, ambiguous and incompatible bindings, and catalogue-only tools without invoking providers.
 
 ### RIG-ORCH-010 — Literal executable arguments
 
