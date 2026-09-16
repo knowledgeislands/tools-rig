@@ -4,12 +4,12 @@ area: MIG
 title: Extract machine audit
 theme: migration
 horizon: now
-status: ready
+status: in-progress
 blocks: [RIG-MIG-005]
 blocked_by: []
-baseline_ref: null
+baseline_ref: 1418f7c4ff417151a307604c4762c2196bc8ee8c
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-16T23:18:10Z
+updated_at: 2026-09-16T23:18:30Z
 ---
 
 # RIG-MIG-002: Extract machine audit

@@ -138,6 +138,16 @@ _Verify:_ Bats places a failure late in the selected plan and asserts every prov
 
 _Evidence:_ `rig_preflight_apply` traverses the complete plan before `rig_command_apply` begins its execution loop.
 
+### RIG-STATE-016 — Bootstrap materialisation
+
+`rig bootstrap [--profile NAME] [--dry-run]` MUST enter the same resolved provider plan, dependency ordering, full preflight, dispatch, reporting, failure suppression, and outcome statuses as `rig apply`. An explicit profile MUST take precedence; otherwise Rig MUST select `[rig] bootstrap-profile` when declared and fall back to `default-profile` when it is absent. Dry-run MUST invoke no provider.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats compares bootstrap with apply for identical selected-profile plans, provider calls, dependency order, dry-run non-mutation, preflight rejection, and failed-prerequisite suppression.
+
+_Evidence:_ `rig_command_bootstrap` resolves only the bootstrap profile precedence and delegates materialisation to `rig_command_apply`; focused Bats cases compare both entry points and exercise fallback and failure boundaries.
+
 ### RIG-STATE-012 — Direct-download integrity and replacement
 
 A direct-download observation MUST remain local: a missing destination is `missing`; a regular executable whose SHA-256 matches is `present`; a hash or executable-mode mismatch is `drifted`; a symlink or non-regular destination is `unavailable`. Application MUST restrict the initial request and redirects to HTTPS, download to a previously absent sibling temporary path, verify the declared SHA-256, revalidate destination safety immediately before setting executable mode and renaming over the destination, verify the result is a regular file, and remove the temporary path after every handled failure.

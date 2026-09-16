@@ -26,6 +26,10 @@ rig \- describe and manage a personal working setup
 .RI [ \-\-profile " NAME" ]
 .RI [ \-\-dry-run ]
 .br
+.B rig bootstrap
+.RI [ \-\-profile " NAME" ]
+.RI [ \-\-dry-run ]
+.br
 .BI "rig run " TOOL " " OPERATION
 .RI [ \-\- " ARGUMENT..." ]
 .br
@@ -49,7 +53,8 @@ supported platforms, profiles, and provider bindings.
 .PP
 Catalogue queries and diagnostics parse inert configuration and do not invoke
 provider code. Status and doctor invoke observation capabilities.
-Apply crosses the explicit mutation boundary only after complete plan preflight.
+Apply and bootstrap cross the explicit mutation boundary only after complete
+plan preflight.
 Run crosses an
 explicit operation trust boundary after validating its declaration. Publish
 crosses a network-capable trust boundary only after export validation.
@@ -133,6 +138,20 @@ Apply a named resolved profile without changing the configured default.
 .TP
 .B rig apply \-\-dry-run
 Perform complete preflight and print planned work without invoking a provider.
+.TP
+.B rig bootstrap
+Materialise the configured bootstrap profile through the same resolver,
+dependency order, complete preflight, dispatch, reporting, and failure
+boundaries as
+.BR "rig apply" .
+An explicit
+.BI "\-\-profile " NAME
+takes precedence over
+.BR bootstrap-profile ;
+when that field is absent, bootstrap uses
+.BR default-profile .
+.B \-\-dry-run
+prints the shared plan without invoking a provider.
 .TP
 .BI "rig run " TOOL " " OPERATION " [\-\- " ARGUMENT... "]"
 Invoke one configuration-defined operation through its selected custom provider.
@@ -281,7 +300,9 @@ Default root configuration file. Schema 1 uses
 with
 .B schema
 and
-.BR default-profile ;
+.B default-profile
+fields, plus optional
+.BR bootstrap-profile ;
 .B [category.ID]
 with
 .B name
@@ -387,6 +408,7 @@ A minimal catalogue is:
 [rig]
 schema = 1
 default-profile = default
+bootstrap-profile = bootstrap
 
 [category.navigation]
 name = Navigation
@@ -400,6 +422,9 @@ rationale = Keeps repository context visible
 platform = macos
 
 [profile.default]
+tool = mgit
+
+[profile.bootstrap]
 tool = mgit
 .fi
 .TP
@@ -607,8 +632,8 @@ returns 129, 130, or 143 for HUP, INT, or TERM. Rig-owned publication
 validation, export, and cleanup failures return 2.
 .TP
 .B 0
-Healthy status or doctor result, or successful apply, including neutral
-catalogue-only rows.
+Healthy status or doctor result, or successful apply or bootstrap, including
+neutral catalogue-only rows.
 .TP
 .B 1
 Valid unhealthy observation or doctor finding, provider runtime failure,
@@ -618,7 +643,7 @@ this means configuration is missing or invalid.
 .TP
 .B 2
 Invalid command syntax, unknown query identity, invalid configuration,
-resolution failure, or apply preflight failure.
+resolution failure, or apply or bootstrap preflight failure.
 .SH SEE ALSO
 \&
 .BR bash (1),

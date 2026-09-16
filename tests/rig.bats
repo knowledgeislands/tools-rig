@@ -118,6 +118,16 @@ write_orchestration_config() {
     'locator = present' >"$CONFIG_HOME/rig.conf"
 }
 
+write_bootstrap_config() {
+  write_orchestration_config
+  sed '/^default-profile = default$/a\
+bootstrap-profile = bootstrap' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bootstrap.conf"
+  printf '%s\n' \
+    '[profile.bootstrap]' \
+    'tool = app' >>"$CONFIG_HOME/bootstrap.conf"
+  mv "$CONFIG_HOME/bootstrap.conf" "$CONFIG_HOME/rig.conf"
+}
+
 run_loader() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
     bash -c '. "$1"; rig_load_config' _ "$RIG"
@@ -257,6 +267,7 @@ write_query_config() {
   [[ "$output" == *"explain TOOL"* ]]
   [[ "$output" == *"status [--profile NAME]"* ]] || false
   [[ "$output" == *"apply [--profile NAME] [--dry-run]"* ]] || false
+  [[ "$output" == *"bootstrap [--profile NAME] [--dry-run]"* ]] || false
   [[ "$output" == *"run TOOL OPERATION [-- ARGUMENT...]"* ]] || false
   [[ "$output" == *"export PUBLICATION --output DIRECTORY"* ]] || false
   [[ "$output" == *"publish PUBLICATION"* ]] || false
@@ -322,16 +333,17 @@ write_query_config() {
   run "$RIG" completion bash
   [ "$status" -eq 0 ]
   [[ "$output" == *"complete -F _rig rig"* ]]
-  [[ "$output" == *"-h --help -V --version show list explain status doctor apply run export publish diag completion help"* ]] || false
+  [[ "$output" == *"-h --help -V --version show list explain status doctor apply bootstrap run export publish diag completion help"* ]] || false
   [[ "$output" == *'show) COMPREPLY=($(compgen -W "-h --help --profile"'* ]]
   [[ "$output" == *'explain) COMPREPLY=($(compgen -W "-h --help"'* ]]
   [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile"'* ]] || false
   [[ "$output" == *'doctor) COMPREPLY=($(compgen -W "-h --help --profile"'* ]] || false
   [[ "$output" == *'apply) COMPREPLY=($(compgen -W "-h --help --profile --dry-run"'* ]] || false
+  [[ "$output" == *'bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --dry-run"'* ]] || false
   [[ "$output" == *'run) COMPREPLY=($(compgen -W "-h --help --"'* ]] || false
   [[ "$output" == *'export) COMPREPLY=($(compgen -W "-h --help --output"'* ]] || false
   [[ "$output" == *'publish) COMPREPLY=($(compgen -W "-h --help"'* ]] || false
-  [[ "$output" == *"show list explain status doctor apply run export publish diag completion help"* ]] || false
+  [[ "$output" == *"show list explain status doctor apply bootstrap run export publish diag completion help"* ]] || false
   [[ "$output" != *" paths "* ]]
 
   run "$RIG" completion zsh
@@ -341,6 +353,7 @@ write_query_config() {
   [[ "$output" == *"show:describe a resolved profile"* ]]
   [[ "$output" == *"diag:print runtime and configuration diagnostics"* ]]
   [[ "$output" == *"doctor:check whether a rig can operate"* ]]
+  [[ "$output" == *"bootstrap:materialise the bootstrap profile"* ]] || false
   [[ "$output" == *"export:generate a static public rig"* ]] || false
   [[ "$output" == *"publish:deploy a static public rig"* ]] || false
   [[ "$output" == *"run:invoke a declared operation"* ]] || false
@@ -376,6 +389,10 @@ write_query_config() {
       COMP_CWORD=2
       _rig
       printf "apply:%s\n" "${COMPREPLY[*]}"
+      COMP_WORDS=(rig bootstrap --)
+      COMP_CWORD=2
+      _rig
+      printf "bootstrap:%s\n" "${COMPREPLY[*]}"
       COMP_WORDS=(rig run --)
       COMP_CWORD=2
       _rig
@@ -393,6 +410,7 @@ write_query_config() {
   [[ "$output" == *"status:--help --profile"* ]] || false
   [[ "$output" == *"doctor:--help --profile"* ]] || false
   [[ "$output" == *"apply:--help --profile --dry-run"* ]] || false
+  [[ "$output" == *"bootstrap:--help --profile --dry-run"* ]] || false
   [[ "$output" == *"run:--help --"* ]] || false
   [[ "$output" == *"publish:--help"* ]] || false
 
@@ -1624,6 +1642,103 @@ write_query_config() {
   [ "$output" = $'Profile: default\nPlatform: macos\nTOOL\tPROVIDER\tRESULT\tDETAIL\nbase\trunner\tplanned\t-\napp\trunner\tplanned\t-\nindependent\trunner\tplanned\t-\nnotes\t-\tskipped\tcatalogue-only\nSummary: planned=3 completed=0 failed=0 skipped=1' ]
 }
 
+@test "bootstrap selects its declared profile with explicit and default fallbacks" {
+  local bootstrap_output apply_output
+
+  write_bootstrap_config
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" bootstrap --dry-run
+  [ "$status" -eq 0 ]
+  bootstrap_output=$output
+  [[ "$output" == $'Profile: bootstrap\nPlatform: macos'* ]] || false
+  [[ "$output" == *$'base\trunner\tplanned\t-'* ]] || false
+  [[ "$output" == *$'app\trunner\tplanned\t-'* ]] || false
+  [[ "$output" != *$'independent\trunner'* ]] || false
+  [ ! -e "$ORCHESTRATION_LOG" ]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply --profile bootstrap --dry-run
+  [ "$status" -eq 0 ]
+  apply_output=$output
+  [ "$bootstrap_output" = "$apply_output" ]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" bootstrap --profile default --dry-run
+  [ "$status" -eq 0 ]
+  [[ "$output" == $'Profile: default\nPlatform: macos'* ]] || false
+
+  write_orchestration_config
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" bootstrap --dry-run
+  [ "$status" -eq 0 ]
+  bootstrap_output=$output
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply --dry-run
+  [ "$status" -eq 0 ]
+  [ "$bootstrap_output" = "$output" ]
+}
+
+@test "bootstrap and apply execute the same dependency-ordered provider plan" {
+  local bootstrap_output bootstrap_log
+
+  write_bootstrap_config
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" bootstrap
+  [ "$status" -eq 0 ]
+  bootstrap_output=$output
+  bootstrap_log=$(cat "$ORCHESTRATION_LOG")
+  [ "$(grep '^CALL=' "$ORCHESTRATION_LOG")" = $'CALL=apply:base:present\nCALL=apply:app:present' ]
+
+  rm "$ORCHESTRATION_LOG"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply --profile bootstrap
+  [ "$status" -eq 0 ]
+  [ "$bootstrap_output" = "$output" ]
+  [ "$bootstrap_log" = "$(cat "$ORCHESTRATION_LOG")" ]
+}
+
+@test "bootstrap preserves apply preflight and dependency failure boundaries" {
+  write_bootstrap_config
+  sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = present/locator = fail/' \
+    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/failure.conf"
+  mv "$CONFIG_HOME/failure.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" bootstrap
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'base\trunner\tfailed\texit:7'* ]] || false
+  [[ "$output" == *$'app\trunner\tskipped\tblocked-by:base'* ]] || false
+  [ "$(grep '^CALL=' "$ORCHESTRATION_LOG")" = 'CALL=apply:base:fail' ]
+
+  write_bootstrap_config
+  sed '/capability = apply/d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/capability.conf"
+  mv "$CONFIG_HOME/capability.conf" "$CONFIG_HOME/rig.conf"
+  rm -f "$ORCHESTRATION_LOG"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" bootstrap
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"does not declare capability 'apply'"* ]] || false
+  [ ! -e "$ORCHESTRATION_LOG" ]
+}
+
+@test "bootstrap profile is an optional unique validated profile reference" {
+  write_bootstrap_config
+  sed '/^bootstrap-profile = bootstrap$/a\
+bootstrap-profile = bootstrap' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bootstrap.conf"
+  mv "$CONFIG_HOME/bootstrap.conf" "$CONFIG_HOME/rig.conf"
+  run_loader
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"duplicate scalar field 'bootstrap-profile'"* ]] || false
+
+  write_orchestration_config
+  sed '/^default-profile = default$/a\
+bootstrap-profile = absent' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bootstrap.conf"
+  mv "$CONFIG_HOME/bootstrap.conf" "$CONFIG_HOME/rig.conf"
+  run_loader
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"references unknown bootstrap profile 'absent'"* ]] || false
+}
+
 @test "apply suppresses failed dependants while continuing independent work" {
   write_orchestration_config
   sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = present/locator = fail/' \
@@ -1687,9 +1802,17 @@ write_query_config() {
   [ "$status" -eq 0 ]
   [ "$output" = 'Usage: rig apply [--profile NAME] [--dry-run]' ]
 
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" bootstrap --help
+  [ "$status" -eq 0 ]
+  [ "$output" = 'Usage: rig bootstrap [--profile NAME] [--dry-run]' ]
+
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --dry-run --dry-run
   [ "$status" -eq 2 ]
   [[ "$output" == *'usage: rig apply [--profile NAME] [--dry-run]'* ]] || false
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" bootstrap --profile
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'usage: rig bootstrap [--profile NAME] [--dry-run]'* ]] || false
 }
 
 @test "built-in adapters observe dry-run and apply with exact native commands" {

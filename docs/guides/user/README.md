@@ -50,6 +50,30 @@ Keep Homebrew manifests, uv state, and chezmoi source state in their native syst
 
 For direct downloads, declare an HTTPS locator, absolute destination, and lowercase `sha256:` checksum. Rig refuses symlink and non-regular destinations and verifies a sibling temporary file before replacement. Review `rig apply --dry-run` before the first installation.
 
+## Bootstrap a new machine
+
+Declare an optional profile dedicated to first materialisation:
+
+```ini
+[rig]
+schema = 1
+default-profile = default
+bootstrap-profile = bootstrap
+
+[profile.bootstrap]
+tool = homebrew
+tool = dotfiles
+```
+
+Then inspect and execute the same dependency-ordered, fully preflighted plan used by `apply`:
+
+```sh
+rig bootstrap --dry-run
+rig bootstrap
+```
+
+An explicit `--profile NAME` takes precedence over `bootstrap-profile`. If the field is absent, bootstrap falls back to `default-profile`, so existing configurations remain valid. Dry-run invokes no provider. Missing capabilities or executables fail before mutation; provider failures suppress only dependent work and independent work continues. Provider-native manifests remain authoritative, including any stale-state guard implemented by the selected provider.
+
 ## Run a declared operation
 
 Operations keep host-specific audits and controls in private configuration while giving them one bounded command surface:

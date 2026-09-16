@@ -90,13 +90,13 @@ _Evidence:_ `tests/rig.bats` loads every schema 1 section form and rejects malfo
 
 ### RIG-CONF-009 — Root fields
 
-The schema 1 `rig` section MUST accept one `schema` field and one `default-profile` field.
+The schema 1 `rig` section MUST require one `schema` field and one `default-profile` field and MAY accept one `bootstrap-profile` field. Both profile fields MUST name declared profiles. A missing `bootstrap-profile` preserves `default-profile` as the bootstrap fallback.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests resolve the two root fields and reject missing or repeated values.
+_Verify:_ Bats tests resolve required root fields, accept one optional bootstrap profile, and reject missing, repeated, or unknown references.
 
-_Evidence:_ `rig_validate_model` requires one root schema and default profile; `tests/rig.bats` covers missing and duplicate root scalars.
+_Evidence:_ `rig_validate_model` requires one root schema and default profile and validates the optional bootstrap reference; `tests/rig.bats` covers fallback, explicit selection, and invalid root scalars.
 
 ### RIG-CONF-010 — Catalogue fields
 

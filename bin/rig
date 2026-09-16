@@ -61,6 +61,8 @@ print_help() {
     '  status [--profile NAME]                Compare expected and observed state.' \
     '  doctor [--profile NAME]                Check whether a rig can operate.' \
     '  apply [--profile NAME] [--dry-run]     Materialise a resolved profile.' \
+    '  bootstrap [--profile NAME] [--dry-run]' \
+    '                                         Materialise the bootstrap profile.' \
     '  run TOOL OPERATION [-- ARGUMENT...]    Invoke a declared operation.' \
     '  export PUBLICATION --output DIRECTORY' \
     '                                     Generate a static public rig.' \
@@ -97,7 +99,7 @@ print_bash_completion() {
     '  current=${COMP_WORDS[COMP_CWORD]}' \
     '  command=${COMP_WORDS[1]:-}' \
     '  if [ "$COMP_CWORD" -eq 1 ]; then' \
-    '    COMPREPLY=($(compgen -W "-h --help -V --version show list explain status doctor apply run export publish diag completion help" -- "$current"))' \
+    '    COMPREPLY=($(compgen -W "-h --help -V --version show list explain status doctor apply bootstrap run export publish diag completion help" -- "$current"))' \
     '    return' \
     '  fi' \
     '  case "$command" in' \
@@ -107,6 +109,7 @@ print_bash_completion() {
     '    status) COMPREPLY=($(compgen -W "-h --help --profile" -- "$current")) ;;' \
     '    doctor) COMPREPLY=($(compgen -W "-h --help --profile" -- "$current")) ;;' \
     '    apply) COMPREPLY=($(compgen -W "-h --help --profile --dry-run" -- "$current")) ;;' \
+    '    bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --dry-run" -- "$current")) ;;' \
     '    run) COMPREPLY=($(compgen -W "-h --help --" -- "$current")) ;;' \
     '    export) COMPREPLY=($(compgen -W "-h --help --output" -- "$current")) ;;' \
     '    publish) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
@@ -133,6 +136,7 @@ print_zsh_completion() {
     "    'status:compare expected and observed state'" \
     "    'doctor:check whether a rig can operate'" \
     "    'apply:materialise a resolved profile'" \
+    "    'bootstrap:materialise the bootstrap profile'" \
     "    'run:invoke a declared operation'" \
     "    'export:generate a static public rig'" \
     "    'publish:deploy a static public rig'" \
@@ -151,6 +155,7 @@ print_zsh_completion() {
     "        status) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' ;;" \
     "        doctor) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' ;;" \
     "        apply) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \
+    "        bootstrap) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \
     "        run) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:tool name:' '2:operation name:' '3:separator:(--)' '*::operation argument:' ;;" \
     "        export) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' '--output[write complete static tree]:directory:_directories' ;;" \
     "        publish) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' ;;" \
@@ -322,7 +327,7 @@ rig_field_kind() {
   key=$2
   RIG_FIELD_KIND=
   case "$section_type:$key" in
-    rig:schema|rig:default-profile|\
+    rig:schema|rig:default-profile|rig:bootstrap-profile|\
     category:name|category:purpose|\
     tool:name|tool:category|tool:purpose|tool:rationale|\
     provider:adapter|provider:command|provider:executable|provider:manifest|\
@@ -723,6 +728,11 @@ rig_validate_model() {
   rig_require_field rig default-profile || return
   rig_valid_id "$RIG_VALUE" || rig_fail "invalid default profile '$RIG_VALUE'" || return
   rig_reference_exists profile "$RIG_VALUE" || rig_fail "[rig] references unknown profile '$RIG_VALUE'" || return
+  if rig_get_value rig bootstrap-profile; then
+    rig_valid_id "$RIG_VALUE" || rig_fail "invalid bootstrap profile '$RIG_VALUE'" || return
+    rig_reference_exists profile "$RIG_VALUE" ||
+      rig_fail "[rig] references unknown bootstrap profile '$RIG_VALUE'" || return
+  fi
 
   index=0
   while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
@@ -1938,6 +1948,65 @@ rig_command_apply() {
   printf 'Summary: planned=%s completed=%s failed=%s skipped=%s\n' \
     "$planned" "$completed" "$failed" "$skipped"
   [ "$operational_failure" -eq 0 ]
+}
+
+rig_command_bootstrap() {
+  local profile dry_run profile_seen dry_run_seen
+
+  profile=
+  dry_run=0
+  profile_seen=0
+  dry_run_seen=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      -h|--help)
+        [ "$#" -eq 1 ] || {
+          syntax_error 'usage: rig bootstrap [--profile NAME] [--dry-run]'
+          return
+        }
+        printf '%s\n' 'Usage: rig bootstrap [--profile NAME] [--dry-run]'
+        return
+        ;;
+      --profile)
+        [ "$profile_seen" -eq 0 ] && [ "$#" -ge 2 ] && [ -n "$2" ] || {
+          syntax_error 'usage: rig bootstrap [--profile NAME] [--dry-run]'
+          return
+        }
+        profile=$2
+        profile_seen=1
+        shift 2
+        ;;
+      --dry-run)
+        [ "$dry_run_seen" -eq 0 ] || {
+          syntax_error 'usage: rig bootstrap [--profile NAME] [--dry-run]'
+          return
+        }
+        dry_run=1
+        dry_run_seen=1
+        shift
+        ;;
+      *) syntax_error 'usage: rig bootstrap [--profile NAME] [--dry-run]'; return ;;
+    esac
+  done
+
+  if [ -z "$profile" ]; then
+    rig_load_config || return
+    if rig_get_value rig bootstrap-profile; then
+      profile=$RIG_VALUE
+    fi
+  fi
+
+  if [ -n "$profile" ]; then
+    if [ "$dry_run" -eq 1 ]; then
+      rig_command_apply --profile "$profile" --dry-run
+    else
+      rig_command_apply --profile "$profile"
+    fi
+  elif [ "$dry_run" -eq 1 ]; then
+    rig_command_apply --dry-run
+  else
+    rig_command_apply
+  fi
 }
 
 rig_current_platform() {
@@ -3305,6 +3374,10 @@ main() {
     apply)
       shift
       rig_command_apply "$@"
+      ;;
+    bootstrap)
+      shift
+      rig_command_bootstrap "$@"
       ;;
     run)
       shift

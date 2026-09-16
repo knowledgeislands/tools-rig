@@ -24,6 +24,16 @@ _Verify:_ Bats tests invoke two named profiles against the same isolated configu
 
 _Evidence:_ `rig_resolve_profile` accepts an explicit profile independently of the stored default; command tests cover `--profile` parsing.
 
+### RIG-ORCH-018 — Bootstrap profile precedence
+
+Rig MUST allow one optional bootstrap profile distinct from the default profile. `rig bootstrap --profile NAME` MUST select the explicit profile; otherwise bootstrap MUST select `bootstrap-profile` when declared and fall back to `default-profile` when absent. The selected profile MUST use the same resolver and provider plan as apply.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats selects distinct default and bootstrap profiles, proves explicit precedence and default fallback, and compares bootstrap with apply plan output and provider order.
+
+_Evidence:_ `rig_command_bootstrap` resolves the root-field precedence before delegating to `rig_command_apply`; configuration validation and focused Bats cases cover all three selection paths.
+
 ### RIG-ORCH-007 — Profile composition
 
 Rig MUST allow a profile to include other declared profiles and MUST expand required tool relationships transitively. Resolution MUST fail when a selected tool supports the active platform but one of its required tools does not.
