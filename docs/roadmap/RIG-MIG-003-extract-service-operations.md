@@ -5,11 +5,11 @@ title: Extract service operations
 theme: migration
 horizon: triage
 status: draft
-blocks: []
-blocked_by: [RIG-MIG-004]
+blocks: [RIG-MIG-005]
+blocked_by: [RIG-MIG-004, RIG-CLI-005]
 baseline_ref: null
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-15T11:53:55Z
+updated_at: 2026-09-16T11:06:43Z
 ---
 
 # RIG-MIG-003: Extract service operations

@@ -147,3 +147,13 @@ _Conformance:_ conforming
 _Verify:_ Bats tests resolve a public profile and publisher from one publication and reject missing or unknown references.
 
 _Evidence:_ `tests/rig.bats` loads all publication fields and rejects missing and unknown profile or provider references.
+
+### RIG-CONF-015 — Operation fields
+
+Schema 1 MUST additionally accept `[operation.TOOL.NAME]` section identities, where both identifier segments match `[a-z][a-z0-9-]*`. An operation MUST name one declared tool through its section identity and MUST require scalar `provider`, `capability`, `mode`, and `description` fields. It MAY repeat `platform`, `argument`, and `allow-argument` fields.
+
+The provider MUST exist and declare the referenced capability. The `mode` MUST be `observe` or `mutate`. Configured and allowed arguments remain literal values with the same repeated-field boundaries as other schema lists.
+
+_Conformance:_ pending
+
+_Verify:_ Bats table tests accept valid operation records; reject malformed identities, missing required fields, invalid modes, unknown tools or providers, and undeclared capabilities; and preserve configured and allow-listed argument boundaries.

@@ -5,11 +5,11 @@ title: Extract bootstrap behavior
 theme: migration
 horizon: triage
 status: draft
-blocks: []
+blocks: [RIG-MIG-005]
 blocked_by: [RIG-MIG-004]
 baseline_ref: null
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-15T13:04:11Z
+updated_at: 2026-09-16T11:06:43Z
 ---
 
 # RIG-MIG-001: Extract bootstrap behavior

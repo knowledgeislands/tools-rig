@@ -99,3 +99,21 @@ Rig MUST skip every dependent provider after its prerequisite fails while report
 _Conformance:_ pending
 
 _Verify:_ Bats tests force a middle provider to fail and assert its dependent is not invoked while independent completed work remains reported.
+
+## Declared operations
+
+### RIG-ORCH-012 — Explicit operation dispatch
+
+`rig run TOOL OPERATION` MUST resolve one declared operation, verify that it supports the active platform, verify that its provider declares the configured capability, and invoke that capability with the configured arguments. It MUST preserve the provider's native outcome and MUST reject invalid input before provider invocation.
+
+_Conformance:_ pending
+
+_Verify:_ Bats tests use recording providers to assert exact operation selection, platform and capability validation, invocation boundaries, exit status, and no invocation after validation failure.
+
+### RIG-ORCH-013 — Bounded caller arguments
+
+`rig run TOOL OPERATION [-- ARGUMENT...]` MUST accept caller arguments only when each argument exactly matches one repeated `allow-argument` value. Rig MUST append accepted caller arguments after configured arguments and pass every value literally without shell interpretation. An operation with no `allow-argument` fields MUST reject all caller arguments.
+
+_Conformance:_ pending
+
+_Verify:_ Bats tests cover allowed and rejected arguments containing spaces and shell metacharacters, exact-match behaviour, argument order, and an empty provider-call log for rejected input.

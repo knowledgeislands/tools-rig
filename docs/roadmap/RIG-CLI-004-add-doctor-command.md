@@ -5,11 +5,11 @@ title: Add doctor command
 theme: cli
 horizon: triage
 status: draft
-blocks: [RIG-DIST-001]
+blocks: [RIG-DIST-001, RIG-MIG-005]
 blocked_by: [RIG-CLI-001]
 baseline_ref: null
 created_at: 2026-09-15T13:04:11Z
-updated_at: 2026-09-15T13:04:11Z
+updated_at: 2026-09-16T11:06:43Z
 ---
 
 # RIG-CLI-004: Add doctor command
