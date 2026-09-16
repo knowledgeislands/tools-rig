@@ -4,12 +4,12 @@ area: CLI
 title: Add declared operations
 theme: cli
 horizon: now
-status: draft
+status: ready
 blocks: [RIG-MIG-002, RIG-MIG-003]
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-16T11:06:43Z
-updated_at: 2026-09-16T22:26:36Z
+updated_at: 2026-09-16T22:30:03Z
 ---
 
 # RIG-CLI-005: Add declared operations

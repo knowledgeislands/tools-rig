@@ -4,12 +4,12 @@ area: MIG
 title: Migrate private declarations
 theme: migration
 horizon: now
-status: draft
+status: ready
 blocks: [RIG-MIG-001, RIG-MIG-002, RIG-MIG-003]
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-15T11:53:55Z
-updated_at: 2026-09-16T22:26:36Z
+updated_at: 2026-09-16T22:30:03Z
 ---
 
 # RIG-MIG-004: Migrate private declarations
