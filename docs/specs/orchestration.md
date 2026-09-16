@@ -1,6 +1,6 @@
 # Profile and provider orchestration — RIG-ORCH
 
-This area of the [Rig Specifications](index.md) defines profile and provider orchestration beneath the catalogue model in [PDR-RIG-001](../decisions/PDR-RIG-001-catalogue-led-working-setup.md). Executable transitions follow [XDR-RIG-001](../decisions/XDR-RIG-001-executable-provider-boundary.md).
+This area of the [Rig Specifications](index.md) defines profile and provider orchestration beneath the catalogue model in [PDR-RIG-001](../decisions/PDR-RIG-001-catalogue-led-working-setup.md). Provider execution follows [ADR-RIG-005](../decisions/ADR-RIG-005-provider-execution-contract.md) and the trust boundary in [XDR-RIG-001](../decisions/XDR-RIG-001-executable-provider-boundary.md).
 
 ## Profiles
 
@@ -8,25 +8,29 @@ This area of the [Rig Specifications](index.md) defines profile and provider orc
 
 Rig MUST allow a user to define which catalogue tools constitute the default profile.
 
-_Conformance:_ pending
+_Conformance:_ conforming
 
-_Verify:_ Bats tests create isolated configuration, invoke Rig without an explicit profile, and assert only the configured default tools are selected.
+_Verify:_ Bats tests create isolated configuration, invoke Rig without an explicit profile, and assert only configured default tools are selected.
+
+_Evidence:_ Catalogue query and operational command tests resolve the configured default without mutating it.
 
 ### RIG-ORCH-002 — Explicit profile selection
 
 Rig MUST allow a user to select a non-default configured profile without changing the stored default.
 
-_Conformance:_ pending
+_Conformance:_ conforming
 
 _Verify:_ Bats tests invoke two named profiles against the same isolated configuration and assert their resolved selections remain independent.
 
+_Evidence:_ `rig_resolve_profile` accepts an explicit profile independently of the stored default; command tests cover `--profile` parsing.
+
 ### RIG-ORCH-007 — Profile composition
 
-Rig MUST allow a profile to include other declared profiles and expand required tool relationships transitively. Resolution MUST fail when a selected tool supports the active platform but one of its required tools does not.
+Rig MUST allow a profile to include other declared profiles and MUST expand required tool relationships transitively. Resolution MUST fail when a selected tool supports the active platform but one of its required tools does not.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests compose nested profiles with required tools, assert one de-duplicated resolved tool set, and reject an active-platform tool whose required tool is unavailable on that platform.
+_Verify:_ Bats tests compose nested profiles and required tools, assert one de-duplicated resolved tool set, and reject an active-platform tool with an unavailable required tool.
 
 _Evidence:_ `tests/rig.bats` resolves nested profiles and transitive requirements into one sorted set and rejects incompatible required tools.
 
@@ -38,33 +42,39 @@ _Conformance:_ conforming
 
 _Verify:_ Bats table tests exercise every invalid graph class and assert status 2 with an empty provider-call log.
 
-_Evidence:_ `rig_validate_cycles` rejects profile and required-tool cycles before resolution; `tests/rig.bats` covers cycles and unknown profile and tool references with status 2.
+_Evidence:_ `rig_validate_cycles` rejects profile and required-tool cycles before resolution; `tests/rig.bats` covers cycles and unknown references.
 
 ## Providers
 
 ### RIG-ORCH-003 — Native provider authority
 
-Rig MUST delegate package resolution, manifest interpretation, and provider state changes to the selected provider rather than maintain a competing package database.
+Rig MUST delegate observation and state changes to the selected provider rather than maintain a competing package or installation database.
 
-_Conformance:_ pending
+_Conformance:_ conforming
 
-_Verify:_ Bats tests substitute recording providers and assert Rig forwards configured native manifest and locator arguments without resolving packages itself.
+_Verify:_ Bats tests substitute recording providers and assert Rig forwards native kind, locator, and literal arguments without interpreting provider state.
+
+_Evidence:_ The custom-provider boundary delegates observation and application while retaining no persistent observed state.
 
 ### RIG-ORCH-004 — Capability-aware actions
 
-Rig MUST reject an action that a configured provider does not declare as supported before invoking that provider.
+Rig MUST report a missing observation capability as unavailable without invocation and MUST reject a missing application capability during full-plan preflight before mutation.
 
-_Conformance:_ pending
+_Conformance:_ conforming
 
-_Verify:_ Bats tests select a provider without the requested capability and assert status 2 with no recorded provider invocation.
+_Verify:_ Bats tests remove exact `observe` and `apply` capabilities and assert status 1 or preflight status 2 respectively with no provider invocation.
+
+_Evidence:_ `rig_provider_has_capability`, `rig_command_status`, and `rig_preflight_apply` enforce exact atomic capability values.
 
 ### RIG-ORCH-005 — Dependency order
 
-Rig MUST execute selected providers in resolved dependency order.
+Rig MUST order selected bound-tool work dependency-first, using bytewise tool identity to break ties.
 
-_Conformance:_ pending
+_Conformance:_ conforming
 
-_Verify:_ Bats tests configure recording providers with dependencies and assert the exact invocation sequence.
+_Verify:_ Bats configures a graph whose dependency order differs from lexical order and asserts the exact invocation sequence.
+
+_Evidence:_ `rig_build_plan` emits a stable dependency-first work plan consumed by status and apply.
 
 ### RIG-ORCH-006 — Initial provider classes
 
@@ -76,29 +86,63 @@ _Verify:_ Bats tests exercise each provider through fakes and run an unrelated p
 
 ### RIG-ORCH-009 — Platform binding selection
 
-Rig MUST select exactly one compatible provider binding when materialisation is requested for a tool on the active platform and reject zero or ambiguous compatible bindings. A binding with no platform or with platform `any` is compatible with every platform; other platform values match exactly.
+Rig MUST select exactly one compatible provider binding when materialisation is requested for a tool on the active platform and MUST reject zero or ambiguous compatible bindings. A binding with no platform or platform `any` is compatible with every platform; other platform values match exactly.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests resolve disjoint macOS and Linux bindings, then assert missing and overlapping bindings fail before provider invocation.
+_Verify:_ Bats tests resolve disjoint macOS and Linux bindings, then assert missing or overlapping bindings fail before provider invocation.
 
-_Evidence:_ `tests/rig.bats` covers exact, `any`, and platform-independent bindings, ambiguous and incompatible bindings, and catalogue-only tools without invoking providers.
+_Evidence:_ `tests/rig.bats` covers exact, `any`, platform-independent, ambiguous, incompatible, and catalogue-only bindings without invoking providers unexpectedly.
 
 ### RIG-ORCH-010 — Literal executable arguments
 
-Rig MUST invoke a custom provider as one configured executable with each configured argument preserved as a literal argument boundary.
+Rig MUST invoke a custom provider as one configured executable with each configured provider and binding argument preserved as a literal argument boundary.
 
-_Conformance:_ pending
+_Conformance:_ conforming
 
 _Verify:_ Bats tests record custom-provider arguments containing spaces and shell metacharacters and assert no shell interpretation occurs.
 
+_Evidence:_ `rig_prepare_provider_invocation` constructs a Bash indexed argument array; Bats verifies spaces, globs, and command syntax remain inert.
+
 ### RIG-ORCH-011 — Ordered failure boundary
 
-Rig MUST skip every dependent provider after its prerequisite fails while reporting the native failure result.
+After a work unit fails, Rig MUST suppress only its transitive dependants, identify the blocking tool, and continue independent work.
 
-_Conformance:_ pending
+_Conformance:_ conforming
 
-_Verify:_ Bats tests force a middle provider to fail and assert its dependent is not invoked while independent completed work remains reported.
+_Verify:_ Bats fails a prerequisite and asserts its dependant is skipped with `blocked-by:TOOL` while independent work completes.
+
+_Evidence:_ `rig_plan_blocker` and apply result arrays retain native failure detail and bound suppression to the failed branch.
+
+### RIG-ORCH-014 — Versioned custom-provider protocol
+
+Rig MUST invoke a custom provider as `EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 VERB PROVIDER TOOL KIND LOCATOR [BINDING_ARGUMENT ...]`, with `VERB` exactly `observe` or `apply`.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats records every argument for observation and application and compares the version marker, verb, identities, binding data, and argument order.
+
+_Evidence:_ `rig_prepare_provider_invocation` implements the ADR-RIG-005 protocol and recording-provider tests compare its argument boundaries.
+
+### RIG-ORCH-015 — Observation response boundary
+
+Rig MUST accept custom-provider observation stdout only as one supported state token, mapping invalid output to `unknown` with `invalid-response` and a non-zero exit to `unknown` with `exit:N`.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats exercises every state token, invalid, empty, multiline, and non-zero provider responses.
+
+_Evidence:_ `rig_command_status` parses the isolated protocol channel and retains provider-native failure status as detail.
+
+### RIG-ORCH-016 — Application diagnostic boundary
+
+Rig MUST reserve stdout for its deterministic application report and route custom-provider application stdout and stderr to Rig's stderr.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats redirects command channels separately and asserts provider diagnostics never contaminate Rig's stdout table and summary.
+
+_Evidence:_ `rig_command_apply` redirects provider stdout to stderr while leaving provider stderr on the same diagnostic channel.
 
 ## Declared operations
 
@@ -112,7 +156,7 @@ _Verify:_ Bats tests use recording providers to assert exact operation selection
 
 ### RIG-ORCH-013 — Bounded caller arguments
 
-`rig run TOOL OPERATION [-- ARGUMENT...]` MUST accept caller arguments only when each argument exactly matches one repeated `allow-argument` value. Rig MUST append accepted caller arguments after configured arguments and pass every value literally without shell interpretation. An operation with no `allow-argument` fields MUST reject all caller arguments.
+`rig run TOOL OPERATION [-- ARGUMENT...]` MUST accept a caller argument only when it exactly matches one `allow-argument` value. Rig MUST append accepted caller arguments literally without shell interpretation. An operation with no `allow-argument` fields MUST reject all caller arguments.
 
 _Conformance:_ pending
 

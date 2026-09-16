@@ -31,6 +31,93 @@ write_minimal_config() {
     'locator = alpha' >"$CONFIG_HOME/rig.conf"
 }
 
+write_recording_provider() {
+  ORCHESTRATION_LOG=$BATS_TEST_TMPDIR/provider-log-$BATS_TEST_NUMBER
+  ORCHESTRATION_PROVIDER=$BATS_TEST_TMPDIR/provider-$BATS_TEST_NUMBER
+  ORCHESTRATION_MARKER=$BATS_TEST_TMPDIR/provider-marker-$BATS_TEST_NUMBER
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'printf "BEGIN\\n" >>"$RIG_TEST_LOG"' \
+    'for argument in "$@"; do printf "ARG=%s\\n" "$argument" >>"$RIG_TEST_LOG"; done' \
+    'while [ "$#" -gt 0 ] && [ "$1" != rig-provider-v1 ]; do shift; done' \
+    '[ "$#" -ge 6 ] || exit 64' \
+    'verb=$2' \
+    'tool=$4' \
+    'locator=$6' \
+    'printf "CALL=%s:%s:%s\\n" "$verb" "$tool" "$locator" >>"$RIG_TEST_LOG"' \
+    'case "$verb:$locator" in' \
+    '  observe:exit-7) exit 7 ;;' \
+    '  observe:exit-126) exit 126 ;;' \
+    '  observe:empty) exit 0 ;;' \
+    '  observe:invalid-response) printf "%s\\n" surprise ;;' \
+    '  observe:multiline) printf "%s\\n" present extra ;;' \
+    '  observe:diagnostics) printf "%s\\n" observation-diagnostic >&2; printf "%s\\n" present ;;' \
+    '  observe:*) printf "%s\\n" "$locator" ;;' \
+    '  apply:fail) exit 7 ;;' \
+    '  apply:exit-126) exit 126 ;;' \
+    '  apply:diagnostics) printf "%s\\n" application-stdout; printf "%s\\n" application-stderr >&2; exit 0 ;;' \
+    '  apply:*) exit 0 ;;' \
+    '  *) exit 65 ;;' \
+    'esac' >"$ORCHESTRATION_PROVIDER"
+  chmod +x "$ORCHESTRATION_PROVIDER"
+}
+
+write_orchestration_config() {
+  write_recording_provider
+  printf '%s\n' \
+    '[rig]' \
+    'schema = 1' \
+    'default-profile = default' \
+    '[category.core]' \
+    'name = Core' \
+    'purpose = Orchestration fixtures' \
+    '[tool.app]' \
+    'name = App' \
+    'category = core' \
+    'purpose = Exercise a dependent tool' \
+    'rationale = It verifies dependency ordering' \
+    'platform = any' \
+    'requires = base' \
+    '[tool.base]' \
+    'name = Base' \
+    'category = core' \
+    'purpose = Exercise a prerequisite' \
+    'rationale = It must run before app' \
+    'platform = any' \
+    '[tool.independent]' \
+    'name = Independent' \
+    'category = core' \
+    'purpose = Exercise an independent branch' \
+    'rationale = It still runs after another branch fails' \
+    'platform = any' \
+    '[tool.notes]' \
+    'name = Notes' \
+    'category = core' \
+    'purpose = Exercise catalogue-only state' \
+    'rationale = It is descriptive rather than materialised' \
+    'platform = any' \
+    '[profile.default]' \
+    'tool = app' \
+    'tool = independent' \
+    'tool = notes' \
+    '[provider.runner]' \
+    'adapter = custom' \
+    "executable = $ORCHESTRATION_PROVIDER" \
+    "argument = provider value;\$(touch $ORCHESTRATION_MARKER)" \
+    'capability = observe' \
+    'capability = apply' \
+    '[binding.app.runner]' \
+    'kind = executable' \
+    'locator = present' \
+    'argument = binding * value' \
+    '[binding.base.runner]' \
+    'kind = executable' \
+    'locator = present' \
+    '[binding.independent.runner]' \
+    'kind = executable' \
+    'locator = present' >"$CONFIG_HOME/rig.conf"
+}
+
 run_loader() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
     bash -c '. "$1"; rig_load_config' _ "$RIG"
@@ -168,6 +255,8 @@ write_query_config() {
   [[ "$output" == *"show [--profile NAME]"* ]]
   [[ "$output" == *"list [--category ID] [--profile NAME]"* ]]
   [[ "$output" == *"explain TOOL"* ]]
+  [[ "$output" == *"status [--profile NAME]"* ]] || false
+  [[ "$output" == *"apply [--profile NAME] [--dry-run]"* ]] || false
   [[ "$output" == *"diag"* ]]
   [[ "$output" != *"paths"* ]]
   [[ "$output" == *"completion bash|zsh"* ]]
@@ -230,10 +319,12 @@ write_query_config() {
   run "$RIG" completion bash
   [ "$status" -eq 0 ]
   [[ "$output" == *"complete -F _rig rig"* ]]
-  [[ "$output" == *"-h --help -V --version show list explain diag completion help"* ]]
+  [[ "$output" == *"-h --help -V --version show list explain status apply diag completion help"* ]] || false
   [[ "$output" == *'show) COMPREPLY=($(compgen -W "-h --help --profile"'* ]]
   [[ "$output" == *'explain) COMPREPLY=($(compgen -W "-h --help"'* ]]
-  [[ "$output" == *"show list explain diag completion help"* ]]
+  [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile"'* ]] || false
+  [[ "$output" == *'apply) COMPREPLY=($(compgen -W "-h --help --profile --dry-run"'* ]] || false
+  [[ "$output" == *"show list explain status apply diag completion help"* ]] || false
   [[ "$output" != *" paths "* ]]
 
   run "$RIG" completion zsh
@@ -261,12 +352,22 @@ write_query_config() {
     COMP_CWORD=2
     _rig
     printf "explain:%s\n" "${COMPREPLY[*]}"
+    COMP_WORDS=(rig status --)
+    COMP_CWORD=2
+    _rig
+    printf "status:%s\n" "${COMPREPLY[*]}"
+    COMP_WORDS=(rig apply --)
+    COMP_CWORD=2
+    _rig
+    printf "apply:%s\n" "${COMPREPLY[*]}"
   ' bash "$RIG"
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"root:--help --version"* ]]
   [[ "$output" == *"show:--help --profile"* ]]
   [[ "$output" == *"explain:--help"* ]]
+  [[ "$output" == *"status:--help --profile"* ]] || false
+  [[ "$output" == *"apply:--help --profile --dry-run"* ]] || false
 
   run zsh -f -c '
     autoload -Uz compinit && compinit -C
@@ -1128,4 +1229,320 @@ write_query_config() {
 
   [ "$status" -eq 0 ]
   [ "$output" = $'profile=default\nplatform=macos\ntool=alpha\nbinding=alpha:native' ]
+}
+
+@test "status observes custom providers in stable dependency order with neutral catalogue-only tools" {
+  write_orchestration_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
+
+  [ "$status" -eq 0 ]
+  [ "$output" = $'Profile: default\nPlatform: macos\nTOOL\tPROVIDER\tSTATE\tDETAIL\nbase\trunner\tpresent\t-\napp\trunner\tpresent\t-\nindependent\trunner\tpresent\t-\nnotes\t-\tunavailable\tcatalogue-only\nSummary: present=3 missing=0 drifted=0 unavailable=1 unknown=0 catalogue-only=1' ]
+  [ "$(grep '^CALL=' "$ORCHESTRATION_LOG")" = $'CALL=observe:base:present\nCALL=observe:app:present\nCALL=observe:independent:present' ]
+}
+
+@test "custom provider ABI preserves versioned literal argument boundaries" {
+  write_orchestration_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$ORCHESTRATION_MARKER" ]
+  run sed -n '1,9p' "$ORCHESTRATION_LOG"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$(printf '%s\n' \
+    BEGIN \
+    "ARG=provider value;\$(touch $ORCHESTRATION_MARKER)" \
+    ARG=rig-provider-v1 \
+    ARG=observe \
+    ARG=runner \
+    ARG=base \
+    ARG=executable \
+    ARG=present \
+    CALL=observe:base:present)" ]
+  grep -F 'ARG=binding * value' "$ORCHESTRATION_LOG" >/dev/null
+}
+
+@test "apply custom provider ABI preserves versioned literal argument boundaries" {
+  write_orchestration_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$ORCHESTRATION_MARKER" ]
+  run sed -n '1,9p' "$ORCHESTRATION_LOG"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$(printf '%s\n' \
+    BEGIN \
+    "ARG=provider value;\$(touch $ORCHESTRATION_MARKER)" \
+    ARG=rig-provider-v1 \
+    ARG=apply \
+    ARG=runner \
+    ARG=base \
+    ARG=executable \
+    ARG=present \
+    CALL=apply:base:present)" ]
+  grep -F 'ARG=binding * value' "$ORCHESTRATION_LOG" >/dev/null
+}
+
+@test "operational commands honour explicit profiles and ignore unselected providers" {
+  write_orchestration_config
+  printf '%s\n' \
+    '[profile.focused]' \
+    'tool = base' \
+    '[provider.unselected]' \
+    'adapter = custom' \
+    "executable = $BATS_TEST_TMPDIR/missing-unselected-provider" \
+    'capability = observe' \
+    'capability = apply' >>"$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status --profile focused
+  [ "$status" -eq 0 ]
+  [[ "$output" == $'Profile: focused\nPlatform: macos\nTOOL\tPROVIDER\tSTATE\tDETAIL\nbase\trunner\tpresent\t-'* ]] || false
+  [ "$(grep '^CALL=' "$ORCHESTRATION_LOG")" = 'CALL=observe:base:present' ]
+
+  rm -f "$ORCHESTRATION_LOG"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply --profile focused
+  [ "$status" -eq 0 ]
+  [ "$(grep '^CALL=' "$ORCHESTRATION_LOG")" = 'CALL=apply:base:present' ]
+}
+
+@test "status accepts provider states and treats non-present bound tools as findings" {
+  write_orchestration_config
+  sed \
+    -e '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = present/locator = missing/' \
+    -e '/\[binding.app.runner\]/,/\[binding.base.runner\]/ s/locator = present/locator = drifted/' \
+    -e '/\[binding.independent.runner\]/,/^$/ s/locator = present/locator = unknown/' \
+    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/states.conf"
+  mv "$CONFIG_HOME/states.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'base\trunner\tmissing\t-'* ]] || false
+  [[ "$output" == *$'app\trunner\tdrifted\t-'* ]] || false
+  [[ "$output" == *$'independent\trunner\tunknown\t-'* ]] || false
+  [[ "$output" == *'Summary: present=0 missing=1 drifted=1 unavailable=1 unknown=1 catalogue-only=1'* ]] || false
+}
+
+@test "status converts protocol failure to unknown suppresses dependants and continues independent work" {
+  write_orchestration_config
+  sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = present/locator = invalid-response/' \
+    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/protocol.conf"
+  mv "$CONFIG_HOME/protocol.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'base\trunner\tunknown\tinvalid-response'* ]] || false
+  [[ "$output" == *$'app\trunner\tunknown\tblocked-by:base'* ]] || false
+  [[ "$output" == *$'independent\trunner\tpresent\t-'* ]]
+  [ "$(grep '^CALL=' "$ORCHESTRATION_LOG")" = $'CALL=observe:base:invalid-response\nCALL=observe:independent:present' ]
+}
+
+@test "status reports native observation failure without exposing provider exit as command status" {
+  write_orchestration_config
+  sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = present/locator = exit-7/' \
+    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/native-failure.conf"
+  mv "$CONFIG_HOME/native-failure.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'base\trunner\tunknown\texit:7'* ]] || false
+  [[ "$output" == *$'app\trunner\tunknown\tblocked-by:base'* ]] || false
+  [[ "$output" == *$'independent\trunner\tpresent\t-'* ]] || false
+}
+
+@test "status rejects empty and multiline provider responses" {
+  local response
+
+  for response in empty multiline; do
+    write_orchestration_config
+    sed "/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = present/locator = $response/" \
+      "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/protocol-$response.conf"
+    mv "$CONFIG_HOME/protocol-$response.conf" "$CONFIG_HOME/rig.conf"
+    rm -f "$ORCHESTRATION_LOG"
+
+    run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+      RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *$'base\trunner\tunknown\tinvalid-response'* ]] || false
+  done
+}
+
+@test "status reports unavailable operational provider boundaries without invocation" {
+  write_orchestration_config
+  sed 's/adapter = custom/adapter = homebrew/' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/unavailable.conf"
+  mv "$CONFIG_HOME/unavailable.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'base\trunner\tunavailable\tunsupported-adapter:homebrew'* ]] || false
+  [ ! -e "$ORCHESTRATION_LOG" ]
+
+  write_orchestration_config
+  sed '/capability = observe/d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/unavailable.conf"
+  mv "$CONFIG_HOME/unavailable.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'base\trunner\tunavailable\tunsupported-capability:observe'* ]] || false
+  [ ! -e "$ORCHESTRATION_LOG" ]
+
+  write_orchestration_config
+  sed "s#executable = .*#executable = $BATS_TEST_TMPDIR/missing-provider#" \
+    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/unavailable.conf"
+  mv "$CONFIG_HOME/unavailable.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'base\trunner\tunavailable\texecutable-unavailable'* ]] || false
+  [ ! -e "$ORCHESTRATION_LOG" ]
+}
+
+@test "provider diagnostics remain on diagnostic channels" {
+  local stdout_file stderr_file
+
+  write_orchestration_config
+  stdout_file=$BATS_TEST_TMPDIR/orchestration-stdout-$BATS_TEST_NUMBER
+  stderr_file=$BATS_TEST_TMPDIR/orchestration-stderr-$BATS_TEST_NUMBER
+  sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = present/locator = diagnostics/' \
+    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/diagnostics.conf"
+  mv "$CONFIG_HOME/diagnostics.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" bash -c '"$1" status >"$2" 2>"$3"' \
+    _ "$RIG" "$stdout_file" "$stderr_file"
+  [ "$status" -eq 0 ]
+  run cat "$stdout_file"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'base\trunner\tpresent\t-'* ]] || false
+  [[ "$output" != *'observation-diagnostic'* ]] || false
+  run cat "$stderr_file"
+  [ "$status" -eq 0 ]
+  [ "$output" = observation-diagnostic ]
+
+  write_orchestration_config
+  sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = present/locator = diagnostics/' \
+    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/diagnostics.conf"
+  mv "$CONFIG_HOME/diagnostics.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" bash -c '"$1" apply >"$2" 2>"$3"' \
+    _ "$RIG" "$stdout_file" "$stderr_file"
+  [ "$status" -eq 0 ]
+  run cat "$stdout_file"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'base\trunner\tcompleted\t-'* ]] || false
+  [[ "$output" != *'application-stdout'* ]] || false
+  [[ "$output" != *'application-stderr'* ]] || false
+  run cat "$stderr_file"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'application-stdout'* ]] || false
+  [[ "$output" == *'application-stderr'* ]] || false
+}
+
+@test "apply preserves native exit detail while returning aggregate failure" {
+  write_orchestration_config
+  sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = present/locator = exit-126/' \
+    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/native-exit.conf"
+  mv "$CONFIG_HOME/native-exit.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'base\trunner\tfailed\texit:126'* ]] || false
+}
+
+@test "apply dry-run prints complete plan without invoking providers" {
+  write_orchestration_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply --dry-run
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$ORCHESTRATION_LOG" ]
+  [ "$output" = $'Profile: default\nPlatform: macos\nTOOL\tPROVIDER\tRESULT\tDETAIL\nbase\trunner\tplanned\t-\napp\trunner\tplanned\t-\nindependent\trunner\tplanned\t-\nnotes\t-\tskipped\tcatalogue-only\nSummary: planned=3 completed=0 failed=0 skipped=1' ]
+}
+
+@test "apply suppresses failed dependants while continuing independent work" {
+  write_orchestration_config
+  sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = present/locator = fail/' \
+    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/failure.conf"
+  mv "$CONFIG_HOME/failure.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'base\trunner\tfailed\texit:7'* ]] || false
+  [[ "$output" == *$'app\trunner\tskipped\tblocked-by:base'* ]] || false
+  [[ "$output" == *$'independent\trunner\tcompleted\t-'* ]] || false
+  [[ "$output" == *'Summary: planned=3 completed=1 failed=1 skipped=2'* ]] || false
+  [ "$(grep '^CALL=' "$ORCHESTRATION_LOG")" = $'CALL=apply:base:fail\nCALL=apply:independent:present' ]
+}
+
+@test "apply preflights every selected provider before mutation" {
+  write_orchestration_config
+  sed 's/\[binding.independent.runner\]/[binding.independent.bad]/' \
+    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/preflight.conf"
+  printf '%s\n' \
+    '[provider.bad]' \
+    'adapter = custom' \
+    "executable = $BATS_TEST_TMPDIR/missing-provider" \
+    'capability = apply' >>"$CONFIG_HOME/preflight.conf"
+  mv "$CONFIG_HOME/preflight.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"provider 'bad' executable is unavailable"* ]]
+  [ ! -e "$ORCHESTRATION_LOG" ]
+}
+
+@test "apply capabilities are exact atomic literals" {
+  write_orchestration_config
+  sed \
+    -e 's/capability = observe/capability = observe,apply/' \
+    -e '/capability = apply/d' \
+    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/capability.conf"
+  mv "$CONFIG_HOME/capability.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"does not declare capability 'apply'"* ]]
+  [ ! -e "$ORCHESTRATION_LOG" ]
+}
+
+@test "operational command help and syntax do not require configuration" {
+  missing_config=$BATS_TEST_TMPDIR/missing-operational-help-$BATS_TEST_NUMBER
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" status --help
+  [ "$status" -eq 0 ]
+  [ "$output" = 'Usage: rig status [--profile NAME]' ]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --help
+  [ "$status" -eq 0 ]
+  [ "$output" = 'Usage: rig apply [--profile NAME] [--dry-run]' ]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --dry-run --dry-run
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'usage: rig apply [--profile NAME] [--dry-run]'* ]] || false
 }

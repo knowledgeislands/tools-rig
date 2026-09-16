@@ -22,8 +22,8 @@ An unnumbered `## Gaps` entry is a candidate behaviour, not an accepted requirem
 | --- | --- | --- |
 | catalogue.md | `RIG-CAT` | Categories, tools, rationale, platforms, relationships, bindings |
 | configuration.md | `RIG-CONF` | Inert grammar, schema versions, files, deterministic loading |
-| orchestration.md | `RIG-ORCH` | Profiles, providers, capabilities, ordering, native authority |
+| orchestration.md | `RIG-ORCH` | Profiles, work-unit ordering, invocation protocol, native authority |
 | portability.md | `RIG-PORT` | Runtime dependencies and XDG persistence |
 | publishing.md | `RIG-PUB` | Public profiles, static export, base URLs, trusted deployment |
 | queries.md | `RIG-QUERY` | Show, list, filtering, explanation, non-execution |
-| state.md | `RIG-STATE` | Expected and observed state, status, planning, explicit apply |
+| state.md | `RIG-STATE` | Observations, catalogue-only state, status/apply reports, preflight, outcomes |

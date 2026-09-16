@@ -23,6 +23,12 @@ RIG_FIELD_KEYS=()
 RIG_FIELD_VALUES=()
 RIG_SELECTED_TOOLS=()
 RIG_SELECTED_BINDINGS=()
+RIG_PLAN_TOOLS=()
+RIG_PLAN_BINDINGS=()
+RIG_PLAN_PROVIDERS=()
+RIG_PLAN_RESULTS=()
+RIG_PLAN_DETAILS=()
+RIG_INVOKE_ARGUMENTS=()
 RIG_VISIT_NAMES=()
 RIG_VISIT_STATES=()
 RIG_QUERY_ITEMS=()
@@ -48,6 +54,8 @@ print_help() {
     '  show [--profile NAME]                 Describe a resolved profile.' \
     '  list [--category ID] [--profile NAME] List declared catalogue tools.' \
     '  explain TOOL                          Explain a declared tool.' \
+    '  status [--profile NAME]                Compare expected and observed state.' \
+    '  apply [--profile NAME] [--dry-run]     Materialise a resolved profile.' \
     '  diag                  Print runtime and configuration diagnostics.' \
     '  completion bash|zsh   Print shell completion source.' \
     '  help                  Show this help.'
@@ -80,13 +88,15 @@ print_bash_completion() {
     '  current=${COMP_WORDS[COMP_CWORD]}' \
     '  command=${COMP_WORDS[1]:-}' \
     '  if [ "$COMP_CWORD" -eq 1 ]; then' \
-    '    COMPREPLY=($(compgen -W "-h --help -V --version show list explain diag completion help" -- "$current"))' \
+    '    COMPREPLY=($(compgen -W "-h --help -V --version show list explain status apply diag completion help" -- "$current"))' \
     '    return' \
     '  fi' \
     '  case "$command" in' \
     '    show) COMPREPLY=($(compgen -W "-h --help --profile" -- "$current")) ;;' \
     '    list) COMPREPLY=($(compgen -W "-h --help --category --profile" -- "$current")) ;;' \
     '    explain) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
+    '    status) COMPREPLY=($(compgen -W "-h --help --profile" -- "$current")) ;;' \
+    '    apply) COMPREPLY=($(compgen -W "-h --help --profile --dry-run" -- "$current")) ;;' \
     '    diag) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
     '    completion) COMPREPLY=($(compgen -W "bash zsh" -- "$current")) ;;' \
     '  esac' \
@@ -107,6 +117,8 @@ print_zsh_completion() {
     "    'show:describe a resolved profile'" \
     "    'list:list declared catalogue tools'" \
     "    'explain:explain a declared tool'" \
+    "    'status:compare expected and observed state'" \
+    "    'apply:materialise a resolved profile'" \
     "    'diag:print runtime and configuration diagnostics'" \
     "    'completion:print shell completion source'" \
     "    'help:show help'" \
@@ -119,6 +131,8 @@ print_zsh_completion() {
     "        show) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select a profile]:profile name:' ;;" \
     "        list) _arguments '(-h --help)'{-h,--help}'[show command help]' '--category[select a category]:category id:' '--profile[select a profile]:profile name:' ;;" \
     "        explain) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
+    "        status) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' ;;" \
+    "        apply) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \
     "        diag) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
     "        completion) _values 'shell' bash zsh ;;" \
     '      esac' \
@@ -144,6 +158,12 @@ rig_model_reset() {
   RIG_FIELD_VALUES=()
   RIG_SELECTED_TOOLS=()
   RIG_SELECTED_BINDINGS=()
+  RIG_PLAN_TOOLS=()
+  RIG_PLAN_BINDINGS=()
+  RIG_PLAN_PROVIDERS=()
+  RIG_PLAN_RESULTS=()
+  RIG_PLAN_DETAILS=()
+  RIG_INVOKE_ARGUMENTS=()
   RIG_VISIT_NAMES=()
   RIG_VISIT_STATES=()
   RIG_QUERY_ITEMS=()
@@ -857,6 +877,433 @@ rig_dump_resolution() {
   done
 }
 
+rig_plan_index() {
+  local wanted index
+
+  wanted=$1
+  index=0
+  while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
+    if [ "${RIG_PLAN_TOOLS[$index]}" = "$wanted" ]; then
+      RIG_INDEX=$index
+      return 0
+    fi
+    index=$((index + 1))
+  done
+  RIG_INDEX=
+  return 1
+}
+
+rig_tool_dependencies_planned() {
+  local tool section_index field_index field_end dependency
+
+  tool=$1
+  rig_section_index "tool.$tool" || return 2
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = requires ]; then
+      dependency=${RIG_FIELD_VALUES[$field_index]}
+      rig_plan_index "$dependency" || return 1
+    fi
+    field_index=$((field_index + 1))
+  done
+  return 0
+}
+
+rig_build_plan() {
+  local selected_count progress index tool binding provider section_index
+
+  RIG_PLAN_TOOLS=()
+  RIG_PLAN_BINDINGS=()
+  RIG_PLAN_PROVIDERS=()
+  RIG_PLAN_RESULTS=()
+  RIG_PLAN_DETAILS=()
+  selected_count=${#RIG_SELECTED_TOOLS[@]}
+
+  while [ "${#RIG_PLAN_TOOLS[@]}" -lt "$selected_count" ]; do
+    progress=0
+    index=0
+    while [ "$index" -lt "$selected_count" ]; do
+      tool=${RIG_SELECTED_TOOLS[$index]}
+      if rig_plan_index "$tool"; then
+        index=$((index + 1))
+        continue
+      fi
+      if rig_tool_dependencies_planned "$tool"; then
+        binding=${RIG_SELECTED_BINDINGS[$index]:-}
+        provider=-
+        if [ -n "$binding" ]; then
+          rig_section_index "$binding" || return 2
+          section_index=$RIG_INDEX
+          provider=${RIG_SECTION_SECONDARY_IDS[$section_index]}
+        fi
+        RIG_PLAN_TOOLS[${#RIG_PLAN_TOOLS[@]}]=$tool
+        RIG_PLAN_BINDINGS[${#RIG_PLAN_BINDINGS[@]}]=$binding
+        RIG_PLAN_PROVIDERS[${#RIG_PLAN_PROVIDERS[@]}]=$provider
+        progress=1
+        break
+      fi
+      index=$((index + 1))
+    done
+    [ "$progress" -eq 1 ] || rig_fail 'cannot produce a dependency-ordered provider plan' || return
+  done
+}
+
+rig_provider_has_capability() {
+  local provider capability section_index field_index field_end
+
+  provider=$1
+  capability=$2
+  rig_section_index "provider.$provider" || return 1
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = capability ] &&
+      [ "${RIG_FIELD_VALUES[$field_index]}" = "$capability" ]; then
+      return 0
+    fi
+    field_index=$((field_index + 1))
+  done
+  return 1
+}
+
+rig_executable_available() {
+  local executable resolved
+
+  executable=$1
+  case "$executable" in
+    */*) [ -f "$executable" ] && [ -x "$executable" ] ;;
+    *)
+      resolved=$(command -v "$executable" 2>/dev/null) || return 1
+      [ -f "$resolved" ] && [ -x "$resolved" ]
+      ;;
+  esac
+}
+
+rig_prepare_provider_invocation() {
+  local verb tool binding provider provider_section binding_section
+  local field_index field_end kind locator executable
+
+  verb=$1
+  tool=$2
+  binding=$3
+  provider=$4
+  rig_section_index "provider.$provider" || return 2
+  provider_section=$RIG_INDEX
+  rig_section_index "$binding" || return 2
+  binding_section=$RIG_INDEX
+  rig_get_value "provider.$provider" executable || return 2
+  executable=$RIG_VALUE
+  rig_get_value "$binding" kind || return 2
+  kind=$RIG_VALUE
+  rig_get_value "$binding" locator || return 2
+  locator=$RIG_VALUE
+
+  RIG_INVOKE_ARGUMENTS=()
+  field_index=${RIG_SECTION_FIELD_STARTS[$provider_section]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$provider_section]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = argument ]; then
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=${RIG_FIELD_VALUES[$field_index]}
+    fi
+    field_index=$((field_index + 1))
+  done
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=rig-provider-v1
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$verb
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$provider
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$tool
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$kind
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
+  field_index=${RIG_SECTION_FIELD_STARTS[$binding_section]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$binding_section]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = argument ]; then
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=${RIG_FIELD_VALUES[$field_index]}
+    fi
+    field_index=$((field_index + 1))
+  done
+  RIG_VALUE=$executable
+}
+
+rig_plan_blocker() {
+  local tool section_index field_index field_end dependency dependency_index
+  local dependency_result blocker
+  local LC_ALL=C
+
+  tool=$1
+  blocker=
+  rig_section_index "tool.$tool" || return 2
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = requires ]; then
+      dependency=${RIG_FIELD_VALUES[$field_index]}
+      rig_plan_index "$dependency" || return 2
+      dependency_index=$RIG_INDEX
+      dependency_result=${RIG_PLAN_RESULTS[$dependency_index]:-}
+      if [ "$dependency_result" = failed ] ||
+        { [ "$dependency_result" = skipped ] &&
+          [ "${RIG_PLAN_DETAILS[$dependency_index]:-}" != catalogue-only ]; }; then
+        if [ -z "$blocker" ] || [[ "$dependency" < "$blocker" ]]; then
+          blocker=$dependency
+        fi
+      fi
+    fi
+    field_index=$((field_index + 1))
+  done
+  [ -n "$blocker" ] || return 1
+  RIG_VALUE=$blocker
+}
+
+rig_resolve_operational_plan() {
+  local profile platform
+
+  profile=$1
+  rig_load_config || return
+  rig_current_platform || return
+  platform=$RIG_VALUE
+  rig_resolve_profile "$profile" "$platform" || return
+  rig_resolve_bindings || return
+  rig_build_plan
+}
+
+rig_command_status() {
+  local profile index tool binding provider adapter executable observation native_status captured
+  local state detail unhealthy present missing drifted unavailable unknown catalogue_only
+  local response_marker
+
+  profile=
+  response_marker=$'\036'
+  case "$#" in
+    0) ;;
+    1)
+      case "$1" in
+        -h|--help) printf '%s\n' 'Usage: rig status [--profile NAME]'; return ;;
+        *) syntax_error 'usage: rig status [--profile NAME]'; return ;;
+      esac
+      ;;
+    2)
+      [ "$1" = --profile ] && [ -n "$2" ] ||
+        { syntax_error 'usage: rig status [--profile NAME]'; return; }
+      profile=$2
+      ;;
+    *) syntax_error 'usage: rig status [--profile NAME]'; return ;;
+  esac
+
+  rig_resolve_operational_plan "$profile" || return
+  printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
+  printf 'TOOL\tPROVIDER\tSTATE\tDETAIL\n'
+  unhealthy=0
+  present=0
+  missing=0
+  drifted=0
+  unavailable=0
+  unknown=0
+  catalogue_only=0
+  index=0
+  while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
+    tool=${RIG_PLAN_TOOLS[$index]}
+    binding=${RIG_PLAN_BINDINGS[$index]}
+    provider=${RIG_PLAN_PROVIDERS[$index]}
+    state=unknown
+    detail=-
+    if [ -z "$binding" ]; then
+      state=unavailable
+      detail=catalogue-only
+      RIG_PLAN_RESULTS[$index]=neutral
+      catalogue_only=$((catalogue_only + 1))
+    elif rig_plan_blocker "$tool"; then
+      state=unknown
+      detail=blocked-by:$RIG_VALUE
+      RIG_PLAN_RESULTS[$index]=skipped
+      unhealthy=$((unhealthy + 1))
+    else
+      rig_get_value "provider.$provider" adapter || return 2
+      adapter=$RIG_VALUE
+      if [ "$adapter" != custom ]; then
+        state=unavailable
+        detail=unsupported-adapter:$adapter
+        RIG_PLAN_RESULTS[$index]=failed
+        unhealthy=$((unhealthy + 1))
+      elif ! rig_provider_has_capability "$provider" observe; then
+        state=unavailable
+        detail=unsupported-capability:observe
+        RIG_PLAN_RESULTS[$index]=failed
+        unhealthy=$((unhealthy + 1))
+      else
+        rig_get_value "provider.$provider" executable || return 2
+        executable=$RIG_VALUE
+        if ! rig_executable_available "$executable"; then
+          state=unavailable
+          detail='executable-unavailable'
+          RIG_PLAN_RESULTS[$index]=failed
+          unhealthy=$((unhealthy + 1))
+        else
+          rig_prepare_provider_invocation observe "$tool" "$binding" "$provider" || return
+          executable=$RIG_VALUE
+          captured=$("$executable" "${RIG_INVOKE_ARGUMENTS[@]}"; native_status=$?; \
+            printf '%s%s' "$response_marker" "$native_status")
+          native_status=${captured##*"$response_marker"}
+          observation=${captured%"$response_marker"*}
+          case "$observation" in
+            *$'\n') observation=${observation%$'\n'} ;;
+          esac
+          if [ "$native_status" -ne 0 ]; then
+            state=unknown
+            detail=exit:$native_status
+            RIG_PLAN_RESULTS[$index]=failed
+            unhealthy=$((unhealthy + 1))
+          else
+            case "$observation" in
+              present|missing|drifted|unavailable|unknown)
+                state=$observation
+                RIG_PLAN_RESULTS[$index]=observed
+                [ "$state" = present ] || unhealthy=$((unhealthy + 1))
+                ;;
+              *)
+                state=unknown
+                detail=invalid-response
+                RIG_PLAN_RESULTS[$index]=failed
+                unhealthy=$((unhealthy + 1))
+                ;;
+            esac
+          fi
+        fi
+      fi
+    fi
+    RIG_PLAN_DETAILS[$index]=$detail
+    case "$state" in
+      present) present=$((present + 1)) ;;
+      missing) missing=$((missing + 1)) ;;
+      drifted) drifted=$((drifted + 1)) ;;
+      unavailable) unavailable=$((unavailable + 1)) ;;
+      unknown) unknown=$((unknown + 1)) ;;
+    esac
+    printf '%s\t%s\t%s\t%s\n' "$tool" "$provider" "$state" "$detail"
+    index=$((index + 1))
+  done
+  printf 'Summary: present=%s missing=%s drifted=%s unavailable=%s unknown=%s catalogue-only=%s\n' \
+    "$present" "$missing" "$drifted" "$unavailable" "$unknown" "$catalogue_only"
+  [ "$unhealthy" -eq 0 ]
+}
+
+rig_preflight_apply() {
+  local index provider adapter executable
+
+  index=0
+  while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
+    if [ -n "${RIG_PLAN_BINDINGS[$index]}" ]; then
+      provider=${RIG_PLAN_PROVIDERS[$index]}
+      rig_get_value "provider.$provider" adapter || return 2
+      adapter=$RIG_VALUE
+      [ "$adapter" = custom ] ||
+        rig_fail "provider '$provider' has unsupported adapter '$adapter' for apply" || return
+      rig_provider_has_capability "$provider" apply ||
+        rig_fail "provider '$provider' does not declare capability 'apply'" || return
+      rig_get_value "provider.$provider" executable || return 2
+      executable=$RIG_VALUE
+      rig_executable_available "$executable" ||
+        rig_fail "provider '$provider' executable is unavailable: $executable" || return
+      rig_prepare_provider_invocation apply "${RIG_PLAN_TOOLS[$index]}" \
+        "${RIG_PLAN_BINDINGS[$index]}" "$provider" || return
+    fi
+    index=$((index + 1))
+  done
+}
+
+rig_command_apply() {
+  local profile dry_run profile_seen dry_run_seen index tool binding provider
+  local blocker executable native_status planned completed failed skipped operational_failure
+
+  profile=
+  dry_run=0
+  profile_seen=0
+  dry_run_seen=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      -h|--help)
+        [ "$#" -eq 1 ] || { syntax_error 'usage: rig apply [--profile NAME] [--dry-run]'; return; }
+        printf '%s\n' 'Usage: rig apply [--profile NAME] [--dry-run]'
+        return
+        ;;
+      --profile)
+        [ "$profile_seen" -eq 0 ] && [ "$#" -ge 2 ] && [ -n "$2" ] ||
+          { syntax_error 'usage: rig apply [--profile NAME] [--dry-run]'; return; }
+        profile=$2
+        profile_seen=1
+        shift 2
+        ;;
+      --dry-run)
+        [ "$dry_run_seen" -eq 0 ] ||
+          { syntax_error 'usage: rig apply [--profile NAME] [--dry-run]'; return; }
+        dry_run=1
+        dry_run_seen=1
+        shift
+        ;;
+      *) syntax_error 'usage: rig apply [--profile NAME] [--dry-run]'; return ;;
+    esac
+  done
+
+  rig_resolve_operational_plan "$profile" || return
+  rig_preflight_apply || return
+  printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
+  printf 'TOOL\tPROVIDER\tRESULT\tDETAIL\n'
+  planned=0
+  completed=0
+  failed=0
+  skipped=0
+  operational_failure=0
+  index=0
+  while [ "$index" -lt "${#RIG_PLAN_BINDINGS[@]}" ]; do
+    [ -z "${RIG_PLAN_BINDINGS[$index]}" ] || planned=$((planned + 1))
+    index=$((index + 1))
+  done
+  index=0
+  while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
+    tool=${RIG_PLAN_TOOLS[$index]}
+    binding=${RIG_PLAN_BINDINGS[$index]}
+    provider=${RIG_PLAN_PROVIDERS[$index]}
+    if [ -z "$binding" ]; then
+      RIG_PLAN_RESULTS[$index]=skipped
+      RIG_PLAN_DETAILS[$index]=catalogue-only
+      skipped=$((skipped + 1))
+    elif [ "$dry_run" -eq 1 ]; then
+      RIG_PLAN_RESULTS[$index]=planned
+      RIG_PLAN_DETAILS[$index]=-
+    elif rig_plan_blocker "$tool"; then
+      blocker=$RIG_VALUE
+      RIG_PLAN_RESULTS[$index]=skipped
+      RIG_PLAN_DETAILS[$index]=blocked-by:$blocker
+      skipped=$((skipped + 1))
+      operational_failure=1
+    else
+      rig_prepare_provider_invocation apply "$tool" "$binding" "$provider" || return
+      executable=$RIG_VALUE
+      "$executable" "${RIG_INVOKE_ARGUMENTS[@]}" 1>&2
+      native_status=$?
+      if [ "$native_status" -eq 0 ]; then
+        RIG_PLAN_RESULTS[$index]=completed
+        RIG_PLAN_DETAILS[$index]=-
+        completed=$((completed + 1))
+      else
+        RIG_PLAN_RESULTS[$index]=failed
+        RIG_PLAN_DETAILS[$index]=exit:$native_status
+        failed=$((failed + 1))
+        operational_failure=1
+      fi
+    fi
+    printf '%s\t%s\t%s\t%s\n' "$tool" "$provider" \
+      "${RIG_PLAN_RESULTS[$index]}" "${RIG_PLAN_DETAILS[$index]}"
+    index=$((index + 1))
+  done
+  printf 'Summary: planned=%s completed=%s failed=%s skipped=%s\n' \
+    "$planned" "$completed" "$failed" "$skipped"
+  [ "$operational_failure" -eq 0 ]
+}
+
 rig_current_platform() {
   local shell_platform
 
@@ -1409,6 +1856,14 @@ main() {
     explain)
       shift
       rig_command_explain "$@"
+      ;;
+    status)
+      shift
+      rig_command_status "$@"
+      ;;
+    apply)
+      shift
+      rig_command_apply "$@"
       ;;
     diag)
       shift
