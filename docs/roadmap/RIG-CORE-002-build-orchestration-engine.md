@@ -3,13 +3,13 @@ id: RIG-CORE-002
 area: CORE
 title: Build orchestration engine
 theme: orchestration
-horizon: next
-status: ready
+horizon: now
+status: draft
 blocks: [RIG-CLI-001]
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-16T11:06:43Z
+updated_at: 2026-09-16T17:02:37Z
 ---
 
 # RIG-CORE-002: Build orchestration engine
@@ -28,10 +28,12 @@ This item builds the provider execution protocol, expected-versus-observed state
 
 ## Current state
 
-Rig resolves profiles, transitive tool relationships, platform compatibility, and provider bindings without invoking providers. No public command observes machine state or performs materialisation, and no provider execution protocol exists yet.
+Rig resolves profiles, transitive tool relationships, platform compatibility, and provider bindings without invoking providers. No public command observes machine state or performs materialisation, and no provider execution protocol exists yet. XDR-RIG-001 fixes the executable trust boundary and literal arguments, while the executable-provider ABI and public treatment of observed state remain undecided.
 
 ## Steps
 
+- [ ] Record the executable-provider ABI: action verbs, argument order, observation response syntax, output ownership, and native failure translation.
+- [ ] Lock the public state contract: deterministic ordering, catalogue-only and unavailable treatment, summaries, and exit meanings for `status` and `apply --dry-run`.
 - [ ] Define a literal-argument provider protocol and recording test seam for observation and application capabilities.
 - [ ] Derive deterministic provider work from a resolved profile and its selected bindings.
 - [ ] Report each expected tool as `present`, `missing`, `drifted`, `unavailable`, or `unknown` with its responsible provider.
@@ -42,7 +44,7 @@ Rig resolves profiles, transitive tool relationships, platform compatibility, an
 
 ## Files touched
 
-`bin/rig`, `tests/rig.bats`, `README.md`, `man/rig.1`, `CHANGELOG.md`, `docs/specs/state.md`, `docs/specs/orchestration.md`, and this work record.
+`bin/rig`, `tests/rig.bats`, `README.md`, `man/rig.1`, `CHANGELOG.md`, `docs/decisions/ADR-RIG-005-provider-execution-contract.md`, `docs/decisions/README.md`, `docs/specs/state.md`, `docs/specs/orchestration.md`, and this work record.
 
 ## Verify
 
@@ -50,7 +52,7 @@ Use fake recording executables for exact invocation and failure assertions. Run 
 
 ## Dependencies / blocks
 
-The resolver is complete and this work is independently ready. It remains sequenced after RIG-CLI-002 because both items edit the same command, tests, and public documentation. Delivery unblocks provider adapters.
+The resolver is complete and no roadmap build dependency remains, but two design locks block readiness. The executable-provider ABI must define invocation and response boundaries before built-in adapters and declared operations can interoperate. The public state treatment must define aggregation, ordering, summaries, and exit meanings before `status`, `apply --dry-run`, and doctor can share one stable model. Record both in ADR-RIG-005 before implementation; delivery then unblocks RIG-CLI-001.
 
 ## Delegation
 
@@ -60,11 +62,11 @@ One bounded implementation worker may edit `bin/rig` and `tests/rig.bats` agains
 
 ### Decision Records
 
-No Decision Record change is expected unless implementation reveals a trust or execution choice not owned by the current records.
+Add ADR-RIG-005 to lock the executable-provider ABI and public state treatment. XDR-RIG-001 owns the trust transition but deliberately does not define transport or presentation semantics.
 
 ### Specifications
 
-Update only state and orchestration requirements demonstrated by recording-provider tests.
+Update state and orchestration requirements to reflect the approved ABI, public state treatment, and recording-provider evidence.
 
 ### Guides
 

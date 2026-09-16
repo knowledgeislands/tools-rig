@@ -3,13 +3,13 @@ id: RIG-DIST-001
 area: DIST
 title: Publish first release
 theme: distribution
-horizon: triage
+horizon: now
 status: draft
 blocks: []
-blocked_by: [RIG-CLI-001, RIG-CLI-002, RIG-CLI-004, RIG-DIST-003]
+blocked_by: [RIG-CLI-001, RIG-CLI-002, RIG-CLI-004, RIG-DIST-003, RIG-MIG-001]
 baseline_ref: null
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-15T13:04:11Z
+updated_at: 2026-09-16T17:07:51Z
 ---
 
 # RIG-DIST-001: Publish first release
@@ -25,6 +25,67 @@ The tools-repository standard expects direct script installation and Homebrew di
 ## Boundary
 
 This item covers release distribution and the cross-repository formula handoff. It does not implement providers, catalogue queries, doctor, bootstrap migration, personal-site publication, or the Homebrew tap's own governance contract.
+
+## Current state
+
+Rig has an installer, manual, completion, CI, and a curated `1.0.0 — in progress` changelog, but the declared v1 provider, doctor, bootstrap, and release-threshold dependencies are not all complete. No immutable release tag, release archive, checksum, published release, or Homebrew formula exists.
+
+## Steps
+
+- [ ] Confirm every `blocked_by` item is accepted and the shipped help, command-specific help, README inventory, completion, manual, and changelog describe one command surface.
+- [ ] Approve the release contract and external actions: version `1.0.0`, final changelog date, signed or annotated tag policy, archive origin, checksum recording, release-note source, GitHub release action, and explicit permission to push and publish.
+- [ ] Run the complete repository gate and cross-platform shell CI at the exact release candidate revision.
+- [ ] Finalise `CHANGELOG.md` from `1.0.0 — in progress` to the approved dated `1.0.0` release without adding unshipped work.
+- [ ] With separate publication approval, create and push the immutable tag and publish the release archive and notes; record the archive checksum.
+- [ ] In `knowledgeislands/homebrew-tap`, follow that repository's workflow to add `Formula/rig.rb` against the immutable archive and checksum, then verify installation, `rig --help`, `rig --version`, and `rig(1)`.
+- [ ] Verify the documented curl installer against the immutable release rather than `main`, and update release installation guidance where required.
+
+## Files touched
+
+- `CHANGELOG.md`
+- `README.md`
+- `install.sh`
+- `man/rig.1`
+- `.github/` release configuration if the approved release contract requires it
+- `docs/roadmap/RIG-DIST-001-publish-first-release.md`
+- `Formula/rig.rb` in `knowledgeislands/homebrew-tap`
+- Git tag and release state only after explicit publication approval
+
+## Verify
+
+- `ki repo audit --repo .`
+- `shellcheck bin/rig install.sh`
+- `bats tests/`
+- `mandoc -T lint man/rig.1`
+- Pass the repository's cross-platform CI at the release revision.
+- Install from the immutable release with the documented curl command in a clean temporary home.
+- Run the Homebrew tap's required audit, style, install, help, version, and manual checks.
+
+## Dependencies / blocks
+
+RIG-CLI-001, RIG-CLI-002, RIG-CLI-004, RIG-DIST-003, and RIG-MIG-001 are release gates; bootstrap parity is therefore explicit rather than implied by prose. Readiness additionally requires approval of the release decisions and external publication actions listed in Steps. The Homebrew formula is a cross-repository handoff after, never before, the immutable tag and checksum exist.
+
+## Delegation
+
+After every dependency and release decision is satisfied, release-candidate verification and preparation of the tap change can be separate bounded lanes. Tagging, pushing, release publication, checksum confirmation, and final cross-repository integration remain serial human-approved stops.
+
+## Documentation impact
+
+### Decision Records
+
+No new product decision is expected. Record a new decision only if the release mechanism changes the shell-only runtime, installer trust, or provider boundary.
+
+### Specifications
+
+Update conformance evidence only for behaviour actually present in the released revision; release mechanics do not make pending product requirements conforming.
+
+### Guides
+
+Align installation and upgrade guidance with the immutable curl archive and Homebrew formula after both paths are verified.
+
+### Roadmap
+
+Retain this item through cross-repository formula verification and record the exact release and tap revisions in its review packet before acceptance.
 
 ## Discussion
 
