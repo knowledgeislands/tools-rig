@@ -14,6 +14,10 @@ RIG_SECTION_TYPES=()
 RIG_SECTION_IDS=()
 RIG_SECTION_SECONDARY_IDS=()
 RIG_SECTION_FILES=()
+RIG_SECTION_FIELD_STARTS=()
+RIG_SECTION_FIELD_ENDS=()
+RIG_SECTION_LOOKUP_NAMES=()
+RIG_SECTION_LOOKUP_INDICES=()
 RIG_FIELD_SECTIONS=()
 RIG_FIELD_KEYS=()
 RIG_FIELD_VALUES=()
@@ -131,6 +135,10 @@ rig_model_reset() {
   RIG_SECTION_IDS=()
   RIG_SECTION_SECONDARY_IDS=()
   RIG_SECTION_FILES=()
+  RIG_SECTION_FIELD_STARTS=()
+  RIG_SECTION_FIELD_ENDS=()
+  RIG_SECTION_LOOKUP_NAMES=()
+  RIG_SECTION_LOOKUP_INDICES=()
   RIG_FIELD_SECTIONS=()
   RIG_FIELD_KEYS=()
   RIG_FIELD_VALUES=()
@@ -164,19 +172,45 @@ rig_valid_id() {
 }
 
 rig_section_index() {
-  local wanted index
+  local wanted low high middle candidate
+  local LC_ALL=C
 
   wanted=$1
-  index=0
-  while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
-    if [ "${RIG_SECTION_NAMES[$index]}" = "$wanted" ]; then
-      RIG_INDEX=$index
+  low=0
+  high=$((${#RIG_SECTION_LOOKUP_NAMES[@]} - 1))
+  while [ "$low" -le "$high" ]; do
+    middle=$(((low + high) / 2))
+    candidate=${RIG_SECTION_LOOKUP_NAMES[$middle]}
+    if [ "$candidate" = "$wanted" ]; then
+      RIG_INDEX=${RIG_SECTION_LOOKUP_INDICES[$middle]}
       return 0
     fi
-    index=$((index + 1))
+    if [[ "$candidate" < "$wanted" ]]; then
+      low=$((middle + 1))
+    else
+      high=$((middle - 1))
+    fi
   done
   RIG_INDEX=
   return 1
+}
+
+rig_index_section_name() {
+  local name section_index position previous
+  local LC_ALL=C
+
+  name=$1
+  section_index=$2
+  position=${#RIG_SECTION_LOOKUP_NAMES[@]}
+  while [ "$position" -gt 0 ]; do
+    previous=${RIG_SECTION_LOOKUP_NAMES[$((position - 1))]}
+    [[ "$name" < "$previous" ]] || break
+    RIG_SECTION_LOOKUP_NAMES[$position]=$previous
+    RIG_SECTION_LOOKUP_INDICES[$position]=${RIG_SECTION_LOOKUP_INDICES[$((position - 1))]}
+    position=$((position - 1))
+  done
+  RIG_SECTION_LOOKUP_NAMES[$position]=$name
+  RIG_SECTION_LOOKUP_INDICES[$position]=$section_index
 }
 
 rig_parse_section_identity() {
@@ -233,6 +267,9 @@ rig_add_section() {
   RIG_SECTION_IDS[$index]=$RIG_SECTION_ID
   RIG_SECTION_SECONDARY_IDS[$index]=$RIG_SECTION_SECONDARY_ID
   RIG_SECTION_FILES[$index]=$file
+  RIG_SECTION_FIELD_STARTS[$index]=${#RIG_FIELD_KEYS[@]}
+  RIG_SECTION_FIELD_ENDS[$index]=${#RIG_FIELD_KEYS[@]}
+  rig_index_section_name "$name" "$index"
   RIG_INDEX=$index
 }
 
@@ -263,15 +300,15 @@ rig_field_kind() {
 }
 
 rig_field_count() {
-  local section_index key index count
+  local section_index key index end count
 
   section_index=$1
   key=$2
-  index=0
+  index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  end=${RIG_SECTION_FIELD_ENDS[$section_index]}
   count=0
-  while [ "$index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
-    if [ "${RIG_FIELD_SECTIONS[$index]}" -eq "$section_index" ] &&
-      [ "${RIG_FIELD_KEYS[$index]}" = "$key" ]; then
+  while [ "$index" -lt "$end" ]; do
+    if [ "${RIG_FIELD_KEYS[$index]}" = "$key" ]; then
       count=$((count + 1))
     fi
     index=$((index + 1))
@@ -313,6 +350,7 @@ rig_add_field() {
   RIG_FIELD_SECTIONS[$field_index]=$section_index
   RIG_FIELD_KEYS[$field_index]=$key
   RIG_FIELD_VALUES[$field_index]=$value
+  RIG_SECTION_FIELD_ENDS[$section_index]=$((field_index + 1))
 }
 
 rig_parse_file() {
@@ -357,7 +395,7 @@ rig_parse_file() {
 }
 
 rig_get_value() {
-  local section_name key occurrence section_index index seen
+  local section_name key occurrence section_index index end seen
 
   section_name=$1
   key=$2
@@ -365,11 +403,11 @@ rig_get_value() {
   RIG_VALUE=
   rig_section_index "$section_name" || return 1
   section_index=$RIG_INDEX
-  index=0
+  index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  end=${RIG_SECTION_FIELD_ENDS[$section_index]}
   seen=0
-  while [ "$index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
-    if [ "${RIG_FIELD_SECTIONS[$index]}" -eq "$section_index" ] &&
-      [ "${RIG_FIELD_KEYS[$index]}" = "$key" ]; then
+  while [ "$index" -lt "$end" ]; do
+    if [ "${RIG_FIELD_KEYS[$index]}" = "$key" ]; then
       seen=$((seen + 1))
       if [ "$seen" -eq "$occurrence" ]; then
         RIG_VALUE=${RIG_FIELD_VALUES[$index]}
@@ -396,15 +434,15 @@ rig_reference_exists() {
 }
 
 rig_validate_references_for_field() {
-  local section_index key target_type index target
+  local section_index key target_type index end target
 
   section_index=$1
   key=$2
   target_type=$3
-  index=0
-  while [ "$index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
-    if [ "${RIG_FIELD_SECTIONS[$index]}" -eq "$section_index" ] &&
-      [ "${RIG_FIELD_KEYS[$index]}" = "$key" ]; then
+  index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$index" -lt "$end" ]; do
+    if [ "${RIG_FIELD_KEYS[$index]}" = "$key" ]; then
       target=${RIG_FIELD_VALUES[$index]}
       if ! rig_valid_id "$target" || ! rig_reference_exists "$target_type" "$target"; then
         rig_fail "[${RIG_SECTION_NAMES[$section_index]}] references unknown $target_type '$target'" || return
@@ -447,7 +485,7 @@ rig_visit_set() {
 }
 
 rig_profile_cycle_visit() {
-  local profile section_index field_index child state
+  local profile section_index field_index field_end child state
 
   profile=$1
   if rig_visit_get "$profile"; then
@@ -459,8 +497,9 @@ rig_profile_cycle_visit() {
   rig_visit_set "$profile" visiting
   rig_section_index "profile.$profile" || return 2
   section_index=$RIG_INDEX
-  field_index=0
-  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
     if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] &&
       [ "${RIG_FIELD_KEYS[$field_index]}" = profile ]; then
       child=${RIG_FIELD_VALUES[$field_index]}
@@ -472,7 +511,7 @@ rig_profile_cycle_visit() {
 }
 
 rig_tool_cycle_visit() {
-  local tool section_index field_index child state
+  local tool section_index field_index field_end child state
 
   tool=$1
   if rig_visit_get "$tool"; then
@@ -484,8 +523,9 @@ rig_tool_cycle_visit() {
   rig_visit_set "$tool" visiting
   rig_section_index "tool.$tool" || return 2
   section_index=$RIG_INDEX
-  field_index=0
-  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
     if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] &&
       [ "${RIG_FIELD_KEYS[$field_index]}" = requires ]; then
       child=${RIG_FIELD_VALUES[$field_index]}
@@ -615,14 +655,15 @@ rig_load_config() {
 }
 
 rig_tool_supports_platform() {
-  local tool platform section_index field_index
+  local tool platform section_index field_index field_end
 
   tool=$1
   platform=$2
   rig_section_index "tool.$tool" || return 1
   section_index=$RIG_INDEX
-  field_index=0
-  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
     if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] &&
       [ "${RIG_FIELD_KEYS[$field_index]}" = platform ] &&
       { [ "${RIG_FIELD_VALUES[$field_index]}" = any ] ||
@@ -646,7 +687,7 @@ rig_array_contains() {
 }
 
 rig_select_tool() {
-  local tool platform required_by section_index field_index child
+  local tool platform required_by section_index field_index field_end child
 
   tool=$1
   platform=$2
@@ -662,8 +703,9 @@ rig_select_tool() {
 
   rig_section_index "tool.$tool" || return 2
   section_index=$RIG_INDEX
-  field_index=0
-  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
     if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] &&
       [ "${RIG_FIELD_KEYS[$field_index]}" = requires ]; then
       child=${RIG_FIELD_VALUES[$field_index]}
@@ -674,14 +716,15 @@ rig_select_tool() {
 }
 
 rig_select_profile() {
-  local profile platform section_index field_index key target
+  local profile platform section_index field_index field_end key target
 
   profile=$1
   platform=$2
   rig_section_index "profile.$profile" || rig_fail "unknown profile '$profile'" || return
   section_index=$RIG_INDEX
-  field_index=0
-  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
     if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ]; then
       key=${RIG_FIELD_KEYS[$field_index]}
       target=${RIG_FIELD_VALUES[$field_index]}
@@ -714,13 +757,14 @@ rig_sort_selected_tools() {
 }
 
 rig_binding_supports_platform() {
-  local section_index platform field_index declared
+  local section_index platform field_index field_end declared
 
   section_index=$1
   platform=$2
-  field_index=0
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
   declared=0
-  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+  while [ "$field_index" -lt "$field_end" ]; do
     if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] &&
       [ "${RIG_FIELD_KEYS[$field_index]}" = platform ]; then
       declared=1
@@ -972,15 +1016,16 @@ rig_collect_section_ids() {
 }
 
 rig_collect_field_values() {
-  local section_name key section_index field_index
+  local section_name key section_index field_index field_end
 
   section_name=$1
   key=$2
   RIG_QUERY_ITEMS=()
   rig_section_index "$section_name" || return 1
   section_index=$RIG_INDEX
-  field_index=0
-  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
     if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] &&
       [ "${RIG_FIELD_KEYS[$field_index]}" = "$key" ]; then
       RIG_QUERY_ITEMS[${#RIG_QUERY_ITEMS[@]}]=${RIG_FIELD_VALUES[$field_index]}
@@ -1021,14 +1066,15 @@ rig_print_tool_row() {
 }
 
 rig_profile_declares_tool() {
-  local profile tool section_index field_index
+  local profile tool section_index field_index field_end
 
   profile=$1
   tool=$2
   rig_section_index "profile.$profile" || return 1
   section_index=$RIG_INDEX
-  field_index=0
-  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
     if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] &&
       [ "${RIG_FIELD_KEYS[$field_index]}" = tool ] &&
       [ "${RIG_FIELD_VALUES[$field_index]}" = "$tool" ]; then
@@ -1040,15 +1086,16 @@ rig_profile_declares_tool() {
 }
 
 rig_profile_contains_declared_tool() {
-  local profile tool section_index field_index child
+  local profile tool section_index field_index field_end child
 
   profile=$1
   tool=$2
   rig_profile_declares_tool "$profile" "$tool" && return 0
   rig_section_index "profile.$profile" || return 1
   section_index=$RIG_INDEX
-  field_index=0
-  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
     if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] &&
       [ "${RIG_FIELD_KEYS[$field_index]}" = profile ]; then
       child=${RIG_FIELD_VALUES[$field_index]}
@@ -1060,14 +1107,15 @@ rig_profile_contains_declared_tool() {
 }
 
 rig_tool_requires_tool() {
-  local tool wanted section_index field_index child
+  local tool wanted section_index field_index field_end child
 
   tool=$1
   wanted=$2
   rig_section_index "tool.$tool" || return 1
   section_index=$RIG_INDEX
-  field_index=0
-  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
     if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] &&
       [ "${RIG_FIELD_KEYS[$field_index]}" = requires ]; then
       child=${RIG_FIELD_VALUES[$field_index]}
@@ -1080,14 +1128,15 @@ rig_tool_requires_tool() {
 }
 
 rig_profile_requires_tool() {
-  local profile tool section_index field_index key target
+  local profile tool section_index field_index field_end key target
 
   profile=$1
   tool=$2
   rig_section_index "profile.$profile" || return 1
   section_index=$RIG_INDEX
-  field_index=0
-  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
     if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ]; then
       key=${RIG_FIELD_KEYS[$field_index]}
       target=${RIG_FIELD_VALUES[$field_index]}

@@ -5,6 +5,7 @@ setup() {
   CONFIG_HOME=$BATS_TEST_TMPDIR/config-$BATS_TEST_NUMBER
   TEST_HOME=$BATS_TEST_TMPDIR/home-$BATS_TEST_NUMBER
   mkdir -p "$CONFIG_HOME/conf.d" "$TEST_HOME"
+  source "$BATS_TEST_DIRNAME/helpers/large-catalogue-fixture.bash"
 }
 
 write_minimal_config() {
@@ -33,6 +34,61 @@ write_minimal_config() {
 run_loader() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
     bash -c '. "$1"; rig_load_config' _ "$RIG"
+}
+
+@test "large catalogue queries preserve deterministic results without provider execution" {
+  write_large_catalogue_fixture "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" diag
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"  Status: valid"* ]] || false
+  [[ "$output" == *"  Default profile: default"* ]] || false
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" list --category category-1
+  [ "$status" -eq 0 ]
+  [ "${#lines[@]}" -eq 21 ]
+  [ "${lines[1]}" = $'  tool-005\tTool 005\tcategory-1\tExercise deterministic catalogue query 005' ]
+  [ "${lines[20]}" = $'  tool-100\tTool 100\tcategory-1\tExercise deterministic catalogue query 100' ]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" show
+  [ "$status" -eq 0 ]
+  [[ "$output" == $'Profile: default\nPlatform: macos\nTools (100):'* ]] || false
+  [[ "$output" == *$'tool-100\tTool 100\tcategory-1\tExercise deterministic catalogue query 100' ]] || false
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" explain tool-100
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Requires: tool-099"* ]] || false
+  [[ "$output" == *"Profiles: default (inherited), developer (direct)"* ]] || false
+  [[ "$output" == *"Binding: fixture (formula: fixture/tool-100)"* ]] || false
+}
+
+@test "sourceable model indexes every large catalogue field within its section span" {
+  write_large_catalogue_fixture "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" bash -c '
+    . "$1"
+    rig_load_config || exit
+    section_index=0
+    field_total=0
+    while [ "$section_index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+      field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+      field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+      while [ "$field_index" -lt "$field_end" ]; do
+        [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] || exit 3
+        field_total=$((field_total + 1))
+        field_index=$((field_index + 1))
+      done
+      section_index=$((section_index + 1))
+    done
+    rig_section_index tool.tool-100 || exit
+    printf "sections=%s fields=%s lookup=%s\n" \
+      "${#RIG_SECTION_NAMES[@]}" "$field_total" "${RIG_SECTION_NAMES[$RIG_INDEX]}"
+  ' _ "$RIG"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "sections=211 fields=1216 lookup=tool.tool-100" ]
 }
 
 write_query_config() {
