@@ -4,12 +4,12 @@ area: CLI
 title: Export public rig
 theme: cli
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 7eb1ffe07a2e23a8f0bf5e70c85fe6abf45f0fa9
 created_at: 2026-09-15T11:53:55Z
-updated_at: 2026-09-16T22:26:36Z
+updated_at: 2026-09-16T22:29:07Z
 ---
 
 # RIG-CLI-003: Export public rig
@@ -114,6 +114,10 @@ Independent review found malformed URL authorities could pass validation and the
 ### Mini recap
 
 Rig can now produce a safe, portable public projection suitable for `rig.midnight.ninja` or a personal-site subpath without publishing or exposing private machine state.
+
+## Done
+
+Accepted 2026-09-16 by Kris Brown on review packet above.
 
 ## Discussion
 

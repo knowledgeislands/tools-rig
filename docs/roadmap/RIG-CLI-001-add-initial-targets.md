@@ -4,12 +4,12 @@ area: CLI
 title: Add provider adapters
 theme: cli
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 7eb1ffe07a2e23a8f0bf5e70c85fe6abf45f0fa9
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-16T22:26:36Z
+updated_at: 2026-09-16T22:29:07Z
 ---
 
 # RIG-CLI-001: Add provider adapters
@@ -105,6 +105,10 @@ Independent review identified destination replacement and redirect-protocol hard
 ### Mini recap
 
 Rig can now turn resolved catalogue bindings into provider-native observations and explicit apply actions without taking ownership of native manifests or provider state.
+
+## Done
+
+Accepted 2026-09-16 by Kris Brown on review packet above.
 
 ## Discussion
 
