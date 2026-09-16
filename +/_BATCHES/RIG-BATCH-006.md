@@ -13,3 +13,7 @@ policy: safe-local-v1
 ---
 
 # RIG-BATCH-006
+
+## Run ledger
+
+<!-- ki-batch-run: RIG-BATCH-006-RUN-001 1420ea504cde2a3e0a1a7249b7ac0b60f693b8b68bbd0cc24fd79d8c1650e7ae -->

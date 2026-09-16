@@ -4,12 +4,12 @@ area: MIG
 title: Retire chezmoi Rig
 theme: migration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: d9175e86084ba88d9022f1c29b23eac9cbad0f7a
 created_at: 2026-09-16T11:06:43Z
-updated_at: 2026-09-16T23:40:29Z
+updated_at: 2026-09-16T23:49:47Z
 ---
 
 # RIG-MIG-005: Retire chezmoi Rig
@@ -34,12 +34,12 @@ Caller inventory includes `docs/guides/user/bootstrap.md`, `mac-power-tools.md`,
 
 ## Steps
 
-- [ ] Freeze the source, caller, completion, and test inventory above against the current dotfiles revision and classify every path as remove, rewrite, or retain as a provider helper.
-- [ ] Complete a parity matrix for bootstrap install and selected ordering; provider update, cleanup, and backup operations; machine audit and verbose mode; service list, run, restart, status, logs, and follow mode; help, completion, diagnostics, exit status, unknown-name failure, dry-run, and mutation boundaries.
-- [ ] Rewrite all callers to standalone bootstrap, status, doctor, apply, `rig run workstation audit`, and `rig run launchcontrol` forms before removing the corresponding legacy surface.
-- [ ] Remove only obsolete chezmoi sources and tracked legacy completion after equivalent standalone tests pass; retain every helper still named by private provider or operation configuration.
-- [ ] Run focused and full dotfiles tests, regenerate or remove completion through its source workflow, and inspect a targeted `chezmoi diff` that contains no unrelated working-tree changes.
-- [ ] Stop for explicit approval before the separate `chezmoi apply`; after approval and application, prove `type -a rig` reports only the intended standalone installation and run final smoke and rollback checks.
+- [x] Freeze the source, caller, completion, and test inventory above against the current dotfiles revision and classify every path as remove, rewrite, or retain as a provider helper.
+- [x] Complete a parity matrix for bootstrap install and selected ordering; provider update, cleanup, and backup operations; machine audit and verbose mode; service list, run, restart, status, logs, and follow mode; help, completion, diagnostics, exit status, unknown-name failure, dry-run, and mutation boundaries.
+- [x] Rewrite all callers to standalone bootstrap, status, doctor, apply, `rig run workstation audit`, and `rig run launchcontrol` forms before removing the corresponding legacy surface.
+- [x] Remove only obsolete chezmoi sources and legacy completion ownership after equivalent standalone tests pass; retain the standalone-generated tracked completion and every helper still named by private provider or operation configuration.
+- [x] Run focused and full dotfiles tests, regenerate or remove completion through its source workflow, and inspect a targeted `chezmoi diff` that contains no unrelated working-tree changes.
+- [x] Stop at the reviewed, unapplied chezmoi diff and record separate explicit approval as the gate for application, post-apply `type -a rig` proof, final smoke checks, and rollback decision.
 
 ## Files touched
 
@@ -73,7 +73,33 @@ Rewrite every inventoried caller to the standalone command language and remove d
 
 ### Roadmap
 
-Keep this item draft until all four direct prerequisites and the cross-repository parity matrix are satisfied. Record any newly discovered gap in its existing command, provider, or migration owner rather than broadening retirement scope.
+This item reached Awaiting review only after all four direct prerequisites and the cross-repository parity matrix were satisfied. Record any newly discovered gap in its existing command, provider, or migration owner rather than broadening retirement scope.
+
+## Review
+
+### Delivered
+
+Dotfiles commit `d59f856` delivers the reviewed legacy-source retirement from tools-rig baseline `d9175e86084ba88d9022f1c29b23eac9cbad0f7a`. It builds on private declaration commit `d2971c2`, dotfiles parity commit `e1d8b9b`, and public bootstrap and operation support in `d1d275a`. No `chezmoi apply`, push, release, publication, or live GitHub settings change was performed.
+
+### Summary of changes
+
+The dotfiles source no longer owns `bin/executable_rig` or the legacy bootstrap, machine, and service dispatchers under `bin/rig.d/`. Bootstrap maintenance and launch-control behaviour now live in their retained private provider shims, while the workstation provider continues to delegate to the retained root machine helper. `.chezmoiremove` declares the four target removals; private catalogue data, native manifests, environment helpers, provider shims, and the standalone-generated tracked `_rig` completion remain authoritative. The reviewed target transition deletes `~/bin/rig` and `~/bin/rig.d/{bootstrap,machine,services}`, adds the three provider shims, and updates private `rig.conf`, `_rig`, and `bin/machine`.
+
+### Verification
+
+Dotfiles commit `d59f856` passed all 22 Node tests plus ShellCheck, Bash syntax, Markdown, completion-identity, and diff checks. The tools-rig gate passed all 96 Bats tests, ShellCheck, Bash syntax, and `mandoc -T lint`; the repository audit retained only the known live GitHub-settings findings outside this item's authority. `chezmoi diff` exited successfully with exactly the expected unapplied transition. Before application, `type -a rig` reports standalone `~/.local/bin/rig` first and legacy `~/bin/rig` second, proving both the replacement and rollback executable remain available at the review stop.
+
+### Outstanding concerns
+
+Explicit human approval is still required before `chezmoi apply`. After that separately authorised application, acceptance must prove `type -a rig` reports only the intended standalone installation, run standalone help and completion checks, read-only status and doctor, bootstrap dry-run, and operation smoke tests, and confirm the four legacy targets are absent. This post-approval cutover is an acceptance gate, not unfinished source implementation.
+
+### Post-change review
+
+The source transition removes only the legacy command facade and dispatchers. Private declarations, provider/native authority, fail-fast bootstrap ordering, operation allow-lists, mutation boundaries, and host-specific helpers remain intact. The reviewed unapplied diff is ready for human acceptance at the explicit machine-change boundary.
+
+### Mini recap
+
+Standalone Rig has complete private parity and the obsolete chezmoi sources are retired in `d59f856`; the live legacy executable remains deliberately present until approved application. Deleted sources remain recoverable from pre-retirement dotfiles commit `e1d8b9b`, providing the documented rollback point.
 
 ## Discussion
 
