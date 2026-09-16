@@ -259,6 +259,7 @@ write_query_config() {
   [[ "$output" == *"apply [--profile NAME] [--dry-run]"* ]] || false
   [[ "$output" == *"run TOOL OPERATION [-- ARGUMENT...]"* ]] || false
   [[ "$output" == *"export PUBLICATION --output DIRECTORY"* ]] || false
+  [[ "$output" == *"publish PUBLICATION"* ]] || false
   [[ "$output" == *"diag"* ]]
   [[ "$output" != *"paths"* ]]
   [[ "$output" == *"completion bash|zsh"* ]]
@@ -321,7 +322,7 @@ write_query_config() {
   run "$RIG" completion bash
   [ "$status" -eq 0 ]
   [[ "$output" == *"complete -F _rig rig"* ]]
-  [[ "$output" == *"-h --help -V --version show list explain status doctor apply run export diag completion help"* ]] || false
+  [[ "$output" == *"-h --help -V --version show list explain status doctor apply run export publish diag completion help"* ]] || false
   [[ "$output" == *'show) COMPREPLY=($(compgen -W "-h --help --profile"'* ]]
   [[ "$output" == *'explain) COMPREPLY=($(compgen -W "-h --help"'* ]]
   [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile"'* ]] || false
@@ -329,7 +330,8 @@ write_query_config() {
   [[ "$output" == *'apply) COMPREPLY=($(compgen -W "-h --help --profile --dry-run"'* ]] || false
   [[ "$output" == *'run) COMPREPLY=($(compgen -W "-h --help --"'* ]] || false
   [[ "$output" == *'export) COMPREPLY=($(compgen -W "-h --help --output"'* ]] || false
-  [[ "$output" == *"show list explain status doctor apply run export diag completion help"* ]] || false
+  [[ "$output" == *'publish) COMPREPLY=($(compgen -W "-h --help"'* ]] || false
+  [[ "$output" == *"show list explain status doctor apply run export publish diag completion help"* ]] || false
   [[ "$output" != *" paths "* ]]
 
   run "$RIG" completion zsh
@@ -340,7 +342,9 @@ write_query_config() {
   [[ "$output" == *"diag:print runtime and configuration diagnostics"* ]]
   [[ "$output" == *"doctor:check whether a rig can operate"* ]]
   [[ "$output" == *"export:generate a static public rig"* ]] || false
+  [[ "$output" == *"publish:deploy a static public rig"* ]] || false
   [[ "$output" == *"run:invoke a declared operation"* ]] || false
+  [[ "$output" == *"run) _arguments"*"'3:separator:(--)'"* ]] || false
   [[ "$output" == *"'(-V --version)'{-V,--version}"* ]]
   [[ "$output" == *"explain) _arguments '(-h --help)'"* ]]
 }
@@ -376,6 +380,10 @@ write_query_config() {
       COMP_CWORD=2
       _rig
       printf "run:%s\n" "${COMPREPLY[*]}"
+      COMP_WORDS=(rig publish --)
+      COMP_CWORD=2
+      _rig
+      printf "publish:%s\n" "${COMPREPLY[*]}"
   ' bash "$RIG"
 
   [ "$status" -eq 0 ]
@@ -386,6 +394,7 @@ write_query_config() {
   [[ "$output" == *"doctor:--help --profile"* ]] || false
   [[ "$output" == *"apply:--help --profile --dry-run"* ]] || false
   [[ "$output" == *"run:--help --"* ]] || false
+  [[ "$output" == *"publish:--help"* ]] || false
 
   run zsh -f -c '
     autoload -Uz compinit && compinit -C
@@ -2008,6 +2017,7 @@ write_publication_config() {
     '[provider.publisher]' \
     'adapter = custom' \
     "executable = $PUBLICATION_PROVIDER" \
+    'capability = publish' \
     'manifest = /private/provider-manifest-token' \
     'argument = provider-argument-token' \
     '[binding.alpha.publisher]' \
@@ -2179,6 +2189,257 @@ write_publication_config() {
   run "$RIG" export site
   [ "$status" -eq 2 ]
   [[ "$output" == *'usage: rig export PUBLICATION --output DIRECTORY'* ]] || false
+}
+
+write_publish_config() {
+  write_publication_config
+  PUBLISH_LOG=$BATS_TEST_TMPDIR/publish-log-$BATS_TEST_NUMBER
+  OTHER_PUBLISH_LOG=$BATS_TEST_TMPDIR/other-publish-log-$BATS_TEST_NUMBER
+  OTHER_PUBLISHER=$BATS_TEST_TMPDIR/other-publisher-$BATS_TEST_NUMBER
+
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'printf "BEGIN\n" >>"$RIG_PUBLISH_LOG"' \
+    'for argument in "$@"; do printf "ARG=<%s>\n" "$argument" >>"$RIG_PUBLISH_LOG"; done' \
+    'if [ -n "${RIG_PUBLISH_SWAP_TARGET:-}" ]; then' \
+    '  for argument in "$@"; do stage=$argument; done' \
+    '  root=${stage%/*}' \
+    '  stage_name=${stage##*/}' \
+    '  mv -- "$root" "$RIG_PUBLISH_SWAP_MOVED"' \
+    '  ln -s -- "$RIG_PUBLISH_SWAP_TARGET" "$root"' \
+    '  mkdir -p -- "$RIG_PUBLISH_SWAP_TARGET/$stage_name/assets"' \
+    '  printf victim >"$RIG_PUBLISH_SWAP_TARGET/$stage_name/index.html"' \
+    '  printf victim >"$RIG_PUBLISH_SWAP_TARGET/$stage_name/assets/rig.css"' \
+    'fi' \
+    'if [ "${RIG_PUBLISH_SIGNAL:-}" = term ]; then kill -TERM "$PPID"; exit 0; fi' \
+    '[ -z "${RIG_PUBLISH_STDOUT:-}" ] || printf "%s\n" "$RIG_PUBLISH_STDOUT"' \
+    '[ -z "${RIG_PUBLISH_STDERR:-}" ] || printf "%s\n" "$RIG_PUBLISH_STDERR" >&2' \
+    'exit "${RIG_PUBLISH_EXIT:-0}"' >"$PUBLICATION_PROVIDER"
+  chmod +x "$PUBLICATION_PROVIDER"
+
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'printf invoked >"$RIG_OTHER_PUBLISH_LOG"' >"$OTHER_PUBLISHER"
+  chmod +x "$OTHER_PUBLISHER"
+  printf '%s\n' \
+    '[provider.other-publisher]' \
+    'adapter = custom' \
+    "executable = $OTHER_PUBLISHER" \
+    'capability = publish' >>"$CONFIG_HOME/rig.conf"
+}
+
+@test "publish renders one isolated export and invokes only the selected publisher" {
+  local cache cache_real stage expected
+  cache=$BATS_TEST_TMPDIR/publish-cache-$BATS_TEST_NUMBER
+  write_publish_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
+    RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" \
+    RIG_OTHER_PUBLISH_LOG="$OTHER_PUBLISH_LOG" RIG_PUBLISH_STDOUT='publisher stdout' \
+    "$RIG" publish site
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'publisher stdout'* ]] || false
+  [[ "$output" == *'Published site via publisher'* ]] || false
+  stage=$(sed -n '8p' "$PUBLISH_LOG")
+  stage=${stage#ARG=<}
+  stage=${stage%>}
+  cache_real=$(cd "$cache/publish" && pwd -P)
+  case "$stage" in
+    "$cache_real"/site.rig-publish.*) ;;
+    *) false ;;
+  esac
+  [ "${stage#/}" != "$stage" ]
+  [ ! -e "$stage" ]
+  [ ! -e "$OTHER_PUBLISH_LOG" ]
+  expected=$(printf '%s\n' \
+    'BEGIN' \
+    'ARG=<provider-argument-token>' \
+    'ARG=<rig-provider-v1>' \
+    'ARG=<publish>' \
+    'ARG=<publisher>' \
+    'ARG=<site>' \
+    'ARG=<directory>' \
+    "ARG=<$stage>")
+  [ "$(cat "$PUBLISH_LOG")" = "$expected" ]
+  [ -z "$(find "$cache/publish" -mindepth 1 -maxdepth 1 -print -quit)" ]
+}
+
+@test "publish preserves native failure and complete staging tree for diagnosis" {
+  local cache native_exit stage file_count
+  cache=$BATS_TEST_TMPDIR/publish-failure-cache-$BATS_TEST_NUMBER
+  write_publish_config
+
+  for native_exit in 7 126; do
+    rm -f "$PUBLISH_LOG"
+    run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
+      RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" \
+      RIG_OTHER_PUBLISH_LOG="$OTHER_PUBLISH_LOG" RIG_PUBLISH_EXIT="$native_exit" \
+      RIG_PUBLISH_STDERR='publisher stderr' \
+      "$RIG" publish site
+
+    [ "$status" -eq "$native_exit" ]
+    [[ "$output" == *'publisher stderr'* ]] || false
+    stage=$(printf '%s\n' "$output" | sed -n 's/^rig: publish failed; retained export: //p')
+    [ -d "$stage" ]
+    [ -f "$stage/index.html" ]
+    [ -f "$stage/assets/rig.css" ]
+    file_count=$(find "$stage" -type f | wc -l | tr -d ' ')
+    [ "$file_count" -eq 2 ]
+    [ ! -e "$OTHER_PUBLISH_LOG" ]
+    rm -rf -- "$stage"
+  done
+}
+
+@test "publish interruption retains complete staging tree and returns signal status" {
+  local cache stage
+  cache=$BATS_TEST_TMPDIR/publish-interrupt-cache-$BATS_TEST_NUMBER
+  write_publish_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
+    RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" \
+    RIG_OTHER_PUBLISH_LOG="$OTHER_PUBLISH_LOG" RIG_PUBLISH_SIGNAL=term \
+    "$RIG" publish site
+
+  [ "$status" -eq 143 ]
+  stage=$(printf '%s\n' "$output" | sed -n 's/^rig: publish interrupted; retained export: //p')
+  [ -f "$stage/index.html" ]
+  [ -f "$stage/assets/rig.css" ]
+  [ ! -e "$OTHER_PUBLISH_LOG" ]
+  rm -rf -- "$stage"
+}
+
+@test "publish interruption before handoff removes incomplete staging" {
+  local cache root stage
+
+  cache=$BATS_TEST_TMPDIR/publish-pre-dispatch-interrupt-$BATS_TEST_NUMBER
+  mkdir -p "$cache/publish"
+  root=$(cd "$cache/publish" && pwd -P)
+  stage=$root/site.rig-publish.partial
+  mkdir -p "$stage/assets"
+  printf partial >"$stage/index.html"
+
+  run env RIG_TEST_ROOT="$root" RIG_TEST_STAGE="$stage" /bin/bash -c '
+    . "$1"
+    RIG_PUBLISH_ROOT=$RIG_TEST_ROOT
+    RIG_PUBLISH_STAGE=$RIG_TEST_STAGE
+    RIG_PUBLISH_COMPLETE=0
+    rig_publish_interrupted 143
+  ' bash "$RIG"
+
+  [ "$status" -eq 143 ]
+  [[ "$output" == *'publish interrupted before publisher handoff'* ]] || false
+  [[ "$output" != *'retained export'* ]] || false
+  [ ! -e "$stage" ]
+}
+
+@test "publish staging failure invokes no publisher" {
+  local cache
+
+  cache=$BATS_TEST_TMPDIR/publish-staging-failure-$BATS_TEST_NUMBER
+  write_publish_config
+  mkdir -p "$cache"
+  printf blocked >"$cache/publish"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
+    RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" \
+    "$RIG" publish site
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'cannot create publication cache directory'* ]] || false
+  [ ! -e "$PUBLISH_LOG" ]
+  [ "$(cat "$cache/publish")" = blocked ]
+}
+
+@test "publish cleanup refuses a swapped cache parent without traversing it" {
+  local cache cache_real moved stage stage_name victim
+
+  cache=$BATS_TEST_TMPDIR/publish-parent-swap-$BATS_TEST_NUMBER
+  victim=$cache/victim
+  mkdir -p "$cache" "$victim"
+  cache_real=$(cd "$cache" && pwd -P)
+  moved=$cache_real/publish-moved
+  victim=$cache_real/victim
+  write_publish_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache_real" \
+    RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" \
+    RIG_PUBLISH_SWAP_TARGET="$victim" RIG_PUBLISH_SWAP_MOVED="$moved" \
+    "$RIG" publish site
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'cannot safely remove publication staging directory'* ]] || false
+  [[ "$output" == *'publisher succeeded but publication staging cleanup failed'* ]] || false
+  stage=$(sed -n '8p' "$PUBLISH_LOG")
+  stage=${stage#ARG=<}
+  stage=${stage%>}
+  stage_name=${stage##*/}
+  [ -L "$cache_real/publish" ]
+  [ "$(cat "$victim/$stage_name/index.html")" = victim ]
+  [ "$(cat "$victim/$stage_name/assets/rig.css")" = victim ]
+  [ -f "$moved/$stage_name/index.html" ]
+  [ -f "$moved/$stage_name/assets/rig.css" ]
+
+  rm -- "$cache_real/publish"
+  rm -rf -- "$moved" "$victim"
+}
+
+@test "publish rejects invalid selection and capability boundaries before export or invocation" {
+  local cache original
+  cache=$BATS_TEST_TMPDIR/publish-reject-cache-$BATS_TEST_NUMBER
+  write_publish_config
+  original=$BATS_TEST_TMPDIR/publish-original-$BATS_TEST_NUMBER
+  cp "$CONFIG_HOME/rig.conf" "$original"
+
+  sed '/^capability = publish$/d' "$original" >"$CONFIG_HOME/rig.conf"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
+    RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" "$RIG" publish site
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"does not declare capability 'publish'"* ]] || false
+  [ ! -e "$PUBLISH_LOG" ]
+  [ ! -e "$cache/publish" ]
+
+  sed -e 's/adapter = custom/adapter = homebrew/' \
+    -e 's/kind = executable/kind = formula/' \
+    "$original" >"$CONFIG_HOME/rig.conf"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
+    RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" "$RIG" publish site
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"requires a custom publisher"* ]] || false
+  [ ! -e "$PUBLISH_LOG" ]
+
+  sed "s#executable = $PUBLICATION_PROVIDER#executable = $BATS_TEST_TMPDIR/missing-publisher#" \
+    "$original" >"$CONFIG_HOME/rig.conf"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
+    RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" "$RIG" publish site
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"publisher 'publisher' executable unavailable"* ]] || false
+  [ ! -e "$PUBLISH_LOG" ]
+
+  sed 's#base-url = https://example.test/rig/#base-url = https://user@example.test/#' \
+    "$original" >"$CONFIG_HOME/rig.conf"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
+    RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" "$RIG" publish site
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'must not contain user information'* ]] || false
+  [ ! -e "$PUBLISH_LOG" ]
+
+  cp "$original" "$CONFIG_HOME/rig.conf"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
+    RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" "$RIG" publish absent
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"unknown publication 'absent'"* ]] || false
+  [ ! -e "$PUBLISH_LOG" ]
+}
+
+@test "publish help and syntax are local and explicit" {
+  run "$RIG" publish --help
+  [ "$status" -eq 0 ]
+  [ "$output" = 'Usage: rig publish PUBLICATION' ]
+
+  run "$RIG" publish
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'usage: rig publish PUBLICATION'* ]] || false
 }
 
 write_operation_config() {

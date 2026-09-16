@@ -137,13 +137,13 @@ _Evidence:_ `rig_plan_blocker` and apply result arrays retain native failure det
 
 ### RIG-ORCH-014 — Versioned custom-provider protocol
 
-Rig MUST invoke a custom provider as `EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 VERB PROVIDER TOOL KIND LOCATOR [BINDING_ARGUMENT ...]`, with `VERB` exactly `observe` or `apply`.
+For binding observation and application, Rig MUST invoke a custom provider as `EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 VERB PROVIDER TOOL KIND LOCATOR [BINDING_ARGUMENT ...]`, with `VERB` exactly `observe` or `apply`. Publication uses the separate fixed `publish` variant specified by RIG-PUB-007.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats records every argument for observation and application and compares the version marker, verb, identities, binding data, and argument order.
 
-_Evidence:_ `rig_prepare_provider_invocation` implements the ADR-RIG-005 protocol and recording-provider tests compare its argument boundaries.
+_Evidence:_ `rig_prepare_custom_invocation` and `rig_prepare_provider_invocation` implement the ADR-RIG-005 binding protocol, while recording-provider tests compare its argument boundaries.
 
 ### RIG-ORCH-015 — Observation response boundary
 

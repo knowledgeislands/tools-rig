@@ -152,7 +152,7 @@ _Evidence:_ `tests/rig.bats` loads all publication fields and rejects missing an
 
 Schema 1 MUST additionally accept `[operation.TOOL.NAME]` section identities, where both identifier segments match `[a-z][a-z0-9-]*`. An operation MUST name one declared tool through its section identity and MUST require scalar `provider`, `capability`, `mode`, and `description` fields. It MAY repeat `platform`, `argument`, and `allow-argument` fields.
 
-The provider MUST exist and declare the referenced capability. The `mode` MUST be `observe` or `mutate`. Configured and allowed arguments remain literal values with the same repeated-field boundaries as other schema lists.
+The provider MUST exist, use the `custom` adapter in schema 1, and declare the referenced capability. The `mode` MUST be `observe` or `mutate`. Configured and allowed arguments remain literal values with the same repeated-field boundaries as other schema lists.
 
 _Conformance:_ conforming
 

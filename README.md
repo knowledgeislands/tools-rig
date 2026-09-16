@@ -83,6 +83,8 @@ Set a provider `executable` to use a non-default installation or an isolated tes
 
 `[operation.TOOL.NAME]` declarations bind one tool to a custom provider's exact capability. Their mode is `observe` or `mutate`; repeated `argument` values are fixed configuration, while repeated `allow-argument` values are the only caller arguments accepted after `--`.
 
+`[publication.ID]` names one public profile and one publisher. Offline `export` never invokes that provider. Explicit `publish` requires its `custom` adapter to declare the exact `publish` capability and passes one isolated static tree through the versioned provider protocol.
+
 See `man rig` for the exact native command matrix and custom-provider protocol.
 
 ## Commands
@@ -96,17 +98,18 @@ See `man rig` for the exact native command matrix and custom-provider protocol.
 - `rig apply [--profile NAME] [--dry-run]` materialises a resolved profile; dry-run preflights and prints planned work without invoking providers.
 - `rig run TOOL OPERATION [-- ARGUMENT...]` invokes one declared custom-provider operation with bounded literal arguments.
 - `rig export PUBLICATION --output DIRECTORY` generates a deterministic static site from the publication's explicitly selected public profile.
+- `rig publish PUBLICATION` renders an isolated static export and hands it to the publication's one trusted custom publisher.
 - `rig diag` reports the effective Rig runtime, active platform, XDG paths, and configuration discovery and validity.
 - `rig completion bash|zsh` prints shell completion source.
 - `rig help`, `rig --help`, and `rig --version` provide command and version information.
 
-Catalogue queries, `diag`, and `export` never invoke providers. `status` and `doctor` invoke only declared `observe` capabilities. `apply` invokes exact `apply` capabilities only after complete plan preflight. `run` is an explicit trust transition to one configured operation. See `man rig` for the complete command contract.
+Catalogue queries, `diag`, and `export` never invoke providers. `status` and `doctor` invoke only declared `observe` capabilities. `apply` invokes exact `apply` capabilities only after complete plan preflight. `run` is an explicit trust transition to one configured operation. `publish` is the separate network-capable transition to one selected publisher after export validation. See `man rig` for the complete command contract.
 
 Use `diag` to inspect Rig's runtime, paths, and configuration discovery without provider execution. Use `doctor` for a concise operational health answer and `status` for the complete expected-versus-observed table. Doctor returns 0 when healthy, 1 when completed checks find issues, and 2 when syntax, configuration, or profile resolution is invalid.
 
 ## Status
 
-Rig is a pre-v1 tool under active development. Catalogue parsing, validation, profile resolution, provider-binding resolution, read-only queries, operational health checks, built-in and custom-provider observation, dependency-ordered application, declared operations, integrity-checked direct downloads, and deterministic static public export are implemented. Bootstrap migration, trusted publication deployment, and the Homebrew formula remain tracked work in the [roadmap](ROADMAP.md).
+Rig is a pre-v1 tool under active development. Catalogue parsing, validation, profile resolution, provider-binding resolution, read-only queries, operational health checks, built-in and custom-provider observation, dependency-ordered application, declared operations, integrity-checked direct downloads, deterministic static public export, and trusted publication dispatch are implemented. Bootstrap migration and the Homebrew formula remain tracked work in the [roadmap](ROADMAP.md).
 
 ## Documentation
 

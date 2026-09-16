@@ -32,6 +32,8 @@ rig \- describe and manage a personal working setup
 .BI "rig export " PUBLICATION
 .BI " \-\-output " DIRECTORY
 .br
+.BI "rig publish " PUBLICATION
+.br
 .B rig diag
 .br
 .BI "rig completion " bash|zsh
@@ -49,7 +51,9 @@ Catalogue queries and diagnostics parse inert configuration and do not invoke
 provider code. Status and doctor invoke observation capabilities.
 Apply crosses the explicit mutation boundary only after complete plan preflight.
 Run crosses an
-explicit operation trust boundary after validating its declaration. Package and
+explicit operation trust boundary after validating its declaration. Publish
+crosses a network-capable trust boundary only after export validation.
+Package and
 configuration systems retain authority over their native manifests,
 resolution, configuration, and state.
 .SH INSTALLATION
@@ -147,6 +151,11 @@ and
 .I assets/rig.css
 tree from the publication's explicitly selected profile. Export invokes no
 provider, publisher, or network command.
+.TP
+.BI "rig publish " PUBLICATION
+Render and validate one isolated static export beneath the effective Rig cache,
+then invoke the publication's selected trusted custom publisher exactly once.
+The publisher owns credentials, destination, deployment, and rollback.
 .TP
 .B rig diag
 Print a non-mutating diagnostic snapshot containing Rig and Bash versions,
@@ -340,6 +349,12 @@ requires
 .BR base-url ,
 and
 .BR publisher .
+Offline export does not invoke the publisher. Explicit publication requires
+that provider to use the
+.B custom
+adapter and declare the exact
+.B publish
+capability.
 .B [operation.TOOL.NAME]
 requires
 .BR provider ,
@@ -419,6 +434,29 @@ rejects output targets that are
 .BR .. ,
 symlinks, or non-directories. Review the generated tree before passing it to a
 separate hosting or publisher system.
+.SH PUBLICATION
+\&
+.B rig publish
+performs the same validated public projection in an isolated directory beneath
+.IR ${RIG_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/rig}/publish ,
+then crosses one explicit network-capable trust boundary. It invokes no fallback
+publisher and passes the selected provider one absolute complete-tree path.
+.PP
+Successful publication removes the staged tree. A publisher failure preserves
+its native exit status and retains the complete tree, reporting its path on
+standard error. An interruption before the export is complete removes its
+incomplete known files, invokes no publisher, and returns the conventional
+signal status without reporting a retained export. Once complete, an
+interrupted publication instead retains and reports the tree. Validation,
+staging, and render failures invoke no publisher.
+.PP
+Cleanup revalidates the canonical cache parent and operates relative to that
+pinned directory. It unlinks only
+.I index.html
+and
+.I assets/rig.css
+before removing their empty directories. A substituted parent, symlink,
+unexpected file, or other unsafe shape fails closed without recursive traversal.
 .SH PROVIDER EXECUTION
 \&
 .PP
@@ -512,6 +550,17 @@ exactly match one repeated
 value before invocation. Provider stdout and stderr pass through and the
 native exit status is preserved.
 .PP
+Publication uses the separate fixed protocol:
+.PP
+.nf
+EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 publish PROVIDER PUBLICATION
+    directory ABS_EXPORT_DIR
+.fi
+.PP
+The publisher must declare the exact
+.B publish
+capability. Rig passes publisher output through and preserves its native result.
+.PP
 Observation stdout must contain exactly one of
 .BR present ,
 .BR missing ,
@@ -549,6 +598,13 @@ directly or
 to inspect the checked-out artifacts without changing installed paths.
 .SH EXIT STATUS
 \&
+.B rig run
+returns the selected operation provider's native status, including values
+outside the Rig-owned statuses below.
+.B rig publish
+likewise returns the publisher's native non-zero status. Interrupted publication
+returns 129, 130, or 143 for HUP, INT, or TERM. Rig-owned publication
+validation, export, and cleanup failures return 2.
 .TP
 .B 0
 Healthy status or doctor result, or successful apply, including neutral

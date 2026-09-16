@@ -87,6 +87,11 @@ Declare a publication that names the one profile intended for disclosure. The pu
 [profile.public]
 tool = mgit
 
+[provider.site]
+adapter = custom
+executable = ~/.local/libexec/rig-site-publisher
+capability = publish
+
 [publication.personal-site]
 profile = public
 title = Kris's Rig
@@ -103,6 +108,22 @@ rig export personal-site --output ./public-rig
 The tree contains `index.html` and `assets/rig.css`. Re-export replaces that complete directory so stale files cannot survive. Rig rejects `/`, `.`, `..`, symlinks, and non-directory output targets. The artifact contains only the selected profile's public catalogue fields and relationships whose endpoints are both public; it excludes provider configuration, other profiles, paths, credentials, and observed machine state.
 
 Set `base-url` to the final domain root, subdomain, or subpath, including `https://rig.midnight.ninja/` or `https://midnight.ninja/rig/`. Export is offline and does not deploy the result.
+
+## Publish a public rig
+
+After reviewing the public profile and an offline export, dispatch the configured publisher explicitly:
+
+```bash
+rig publish personal-site
+```
+
+Rig validates the publication, publisher adapter, exact `publish` capability, executable, profile, and generated static tree before invocation. It then calls the selected executable once with this fixed literal protocol:
+
+```text
+EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 publish PROVIDER PUBLICATION directory ABS_EXPORT_DIR
+```
+
+The publisher owns credentials, hosting destination, deployment, and rollback. Rig removes the isolated cache export after success. A staging or render failure invokes no publisher, and an interruption before the export is complete removes its incomplete known files. Once the export is complete, publisher failure or interruption returns the native or conventional signal status, reports the retained export path, and leaves that tree available for diagnosis. Cleanup revalidates and pins the cache parent before unlinking only Rig's two known files; a path substitution or unexpected tree fails closed. Remove a retained tree after inspection; Rig never treats it as deployed.
 
 ## Generate completion
 

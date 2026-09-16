@@ -40,6 +40,9 @@ RIG_RESOLVED_PROFILE=
 RIG_RESOLVED_PLATFORM=
 RIG_ROOT_FILE=
 RIG_INVOKED_PATH=
+RIG_PUBLISH_STAGE=
+RIG_PUBLISH_ROOT=
+RIG_PUBLISH_COMPLETE=0
 
 print_help() {
   printf '%s\n' \
@@ -61,6 +64,7 @@ print_help() {
     '  run TOOL OPERATION [-- ARGUMENT...]    Invoke a declared operation.' \
     '  export PUBLICATION --output DIRECTORY' \
     '                                     Generate a static public rig.' \
+    '  publish PUBLICATION                 Deploy a static public rig.' \
     '  diag                  Print runtime and configuration diagnostics.' \
     '  completion bash|zsh   Print shell completion source.' \
     '  help                  Show this help.'
@@ -93,7 +97,7 @@ print_bash_completion() {
     '  current=${COMP_WORDS[COMP_CWORD]}' \
     '  command=${COMP_WORDS[1]:-}' \
     '  if [ "$COMP_CWORD" -eq 1 ]; then' \
-    '    COMPREPLY=($(compgen -W "-h --help -V --version show list explain status doctor apply run export diag completion help" -- "$current"))' \
+    '    COMPREPLY=($(compgen -W "-h --help -V --version show list explain status doctor apply run export publish diag completion help" -- "$current"))' \
     '    return' \
     '  fi' \
     '  case "$command" in' \
@@ -105,6 +109,7 @@ print_bash_completion() {
     '    apply) COMPREPLY=($(compgen -W "-h --help --profile --dry-run" -- "$current")) ;;' \
     '    run) COMPREPLY=($(compgen -W "-h --help --" -- "$current")) ;;' \
     '    export) COMPREPLY=($(compgen -W "-h --help --output" -- "$current")) ;;' \
+    '    publish) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
     '    diag) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
     '    completion) COMPREPLY=($(compgen -W "bash zsh" -- "$current")) ;;' \
     '  esac' \
@@ -130,6 +135,7 @@ print_zsh_completion() {
     "    'apply:materialise a resolved profile'" \
     "    'run:invoke a declared operation'" \
     "    'export:generate a static public rig'" \
+    "    'publish:deploy a static public rig'" \
     "    'diag:print runtime and configuration diagnostics'" \
     "    'completion:print shell completion source'" \
     "    'help:show help'" \
@@ -145,8 +151,9 @@ print_zsh_completion() {
     "        status) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' ;;" \
     "        doctor) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' ;;" \
     "        apply) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \
-    "        run) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:tool name:' '2:operation name:' '*::operation argument:' ;;" \
+    "        run) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:tool name:' '2:operation name:' '3:separator:(--)' '*::operation argument:' ;;" \
     "        export) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' '--output[write complete static tree]:directory:_directories' ;;" \
+    "        publish) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' ;;" \
     "        diag) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
     "        completion) _values 'shell' bash zsh ;;" \
     '      esac' \
@@ -1109,40 +1116,44 @@ rig_executable_available() {
   esac
 }
 
+rig_prepare_custom_invocation() {
+  local verb provider subject kind locator executable
+
+  verb=$1
+  provider=$2
+  subject=$3
+  kind=$4
+  locator=$5
+
+  rig_get_value "provider.$provider" executable || return 2
+  executable=$RIG_VALUE
+  RIG_INVOKE_ARGUMENTS=()
+  rig_append_arguments "provider.$provider" || return 2
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=rig-provider-v1
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$verb
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$provider
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$subject
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$kind
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
+  RIG_VALUE=$executable
+}
+
 rig_prepare_provider_invocation() {
-  local verb tool binding provider provider_section binding_section
+  local verb tool binding provider binding_section
   local field_index field_end kind locator executable
 
   verb=$1
   tool=$2
   binding=$3
   provider=$4
-  rig_section_index "provider.$provider" || return 2
-  provider_section=$RIG_INDEX
   rig_section_index "$binding" || return 2
   binding_section=$RIG_INDEX
-  rig_get_value "provider.$provider" executable || return 2
-  executable=$RIG_VALUE
   rig_get_value "$binding" kind || return 2
   kind=$RIG_VALUE
   rig_get_value "$binding" locator || return 2
   locator=$RIG_VALUE
-
-  RIG_INVOKE_ARGUMENTS=()
-  field_index=${RIG_SECTION_FIELD_STARTS[$provider_section]}
-  field_end=${RIG_SECTION_FIELD_ENDS[$provider_section]}
-  while [ "$field_index" -lt "$field_end" ]; do
-    if [ "${RIG_FIELD_KEYS[$field_index]}" = argument ]; then
-      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=${RIG_FIELD_VALUES[$field_index]}
-    fi
-    field_index=$((field_index + 1))
-  done
-  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=rig-provider-v1
-  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$verb
-  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$provider
-  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$tool
-  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$kind
-  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
+  rig_prepare_custom_invocation "$verb" "$provider" "$tool" "$kind" "$locator" || return
+  executable=$RIG_VALUE
   field_index=${RIG_SECTION_FIELD_STARTS[$binding_section]}
   field_end=${RIG_SECTION_FIELD_ENDS[$binding_section]}
   while [ "$field_index" -lt "$field_end" ]; do
@@ -1995,16 +2006,8 @@ rig_prepare_operation_invocation() {
   capability=$4
   verb=$5
 
-  rig_get_value "provider.$provider" executable || return 2
+  rig_prepare_custom_invocation "$verb" "$provider" "$tool" operation "$capability" || return
   executable=$RIG_VALUE
-  RIG_INVOKE_ARGUMENTS=()
-  rig_append_arguments "provider.$provider" || return 2
-  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=rig-provider-v1
-  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$verb
-  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$provider
-  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$tool
-  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=operation
-  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$capability
   rig_append_arguments "$section_name" || return 2
   RIG_VALUE=$executable
 }
@@ -2944,9 +2947,10 @@ rig_export_cleanup() {
 }
 
 rig_replace_export_tree() {
-  local target parent basename temporary backup suffix
+  local target report parent basename temporary backup suffix
 
   target=$1
+  report=${2:-yes}
   while [ "$target" != / ] && [ "${target%/}" != "$target" ]; do
     target=${target%/}
   done
@@ -3007,7 +3011,9 @@ rig_replace_export_tree() {
     RIG_EXPORT_TEMP=
   fi
   trap - EXIT HUP INT TERM
-  printf 'Exported %s to %s\n' "$RIG_EXPORT_PUBLICATION" "$target"
+  if [ "$report" = yes ]; then
+    printf 'Exported %s to %s\n' "$RIG_EXPORT_PUBLICATION" "$target"
+  fi
 }
 
 rig_command_export() {
@@ -3044,6 +3050,220 @@ rig_command_export() {
   (
     umask 022
     rig_replace_export_tree "$output"
+  )
+}
+
+rig_cleanup_publish_stage() {
+  local stage_name entry
+
+  if [ -z "${RIG_PUBLISH_STAGE:-}" ]; then
+    return 0
+  fi
+  case "$RIG_PUBLISH_STAGE" in
+    "$RIG_PUBLISH_ROOT"/*.rig-publish.*) ;;
+    *) rig_fail "refusing unsafe publication staging cleanup: $RIG_PUBLISH_STAGE" || return ;;
+  esac
+
+  stage_name=${RIG_PUBLISH_STAGE##*/}
+  if ! (
+    cd "$RIG_PUBLISH_ROOT" || exit 2
+    [ "$(pwd -P)" = "$RIG_PUBLISH_ROOT" ] || exit 2
+    [ ! -L "$stage_name" ] || exit 2
+    if [ ! -e "$stage_name" ]; then
+      exit 0
+    fi
+    [ -d "$stage_name" ] || exit 2
+    cd "$stage_name" || exit 2
+    [ "$(pwd -P)" = "$RIG_PUBLISH_STAGE" ] || exit 2
+    [ ! -L index.html ] || exit 2
+    [ ! -e index.html ] || [ -f index.html ] || exit 2
+    [ ! -L assets ] || exit 2
+    [ ! -e assets ] || [ -d assets ] || exit 2
+    [ ! -L assets/rig.css ] || exit 2
+    [ ! -e assets/rig.css ] || [ -f assets/rig.css ] || exit 2
+    for entry in ./* ./.[!.]* ./..?*; do
+      [ -e "$entry" ] || [ -L "$entry" ] || continue
+      case "$entry" in
+        ./index.html|./assets) ;;
+        *) exit 2 ;;
+      esac
+    done
+    for entry in assets/* assets/.[!.]* assets/..?*; do
+      [ -e "$entry" ] || [ -L "$entry" ] || continue
+      case "$entry" in
+        assets/rig.css) ;;
+        *) exit 2 ;;
+      esac
+    done
+    [ ! -e index.html ] || rm -f -- index.html || exit 2
+    [ ! -e assets/rig.css ] || rm -f -- assets/rig.css || exit 2
+    [ ! -d assets ] || rmdir -- assets || exit 2
+    cd .. || exit 2
+    rmdir -- "$stage_name" || exit 2
+  ); then
+    rig_fail "cannot safely remove publication staging directory: $RIG_PUBLISH_STAGE" || return
+  fi
+  RIG_PUBLISH_STAGE=
+  RIG_PUBLISH_COMPLETE=0
+}
+
+rig_publish_interrupted() {
+  local exit_code
+
+  exit_code=$1
+  trap - HUP INT TERM
+  if [ "${RIG_PUBLISH_COMPLETE:-0}" -eq 1 ]; then
+    printf 'rig: publish interrupted; retained export: %s\n' "$RIG_PUBLISH_STAGE" >&2
+  else
+    if rig_cleanup_publish_stage; then
+      printf 'rig: publish interrupted before publisher handoff\n' >&2
+    else
+      printf 'rig: publish interrupted before publisher handoff; staging cleanup failed\n' >&2
+    fi
+  fi
+  exit "$exit_code"
+}
+
+rig_prepare_publish_stage() {
+  local publication publish_root stage suffix absolute_stage
+
+  publication=$1
+  rig_effective_paths || return 2
+  publish_root=$RIG_DIAG_CACHE_HOME/publish
+  mkdir -p -- "$publish_root" ||
+    rig_fail "cannot create publication cache directory: $publish_root" || return
+  [ -d "$publish_root" ] && [ ! -L "$publish_root" ] ||
+    rig_fail "publication cache path must be a directory, not a symlink: $publish_root" || return
+  RIG_PUBLISH_ROOT=$(cd "$publish_root" && pwd -P) ||
+    rig_fail "cannot resolve publication cache directory: $publish_root" || return
+
+  suffix=$$
+  stage=$RIG_PUBLISH_ROOT/$publication.rig-publish.$suffix
+  while [ -e "$stage" ] || [ -L "$stage" ]; do
+    suffix=$((suffix + 1))
+    stage=$RIG_PUBLISH_ROOT/$publication.rig-publish.$suffix
+  done
+  RIG_PUBLISH_STAGE=$stage
+  if ! mkdir -- "$stage" || ! mkdir -- "$stage/assets"; then
+    rig_cleanup_publish_stage || true
+    rig_fail "cannot create publication staging directory: $stage" || return
+    return 2
+  fi
+  if ! rig_render_publication_html \
+    "$RIG_EXPORT_TITLE" "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM" \
+    >"$stage/index.html"; then
+    rig_cleanup_publish_stage || true
+    rig_fail "cannot render publication document: $stage/index.html" || return
+    return 2
+  fi
+  if ! rig_render_publication_css >"$stage/assets/rig.css"; then
+    rig_cleanup_publish_stage || true
+    rig_fail "cannot render publication stylesheet: $stage/assets/rig.css" || return
+    return 2
+  fi
+  if [ ! -f "$stage/index.html" ] || [ -L "$stage/index.html" ] ||
+    [ ! -f "$stage/assets/rig.css" ] || [ -L "$stage/assets/rig.css" ]; then
+    rig_cleanup_publish_stage || true
+    rig_fail "publication export is incomplete: $stage" || return
+  fi
+  [ ! -L "$stage" ] || {
+    rig_cleanup_publish_stage || true
+    rig_fail "publication staging directory became a symlink: $stage" || return
+  }
+  if ! absolute_stage=$(cd "$stage" && pwd -P); then
+    rig_cleanup_publish_stage || true
+    rig_fail "cannot resolve publication staging directory: $stage" || return
+  fi
+  case "$absolute_stage" in
+    "$RIG_PUBLISH_ROOT"/*.rig-publish.*) ;;
+    *)
+      rig_cleanup_publish_stage || true
+      rig_fail "publication staging directory escaped the cache: $absolute_stage" || return
+      ;;
+  esac
+  RIG_PUBLISH_STAGE=$absolute_stage
+  RIG_PUBLISH_COMPLETE=1
+  RIG_VALUE=$absolute_stage
+}
+
+rig_command_publish() {
+  (
+    local publication section_name profile title base_url publisher adapter executable platform
+    local stage exit_code
+
+    RIG_PUBLISH_STAGE=
+    RIG_PUBLISH_ROOT=
+    RIG_PUBLISH_COMPLETE=0
+    trap 'rig_publish_interrupted 129' HUP
+    trap 'rig_publish_interrupted 130' INT
+    trap 'rig_publish_interrupted 143' TERM
+
+    if [ "$#" -eq 1 ]; then
+      case "$1" in
+        -h|--help)
+          printf '%s\n' 'Usage: rig publish PUBLICATION'
+          return
+          ;;
+      esac
+    fi
+    [ "$#" -eq 1 ] && [ -n "$1" ] ||
+      syntax_error 'usage: rig publish PUBLICATION' || return
+    publication=$1
+
+    rig_load_config || return
+    rig_valid_id "$publication" && rig_section_index "publication.$publication" ||
+      rig_fail "unknown publication '$publication'" || return
+    section_name=publication.$publication
+    rig_get_value "$section_name" profile || return 2
+    profile=$RIG_VALUE
+    rig_get_value "$section_name" title || return 2
+    title=$RIG_VALUE
+    rig_get_value "$section_name" base-url || return 2
+    base_url=$RIG_VALUE
+    rig_publication_base_url "$base_url" || return
+    RIG_PUBLICATION_BASE_URL=$RIG_VALUE
+    rig_get_value "$section_name" publisher || return 2
+    publisher=$RIG_VALUE
+    rig_get_value "provider.$publisher" adapter || return 2
+    adapter=$RIG_VALUE
+    [ "$adapter" = custom ] ||
+      rig_fail "publication '$publication' requires a custom publisher" || return
+    rig_provider_has_capability "$publisher" publish ||
+      rig_fail "publisher '$publisher' does not declare capability 'publish'" || return
+    rig_get_value "provider.$publisher" executable || return 2
+    executable=$RIG_VALUE
+    rig_executable_available "$executable" ||
+      rig_fail "publisher '$publisher' executable unavailable: $executable" || return
+
+    rig_current_platform || return
+    platform=$RIG_VALUE
+    rig_resolve_profile "$profile" "$platform" || return
+    RIG_EXPORT_PUBLICATION=$publication
+    RIG_EXPORT_TITLE=$title
+    umask 077
+    rig_prepare_publish_stage "$publication" || return
+    stage=$RIG_VALUE
+    if ! rig_prepare_custom_invocation publish "$publisher" "$publication" directory "$stage"; then
+      rig_cleanup_publish_stage || true
+      return 2
+    fi
+    executable=$RIG_VALUE
+
+    if "$executable" "${RIG_INVOKE_ARGUMENTS[@]}"; then
+      exit_code=0
+    else
+      exit_code=$?
+    fi
+
+    if [ "$exit_code" -ne 0 ]; then
+      printf 'rig: publish failed; retained export: %s\n' "$RIG_PUBLISH_STAGE" >&2
+      return "$exit_code"
+    fi
+    if ! rig_cleanup_publish_stage; then
+      printf 'rig: publisher succeeded but publication staging cleanup failed\n' >&2
+      return 2
+    fi
+    printf 'Published %s via %s\n' "$publication" "$publisher"
   )
 }
 
@@ -3093,6 +3313,10 @@ main() {
     export)
       shift
       rig_command_export "$@"
+      ;;
+    publish)
+      shift
+      rig_command_publish "$@"
       ;;
     diag)
       shift

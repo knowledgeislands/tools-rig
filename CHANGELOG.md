@@ -17,6 +17,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work is summarised as this evolving baseli
 - `rig apply [--profile NAME] [--dry-run]`
 - `rig run TOOL OPERATION [-- ARGUMENT...]`
 - `rig export PUBLICATION --output DIRECTORY`
+- `rig publish PUBLICATION`
 - `rig diag`
 - `rig completion bash|zsh`
 - `rig help`, `rig --help`, and `rig --version`
@@ -37,6 +38,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work is summarised as this evolving baseli
 - Configuration-defined observe and mutate operations with custom-provider capability checks, literal argument allow-lists, and native outcome propagation.
 - Failure handling that suppresses only transitive dependants while independent work continues.
 - Deterministic offline static export of an explicitly selected public profile with HTML escaping, relationship closure, portable base URLs, disclosure allow-listing, and safe complete-tree replacement.
+- Explicit trusted publication dispatch through one selected custom provider, with isolated cache staging, fixed literal handoff, native outcome propagation, phase-aware interruption handling, exact-file fail-closed cleanup, and retained complete failure artifacts.
 
 ### Distribution baseline
 

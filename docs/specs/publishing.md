@@ -68,11 +68,13 @@ _Evidence:_ `tests/rig.bats` shadows the network client and configures an execut
 
 ### RIG-PUB-007 — Explicit trusted publisher
 
-`rig publish PUBLICATION` MUST invoke only that publication's configured publisher and preserve the publisher's native deployment result.
+`rig publish PUBLICATION` MUST validate and render one complete isolated export beneath the effective Rig cache before invoking only that publication's configured publisher. The publisher MUST use the `custom` adapter and declare the exact `publish` capability. Rig MUST invoke it once as `EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 publish PROVIDER PUBLICATION directory ABS_EXPORT_DIR`, preserving every literal argument boundary and the publisher's native deployment result. Validation, staging, or render failure MUST invoke no publisher. An interruption before the export is complete MUST remove only the incomplete Rig-owned staging files and return the conventional signal status without reporting a retained export. Once the export is complete, publisher failure or interruption MUST retain and report its path. Successful cleanup MUST revalidate the canonical staging parent, operate relative to that pinned directory, and unlink only the two known files before removing their now-empty directories; a substituted parent, symlink, unexpected file, or other unsafe shape MUST fail closed without recursive traversal.
 
-_Conformance:_ pending
+_Conformance:_ conforming
 
-_Verify:_ Bats tests configure two recording publishers, invoke one publication, and assert one literal invocation and its exit result.
+_Verify:_ Bats tests configure two recording publishers; assert selected-only single invocation and exact absolute handoff; exercise unavailable capabilities, staging failure without invocation, pre- and post-completion interruption, native failure, success cleanup, retained complete failure trees, and an adversarial cache-parent swap.
+
+_Evidence:_ `rig_command_publish`, `rig_prepare_publish_stage`, `rig_cleanup_publish_stage`, and `rig_prepare_custom_invocation` implement the isolated handoff, fail-closed cleanup, and trusted dispatch; `tests/rig.bats` covers fixed argv, no-invocation failures, native statuses, interruption phases, staging lifecycle, and parent substitution.
 
 ## Export filesystem boundary
 
