@@ -276,6 +276,20 @@ write_query_config() {
   [[ "$output" == *"completion bash|zsh"* ]]
 }
 
+@test "completion and help provide command-local help" {
+  for flag in -h --help; do
+    run "$RIG" completion "$flag"
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "Usage: rig completion bash|zsh" ]
+
+    run "$RIG" help "$flag"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Usage: rig [options] [command]"* ]]
+  done
+}
+
 @test "version comes from the executable marker" {
   run "$RIG" --version
 
@@ -343,6 +357,8 @@ write_query_config() {
   [[ "$output" == *'run) COMPREPLY=($(compgen -W "-h --help --"'* ]] || false
   [[ "$output" == *'export) COMPREPLY=($(compgen -W "-h --help --output"'* ]] || false
   [[ "$output" == *'publish) COMPREPLY=($(compgen -W "-h --help"'* ]] || false
+  [[ "$output" == *'completion) COMPREPLY=($(compgen -W "-h --help bash zsh"'* ]] || false
+  [[ "$output" == *'help) COMPREPLY=($(compgen -W "-h --help"'* ]] || false
   [[ "$output" == *"show list explain status doctor apply bootstrap run export publish diag completion help"* ]] || false
   [[ "$output" != *" paths "* ]]
 
@@ -360,6 +376,8 @@ write_query_config() {
   [[ "$output" == *"run) _arguments"*"'3:separator:(--)'"* ]] || false
   [[ "$output" == *"'(-V --version)'{-V,--version}"* ]]
   [[ "$output" == *"explain) _arguments '(-h --help)'"* ]]
+  [[ "$output" == *"completion) _arguments '(-h --help)'"* ]]
+  [[ "$output" == *"help) _arguments '(-h --help)'"* ]]
 }
 
 @test "completion definitions evaluate and expose accepted options" {
@@ -397,11 +415,19 @@ write_query_config() {
       COMP_CWORD=2
       _rig
       printf "run:%s\n" "${COMPREPLY[*]}"
-      COMP_WORDS=(rig publish --)
-      COMP_CWORD=2
-      _rig
-      printf "publish:%s\n" "${COMPREPLY[*]}"
-  ' bash "$RIG"
+ COMP_WORDS=(rig publish --)
+ COMP_CWORD=2
+ _rig
+ printf "publish:%s\n" "${COMPREPLY[*]}"
+ COMP_WORDS=(rig completion --)
+ COMP_CWORD=2
+ _rig
+ printf "completion:%s\n" "${COMPREPLY[*]}"
+ COMP_WORDS=(rig help --)
+ COMP_CWORD=2
+ _rig
+ printf "help:%s\n" "${COMPREPLY[*]}"
+ ' bash "$RIG"
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"root:--help --version"* ]]
@@ -411,8 +437,10 @@ write_query_config() {
   [[ "$output" == *"doctor:--help --profile"* ]] || false
   [[ "$output" == *"apply:--help --profile --dry-run"* ]] || false
   [[ "$output" == *"bootstrap:--help --profile --dry-run"* ]] || false
-  [[ "$output" == *"run:--help --"* ]] || false
-  [[ "$output" == *"publish:--help"* ]] || false
+ [[ "$output" == *"run:--help --"* ]] || false
+ [[ "$output" == *"publish:--help"* ]] || false
+ [[ "$output" == *"completion:--help"* ]] || false
+ [[ "$output" == *"help:--help"* ]] || false
 
   run zsh -f -c '
     autoload -Uz compinit && compinit -C
@@ -687,6 +715,75 @@ write_query_config() {
   [ "$status" -eq 0 ]
   [ -L "$install_bin/rig" ]
   [ -L "$install_man/rig.1" ]
+}
+
+@test "release installer validates both artifacts before installing either" {
+  fake_bin=$BATS_TEST_TMPDIR/installer-bin-$BATS_TEST_NUMBER
+  install_bin=$BATS_TEST_TMPDIR/installed-bin-$BATS_TEST_NUMBER
+  install_man=$BATS_TEST_TMPDIR/installed-man-$BATS_TEST_NUMBER
+  downloaded_bin=$BATS_TEST_TMPDIR/downloaded-rig-$BATS_TEST_NUMBER
+  downloaded_man=$BATS_TEST_TMPDIR/downloaded-rig-man-$BATS_TEST_NUMBER
+  mkdir -p "$fake_bin" "$install_bin" "$install_man"
+  printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\n" downloaded-rig' >"$downloaded_bin"
+  printf '%s\n' 'not a Rig manual' >"$downloaded_man"
+  printf '%s\n' old-rig >"$install_bin/rig"
+  printf '%s\n' old-man >"$install_man/rig.1"
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'case "$2" in' \
+    '  */bin/rig) cp "$RIG_TEST_DOWNLOAD_BIN" "$4" ;;' \
+    '  */man/rig.1)' \
+    '    [ "${RIG_TEST_MANUAL_MODE:-fail}" = fail ] && exit 22' \
+    '    cp "$RIG_TEST_DOWNLOAD_MAN" "$4"' \
+    '    ;;' \
+    '  *) exit 64 ;;' \
+    'esac' >"$fake_bin/curl"
+  chmod +x "$fake_bin/curl"
+
+  run env \
+    PATH="$fake_bin:$PATH" \
+    RIG_VERSION=v-test \
+    RIG_INSTALL_DIR=$install_bin \
+    RIG_MAN_INSTALL_DIR=$install_man \
+    RIG_TEST_DOWNLOAD_BIN=$downloaded_bin \
+    RIG_TEST_DOWNLOAD_MAN=$downloaded_man \
+    "$BATS_TEST_DIRNAME/../install.sh"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"download failed: "*"/man/rig.1"* ]]
+  [ "$(cat "$install_bin/rig")" = old-rig ]
+  [ "$(cat "$install_man/rig.1")" = old-man ]
+
+  run env \
+    PATH="$fake_bin:$PATH" \
+    RIG_VERSION=v-test \
+    RIG_INSTALL_DIR=$install_bin \
+    RIG_MAN_INSTALL_DIR=$install_man \
+    RIG_TEST_DOWNLOAD_BIN=$downloaded_bin \
+    RIG_TEST_DOWNLOAD_MAN=$downloaded_man \
+    RIG_TEST_MANUAL_MODE=invalid \
+    "$BATS_TEST_DIRNAME/../install.sh"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"downloaded file is not the Rig manual"* ]]
+  [ "$(cat "$install_bin/rig")" = old-rig ]
+  [ "$(cat "$install_man/rig.1")" = old-man ]
+
+  printf '%s\n' '.TH RIG 1 "test" "Rig" "User Commands"' >"$downloaded_man"
+  run env \
+    PATH="$fake_bin:$PATH" \
+    RIG_VERSION=v-test \
+    RIG_INSTALL_DIR=$install_bin \
+    RIG_MAN_INSTALL_DIR=$install_man \
+    RIG_TEST_DOWNLOAD_BIN=$downloaded_bin \
+    RIG_TEST_DOWNLOAD_MAN=$downloaded_man \
+    RIG_TEST_MANUAL_MODE=valid \
+    "$BATS_TEST_DIRNAME/../install.sh"
+
+  [ "$status" -eq 0 ]
+  cmp "$downloaded_bin" "$install_bin/rig"
+  cmp "$downloaded_man" "$install_man/rig.1"
+  [ -x "$install_bin/rig" ]
 }
 
 @test "invalid syntax is namespaced and exits two" {

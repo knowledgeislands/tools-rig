@@ -114,7 +114,8 @@ print_bash_completion() {
     '    export) COMPREPLY=($(compgen -W "-h --help --output" -- "$current")) ;;' \
     '    publish) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
     '    diag) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
-    '    completion) COMPREPLY=($(compgen -W "bash zsh" -- "$current")) ;;' \
+    '    completion) COMPREPLY=($(compgen -W "-h --help bash zsh" -- "$current")) ;;' \
+    '    help) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
     '  esac' \
     '}' \
     'complete -F _rig rig'
@@ -160,7 +161,8 @@ print_zsh_completion() {
     "        export) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' '--output[write complete static tree]:directory:_directories' ;;" \
     "        publish) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' ;;" \
     "        diag) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
-    "        completion) _values 'shell' bash zsh ;;" \
+    "        completion) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:shell:(bash zsh)' ;;" \
+    "        help) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
     '      esac' \
     '      ;;' \
     '  esac' \
@@ -3343,8 +3345,21 @@ main() {
   RIG_INVOKED_PATH=$0
   command_name=${1:-help}
   case "$command_name" in
-    -h|--help|help)
+    -h|--help)
       [ "$#" -eq 1 ] || syntax_error "unexpected arguments for $command_name" || return
+      print_help
+      ;;
+    help)
+      case "$#" in
+        1) ;;
+        2)
+          case "$2" in
+            -h|--help) ;;
+            *) syntax_error "unexpected $2" || return ;;
+          esac
+          ;;
+        *) syntax_error 'usage: rig help [-h|--help]' || return ;;
+      esac
       print_help
       ;;
     -V|--version)
@@ -3398,6 +3413,7 @@ main() {
     completion)
       [ "$#" -eq 2 ] || syntax_error 'usage: rig completion bash|zsh' || return
       case "$2" in
+        -h|--help) printf '%s\n' 'Usage: rig completion bash|zsh' ;;
         bash) print_bash_completion ;;
         zsh) print_zsh_completion ;;
         *) syntax_error "unsupported shell: $2" || return ;;

@@ -21,7 +21,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work is summarised as this evolving baseli
 - `rig publish PUBLICATION`
 - `rig diag`
 - `rig completion bash|zsh`
-- `rig help`, `rig --help`, and `rig --version`
+- `rig help [-h|--help]`, `rig --help`, and `rig --version`
 
 ### Behaviours
 
@@ -46,4 +46,4 @@ Rig 1.0.0 is not yet released. Pre-v1 work is summarised as this evolving baseli
 
 - `install.sh` supports released and linked development copies.
 - `rig(1)` documents commands, configuration, installation, and shell completion.
-- Bash and Zsh completion definitions cover the shipped command and option surface.
+- Bash and Zsh completion definitions cover the shipped command and option surface, including command-local help.

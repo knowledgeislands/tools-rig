@@ -42,6 +42,9 @@ rig \- describe and manage a personal working setup
 .br
 .BI "rig completion " bash|zsh
 .br
+.B rig help
+.RB [ \-h | \-\-help ]
+.br
 .B rig
 .RB [ \-h | \-\-help | \-V | \-\-version ]
 .SH DESCRIPTION
@@ -183,10 +186,18 @@ configuration and fragment count, configuration validity, schema, and default
 profile when available. No provider is invoked.
 .TP
 .BI "rig completion " bash|zsh
-Print completion source for the selected shell.
+Print completion source for the selected shell. With
+.B \-h
+or
+.BR \-\-help ,
+print command usage without generating completion source.
 .TP
 .B rig help
-Show top-level command help.
+Show top-level command help. The optional
+.B \-h
+and
+.B \-\-help
+forms produce the same output.
 .SH SHELL COMPLETION
 \&
 .PP

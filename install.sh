@@ -70,21 +70,17 @@ temp_bin=$(mktemp)
 temp_man=$(mktemp)
 trap 'rm -f "$temp_bin" "$temp_man"' EXIT
 
-say "installing Rig ($ref) to $INSTALL_DIR"
+say "staging Rig ($ref)"
 curl -fsSL "$source_url" -o "$temp_bin" || die "download failed: $source_url"
+curl -fsSL "$manual_url" -o "$temp_man" || die "download failed: $manual_url"
 head -n 1 "$temp_bin" | grep -q '^#!/usr/bin/env bash$' || die 'downloaded file is not the Rig executable'
+head -n 1 "$temp_man" | grep -q '^\.TH RIG 1' || die 'downloaded file is not the Rig manual'
 
 mkdir -p "$INSTALL_DIR" "$MAN_INSTALL_DIR"
 install -m 0755 "$temp_bin" "$INSTALL_DIR/rig"
 say "installed $INSTALL_DIR/rig"
-
-if curl -fsSL "$manual_url" -o "$temp_man"; then
-  head -n 1 "$temp_man" | grep -q '^\.TH RIG 1' || die 'downloaded file is not the Rig manual'
-  install -m 0644 "$temp_man" "$MAN_INSTALL_DIR/rig.1"
-  say "installed $MAN_INSTALL_DIR/rig.1"
-else
-  say "warning: manual unavailable at $ref; installed executable only"
-fi
+install -m 0644 "$temp_man" "$MAN_INSTALL_DIR/rig.1"
+say "installed $MAN_INSTALL_DIR/rig.1"
 
 case :$PATH: in
   *:$INSTALL_DIR:*) ;;

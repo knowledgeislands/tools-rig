@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
 
 jobs:
@@ -16,13 +17,27 @@ jobs:
 
   test:
     name: Bats
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install Bats
+      - name: Install Bats on Linux
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y bats
-      - name: Run tests
+      - name: Install Bats on macOS
+        if: runner.os == 'macOS'
+        run: brew install bats-core
+      - name: Run tests on Linux
+        if: runner.os == 'Linux'
         run: bats tests/
+      - name: Run tests with macOS system Bash
+        if: runner.os == 'macOS'
+        run: |
+          /bin/bash --version
+          bats_bin=$(command -v bats)
+          PATH=/usr/bin:/bin:/usr/sbin:/sbin "$bats_bin" tests/
 
   manual:
     name: mandoc
@@ -33,3 +48,19 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y mandoc
       - name: Lint manual
         run: mandoc -T lint man/rig.1
+
+  release-tag:
+    name: Release tag matches executable
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare tag and Rig version
+        run: |
+          tag_version=${GITHUB_REF_NAME#v}
+          rig_version=$(sed -n 's/^RIG_VERSION=//p' bin/rig)
+          if [ "$tag_version" != "$rig_version" ]; then
+            printf 'release tag %s does not match Rig version %s\n' \
+              "$GITHUB_REF_NAME" "$rig_version" >&2
+            exit 1
+          fi

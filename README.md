@@ -105,8 +105,8 @@ See `man rig` for the exact native command matrix and custom-provider protocol.
 - `rig export PUBLICATION --output DIRECTORY` generates a deterministic static site from the publication's explicitly selected public profile.
 - `rig publish PUBLICATION` renders an isolated static export and hands it to the publication's one trusted custom publisher.
 - `rig diag` reports the effective Rig runtime, active platform, XDG paths, and configuration discovery and validity.
-- `rig completion bash|zsh` prints shell completion source.
-- `rig help`, `rig --help`, and `rig --version` provide command and version information.
+- `rig completion bash|zsh` prints shell completion source; `-h` or `--help` prints command usage.
+- `rig help [-h|--help]`, `rig --help`, and `rig --version` provide command and version information.
 
 Catalogue queries, `diag`, and `export` never invoke providers. `status` and `doctor` invoke only declared `observe` capabilities. `apply` and `bootstrap` invoke exact `apply` capabilities only after complete plan preflight. `run` is an explicit trust transition to one configured operation. `publish` is the separate network-capable transition to one selected publisher after export validation. See `man rig` for the complete command contract.
 
