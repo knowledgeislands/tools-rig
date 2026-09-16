@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-16T23:37:31Z
+updated_at: 2026-09-17T00:02:00Z
 ---
 
 # RIG-DIST-001: Publish first release
@@ -90,6 +90,12 @@ Align installation and upgrade guidance with the immutable curl archive and Home
 ### Roadmap
 
 Retain this item through cross-repository formula verification and record the exact release and tap revisions in its review packet before acceptance.
+
+## Release-candidate audit
+
+Local hardening landed in `3fc0759`: CI now triggers for version tags, exercises Bash 3.2 on macOS as well as Ubuntu, and rejects tag/version mismatches; the installer validates both executable and manual before replacing either; command-local completion and help coverage is aligned. The complete local gate passes with 98 Bats tests. The repository audit remains 14/15 only because of nine approval-gated live GitHub settings.
+
+The candidate is intentionally not frozen: `RIG_VERSION` remains `0.1.0`, the changelog remains `1.0.0 — in progress`, mutable development installation wording remains in place, and no tag, push, GitHub release, checksum, or tap formula exists. Explicit approval is required before those publication steps and live GitHub settings changes.
 
 ## Discussion
 
