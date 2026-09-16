@@ -4,12 +4,12 @@ area: CORE
 title: Build catalogue resolver
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: c8d905571d7d4ba7f28ebe654a6406fd41b00726
 created_at: 2026-09-15T11:53:55Z
-updated_at: 2026-09-16T08:30:15Z
+updated_at: 2026-09-16T09:56:12Z
 ---
 
 # RIG-CORE-003: Build catalogue resolver
@@ -97,6 +97,10 @@ Independent review found and the implementation now covers mixed catalogue-only/
 ### Mini recap
 
 Rig now has one tested catalogue interpretation for later queries, orchestration, and public export. The three consumers are dependency-ready but remain unselected, and executable provider behavior remains separate.
+
+## Done
+
+Accepted 2026-09-16 by Kris Brown on review packet above.
 
 ## Discussion
 
