@@ -4,12 +4,12 @@ area: MIG
 title: Migrate private declarations
 theme: migration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 8807b5579585f1f22b7de832a97d5af68e7181db
 created_at: 2026-09-15T11:53:55Z
-updated_at: 2026-09-16T23:11:52Z
+updated_at: 2026-09-16T23:17:36Z
 ---
 
 # RIG-MIG-004: Migrate private declarations
@@ -104,6 +104,10 @@ The delivery preserves the approved 12/88/85 and 76/12 partitions, keeps native 
 ### Mini recap
 
 The private rig is now provider-bound without publishing personal declarations, so bootstrap, machine-audit, and service-operation migrations can proceed against the standalone CLI.
+
+## Done
+
+Accepted 2026-09-17 by Kris Brown on review packet above.
 
 ## Discussion
 

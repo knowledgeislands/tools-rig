@@ -4,12 +4,12 @@ area: CLI
 title: Add doctor command
 theme: cli
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 8807b5579585f1f22b7de832a97d5af68e7181db
 created_at: 2026-09-15T13:04:11Z
-updated_at: 2026-09-16T23:11:52Z
+updated_at: 2026-09-16T23:17:36Z
 ---
 
 # RIG-CLI-004: Add doctor command
@@ -104,6 +104,10 @@ The delivered command satisfies the locked health policy, uses the shared state 
 ### Mini recap
 
 Rig now offers a compact top-level health answer above detailed `status`, with aligned user guide, Specifications, help, completion, and manual coverage.
+
+## Done
+
+Accepted 2026-09-17 by Kris Brown on review packet above.
 
 ## Discussion
 

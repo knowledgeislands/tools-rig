@@ -4,12 +4,12 @@ area: DIST
 title: Publish personal rig
 theme: distribution
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 8807b5579585f1f22b7de832a97d5af68e7181db
 created_at: 2026-09-15T11:53:55Z
-updated_at: 2026-09-16T23:11:52Z
+updated_at: 2026-09-16T23:17:36Z
 ---
 
 # RIG-DIST-002: Publish personal rig
@@ -113,6 +113,10 @@ The implementation satisfies the approved selection, staging, cleanup, signal, l
 ### Mini recap
 
 Rig can now publish a personal projection such as `rig.midnight.ninja` through any explicitly configured publisher without acquiring hosting-specific credentials or deployment logic.
+
+## Done
+
+Accepted 2026-09-17 by Kris Brown on review packet above.
 
 ## Discussion
 
