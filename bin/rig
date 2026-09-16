@@ -56,6 +56,8 @@ print_help() {
     '  explain TOOL                          Explain a declared tool.' \
     '  status [--profile NAME]                Compare expected and observed state.' \
     '  apply [--profile NAME] [--dry-run]     Materialise a resolved profile.' \
+    '  export PUBLICATION --output DIRECTORY' \
+    '                                     Generate a static public rig.' \
     '  diag                  Print runtime and configuration diagnostics.' \
     '  completion bash|zsh   Print shell completion source.' \
     '  help                  Show this help.'
@@ -88,7 +90,7 @@ print_bash_completion() {
     '  current=${COMP_WORDS[COMP_CWORD]}' \
     '  command=${COMP_WORDS[1]:-}' \
     '  if [ "$COMP_CWORD" -eq 1 ]; then' \
-    '    COMPREPLY=($(compgen -W "-h --help -V --version show list explain status apply diag completion help" -- "$current"))' \
+      '    COMPREPLY=($(compgen -W "-h --help -V --version show list explain status apply export diag completion help" -- "$current"))' \
     '    return' \
     '  fi' \
     '  case "$command" in' \
@@ -97,6 +99,7 @@ print_bash_completion() {
     '    explain) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
     '    status) COMPREPLY=($(compgen -W "-h --help --profile" -- "$current")) ;;' \
     '    apply) COMPREPLY=($(compgen -W "-h --help --profile --dry-run" -- "$current")) ;;' \
+    '    export) COMPREPLY=($(compgen -W "-h --help --output" -- "$current")) ;;' \
     '    diag) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
     '    completion) COMPREPLY=($(compgen -W "bash zsh" -- "$current")) ;;' \
     '  esac' \
@@ -119,6 +122,7 @@ print_zsh_completion() {
     "    'explain:explain a declared tool'" \
     "    'status:compare expected and observed state'" \
     "    'apply:materialise a resolved profile'" \
+    "    'export:generate a static public rig'" \
     "    'diag:print runtime and configuration diagnostics'" \
     "    'completion:print shell completion source'" \
     "    'help:show help'" \
@@ -133,6 +137,7 @@ print_zsh_completion() {
     "        explain) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
     "        status) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' ;;" \
     "        apply) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \
+    "        export) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' '--output[write complete static tree]:directory:_directories' ;;" \
     "        diag) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
     "        completion) _values 'shell' bash zsh ;;" \
     '      esac' \
@@ -304,7 +309,7 @@ rig_field_kind() {
     category:name|category:purpose|\
     tool:name|tool:category|tool:purpose|tool:rationale|\
     provider:adapter|provider:command|provider:executable|provider:manifest|\
-    binding:kind|binding:locator|\
+    binding:kind|binding:locator|binding:destination|binding:checksum|\
     publication:profile|publication:title|publication:base-url|publication:publisher)
       RIG_FIELD_KIND=scalar
       ;;
@@ -357,7 +362,8 @@ rig_add_field() {
   fi
 
   if [ "$section_type:$key" = provider:executable ] ||
-    [ "$section_type:$key" = provider:manifest ]; then
+    [ "$section_type:$key" = provider:manifest ] ||
+    [ "$section_type:$key" = binding:destination ]; then
     case "$value" in
       \~/*)
         [ -n "${HOME:-}" ] || rig_fail "$file:$line: HOME is required to expand '$key'" || return
@@ -580,6 +586,79 @@ rig_validate_cycles() {
   done
 }
 
+rig_validate_provider_adapter() {
+  local section_name adapter
+
+  section_name=$1
+  adapter=$2
+  case "$adapter" in
+    custom)
+      rig_require_field "$section_name" executable || return
+      ;;
+    homebrew|uv|chezmoi|direct-download) ;;
+  esac
+}
+
+rig_validate_binding_adapter() {
+  local section_name provider adapter kind locator destination checksum digest
+
+  section_name=$1
+  provider=$2
+  rig_get_value "provider.$provider" adapter || return 2
+  adapter=$RIG_VALUE
+  rig_get_value "$section_name" kind || return 2
+  kind=$RIG_VALUE
+  rig_get_value "$section_name" locator || return 2
+  locator=$RIG_VALUE
+
+  case "$adapter:$kind" in
+    custom:*) ;;
+    homebrew:formula|homebrew:cask|homebrew:mas|uv:tool|chezmoi:target) ;;
+    direct-download:executable) ;;
+    homebrew:*|uv:*|chezmoi:*|direct-download:*)
+      rig_fail "[$section_name] kind '$kind' is not supported by adapter '$adapter'" || return
+      ;;
+  esac
+
+  if [ "$adapter:$kind" = homebrew:mas ]; then
+    case "$locator" in
+      ''|*[!0-9]*)
+        rig_fail "[$section_name] Homebrew mas locator must be a numeric application identity" || return
+        ;;
+    esac
+  fi
+
+  if [ "$adapter" = direct-download ]; then
+    case "$locator" in
+      https://*) ;;
+      *) rig_fail "[$section_name] direct-download locator must use HTTPS" || return ;;
+    esac
+    rig_require_field "$section_name" destination || return
+    destination=$RIG_VALUE
+    case "$destination" in
+      /*) ;;
+      *) rig_fail "[$section_name] direct-download destination must be absolute or start with '~/'" || return ;;
+    esac
+    rig_require_field "$section_name" checksum || return
+    checksum=$RIG_VALUE
+    case "$checksum" in
+      sha256:*) digest=${checksum#sha256:} ;;
+      *) rig_fail "[$section_name] direct-download checksum must use 'sha256:'" || return ;;
+    esac
+    [ "${#digest}" -eq 64 ] ||
+      rig_fail "[$section_name] direct-download checksum must contain 64 lowercase hexadecimal characters" || return
+    case "$digest" in
+      *[!0-9a-f]*)
+        rig_fail "[$section_name] direct-download checksum must contain 64 lowercase hexadecimal characters" || return
+        ;;
+    esac
+  else
+    if rig_get_value "$section_name" destination || rig_get_value "$section_name" checksum; then
+      rig_fail "[$section_name] destination and checksum are only valid for direct-download bindings" || return
+    fi
+  fi
+}
+
 rig_validate_model() {
   local index section_name section_type section_id secondary_id adapter
 
@@ -625,15 +704,14 @@ rig_validate_model() {
       provider)
         rig_require_field "$section_name" adapter || return
         adapter=$RIG_VALUE
-        if [ "$adapter" = custom ]; then
-          rig_require_field "$section_name" executable || return
-        fi
+        rig_validate_provider_adapter "$section_name" "$adapter" || return
         ;;
       binding)
         rig_reference_exists tool "$section_id" || rig_fail "[$section_name] references unknown tool '$section_id'" || return
         rig_reference_exists provider "$secondary_id" || rig_fail "[$section_name] references unknown provider '$secondary_id'" || return
         rig_require_field "$section_name" kind || return
         rig_require_field "$section_name" locator || return
+        rig_validate_binding_adapter "$section_name" "$secondary_id" || return
         ;;
       publication)
         rig_require_field "$section_name" profile || return
@@ -1070,13 +1148,403 @@ rig_resolve_operational_plan() {
   rig_build_plan
 }
 
+rig_adapter_is_builtin() {
+  case "$1" in
+    homebrew|uv|chezmoi|direct-download) return 0 ;;
+  esac
+  return 1
+}
+
+rig_provider_executable() {
+  local provider adapter kind
+
+  provider=$1
+  adapter=$2
+  kind=$3
+  if rig_get_value "provider.$provider" executable; then
+    return 0
+  fi
+  case "$adapter:$kind" in
+    homebrew:mas) RIG_VALUE=mas ;;
+    homebrew:*) RIG_VALUE=brew ;;
+    uv:*) RIG_VALUE=uv ;;
+    chezmoi:*) RIG_VALUE=chezmoi ;;
+    direct-download:*) RIG_VALUE=curl ;;
+    *) return 1 ;;
+  esac
+}
+
+rig_append_arguments() {
+  local section_name section_index field_index field_end
+
+  section_name=$1
+  rig_section_index "$section_name" || return 2
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = argument ]; then
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=${RIG_FIELD_VALUES[$field_index]}
+    fi
+    field_index=$((field_index + 1))
+  done
+}
+
+rig_prepare_builtin_invocation() {
+  local verb binding provider adapter kind locator
+
+  verb=$1
+  binding=$2
+  provider=$3
+  rig_get_value "provider.$provider" adapter || return 2
+  adapter=$RIG_VALUE
+  rig_get_value "$binding" kind || return 2
+  kind=$RIG_VALUE
+  rig_get_value "$binding" locator || return 2
+  locator=$RIG_VALUE
+  rig_provider_executable "$provider" "$adapter" "$kind" || return 2
+  RIG_EXECUTABLE=$RIG_VALUE
+  RIG_INVOKE_ARGUMENTS=()
+  rig_append_arguments "provider.$provider" || return
+
+  case "$adapter:$kind:$verb" in
+    homebrew:formula:observe)
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=list
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--formula
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--versions
+      rig_append_arguments "$binding" || return
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
+      ;;
+    homebrew:cask:observe)
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=list
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--cask
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--versions
+      rig_append_arguments "$binding" || return
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
+      ;;
+    homebrew:formula:apply|homebrew:cask:apply)
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=install
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--$kind
+      rig_append_arguments "$binding" || return
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
+      ;;
+    homebrew:mas:observe)
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=list
+      rig_append_arguments "$binding" || return
+      ;;
+    homebrew:mas:apply)
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=install
+      rig_append_arguments "$binding" || return
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
+      ;;
+    uv:tool:observe)
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=tool
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=list
+      rig_append_arguments "$binding" || return
+      ;;
+    uv:tool:apply)
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=tool
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=install
+      rig_append_arguments "$binding" || return
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
+      ;;
+    chezmoi:target:observe)
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=status
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--path-style=absolute
+      rig_append_arguments "$binding" || return
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
+      ;;
+    chezmoi:target:apply)
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=apply
+      rig_append_arguments "$binding" || return
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
+      ;;
+    direct-download:executable:apply)
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--fail
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--location
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--proto
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]='=https'
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--proto-redir
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]='=https'
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--silent
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--show-error
+      rig_append_arguments "$binding" || return
+      ;;
+    *) return 2 ;;
+  esac
+}
+
+rig_sha256_file() {
+  local file output executable
+
+  file=$1
+  if executable=$(command -v shasum 2>/dev/null); then
+    output=$("$executable" -a 256 "$file") || return 1
+  elif executable=$(command -v sha256sum 2>/dev/null); then
+    output=$("$executable" "$file") || return 1
+  else
+    return 1
+  fi
+  RIG_VALUE=${output%%[[:space:]]*}
+  [ "${#RIG_VALUE}" -eq 64 ]
+}
+
+rig_sha256_available() {
+  command -v shasum >/dev/null 2>&1 || command -v sha256sum >/dev/null 2>&1
+}
+
+rig_capture_invocation() {
+  local executable captured marker native_status
+
+  executable=$1
+  marker=$'\036'
+  captured=$("$executable" "${RIG_INVOKE_ARGUMENTS[@]}"; native_status=$?; \
+    printf '%s%s' "$marker" "$native_status")
+  RIG_NATIVE_STATUS=${captured##*"$marker"}
+  RIG_CAPTURED_OUTPUT=${captured%"$marker"*}
+  case "$RIG_CAPTURED_OUTPUT" in
+    *$'\n') RIG_CAPTURED_OUTPUT=${RIG_CAPTURED_OUTPUT%$'\n'} ;;
+  esac
+}
+
+rig_output_has_identity() {
+  local output wanted identity
+
+  output=$1
+  wanted=$2
+  while IFS=' ' read -r identity _; do
+    [ "$identity" = "$wanted" ] && return 0
+  done <<< "$output"
+  return 1
+}
+
+rig_observe_provider() {
+  local tool binding provider adapter kind locator executable checksum expected destination
+
+  tool=$1
+  binding=$2
+  provider=$3
+  RIG_OBSERVATION=unknown
+  RIG_OBSERVATION_DETAIL=-
+  rig_get_value "provider.$provider" adapter || return 2
+  adapter=$RIG_VALUE
+  rig_get_value "$binding" kind || return 2
+  kind=$RIG_VALUE
+  rig_get_value "$binding" locator || return 2
+  locator=$RIG_VALUE
+
+  if [ "$adapter" = custom ]; then
+    rig_get_value "provider.$provider" executable || return 2
+    executable=$RIG_VALUE
+    if ! rig_executable_available "$executable"; then
+      RIG_OBSERVATION=unavailable
+      RIG_OBSERVATION_DETAIL='executable-unavailable'
+      return 0
+    fi
+    rig_prepare_provider_invocation observe "$tool" "$binding" "$provider" || return
+    executable=$RIG_VALUE
+    rig_capture_invocation "$executable"
+    if [ "$RIG_NATIVE_STATUS" -ne 0 ]; then
+      RIG_OBSERVATION=unknown
+      RIG_OBSERVATION_DETAIL=exit:$RIG_NATIVE_STATUS
+      return 0
+    fi
+    case "$RIG_CAPTURED_OUTPUT" in
+      present|missing|drifted|unavailable|unknown) RIG_OBSERVATION=$RIG_CAPTURED_OUTPUT ;;
+      *)
+        RIG_OBSERVATION=unknown
+        RIG_OBSERVATION_DETAIL=invalid-response
+        ;;
+    esac
+    return 0
+  fi
+
+  if [ "$adapter" = direct-download ]; then
+    rig_get_value "$binding" destination || return 2
+    destination=$RIG_VALUE
+    if [ -L "$destination" ] || { [ -e "$destination" ] && [ ! -f "$destination" ]; }; then
+      RIG_OBSERVATION=unavailable
+      RIG_OBSERVATION_DETAIL=unsafe-destination
+    elif [ ! -e "$destination" ]; then
+      RIG_OBSERVATION=missing
+    elif ! rig_sha256_available; then
+      RIG_OBSERVATION=unavailable
+      RIG_OBSERVATION_DETAIL='checksum-executable-unavailable'
+    elif ! rig_sha256_file "$destination"; then
+      RIG_OBSERVATION=unknown
+      RIG_OBSERVATION_DETAIL='checksum-failed'
+    else
+      checksum=$RIG_VALUE
+      rig_get_value "$binding" checksum || return 2
+      expected=${RIG_VALUE#sha256:}
+      if [ "$checksum" = "$expected" ] && [ -x "$destination" ]; then
+        RIG_OBSERVATION=present
+      else
+        RIG_OBSERVATION=drifted
+      fi
+    fi
+    return 0
+  fi
+
+  rig_prepare_builtin_invocation observe "$binding" "$provider" || return 2
+  executable=$RIG_EXECUTABLE
+  if ! rig_executable_available "$executable"; then
+    RIG_OBSERVATION=unavailable
+    RIG_OBSERVATION_DETAIL='executable-unavailable'
+    return 0
+  fi
+  rig_capture_invocation "$executable"
+  if [ "$RIG_NATIVE_STATUS" -ne 0 ]; then
+    if [ "$adapter:$kind:$RIG_NATIVE_STATUS" = homebrew:formula:1 ] ||
+      [ "$adapter:$kind:$RIG_NATIVE_STATUS" = homebrew:cask:1 ]; then
+      RIG_OBSERVATION=missing
+    else
+      RIG_OBSERVATION=unknown
+      RIG_OBSERVATION_DETAIL=exit:$RIG_NATIVE_STATUS
+    fi
+    return 0
+  fi
+  case "$adapter:$kind" in
+    homebrew:formula|homebrew:cask) RIG_OBSERVATION=present ;;
+    homebrew:mas|uv:tool)
+      if rig_output_has_identity "$RIG_CAPTURED_OUTPUT" "$locator"; then
+        RIG_OBSERVATION=present
+      else
+        RIG_OBSERVATION=missing
+      fi
+      ;;
+    chezmoi:target)
+      if [ -n "$RIG_CAPTURED_OUTPUT" ]; then
+        RIG_OBSERVATION=drifted
+      else
+        RIG_OBSERVATION=present
+      fi
+      ;;
+  esac
+}
+
+rig_preflight_provider() {
+  local tool binding provider adapter kind executable destination parent
+
+  tool=$1
+  binding=$2
+  provider=$3
+  rig_get_value "provider.$provider" adapter || return 2
+  adapter=$RIG_VALUE
+  rig_provider_has_capability "$provider" apply ||
+    rig_fail "provider '$provider' does not declare capability 'apply'" || return
+  if [ "$adapter" = custom ]; then
+    rig_get_value "provider.$provider" executable || return 2
+    executable=$RIG_VALUE
+    rig_executable_available "$executable" ||
+      rig_fail "provider '$provider' executable is unavailable: $executable" || return
+    rig_prepare_provider_invocation apply "$tool" "$binding" "$provider" || return
+    return 0
+  fi
+  rig_adapter_is_builtin "$adapter" ||
+    rig_fail "provider '$provider' has unsupported adapter '$adapter' apply" || return
+  rig_get_value "$binding" kind || return 2
+  kind=$RIG_VALUE
+  rig_provider_executable "$provider" "$adapter" "$kind" || return 2
+  executable=$RIG_VALUE
+  rig_executable_available "$executable" ||
+    rig_fail "provider '$provider' executable is unavailable: $executable" || return
+  if [ "$adapter" = direct-download ]; then
+    rig_sha256_available ||
+      rig_fail "provider '$provider' checksum executable is unavailable" || return
+    rig_executable_available mktemp ||
+      rig_fail "provider '$provider' temporary-file executable is unavailable: mktemp" || return
+    rig_get_value "$binding" destination || return 2
+    destination=$RIG_VALUE
+    if [ -L "$destination" ] || { [ -e "$destination" ] && [ ! -f "$destination" ]; }; then
+      rig_fail "provider '$provider' refuses unsafe destination: $destination" || return
+    fi
+    parent=${destination%/*}
+    [ -n "$parent" ] || parent=/
+    [ -d "$parent" ] && [ -w "$parent" ] ||
+      rig_fail "provider '$provider' destination directory is unavailable: $parent" || return
+  else
+    rig_prepare_builtin_invocation apply "$binding" "$provider" || return 2
+  fi
+}
+
+rig_apply_direct_download() {
+  local binding provider executable locator destination expected actual temporary
+
+  binding=$1
+  provider=$2
+  rig_get_value "$binding" locator || return 2
+  locator=$RIG_VALUE
+  rig_get_value "$binding" destination || return 2
+  destination=$RIG_VALUE
+  rig_get_value "$binding" checksum || return 2
+  expected=${RIG_VALUE#sha256:}
+  rig_prepare_builtin_invocation apply "$binding" "$provider" || return 2
+  executable=$RIG_EXECUTABLE
+  temporary=$(mktemp "$destination.rig-tmp.XXXXXX") || return 1
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--output
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$temporary
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
+  if ! "$executable" "${RIG_INVOKE_ARGUMENTS[@]}" 1>&2; then
+    rm -f "$temporary"
+    return 1
+  fi
+  if ! rig_sha256_file "$temporary"; then
+    rm -f "$temporary"
+    return 1
+  fi
+  actual=$RIG_VALUE
+  if [ "$actual" != "$expected" ]; then
+    printf 'rig: error: checksum mismatch for %s\n' "$locator" >&2
+    rm -f "$temporary"
+    return 1
+  fi
+  if [ -L "$destination" ] || { [ -e "$destination" ] && [ ! -f "$destination" ]; }; then
+    printf 'rig: error: destination became unsafe before replacement: %s\n' "$destination" >&2
+    rm -f "$temporary"
+    return 1
+  fi
+  if ! chmod 0755 "$temporary" || ! mv -f "$temporary" "$destination"; then
+    rm -f "$temporary"
+    return 1
+  fi
+  if [ -L "$destination" ] || [ ! -f "$destination" ]; then
+    if [ -d "$destination" ] && [ -f "$destination/${temporary##*/}" ]; then
+      rm -f "$destination/${temporary##*/}"
+    fi
+    printf 'rig: error: destination was not replaced safely: %s\n' "$destination" >&2
+    return 1
+  fi
+}
+
+rig_apply_provider() {
+  local tool binding provider adapter executable
+
+  tool=$1
+  binding=$2
+  provider=$3
+  rig_get_value "provider.$provider" adapter || return 2
+  adapter=$RIG_VALUE
+  if [ "$adapter" = custom ]; then
+    rig_prepare_provider_invocation apply "$tool" "$binding" "$provider" || return
+    executable=$RIG_VALUE
+    "$executable" "${RIG_INVOKE_ARGUMENTS[@]}" 1>&2
+  elif [ "$adapter" = direct-download ]; then
+    rig_apply_direct_download "$binding" "$provider"
+  else
+    rig_prepare_builtin_invocation apply "$binding" "$provider" || return 2
+    executable=$RIG_EXECUTABLE
+    "$executable" "${RIG_INVOKE_ARGUMENTS[@]}" 1>&2
+  fi
+}
+
 rig_command_status() {
-  local profile index tool binding provider adapter executable observation native_status captured
-  local state detail unhealthy present missing drifted unavailable unknown catalogue_only
-  local response_marker
+  local profile index tool binding provider adapter state detail unhealthy
+  local present missing drifted unavailable unknown catalogue_only
 
   profile=
-  response_marker=$'\036'
   case "$#" in
     0) ;;
     1)
@@ -1108,7 +1576,6 @@ rig_command_status() {
     tool=${RIG_PLAN_TOOLS[$index]}
     binding=${RIG_PLAN_BINDINGS[$index]}
     provider=${RIG_PLAN_PROVIDERS[$index]}
-    state=unknown
     detail=-
     if [ -z "$binding" ]; then
       state=unavailable
@@ -1120,59 +1587,29 @@ rig_command_status() {
       detail=blocked-by:$RIG_VALUE
       RIG_PLAN_RESULTS[$index]=skipped
       unhealthy=$((unhealthy + 1))
+    elif ! rig_provider_has_capability "$provider" observe; then
+      state=unavailable
+      detail=unsupported-capability:observe
+      RIG_PLAN_RESULTS[$index]=failed
+      unhealthy=$((unhealthy + 1))
     else
       rig_get_value "provider.$provider" adapter || return 2
       adapter=$RIG_VALUE
-      if [ "$adapter" != custom ]; then
+      if [ "$adapter" != custom ] && ! rig_adapter_is_builtin "$adapter"; then
         state=unavailable
         detail=unsupported-adapter:$adapter
         RIG_PLAN_RESULTS[$index]=failed
-        unhealthy=$((unhealthy + 1))
-      elif ! rig_provider_has_capability "$provider" observe; then
-        state=unavailable
-        detail=unsupported-capability:observe
-        RIG_PLAN_RESULTS[$index]=failed
-        unhealthy=$((unhealthy + 1))
       else
-        rig_get_value "provider.$provider" executable || return 2
-        executable=$RIG_VALUE
-        if ! rig_executable_available "$executable"; then
-          state=unavailable
-          detail='executable-unavailable'
-          RIG_PLAN_RESULTS[$index]=failed
-          unhealthy=$((unhealthy + 1))
+        rig_observe_provider "$tool" "$binding" "$provider" || return
+        state=$RIG_OBSERVATION
+        detail=$RIG_OBSERVATION_DETAIL
+        if [ "$state" = present ] || [ "$state" = missing ] || [ "$state" = drifted ]; then
+          RIG_PLAN_RESULTS[$index]=observed
         else
-          rig_prepare_provider_invocation observe "$tool" "$binding" "$provider" || return
-          executable=$RIG_VALUE
-          captured=$("$executable" "${RIG_INVOKE_ARGUMENTS[@]}"; native_status=$?; \
-            printf '%s%s' "$response_marker" "$native_status")
-          native_status=${captured##*"$response_marker"}
-          observation=${captured%"$response_marker"*}
-          case "$observation" in
-            *$'\n') observation=${observation%$'\n'} ;;
-          esac
-          if [ "$native_status" -ne 0 ]; then
-            state=unknown
-            detail=exit:$native_status
-            RIG_PLAN_RESULTS[$index]=failed
-            unhealthy=$((unhealthy + 1))
-          else
-            case "$observation" in
-              present|missing|drifted|unavailable|unknown)
-                state=$observation
-                RIG_PLAN_RESULTS[$index]=observed
-                [ "$state" = present ] || unhealthy=$((unhealthy + 1))
-                ;;
-              *)
-                state=unknown
-                detail=invalid-response
-                RIG_PLAN_RESULTS[$index]=failed
-                unhealthy=$((unhealthy + 1))
-                ;;
-            esac
-          fi
+          RIG_PLAN_RESULTS[$index]=failed
         fi
       fi
+      [ "$state" = present ] || unhealthy=$((unhealthy + 1))
     fi
     RIG_PLAN_DETAILS[$index]=$detail
     case "$state" in
@@ -1191,24 +1628,13 @@ rig_command_status() {
 }
 
 rig_preflight_apply() {
-  local index provider adapter executable
+  local index
 
   index=0
   while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
     if [ -n "${RIG_PLAN_BINDINGS[$index]}" ]; then
-      provider=${RIG_PLAN_PROVIDERS[$index]}
-      rig_get_value "provider.$provider" adapter || return 2
-      adapter=$RIG_VALUE
-      [ "$adapter" = custom ] ||
-        rig_fail "provider '$provider' has unsupported adapter '$adapter' for apply" || return
-      rig_provider_has_capability "$provider" apply ||
-        rig_fail "provider '$provider' does not declare capability 'apply'" || return
-      rig_get_value "provider.$provider" executable || return 2
-      executable=$RIG_VALUE
-      rig_executable_available "$executable" ||
-        rig_fail "provider '$provider' executable is unavailable: $executable" || return
-      rig_prepare_provider_invocation apply "${RIG_PLAN_TOOLS[$index]}" \
-        "${RIG_PLAN_BINDINGS[$index]}" "$provider" || return
+      rig_preflight_provider "${RIG_PLAN_TOOLS[$index]}" \
+        "${RIG_PLAN_BINDINGS[$index]}" "${RIG_PLAN_PROVIDERS[$index]}" || return
     fi
     index=$((index + 1))
   done
@@ -1216,7 +1642,7 @@ rig_preflight_apply() {
 
 rig_command_apply() {
   local profile dry_run profile_seen dry_run_seen index tool binding provider
-  local blocker executable native_status planned completed failed skipped operational_failure
+  local blocker native_status planned completed failed skipped operational_failure
 
   profile=
   dry_run=0
@@ -1261,6 +1687,7 @@ rig_command_apply() {
     [ -z "${RIG_PLAN_BINDINGS[$index]}" ] || planned=$((planned + 1))
     index=$((index + 1))
   done
+
   index=0
   while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
     tool=${RIG_PLAN_TOOLS[$index]}
@@ -1280,9 +1707,7 @@ rig_command_apply() {
       skipped=$((skipped + 1))
       operational_failure=1
     else
-      rig_prepare_provider_invocation apply "$tool" "$binding" "$provider" || return
-      executable=$RIG_VALUE
-      "$executable" "${RIG_INVOKE_ARGUMENTS[@]}" 1>&2
+      rig_apply_provider "$tool" "$binding" "$provider"
       native_status=$?
       if [ "$native_status" -eq 0 ]; then
         RIG_PLAN_RESULTS[$index]=completed
@@ -1926,6 +2351,365 @@ rig_command_explain() {
   printf 'Binding: %s\n' "$binding"
 }
 
+rig_html_escape() {
+  local value escaped index character
+
+  value=$1
+  escaped=
+  index=0
+  while [ "$index" -lt "${#value}" ]; do
+    character=${value:$index:1}
+    case "$character" in
+      '&') escaped=$escaped'&amp;' ;;
+      '<') escaped=$escaped'&lt;' ;;
+      '>') escaped=$escaped'&gt;' ;;
+      '"') escaped=$escaped'&quot;' ;;
+      "'") escaped=$escaped'&#39;' ;;
+      *) escaped=$escaped$character ;;
+    esac
+    index=$((index + 1))
+  done
+  RIG_VALUE=$escaped
+}
+
+rig_publication_base_url() {
+  local base_url authority host port remainder
+
+  base_url=$1
+  case "$base_url" in
+    http://*|https://*) ;;
+    *) rig_fail "publication base-url must be an absolute HTTP or HTTPS URL" || return ;;
+  esac
+  case "$base_url" in
+    *\?*|*\#*)
+      rig_fail "publication base-url must not contain a query or fragment" || return
+      ;;
+  esac
+  case "$base_url" in
+    *[[:space:]\<\>\"\']*)
+      rig_fail "publication base-url contains an unsafe character" || return
+      ;;
+  esac
+  authority=${base_url#*://}
+  authority=${authority%%/*}
+  [ -n "$authority" ] || rig_fail "publication base-url must name a host" || return
+  case "$authority" in
+    *@*) rig_fail "publication base-url must not contain user information" || return ;;
+    \[*\]*)
+      host=${authority#\[}
+      remainder=${host#*\]}
+      host=${host%%\]*}
+      [ -n "$host" ] || rig_fail "publication base-url must name a host" || return
+      case "$host" in
+        *[!0-9A-Fa-f:.]*) rig_fail "publication base-url has invalid IPv6 host" || return ;;
+      esac
+      case "$remainder" in
+        '') ;;
+        :*)
+          port=${remainder#:}
+          case "$port" in
+            ''|*[!0-9]*) rig_fail "publication base-url has invalid port" || return ;;
+          esac
+          ;;
+        *) rig_fail "publication base-url has invalid authority" || return ;;
+      esac
+      ;;
+    *:*)
+      host=${authority%%:*}
+      port=${authority#*:}
+      case "$port" in
+        ''|*[!0-9]*|*:* ) rig_fail "publication base-url has invalid port" || return ;;
+      esac
+      ;;
+    *) host=$authority ;;
+  esac
+  case "$host" in
+    ''|.*|*.|*..*|-*|*-|*[!A-Za-z0-9._~-]*)
+      rig_fail "publication base-url has invalid host" || return
+      ;;
+  esac
+  case "$base_url" in
+    */) ;;
+    *) base_url=$base_url/ ;;
+  esac
+  RIG_VALUE=$base_url
+}
+
+rig_render_public_relationship() {
+  local tool field label index target printed escaped_target escaped_name escaped_url
+  local -a targets
+
+  tool=$1
+  field=$2
+  label=$3
+  rig_collect_field_values "tool.$tool" "$field" || return
+  targets=()
+  index=0
+  while [ "$index" -lt "${#RIG_QUERY_ITEMS[@]}" ]; do
+    target=${RIG_QUERY_ITEMS[$index]}
+    if rig_array_contains "$target" "${RIG_SELECTED_TOOLS[@]}"; then
+      targets[${#targets[@]}]=$target
+    fi
+    index=$((index + 1))
+  done
+
+  [ "${#targets[@]}" -gt 0 ] || return 0
+  rig_html_escape "$label"
+  printf '          <dt>%s</dt>\n          <dd>' "$RIG_VALUE"
+  index=0
+  printed=0
+  while [ "$index" -lt "${#targets[@]}" ]; do
+    target=${targets[$index]}
+    rig_get_value "tool.$target" name || return
+    rig_html_escape "$RIG_VALUE"
+    escaped_name=$RIG_VALUE
+    rig_html_escape "$target"
+    escaped_target=$RIG_VALUE
+    rig_html_escape "$RIG_PUBLICATION_BASE_URL#tool-$target"
+    escaped_url=$RIG_VALUE
+    [ "$printed" -eq 0 ] || printf ', '
+    printf '<a href="%s">%s <span class="identity">(%s)</span></a>' \
+      "$escaped_url" "$escaped_name" "$escaped_target"
+    printed=$((printed + 1))
+    index=$((index + 1))
+  done
+  printf '</dd>\n'
+}
+
+rig_render_public_tool() {
+  local tool name category category_name category_purpose purpose rationale platforms
+  local escaped_tool escaped_name escaped_category escaped_category_name
+  local escaped_category_purpose escaped_purpose escaped_rationale escaped_platforms
+
+  tool=$1
+  rig_get_value "tool.$tool" name || return
+  name=$RIG_VALUE
+  rig_get_value "tool.$tool" category || return
+  category=$RIG_VALUE
+  rig_get_value "category.$category" name || return
+  category_name=$RIG_VALUE
+  rig_get_value "category.$category" purpose || return
+  category_purpose=$RIG_VALUE
+  rig_get_value "tool.$tool" purpose || return
+  purpose=$RIG_VALUE
+  rig_get_value "tool.$tool" rationale || return
+  rationale=$RIG_VALUE
+  rig_collect_field_values "tool.$tool" platform || return
+  rig_join_query_items
+  platforms=$RIG_VALUE
+
+  rig_html_escape "$tool"
+  escaped_tool=$RIG_VALUE
+  rig_html_escape "$name"
+  escaped_name=$RIG_VALUE
+  rig_html_escape "$category"
+  escaped_category=$RIG_VALUE
+  rig_html_escape "$category_name"
+  escaped_category_name=$RIG_VALUE
+  rig_html_escape "$category_purpose"
+  escaped_category_purpose=$RIG_VALUE
+  rig_html_escape "$purpose"
+  escaped_purpose=$RIG_VALUE
+  rig_html_escape "$rationale"
+  escaped_rationale=$RIG_VALUE
+  rig_html_escape "$platforms"
+  escaped_platforms=$RIG_VALUE
+
+  printf '      <article class="tool" id="tool-%s">\n' "$escaped_tool"
+  printf '        <p class="category">%s</p>\n' "$escaped_category_name"
+  printf '        <h2>%s</h2>\n' "$escaped_name"
+  printf '        <p class="identity">%s</p>\n' "$escaped_tool"
+  printf '        <p class="purpose">%s</p>\n' "$escaped_purpose"
+  printf '        <p>%s</p>\n' "$escaped_rationale"
+  printf '        <dl>\n'
+  printf '          <dt>Category</dt>\n'
+  printf '          <dd>%s <span class="identity">(%s)</span> — %s</dd>\n' \
+    "$escaped_category_name" "$escaped_category" "$escaped_category_purpose"
+  printf '          <dt>Platforms</dt>\n          <dd>%s</dd>\n' "$escaped_platforms"
+  rig_render_public_relationship "$tool" requires Requires || return
+  rig_render_public_relationship "$tool" related Related || return
+  rig_render_public_relationship "$tool" alternative Alternatives || return
+  printf '        </dl>\n'
+  printf '      </article>\n'
+}
+
+rig_render_publication_html() {
+  local title profile platform tool index escaped_title escaped_profile escaped_platform
+  local escaped_base_url
+
+  title=$1
+  profile=$2
+  platform=$3
+  rig_html_escape "$title"
+  escaped_title=$RIG_VALUE
+  rig_html_escape "$profile"
+  escaped_profile=$RIG_VALUE
+  rig_html_escape "$platform"
+  escaped_platform=$RIG_VALUE
+  rig_html_escape "$RIG_PUBLICATION_BASE_URL"
+  escaped_base_url=$RIG_VALUE
+
+  printf '%s\n' '<!doctype html>' '<html lang="en">' '<head>'
+  printf '  <meta charset="utf-8">\n'
+  printf '  <meta name="viewport" content="width=device-width, initial-scale=1">\n'
+  printf '  <title>%s</title>\n' "$escaped_title"
+  printf '  <link rel="canonical" href="%s">\n' "$escaped_base_url"
+  printf '  <link rel="stylesheet" href="%sassets/rig.css">\n' "$escaped_base_url"
+  printf '%s\n' '</head>' '<body>' '  <header class="masthead">'
+  printf '    <p class="eyebrow">Public rig</p>\n'
+  printf '    <h1>%s</h1>\n' "$escaped_title"
+  printf '    <p class="summary">Profile <strong>%s</strong> · Platform <strong>%s</strong> · %s tools</p>\n' \
+    "$escaped_profile" "$escaped_platform" "${#RIG_SELECTED_TOOLS[@]}"
+  printf '    <nav><a href="%s#catalogue">Catalogue</a></nav>\n' "$escaped_base_url"
+  printf '%s\n' '  </header>' '  <main id="catalogue" class="catalogue">'
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
+    tool=${RIG_SELECTED_TOOLS[$index]}
+    rig_render_public_tool "$tool" || return
+    index=$((index + 1))
+  done
+  printf '%s\n' '  </main>' '  <footer>Generated by Rig from an explicitly public profile.</footer>' '</body>' '</html>'
+}
+
+rig_render_publication_css() {
+  printf '%s\n' \
+    ':root {' \
+    '  color-scheme: light dark;' \
+    '  font-family: ui-sans-serif, system-ui, sans-serif;' \
+    '  line-height: 1.5;' \
+    '  --accent: #7357d9;' \
+    '  --surface: color-mix(in srgb, Canvas 94%, var(--accent));' \
+    '  --border: color-mix(in srgb, CanvasText 20%, transparent);' \
+    '}' \
+    '* { box-sizing: border-box; }' \
+    'body { margin: 0; background: Canvas; color: CanvasText; }' \
+    'a { color: var(--accent); }' \
+    '.masthead, .catalogue, footer { width: min(72rem, calc(100% - 2rem)); margin-inline: auto; }' \
+    '.masthead { padding-block: 4rem 2rem; }' \
+    '.eyebrow, .category, .identity { font-family: ui-monospace, monospace; }' \
+    '.eyebrow, .category { color: var(--accent); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }' \
+    'h1 { font-size: clamp(2.4rem, 8vw, 5.5rem); line-height: 1; margin: .25rem 0 1rem; }' \
+    '.summary { font-size: 1.05rem; }' \
+    '.catalogue { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: 1rem; }' \
+    '.tool { border: 1px solid var(--border); border-radius: .75rem; background: var(--surface); padding: 1.25rem; }' \
+    '.tool h2 { margin: .2rem 0 0; }' \
+    '.tool .identity { margin-top: 0; opacity: .72; }' \
+    '.purpose { font-size: 1.15rem; font-weight: 650; }' \
+    'dt { font-weight: 700; margin-top: .65rem; }' \
+    'dd { margin-left: 0; }' \
+    'footer { padding-block: 2rem 4rem; opacity: .72; }'
+}
+
+rig_export_cleanup() {
+  if [ -n "${RIG_EXPORT_TEMP:-}" ] && [ "$RIG_EXPORT_TEMP" != / ]; then
+    rm -rf -- "$RIG_EXPORT_TEMP"
+  fi
+}
+
+rig_replace_export_tree() {
+  local target parent basename temporary backup suffix
+
+  target=$1
+  while [ "$target" != / ] && [ "${target%/}" != "$target" ]; do
+    target=${target%/}
+  done
+  case "$target" in
+    ''|/|.|..)
+      rig_fail "unsafe export output directory: $1" || return
+      ;;
+  esac
+  basename=${target##*/}
+  case "$basename" in
+    ''|.|..)
+      rig_fail "unsafe export output directory: $1" || return
+      ;;
+  esac
+  if [ "$target" = "$basename" ]; then
+    parent=.
+  else
+    parent=${target%/*}
+    [ -n "$parent" ] || parent=/
+  fi
+  [ -d "$parent" ] || rig_fail "export output parent is not a directory: $parent" || return
+  [ ! -L "$target" ] || rig_fail "export output must not be a symlink: $target" || return
+  if [ -e "$target" ] && [ ! -d "$target" ]; then
+    rig_fail "export output is not a directory: $target" || return
+  fi
+
+  suffix=$$
+  temporary=$parent/.$basename.rig-export.$suffix
+  while [ -e "$temporary" ] || [ -L "$temporary" ]; do
+    suffix=$((suffix + 1))
+    temporary=$parent/.$basename.rig-export.$suffix
+  done
+  mkdir -- "$temporary" || rig_fail "cannot create export staging directory: $temporary" || return
+  RIG_EXPORT_TEMP=$temporary
+  trap rig_export_cleanup EXIT HUP INT TERM
+  mkdir -- "$temporary/assets" || return
+  rig_render_publication_html "$RIG_EXPORT_TITLE" "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM" \
+    >"$temporary/index.html" || return
+  rig_render_publication_css >"$temporary/assets/rig.css" || return
+
+  [ ! -L "$target" ] || rig_fail "export output became a symlink: $target" || return
+  if [ -e "$target" ]; then
+    [ -d "$target" ] || rig_fail "export output is not a directory: $target" || return
+    backup=$parent/.$basename.rig-previous.$suffix
+    while [ -e "$backup" ] || [ -L "$backup" ]; do
+      suffix=$((suffix + 1))
+      backup=$parent/.$basename.rig-previous.$suffix
+    done
+    mv -- "$target" "$backup" || rig_fail "cannot replace export output: $target" || return
+    if ! mv -- "$temporary" "$target"; then
+      mv -- "$backup" "$target" || true
+      rig_fail "cannot install export output: $target" || return
+    fi
+    RIG_EXPORT_TEMP=
+    rm -rf -- "$backup" || rig_fail "cannot remove replaced export tree: $backup" || return
+  else
+    mv -- "$temporary" "$target" || rig_fail "cannot install export output: $target" || return
+    RIG_EXPORT_TEMP=
+  fi
+  trap - EXIT HUP INT TERM
+  printf 'Exported %s to %s\n' "$RIG_EXPORT_PUBLICATION" "$target"
+}
+
+rig_command_export() {
+  local publication output profile platform title base_url
+
+  if [ "$#" -eq 1 ]; then
+    case "$1" in
+      -h|--help)
+        printf '%s\n' 'Usage: rig export PUBLICATION --output DIRECTORY'
+        return
+        ;;
+    esac
+  fi
+  [ "$#" -eq 3 ] && [ "$2" = --output ] && [ -n "$1" ] && [ -n "$3" ] ||
+    syntax_error 'usage: rig export PUBLICATION --output DIRECTORY' || return
+  publication=$1
+  output=$3
+  rig_load_config || return
+  rig_valid_id "$publication" && rig_section_index "publication.$publication" ||
+    rig_fail "unknown publication '$publication'" || return
+  rig_get_value "publication.$publication" profile || return
+  profile=$RIG_VALUE
+  rig_get_value "publication.$publication" title || return
+  title=$RIG_VALUE
+  rig_get_value "publication.$publication" base-url || return
+  base_url=$RIG_VALUE
+  rig_publication_base_url "$base_url" || return
+  RIG_PUBLICATION_BASE_URL=$RIG_VALUE
+  rig_current_platform || return
+  platform=$RIG_VALUE
+  rig_resolve_profile "$profile" "$platform" || return
+  RIG_EXPORT_PUBLICATION=$publication
+  RIG_EXPORT_TITLE=$title
+  (
+    umask 022
+    rig_replace_export_tree "$output"
+  )
+}
+
 main() {
   local command_name
 
@@ -1960,6 +2744,10 @@ main() {
     apply)
       shift
       rig_command_apply "$@"
+      ;;
+    export)
+      shift
+      rig_command_export "$@"
       ;;
     diag)
       shift

@@ -69,7 +69,19 @@ platform = macos
 tool = mgit
 ```
 
-Executable custom providers declare exact `observe` and `apply` capabilities. See `man rig` for the versioned `rig-provider-v1` argument and response contract.
+Providers declare exact `observe` and `apply` capabilities. Built-in adapters map selected bindings to native tools:
+
+| Adapter | Binding kinds | Default executable | Native authority |
+| --- | --- | --- | --- |
+| `homebrew` | `formula`, `cask`, `mas` | `brew`; `mas` for `mas` | Homebrew and Mac App Store state |
+| `uv` | `tool` | `uv` | uv-managed tools |
+| `chezmoi` | `target` | `chezmoi` | chezmoi target state |
+| `direct-download` | `executable` | `curl` | HTTPS artifact selected by its declared SHA-256 |
+| `custom` | Configured by its executable | Required `executable` | Versioned `rig-provider-v1` protocol |
+
+Set a provider `executable` to use a non-default installation or an isolated test fake. Provider and binding `argument` fields remain literal argument boundaries. A direct-download binding additionally requires an HTTPS `locator`, absolute `destination`, and lowercase `checksum = sha256:...`; Rig verifies a sibling temporary file before replacing a regular destination.
+
+See `man rig` for the exact native command matrix and custom-provider protocol.
 
 ## Commands
 
@@ -77,19 +89,20 @@ Executable custom providers declare exact `observe` and `apply` capabilities. Se
 - `rig show [--profile NAME]` summarises the default or named resolved profile in a bounded-width, aligned tool table; `rig explain TOOL` provides complete metadata.
 - `rig list [--category ID] [--profile NAME]` lists catalogue tools, optionally narrowed by category and profile.
 - `rig explain TOOL` explains a tool's declared meaning, relationships, profile membership, and compatible provider binding.
-- `rig status [--profile NAME]` compares expected tools with custom-provider observations.
+- `rig status [--profile NAME]` compares expected tools with selected built-in or custom-provider observations.
 - `rig apply [--profile NAME] [--dry-run]` materialises a resolved profile; dry-run preflights and prints planned work without invoking providers.
+- `rig export PUBLICATION --output DIRECTORY` generates a deterministic static site from the publication's explicitly selected public profile.
 - `rig diag` reports the effective Rig runtime, active platform, XDG paths, and configuration discovery and validity.
 - `rig completion bash|zsh` prints shell completion source.
 - `rig help`, `rig --help`, and `rig --version` provide command and version information.
 
-Catalogue queries and `diag` never invoke providers. `status` invokes only declared `observe` capabilities. `apply` invokes exact `apply` capabilities only after complete plan preflight. See `man rig` for the complete command contract.
+Catalogue queries, `diag`, and `export` never invoke providers. `status` invokes only declared `observe` capabilities. `apply` invokes exact `apply` capabilities only after complete plan preflight. See `man rig` for the complete command contract.
 
 Diagnostics are also non-mutating and never invoke providers. A valid configuration returns status 0; missing or invalid configuration returns status 1 while still printing the available diagnostic snapshot. The planned `doctor` command is the separate, deeper check of selected tools and providers.
 
 ## Status
 
-Rig is a pre-v1 tool under active development. Catalogue parsing, validation, profile resolution, provider-binding resolution, read-only queries, custom-provider observation, and dependency-ordered application are implemented. Built-in provider adapters, doctor, bootstrap migration, declared operations, publication, and the Homebrew formula remain tracked work in the [roadmap](ROADMAP.md).
+Rig is a pre-v1 tool under active development. Catalogue parsing, validation, profile resolution, provider-binding resolution, read-only queries, built-in and custom-provider observation, dependency-ordered application, integrity-checked direct downloads, and deterministic static public export are implemented. Doctor, bootstrap migration, declared operations, trusted publication deployment, and the Homebrew formula remain tracked work in the [roadmap](ROADMAP.md).
 
 ## Documentation
 

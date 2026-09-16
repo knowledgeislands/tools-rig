@@ -4,12 +4,12 @@ area: CLI
 title: Export public rig
 theme: cli
 horizon: now
-status: ready
-blocks: [RIG-DIST-002]
+status: awaiting-review
+blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 7eb1ffe07a2e23a8f0bf5e70c85fe6abf45f0fa9
 created_at: 2026-09-15T11:53:55Z
-updated_at: 2026-09-16T21:47:31Z
+updated_at: 2026-09-16T22:26:36Z
 ---
 
 # RIG-CLI-003: Export public rig
@@ -38,12 +38,12 @@ Rig renders through a sibling temporary directory and replaces only an explicit 
 
 ## Steps
 
-- [ ] Approve `rig export PUBLICATION --output DIRECTORY` as the initial command contract: the publication selects its configured profile, title, and base URL; the caller owns the explicit output directory; Rig performs no publisher, provider, or network invocation.
-- [ ] Approve the artifact contract: a complete deterministic static directory, generated through a sibling temporary directory and installed without merging stale files, whose public data is limited to the RIG-PUB-002 allow-list.
-- [ ] Resolve the publication's profile and project categories, tools, and relationships, omitting relationships whose endpoints are not both public.
-- [ ] Render portable navigation for root, subdomain, and subpath base URLs using Bash 3.2-compatible code with no runtime dependency beyond Bash.
-- [ ] Add success, validation, disclosure, relationship-closure, deterministic-tree, portable-URL, offline, and output-safety tests.
-- [ ] Align top-level and command help, completion, README command inventory, `rig(1)`, Specifications, and the curated v1 changelog.
+- [x] Approve `rig export PUBLICATION --output DIRECTORY` as the initial command contract: the publication selects its configured profile, title, and base URL; the caller owns the explicit output directory; Rig performs no publisher, provider, or network invocation.
+- [x] Approve the artifact contract: a complete deterministic static directory, generated through a sibling temporary directory and installed without merging stale files, whose public data is limited to the RIG-PUB-002 allow-list.
+- [x] Resolve the publication's profile and project categories, tools, and relationships, omitting relationships whose endpoints are not both public.
+- [x] Render portable navigation for root, subdomain, and subpath base URLs using Bash 3.2-compatible code with no runtime dependency beyond Bash.
+- [x] Add success, validation, disclosure, relationship-closure, deterministic-tree, portable-URL, offline, and output-safety tests.
+- [x] Align top-level and command help, completion, README command inventory, `rig(1)`, Specifications, and the curated v1 changelog.
 
 ## Files touched
 
@@ -88,6 +88,32 @@ Add practical export guidance only when the stable command exists, including rev
 ### Roadmap
 
 Keep this record canonical for export delivery and update RIG-DIST-002 only through its declared dependency relationship.
+
+## Review
+
+### Delivered
+
+`rig export PUBLICATION --output DIRECTORY` now generates a complete deterministic public rig as `index.html` and `assets/rig.css` from an explicitly declared publication profile.
+
+### Summary of changes
+
+Added allow-listed and HTML-escaped catalogue rendering, public relationship closure, root/subdomain/subpath navigation, strict base-URL validation, offline generation, and sibling-tree replacement that rejects unsafe targets. Help, completions, README, manual, guide, changelog, and publishing conformance evidence now describe the command.
+
+### Verification
+
+The complete Bats suite passes, including deterministic ordering, disclosure, URL portability, offline execution, malformed authorities, and target safety. ShellCheck, Bash 3.2 syntax checking, mandoc lint, and `git diff --check` pass. The KI repository audit remains 14/15 solely because of nine pre-existing live GitHub settings differences that this batch is not authorised to change.
+
+### Outstanding concerns
+
+None within scope. Complete directory replacement has an unavoidable local TOCTOU window when another actor can mutate the parent directory concurrently.
+
+### Post-change review
+
+Independent review found malformed URL authorities could pass validation and the offline test shadowed only curl. The implementation now validates host, port, user-information, and bracketed IPv6 authority shapes, while the test shadows curl, wget, ssh, and git.
+
+### Mini recap
+
+Rig can now produce a safe, portable public projection suitable for `rig.midnight.ninja` or a personal-site subpath without publishing or exposing private machine state.
 
 ## Discussion
 

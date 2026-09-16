@@ -68,13 +68,13 @@ _Evidence:_ `tests/rig.bats` retrieves repeated relationship, profile, capabilit
 
 ### RIG-CONF-007 — Bounded path expansion
 
-Rig MUST expand a leading `~/` only in provider `executable` and `manifest` fields and MUST preserve all other value text literally.
+Rig MUST expand leading `~/` only in provider `executable` and `manifest` fields and direct-download binding `destination` fields, and MUST preserve all other value text literally.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats tests compare path and non-path values containing tildes, dollar signs, equals signs, and comment characters under an isolated home directory.
 
-_Evidence:_ `tests/rig.bats` proves only provider executable and manifest values expand leading `~/`; other tildes and shell-significant characters remain literal.
+_Evidence:_ `tests/rig.bats` proves only declared path fields expand leading `~/`; other tildes and shell-significant characters remain literal.
 
 ## Schema 1 sections
 
@@ -130,13 +130,13 @@ _Evidence:_ `rig_validate_model` requires provider adapters and custom executabl
 
 ### RIG-CONF-013 — Binding fields
 
-Schema 1 binding sections MUST accept `kind`, `locator`, repeated `platform`, and repeated `argument` fields for the tool and provider named by the section identity.
+Schema 1 binding sections MUST accept `kind`, `locator`, optional scalar `destination` and `checksum`, and repeated `platform` and `argument` fields for the tool and provider named by the section identity. `destination` and `checksum` are valid only for `direct-download` bindings. A Homebrew `mas` binding MUST use a numeric application identity as its locator. A direct-download binding MUST use kind `executable`, an HTTPS locator, an absolute destination after bounded path expansion, and a checksum of `sha256:` followed by exactly 64 lowercase hexadecimal characters.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests resolve binding ownership and reject section identities whose tool or provider does not exist.
+_Verify:_ Bats tests resolve binding ownership, reject section identities whose tool or provider does not exist, and reject incomplete, non-HTTPS, or malformed direct-download bindings.
 
-_Evidence:_ `tests/rig.bats` resolves binding fields and rejects unknown tool and provider identities before binding selection.
+_Evidence:_ `rig_validate_binding_adapter` enforces the adapter-kind and direct-download integrity schema; `tests/rig.bats` exercises valid and invalid direct-download declarations.
 
 ### RIG-CONF-014 — Publication fields
 

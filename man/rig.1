@@ -23,6 +23,9 @@ rig \- describe and manage a personal working setup
 .RI [ \-\-profile " NAME" ]
 .RI [ \-\-dry-run ]
 .br
+.BI "rig export " PUBLICATION
+.BI " \-\-output " DIRECTORY
+.br
 .B rig diag
 .br
 .BI "rig completion " bash|zsh
@@ -88,15 +91,16 @@ Show the tool's identity, category, purpose, rationale, supported platforms,
 relationships, profile membership, and compatible provider binding.
 .TP
 .B rig status
-Compare every tool in the resolved default profile with custom-provider
-observations. Catalogue-only tools are reported as neutral unavailable rows.
+Compare every tool in the resolved default profile with its selected built-in
+or custom-provider observation. Catalogue-only tools are reported as neutral
+unavailable rows.
 .TP
 .BI "rig status \-\-profile " NAME
 Compare a named resolved profile without changing the configured default.
 .TP
 .B rig apply
-Preflight every selected bound tool, then invoke custom-provider apply
-capabilities in dependency-first order. A failure skips only transitive
+Preflight every selected bound tool, then invoke built-in or custom-provider
+apply capabilities in dependency-first order. A failure skips only transitive
 dependants; independent work continues.
 .TP
 .BI "rig apply \-\-profile " NAME
@@ -104,6 +108,14 @@ Apply a named resolved profile without changing the configured default.
 .TP
 .B rig apply \-\-dry-run
 Perform complete preflight and print planned work without invoking a provider.
+.TP
+.BI "rig export " PUBLICATION " \-\-output " DIRECTORY
+Generate a deterministic static
+.I index.html
+and
+.I assets/rig.css
+tree from the publication's explicitly selected profile. Export invokes no
+provider, publisher, or network command.
 .TP
 .B rig diag
 Print a non-mutating diagnostic snapshot containing Rig and Bash versions,
@@ -263,24 +275,33 @@ and repeated
 or
 .B capability
 fields.
-The execution engine initially supports
-.B adapter = custom
-with exact
-.B observe
+The execution engine supports built-in
+.BR homebrew ,
+.BR uv ,
+.BR chezmoi ,
 and
+.B direct-download
+adapters plus the executable
+.B custom
+adapter. Every action requires the exact declared
+.B observe
+or
 .B apply
-capabilities; other adapters remain queryable declarations until their
-portable adapters are implemented.
+capability.
 .B [binding.TOOL.PROVIDER]
 requires
 .B kind
 and
 .B locator
-and accepts repeated
+and accepts optional scalar
+.B destination
+and
+.B checksum
+fields plus repeated
 .B platform
 or
 .B argument
-fields.
+fields. Destination and checksum are restricted to direct-download bindings.
 .B [publication.ID]
 requires
 .BR profile ,
@@ -288,6 +309,12 @@ requires
 .BR base-url ,
 and
 .BR publisher .
+.PP
+The
+.B base-url
+must be an absolute HTTP or HTTPS URL without a query or fragment. Rig appends
+a trailing slash when omitted so stylesheet, catalogue, and relationship links
+work at a domain root, subdomain, or subpath.
 .PP
 A minimal catalogue is:
 .PP
@@ -322,20 +349,85 @@ Default state directory.
 .TP
 .I ${XDG_CACHE_HOME:-$HOME/.cache}/rig
 Default cache directory.
+.SH STATIC EXPORT
+\&
+.PP
+The
+.B rig export
+command renders only public category and tool identity, name, purpose,
+rationale, platform, and relationship fields from the publication's selected
+profile.
+Relationships are included only when both endpoints are selected. Dynamic text
+is HTML-escaped. Provider and binding configuration, other profiles, observed
+state, credentials, and machine paths are not rendered.
+.PP
+Rig first renders a complete sibling staging tree and then replaces the named
+output directory. It never merges with an existing tree. For safety, Rig
+rejects output targets that are
+.BR / ,
+.BR . ,
+.BR .. ,
+symlinks, or non-directories. Review the generated tree before passing it to a
+separate hosting or publisher system.
 .SH PROVIDER EXECUTION
 \&
 .PP
-The initial executable adapter is
-.BR custom .
-It requires one
+Built-in adapters map selected bindings to native commands. Homebrew
+.B formula
+and
+.B cask
+bindings use
+.BR brew (1);
+.B mas
+bindings use
+.BR mas (1).
+The
+.B uv
+adapter supports
+.B tool
+bindings, and the
+.B chezmoi
+adapter supports
+.B target
+bindings. Their native observation and application commands are respectively:
+.PP
+.nf
+brew list --formula|--cask --versions LOCATOR
+brew install --formula|--cask LOCATOR
+mas list
+mas install LOCATOR
+uv tool list
+uv tool install LOCATOR
+chezmoi status --path-style=absolute -- LOCATOR
+chezmoi apply -- LOCATOR
+.fi
+.PP
+Provider arguments precede the native command. Binding arguments precede the
+locator. Each configured value remains one literal argument. An explicit
+.B executable
+replaces the adapter default.
+.PP
+A
+.B direct-download
+.B executable
+binding requires an HTTPS locator, absolute destination, and lowercase
+.B sha256:
+checksum. Observation reads only the destination. Application uses
+.BR curl (1)
+to write a sibling temporary file, verifies SHA-256, sets executable mode, and
+renames it over a regular destination. Rig refuses symlink and non-regular
+destinations, restricts redirects to HTTPS, rechecks destination safety before
+replacement, and removes failed temporary files.
+.SS CUSTOM PROVIDER PROTOCOL
+\&
+.PP
+The
+.B custom
+adapter requires one
 .B executable
 and exact repeated
 .B capability
-values named
-.B observe
-or
-.BR apply .
-Capability values are atomic and are not split on commas.
+values. Capability values are atomic and are not split on commas.
 .PP
 Rig invokes a custom provider using this versioned literal-argument protocol:
 .PP
@@ -405,5 +497,8 @@ resolution failure, or apply preflight failure.
 \&
 .BR bash (1),
 .BR brew (1),
+.BR curl (1),
 .BR chezmoi (1),
+.BR mas (1),
+.BR shasum (1),
 .BR uv (1)

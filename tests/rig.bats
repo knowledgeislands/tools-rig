@@ -257,6 +257,7 @@ write_query_config() {
   [[ "$output" == *"explain TOOL"* ]]
   [[ "$output" == *"status [--profile NAME]"* ]] || false
   [[ "$output" == *"apply [--profile NAME] [--dry-run]"* ]] || false
+  [[ "$output" == *"export PUBLICATION --output DIRECTORY"* ]] || false
   [[ "$output" == *"diag"* ]]
   [[ "$output" != *"paths"* ]]
   [[ "$output" == *"completion bash|zsh"* ]]
@@ -319,12 +320,13 @@ write_query_config() {
   run "$RIG" completion bash
   [ "$status" -eq 0 ]
   [[ "$output" == *"complete -F _rig rig"* ]]
-  [[ "$output" == *"-h --help -V --version show list explain status apply diag completion help"* ]] || false
+  [[ "$output" == *"-h --help -V --version show list explain status apply export diag completion help"* ]] || false
   [[ "$output" == *'show) COMPREPLY=($(compgen -W "-h --help --profile"'* ]]
   [[ "$output" == *'explain) COMPREPLY=($(compgen -W "-h --help"'* ]]
   [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile"'* ]] || false
   [[ "$output" == *'apply) COMPREPLY=($(compgen -W "-h --help --profile --dry-run"'* ]] || false
-  [[ "$output" == *"show list explain status apply diag completion help"* ]] || false
+  [[ "$output" == *'export) COMPREPLY=($(compgen -W "-h --help --output"'* ]] || false
+  [[ "$output" == *"show list explain status apply export diag completion help"* ]] || false
   [[ "$output" != *" paths "* ]]
 
   run "$RIG" completion zsh
@@ -333,6 +335,7 @@ write_query_config() {
   [[ "$output" == *"compdef _rig rig"* ]]
   [[ "$output" == *"show:describe a resolved profile"* ]]
   [[ "$output" == *"diag:print runtime and configuration diagnostics"* ]]
+  [[ "$output" == *"export:generate a static public rig"* ]] || false
   [[ "$output" == *"'(-V --version)'{-V,--version}"* ]]
   [[ "$output" == *"explain) _arguments '(-h --help)'"* ]]
 }
@@ -1397,13 +1400,13 @@ write_query_config() {
 
 @test "status reports unavailable operational provider boundaries without invocation" {
   write_orchestration_config
-  sed 's/adapter = custom/adapter = homebrew/' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/unavailable.conf"
+  sed 's/adapter = custom/adapter = future/' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/unavailable.conf"
   mv "$CONFIG_HOME/unavailable.conf" "$CONFIG_HOME/rig.conf"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
   [ "$status" -eq 1 ]
-  [[ "$output" == *$'base\trunner\tunavailable\tunsupported-adapter:homebrew'* ]] || false
+  [[ "$output" == *$'base\trunner\tunavailable\tunsupported-adapter:future'* ]] || false
   [ ! -e "$ORCHESTRATION_LOG" ]
 
   write_orchestration_config
@@ -1560,4 +1563,502 @@ write_query_config() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --dry-run --dry-run
   [ "$status" -eq 2 ]
   [[ "$output" == *'usage: rig apply [--profile NAME] [--dry-run]'* ]] || false
+}
+
+@test "built-in adapters observe dry-run and apply with exact native commands" {
+  local native_bin native_log executable
+  native_bin=$BATS_TEST_TMPDIR/native-bin-$BATS_TEST_NUMBER
+  native_log=$BATS_TEST_TMPDIR/native-log-$BATS_TEST_NUMBER
+  mkdir -p "$native_bin"
+
+  for executable in brew mas uv chezmoi; do
+    printf '%s\n' \
+      '#!/usr/bin/env bash' \
+      'printf "%s" "${0##*/}" >>"$RIG_NATIVE_LOG"' \
+      'for argument in "$@"; do printf "|%s" "$argument" >>"$RIG_NATIVE_LOG"; done' \
+      'printf "\n" >>"$RIG_NATIVE_LOG"' \
+      'case "${0##*/}:$*" in' \
+      '  brew:*list*--formula*jq*) printf "jq 1.0\n" ;;' \
+      '  brew:*list*--cask*visual-studio-code*) printf "visual-studio-code 1.0\n" ;;' \
+      '  mas:*list*) printf "12345 Example\n" ;;' \
+      '  uv:*tool*list*) printf "ruff v1.0\n" ;;' \
+      'esac' >"$native_bin/$executable"
+    chmod +x "$native_bin/$executable"
+  done
+
+  printf '%s\n' \
+    '[rig]' 'schema = 1' 'default-profile = default' \
+    '[category.core]' 'name = Core' 'purpose = Core tools' \
+    '[tool.formula]' 'name = Formula' 'category = core' 'purpose = Formula test' \
+    'rationale = Formula rationale' 'platform = any' \
+    '[tool.cask]' 'name = Cask' 'category = core' 'purpose = Cask test' \
+    'rationale = Cask rationale' 'platform = any' \
+    '[tool.store]' 'name = Store' 'category = core' 'purpose = Store test' \
+    'rationale = Store rationale' 'platform = any' \
+    '[tool.python]' 'name = Python' 'category = core' 'purpose = Python test' \
+    'rationale = Python rationale' 'platform = any' \
+    '[tool.dotfile]' 'name = Dotfile' 'category = core' 'purpose = Dotfile test' \
+    'rationale = Dotfile rationale' 'platform = any' \
+    '[profile.default]' 'tool = formula' 'tool = cask' 'tool = store' \
+    'tool = python' 'tool = dotfile' \
+    '[provider.brew]' 'adapter = homebrew' "executable = $native_bin/brew" \
+    'argument = --global value' 'capability = observe' 'capability = apply' \
+    '[provider.store]' 'adapter = homebrew' \
+    'capability = observe' 'capability = apply' \
+    '[provider.python]' 'adapter = uv' \
+    'capability = observe' 'capability = apply' \
+    '[provider.dotfiles]' 'adapter = chezmoi' \
+    'capability = observe' 'capability = apply' \
+    '[provider.unselected]' 'adapter = uv' \
+    "executable = $BATS_TEST_TMPDIR/missing-unselected" 'capability = observe' \
+    '[binding.formula.brew]' 'kind = formula' 'locator = jq' 'argument = --formula value' \
+    '[binding.cask.brew]' 'kind = cask' 'locator = visual-studio-code' \
+    '[binding.store.store]' 'kind = mas' 'locator = 12345' \
+    '[binding.python.python]' 'kind = tool' 'locator = ruff' \
+    '[binding.dotfile.dotfiles]' 'kind = target' 'locator = /tmp/example target' \
+    >"$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    PATH="$native_bin:$PATH" RIG_NATIVE_LOG="$native_log" "$RIG" status
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'formula\tbrew\tpresent\t-'* ]] || false
+  [[ "$output" == *$'cask\tbrew\tpresent\t-'* ]] || false
+  [[ "$output" == *$'store\tstore\tpresent\t-'* ]] || false
+  [[ "$output" == *$'python\tpython\tpresent\t-'* ]] || false
+  [[ "$output" == *$'dotfile\tdotfiles\tpresent\t-'* ]] || false
+  [ "$(wc -l <"$native_log" | tr -d ' ')" -eq 5 ]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    PATH="$native_bin:$PATH" RIG_NATIVE_LOG="$native_log" "$RIG" apply --dry-run
+  [ "$status" -eq 0 ]
+  [ "$(wc -l <"$native_log" | tr -d ' ')" -eq 5 ]
+
+  : >"$native_log"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    PATH="$native_bin:$PATH" RIG_NATIVE_LOG="$native_log" "$RIG" apply
+  [ "$status" -eq 0 ]
+  [ "$(cat "$native_log")" = "$(printf '%s\n' \
+    'brew|--global value|install|--cask|visual-studio-code' \
+    'chezmoi|apply|--|/tmp/example target' \
+    'brew|--global value|install|--formula|--formula value|jq' \
+    'uv|tool|install|ruff' \
+    'mas|install|12345')" ]
+}
+
+@test "built-in adapter native failures suppress only dependants" {
+  local native native_log
+  native=$BATS_TEST_TMPDIR/failing-brew-$BATS_TEST_NUMBER
+  native_log=$BATS_TEST_TMPDIR/failing-brew-log-$BATS_TEST_NUMBER
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'printf "%s\n" "$*" >>"$RIG_NATIVE_LOG"' \
+    'case "$*" in *broken*) exit 7 ;; esac' >"$native"
+  chmod +x "$native"
+  printf '%s\n' \
+    '[rig]' 'schema = 1' 'default-profile = default' \
+    '[category.core]' 'name = Core' 'purpose = Core tools' \
+    '[tool.base]' 'name = Base' 'category = core' 'purpose = Base' \
+    'rationale = Base' 'platform = any' \
+    '[tool.app]' 'name = App' 'category = core' 'purpose = App' \
+    'rationale = App' 'platform = any' 'requires = base' \
+    '[tool.other]' 'name = Other' 'category = core' 'purpose = Other' \
+    'rationale = Other' 'platform = any' \
+    '[profile.default]' 'tool = app' 'tool = other' \
+    '[provider.brew]' 'adapter = homebrew' "executable = $native" 'capability = apply' \
+    '[binding.base.brew]' 'kind = formula' 'locator = broken' \
+    '[binding.app.brew]' 'kind = formula' 'locator = app' \
+    '[binding.other.brew]' 'kind = formula' 'locator = other' >"$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_NATIVE_LOG="$native_log" "$RIG" apply
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'base\tbrew\tfailed\texit:7'* ]] || false
+  [[ "$output" == *$'app\tbrew\tskipped\tblocked-by:base'* ]] || false
+  [[ "$output" == *$'other\tbrew\tcompleted\t-'* ]] || false
+  [ "$(cat "$native_log")" = "$(printf '%s\n' 'install --formula broken' 'install --formula other')" ]
+}
+
+@test "selected unavailable built-in provider fails safely before mutation" {
+  local missing
+  missing=$BATS_TEST_TMPDIR/missing-brew-$BATS_TEST_NUMBER
+  write_minimal_config
+  sed "/adapter = homebrew/a\\
+executable = $missing\\
+capability = observe\\
+capability = apply" "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/native.conf"
+  mv "$CONFIG_HOME/native.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" status
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'alpha\tnative\tunavailable\texecutable-unavailable'* ]] || false
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" apply
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"provider 'native' executable is unavailable: $missing"* ]] || false
+}
+
+@test "direct-download verifies before atomic executable replacement and cleans failures" {
+  local downloader source_file destination digest bad_digest native_log
+  downloader=$BATS_TEST_TMPDIR/curl-$BATS_TEST_NUMBER
+  source_file=$BATS_TEST_TMPDIR/download-source-$BATS_TEST_NUMBER
+  destination=$TEST_HOME/bin/downloaded-tool
+  native_log=$BATS_TEST_TMPDIR/download-log-$BATS_TEST_NUMBER
+  mkdir -p "$TEST_HOME/bin"
+  printf '%s\n' 'download payload' >"$source_file"
+  digest=$(shasum -a 256 "$source_file")
+  digest=${digest%% *}
+  bad_digest=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'for argument in "$@"; do printf "ARG=%s\n" "$argument" >>"$RIG_NATIVE_LOG"; done' \
+    'destination=' \
+    'while [ "$#" -gt 0 ]; do' \
+    '  if [ "$1" = --output ]; then destination=$2; shift 2; else shift; fi' \
+    'done' \
+    'cp "$RIG_DOWNLOAD_SOURCE" "$destination"' \
+    'if [ -n "${RIG_UNSAFE_DESTINATION:-}" ]; then' \
+    '  rm -f "$RIG_UNSAFE_DESTINATION"' \
+    '  mkdir "$RIG_UNSAFE_DESTINATION"' \
+    'fi' >"$downloader"
+  chmod +x "$downloader"
+
+  printf '%s\n' \
+    '[rig]' 'schema = 1' 'default-profile = default' \
+    '[category.core]' 'name = Core' 'purpose = Core tools' \
+    '[tool.download]' 'name = Download' 'category = core' 'purpose = Download test' \
+    'rationale = Download rationale' 'platform = any' \
+    '[profile.default]' 'tool = download' \
+    '[provider.download]' 'adapter = direct-download' "executable = $downloader" \
+    'capability = observe' 'capability = apply' \
+    '[binding.download.download]' 'kind = executable' \
+    'locator = https://example.invalid/downloaded-tool' \
+    'destination = ~/bin/downloaded-tool' "checksum = sha256:$digest" >"$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_NATIVE_LOG="$native_log" RIG_DOWNLOAD_SOURCE="$source_file" "$RIG" status
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'download\tdownload\tmissing\t-'* ]] || false
+  [ ! -e "$native_log" ]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_NATIVE_LOG="$native_log" RIG_DOWNLOAD_SOURCE="$source_file" "$RIG" apply --dry-run
+  [ "$status" -eq 0 ]
+  [ ! -e "$destination" ]
+  [ ! -e "$native_log" ]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_NATIVE_LOG="$native_log" RIG_DOWNLOAD_SOURCE="$source_file" "$RIG" apply
+  [ "$status" -eq 0 ]
+  [ -x "$destination" ]
+  [ "$(shasum -a 256 "$destination" | sed 's/ .*//')" = "$digest" ]
+  [ "$(sed -n '1,8p' "$native_log")" = "$(printf '%s\n' \
+    'ARG=--fail' 'ARG=--location' 'ARG=--proto' 'ARG==https' \
+    'ARG=--proto-redir' 'ARG==https' 'ARG=--silent' 'ARG=--show-error')" ]
+  [ "$(sed -n '9p' "$native_log")" = 'ARG=--output' ]
+  [[ "$(sed -n '10p' "$native_log")" == ARG="$destination.rig-tmp."* ]]
+  [ "$(sed -n '11p' "$native_log")" = 'ARG=https://example.invalid/downloaded-tool' ]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_NATIVE_LOG="$native_log" RIG_DOWNLOAD_SOURCE="$source_file" "$RIG" status
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'download\tdownload\tpresent\t-'* ]] || false
+
+  printf '%s\n' 'existing destination' >"$destination"
+  chmod 0755 "$destination"
+  sed "s/sha256:$digest/sha256:$bad_digest/" "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bad.conf"
+  mv "$CONFIG_HOME/bad.conf" "$CONFIG_HOME/rig.conf"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_NATIVE_LOG="$native_log" RIG_DOWNLOAD_SOURCE="$source_file" "$RIG" apply
+  [ "$status" -eq 1 ]
+  [ "$(cat "$destination")" = 'existing destination' ]
+  run bash -c 'compgen -G "$1.rig-tmp.*"' _ "$destination"
+  [ "$status" -ne 0 ]
+
+  sed "s/sha256:$bad_digest/sha256:$digest/" \
+    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/race.conf"
+  mv "$CONFIG_HOME/race.conf" "$CONFIG_HOME/rig.conf"
+  printf '%s\n' 'existing destination' >"$destination"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_NATIVE_LOG="$native_log" RIG_DOWNLOAD_SOURCE="$source_file" \
+    RIG_UNSAFE_DESTINATION="$destination" "$RIG" apply
+  [ "$status" -eq 1 ]
+  [ -d "$destination" ]
+  [ -z "$(find "$destination" -mindepth 1 -maxdepth 1 -print -quit)" ]
+}
+
+@test "Homebrew mas bindings require numeric application identities" {
+  write_minimal_config
+  sed -e 's/kind = formula/kind = mas/' \
+    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/mas.conf"
+  mv "$CONFIG_HOME/mas.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" status
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'Homebrew mas locator must be a numeric application identity'* ]]
+}
+
+@test "direct-download rejects unsafe or incomplete declarations before mutation" {
+  local downloader destination
+  downloader=$BATS_TEST_TMPDIR/curl-$BATS_TEST_NUMBER
+  destination=$TEST_HOME/unsafe-destination
+  printf '%s\n' '#!/usr/bin/env bash' 'exit 0' >"$downloader"
+  chmod +x "$downloader"
+  ln -s "$TEST_HOME/target" "$destination"
+  printf '%s\n' \
+    '[rig]' 'schema = 1' 'default-profile = default' \
+    '[category.core]' 'name = Core' 'purpose = Core tools' \
+    '[tool.download]' 'name = Download' 'category = core' 'purpose = Download test' \
+    'rationale = Download rationale' 'platform = any' \
+    '[profile.default]' 'tool = download' \
+    '[provider.download]' 'adapter = direct-download' "executable = $downloader" \
+    'capability = apply' \
+    '[binding.download.download]' 'kind = executable' \
+    'locator = https://example.invalid/downloaded-tool' \
+    "destination = $destination" \
+    'checksum = sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' \
+    >"$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" apply
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'refuses unsafe destination'* ]] || false
+
+  sed 's#https://#http://#' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/http.conf"
+  mv "$CONFIG_HOME/http.conf" "$CONFIG_HOME/rig.conf"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" apply
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'direct-download locator must use HTTPS'* ]] || false
+
+  sed -e 's#http://#https://#' -e '/^checksum = /d' \
+    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/incomplete.conf"
+  mv "$CONFIG_HOME/incomplete.conf" "$CONFIG_HOME/rig.conf"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" apply
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"requires field 'checksum'"* ]] || false
+
+  printf '%s\n' \
+    'checksum = sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' \
+    >>"$CONFIG_HOME/rig.conf"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" apply
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'checksum must contain 64 lowercase hexadecimal characters'* ]] || false
+}
+
+write_publication_config() {
+  PUBLICATION_PROVIDER=$BATS_TEST_TMPDIR/publication-provider-$BATS_TEST_NUMBER
+  PUBLICATION_MARKER=$BATS_TEST_TMPDIR/publication-provider-marker-$BATS_TEST_NUMBER
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'printf invoked >"$RIG_PUBLICATION_MARKER"' >"$PUBLICATION_PROVIDER"
+  chmod +x "$PUBLICATION_PROVIDER"
+  printf '%s\n' \
+    '[rig]' \
+    'schema = 1' \
+    'default-profile = private' \
+    '[category.navigation]' \
+    'name = Navigation & Search' \
+    'purpose = Find <things> safely' \
+    '[category.private]' \
+    'name = Private category' \
+    'purpose = Never disclose this category' \
+    '[tool.alpha]' \
+    'name = Alpha <One>' \
+    'category = navigation' \
+    'purpose = Find & select' \
+    'rationale = Safer "choice" for public work' \
+    'platform = any' \
+    'related = beta' \
+    'alternative = secret' \
+    '[tool.beta]' \
+    'name = Beta' \
+    'category = navigation' \
+    'purpose = Browse public material' \
+    'rationale = Complements Alpha' \
+    'platform = macos' \
+    '[tool.secret]' \
+    'name = Secret Tool' \
+    'category = private' \
+    'purpose = private-purpose-token' \
+    'rationale = private-rationale-token' \
+    'platform = any' \
+    '[profile.public]' \
+    'tool = alpha' \
+    'tool = beta' \
+    '[profile.private]' \
+    'profile = public' \
+    'tool = secret' \
+    '[provider.publisher]' \
+    'adapter = custom' \
+    "executable = $PUBLICATION_PROVIDER" \
+    'manifest = /private/provider-manifest-token' \
+    'argument = provider-argument-token' \
+    '[binding.alpha.publisher]' \
+    'kind = executable' \
+    'locator = private-locator-token' \
+    'argument = binding-argument-token' \
+    '[publication.site]' \
+    'profile = public' \
+    'title = Kris & Rig' \
+    'base-url = https://example.test/rig/' \
+    'publisher = publisher' >"$CONFIG_HOME/rig.conf"
+}
+
+@test "export writes escaped allow-listed public profile as complete static tree" {
+  local destination file_count
+  destination=$BATS_TEST_TMPDIR/public-site-$BATS_TEST_NUMBER
+  write_publication_config
+  mkdir -p "$destination/obsolete"
+  printf '%s\n' stale >"$destination/obsolete/stale.txt"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_PUBLICATION_MARKER="$PUBLICATION_MARKER" "$RIG" export site --output "$destination"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "Exported site to $destination" ]
+  [ -f "$destination/index.html" ]
+  [ -f "$destination/assets/rig.css" ]
+  [ ! -e "$destination/obsolete/stale.txt" ]
+  file_count=$(find "$destination" -type f | wc -l | tr -d ' ')
+  [ "$file_count" -eq 2 ]
+  grep -F 'Kris &amp; Rig' "$destination/index.html"
+  grep -F 'Alpha &lt;One&gt;' "$destination/index.html"
+  grep -F 'Find &amp; select' "$destination/index.html"
+  grep -F 'Safer &quot;choice&quot; for public work' "$destination/index.html"
+  grep -F 'Navigation &amp; Search' "$destination/index.html"
+  grep -F 'href="https://example.test/rig/#tool-beta"' "$destination/index.html"
+  ! grep -R -E 'Secret Tool|private-purpose-token|private-rationale-token|provider-manifest-token|provider-argument-token|private-locator-token|binding-argument-token' "$destination"
+  [ ! -e "$PUBLICATION_MARKER" ]
+}
+
+@test "export closes relationships over selected public tools" {
+  local destination
+  destination=$BATS_TEST_TMPDIR/relationship-site-$BATS_TEST_NUMBER
+  write_publication_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" export site --output "$destination"
+
+  [ "$status" -eq 0 ]
+  grep -F '<dt>Related</dt>' "$destination/index.html"
+  grep -F '>Beta <span class="identity">(beta)</span></a>' "$destination/index.html"
+  ! grep -F '<dt>Alternatives</dt>' "$destination/index.html"
+  ! grep -F '#tool-secret' "$destination/index.html"
+}
+
+@test "export is deterministic across equivalent declaration order" {
+  local second_config first_output second_output
+  second_config=$BATS_TEST_TMPDIR/config-reordered-$BATS_TEST_NUMBER
+  first_output=$BATS_TEST_TMPDIR/site-first-$BATS_TEST_NUMBER
+  second_output=$BATS_TEST_TMPDIR/site-second-$BATS_TEST_NUMBER
+  write_publication_config
+  mkdir -p "$second_config/conf.d"
+  sed -e 's/tool = alpha/tool = temporary/' \
+    -e 's/tool = beta/tool = alpha/' \
+    -e 's/tool = temporary/tool = beta/' \
+    "$CONFIG_HOME/rig.conf" >"$second_config/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" export site --output "$first_output"
+  [ "$status" -eq 0 ]
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$second_config" RIG_PLATFORM=macos \
+    "$RIG" export site --output "$second_output"
+  [ "$status" -eq 0 ]
+  diff -r "$first_output" "$second_output"
+}
+
+@test "export uses root subdomain and subpath base URLs for navigation" {
+  local destination
+  destination=$BATS_TEST_TMPDIR/url-site-$BATS_TEST_NUMBER
+  write_publication_config
+  sed 's#https://example.test/rig/#https://rig.example.test#' \
+    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/root.conf"
+  mv "$CONFIG_HOME/root.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" export site --output "$destination"
+
+  [ "$status" -eq 0 ]
+  grep -F 'href="https://rig.example.test/assets/rig.css"' "$destination/index.html"
+  grep -F 'href="https://rig.example.test/#catalogue"' "$destination/index.html"
+  grep -F 'href="https://rig.example.test/#tool-beta"' "$destination/index.html"
+}
+
+@test "export invokes neither publisher provider nor network command" {
+  local destination fake_bin network_marker network_command
+  destination=$BATS_TEST_TMPDIR/offline-site-$BATS_TEST_NUMBER
+  fake_bin=$BATS_TEST_TMPDIR/offline-bin-$BATS_TEST_NUMBER
+  network_marker=$BATS_TEST_TMPDIR/network-marker-$BATS_TEST_NUMBER
+  write_publication_config
+  mkdir -p "$fake_bin"
+  for network_command in curl wget ssh git; do
+    printf '%s\n' '#!/usr/bin/env bash' 'printf invoked >"$RIG_NETWORK_MARKER"' 'exit 97' >"$fake_bin/$network_command"
+    chmod +x "$fake_bin/$network_command"
+  done
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_PUBLICATION_MARKER="$PUBLICATION_MARKER" RIG_NETWORK_MARKER="$network_marker" \
+    PATH="$fake_bin:$PATH" "$RIG" export site --output "$destination"
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$PUBLICATION_MARKER" ]
+  [ ! -e "$network_marker" ]
+}
+
+@test "export rejects malformed publication URL authorities" {
+  local destination invalid_url
+
+  destination=$BATS_TEST_TMPDIR/invalid-url-site-$BATS_TEST_NUMBER
+  for invalid_url in 'https://:/' 'https://:bad/' 'https://user@example.test/' 'https://example.test:bad/'; do
+    write_publication_config
+    sed "s#https://example.test/rig/#$invalid_url#" \
+      "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/invalid.conf"
+    mv "$CONFIG_HOME/invalid.conf" "$CONFIG_HOME/rig.conf"
+
+    run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+      "$RIG" export site --output "$destination"
+
+    [ "$status" -eq 2 ]
+    [ ! -e "$destination" ]
+  done
+}
+
+@test "export rejects unsafe output targets without altering them" {
+  local regular target symlink
+  regular=$BATS_TEST_TMPDIR/export-file-$BATS_TEST_NUMBER
+  target=$BATS_TEST_TMPDIR/export-target-$BATS_TEST_NUMBER
+  symlink=$BATS_TEST_TMPDIR/export-link-$BATS_TEST_NUMBER
+  write_publication_config
+  printf '%s\n' keep >"$regular"
+  mkdir -p "$target"
+  printf '%s\n' keep >"$target/keep.txt"
+  ln -s "$target" "$symlink"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" export site --output /
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'unsafe export output directory'* ]] || false
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" export site --output .
+  [ "$status" -eq 2 ]
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" export site --output ..
+  [ "$status" -eq 2 ]
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" export site --output "$regular"
+  [ "$status" -eq 2 ]
+  [ "$(cat "$regular")" = keep ]
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" export site --output "$symlink"
+  [ "$status" -eq 2 ]
+  [ "$(cat "$target/keep.txt")" = keep ]
+}
+
+@test "export help and syntax are local and explicit" {
+  run "$RIG" export --help
+  [ "$status" -eq 0 ]
+  [ "$output" = 'Usage: rig export PUBLICATION --output DIRECTORY' ]
+
+  run "$RIG" export site
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'usage: rig export PUBLICATION --output DIRECTORY'* ]] || false
 }

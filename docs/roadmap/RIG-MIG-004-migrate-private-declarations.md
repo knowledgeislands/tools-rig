@@ -6,10 +6,10 @@ theme: migration
 horizon: now
 status: draft
 blocks: [RIG-MIG-001, RIG-MIG-002, RIG-MIG-003]
-blocked_by: [RIG-CLI-001]
+blocked_by: []
 baseline_ref: null
 created_at: 2026-09-15T11:53:55Z
-updated_at: 2026-09-16T21:48:45Z
+updated_at: 2026-09-16T22:26:36Z
 ---
 
 # RIG-MIG-004: Migrate private declarations

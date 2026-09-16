@@ -106,6 +106,16 @@ _Verify:_ Bats places a failure late in the selected plan and asserts every prov
 
 _Evidence:_ `rig_preflight_apply` traverses the complete plan before `rig_command_apply` begins its execution loop.
 
+### RIG-STATE-012 — Direct-download integrity and replacement
+
+A direct-download observation MUST remain local: a missing destination is `missing`; a regular executable whose SHA-256 matches is `present`; a hash or executable-mode mismatch is `drifted`; a symlink or non-regular destination is `unavailable`. Application MUST restrict the initial request and redirects to HTTPS, download to a previously absent sibling temporary path, verify the declared SHA-256, revalidate destination safety immediately before setting executable mode and renaming over the destination, verify the result is a regular file, and remove the temporary path after every handled failure.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats runs status without the downloader, proves dry-run creates nothing, installs a matching payload, rejects a mismatched checksum, verifies no temporary path remains, and rejects a symlink during preflight.
+
+_Evidence:_ `rig_observe_provider`, `rig_preflight_provider`, and `rig_apply_direct_download` implement local observation, full-plan safety checks, verified sibling replacement, and failure cleanup.
+
 ### RIG-STATE-011 — Command outcomes
 
 `rig status` and `rig apply` MUST exit 0 for healthy or successful results, 1 for valid unhealthy or failed results, and 2 for syntax, configuration, resolution, or preflight failure.

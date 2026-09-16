@@ -80,9 +80,30 @@ _Evidence:_ `rig_build_plan` emits a stable dependency-first work plan consumed 
 
 Rig MUST support Homebrew, uv, chezmoi, direct-download, and explicitly configured executable providers without requiring an unselected provider's executable.
 
-_Conformance:_ pending
+_Conformance:_ conforming
 
 _Verify:_ Bats tests exercise each provider through fakes and run an unrelated profile while all five native executables are absent.
+
+_Evidence:_ `rig_provider_executable` resolves defaults only for selected bindings; Bats records all built-in adapter calls and proves a declared unselected missing executable is not invoked.
+
+### RIG-ORCH-017 — Built-in native command matrix
+
+Built-in adapters MUST preserve each provider and binding `argument` as one literal native argument and MUST use the following command matrix, where configured provider arguments precede the native command and binding arguments precede the locator:
+
+- Homebrew `formula`: `brew list --formula --versions LOCATOR` to observe and `brew install --formula LOCATOR` to apply.
+- Homebrew `cask`: `brew list --cask --versions LOCATOR` to observe and `brew install --cask LOCATOR` to apply.
+- Homebrew `mas`: `mas list` with exact numeric identity matching to observe and `mas install LOCATOR` to apply.
+- uv `tool`: `uv tool list` with exact package identity matching to observe and `uv tool install LOCATOR` to apply.
+- chezmoi `target`: `chezmoi status --path-style=absolute -- LOCATOR` to observe and `chezmoi apply -- LOCATOR` to apply.
+- direct-download `executable`: local destination and checksum inspection to observe; `curl --fail --location --proto =https --proto-redir =https --silent --show-error --output TEMP HTTPS_LOCATOR`, SHA-256 verification, executable mode, and sibling rename to apply.
+
+An explicit provider `executable` MUST replace the matrix default. A built-in provider MUST expose no action without the exact corresponding declared `observe` or `apply` capability.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats fake executables record exact native argument boundaries for every built-in kind, including provider and binding arguments containing spaces.
+
+_Evidence:_ `rig_prepare_builtin_invocation`, `rig_observe_provider`, and `rig_apply_provider` implement the matrix; focused Bats coverage compares exact call logs.
 
 ### RIG-ORCH-009 — Platform binding selection
 

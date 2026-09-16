@@ -4,12 +4,12 @@ area: CLI
 title: Add provider adapters
 theme: cli
 horizon: now
-status: ready
-blocks: [RIG-CLI-004, RIG-CLI-005, RIG-DIST-001, RIG-DIST-002, RIG-MIG-004]
+status: awaiting-review
+blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 7eb1ffe07a2e23a8f0bf5e70c85fe6abf45f0fa9
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-16T21:47:31Z
+updated_at: 2026-09-16T22:26:36Z
 ---
 
 # RIG-CLI-001: Add provider adapters
@@ -38,13 +38,13 @@ Provider executables may be overridden explicitly for isolated tests and non-def
 
 ## Steps
 
-- [ ] Consume the approved RIG-CORE-002 provider ABI and public state contract without adding adapter-specific exceptions to the core.
-- [ ] Lock a capability and native-command matrix for Homebrew, uv, chezmoi, direct-download, and custom executable providers.
-- [ ] Define the direct-download integrity, destination, temporary-file, atomic replacement, and failure-cleanup contract before enabling mutation.
-- [ ] Implement provider detection, observation, dry-run planning, and explicitly supported mutation using literal argument boundaries.
-- [ ] Test each adapter through recording fakes, including absent unselected executables, unavailable selected providers, native failures, and dependent-work suppression.
-- [ ] Prove catalogue queries and `status` never invoke mutation, and prove chezmoi mutation occurs only through explicit `rig apply`.
-- [ ] Align help, completion, README, `rig(1)`, changelog, Specifications, and Bats evidence for the shipped capability set.
+- [x] Consume the approved RIG-CORE-002 provider ABI and public state contract without adding adapter-specific exceptions to the core.
+- [x] Lock a capability and native-command matrix for Homebrew, uv, chezmoi, direct-download, and custom executable providers.
+- [x] Define the direct-download integrity, destination, temporary-file, atomic replacement, and failure-cleanup contract before enabling mutation.
+- [x] Implement provider detection, observation, dry-run planning, and explicitly supported mutation using literal argument boundaries.
+- [x] Test each adapter through recording fakes, including absent unselected executables, unavailable selected providers, native failures, and dependent-work suppression.
+- [x] Prove catalogue queries and `status` never invoke mutation, and prove chezmoi mutation occurs only through explicit `rig apply`.
+- [x] Align help, completion, README, `rig(1)`, changelog, Specifications, and Bats evidence for the shipped capability set.
 
 ## Files touched
 
@@ -79,6 +79,32 @@ Add concise provider setup and safety guidance for native prerequisites, manifes
 ### Roadmap
 
 Record adapter evidence here and unblock RIG-CLI-004, RIG-CLI-005, RIG-DIST-001, RIG-DIST-002, and RIG-MIG-004 only when the shared provider surface has landed.
+
+## Review
+
+### Delivered
+
+Built-in Homebrew, uv, chezmoi, and direct-download adapters now observe and materialise selected bindings through the shared provider engine while custom providers retain the `rig-provider-v1` ABI.
+
+### Summary of changes
+
+Added strict adapter and binding validation, default executable selection with explicit overrides, exact native command construction, stable state mapping, provider preflight, and checksum-verified sibling-file replacement for direct downloads. Updated the public documentation and command surfaces for the supported matrix.
+
+### Verification
+
+The complete Bats suite passes with exact fake-provider argument and failure coverage. ShellCheck, Bash 3.2 syntax checking, mandoc lint, and `git diff --check` pass. The KI repository audit remains 14/15 solely because of nine pre-existing live GitHub settings differences that this batch is not authorised to change.
+
+### Outstanding concerns
+
+None within scope. Direct-download replacement retains the unavoidable local filesystem race present when a destination parent is writable by another actor.
+
+### Post-change review
+
+Independent review identified destination replacement and redirect-protocol hardening opportunities. The implementation now rechecks destination safety immediately before replacement, constrains initial and redirected transfers to HTTPS, validates Mac App Store identities as numeric, and covers exact download arguments and race cleanup in Bats.
+
+### Mini recap
+
+Rig can now turn resolved catalogue bindings into provider-native observations and explicit apply actions without taking ownership of native manifests or provider state.
 
 ## Discussion
 

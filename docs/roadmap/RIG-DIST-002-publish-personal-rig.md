@@ -6,10 +6,10 @@ theme: distribution
 horizon: now
 status: draft
 blocks: []
-blocked_by: [RIG-CLI-001, RIG-CLI-003]
+blocked_by: []
 baseline_ref: null
 created_at: 2026-09-15T11:53:55Z
-updated_at: 2026-09-16T21:48:45Z
+updated_at: 2026-09-16T22:26:36Z
 ---
 
 # RIG-DIST-002: Publish personal rig
