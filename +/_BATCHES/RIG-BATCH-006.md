@@ -17,3 +17,8 @@ policy: safe-local-v1
 ## Run ledger
 
 <!-- ki-batch-run: RIG-BATCH-006-RUN-001 1420ea504cde2a3e0a1a7249b7ac0b60f693b8b68bbd0cc24fd79d8c1650e7ae -->
+| Item | Result | Baseline | Result commit | Exception |
+| --- | --- | --- | --- | --- |
+| RIG-MIG-005 | awaiting-review | `d9175e86084ba88d9022f1c29b23eac9cbad0f7a` | `d9be9a0c9b2f05ce509a5725cf25c8fc5d4ac045` | Source retirement is committed and fully verified; explicit approval is still required before chezmoi apply and post-apply acceptance. |
+
+<!-- ki-batch-close: RIG-BATCH-006 awaiting-review d9be9a0c9b2f05ce509a5725cf25c8fc5d4ac045 -->
