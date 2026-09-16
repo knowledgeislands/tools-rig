@@ -19,5 +19,7 @@ policy: safe-local-v1
 <!-- ki-batch-run: RIG-BATCH-003-RUN-001 15cfe9247f25f29b5d4dd85dbca914809a1b0e7eb7a9af6e3e53c66d1d38dc0f -->
 | Item | Result | Baseline | Result commit | Exception |
 | --- | --- | --- | --- | --- |
-| RIG-CLI-001 | awaiting-review | `7eb1ffe07a2e23a8f0bf5e70c85fe6abf45f0fa9` | `50decc2f431eb1ce69fdbbe139fd6eeeee91ca34` | Full repository audit remains 14/15 because nine pre-existing live GitHub settings differ; scoped roadmap and native gates pass. |
-| RIG-CLI-003 | awaiting-review | `7eb1ffe07a2e23a8f0bf5e70c85fe6abf45f0fa9` | `50decc2f431eb1ce69fdbbe139fd6eeeee91ca34` | Full repository audit remains 14/15 because nine pre-existing live GitHub settings differ; scoped roadmap and native gates pass. |
+| RIG-CLI-001 | done | `7eb1ffe07a2e23a8f0bf5e70c85fe6abf45f0fa9` | `6e66f586f10a13e9828bcdad2f41fdc33f60c075` | Full repository audit remains 14/15 because nine pre-existing live GitHub settings differ; scoped roadmap and native gates pass. |
+| RIG-CLI-003 | done | `7eb1ffe07a2e23a8f0bf5e70c85fe6abf45f0fa9` | `6e66f586f10a13e9828bcdad2f41fdc33f60c075` | Full repository audit remains 14/15 because nine pre-existing live GitHub settings differ; scoped roadmap and native gates pass. |
+
+<!-- ki-batch-close: RIG-BATCH-003 done 6e66f586f10a13e9828bcdad2f41fdc33f60c075 -->
