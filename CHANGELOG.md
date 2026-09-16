@@ -13,14 +13,14 @@ Rig 1.0.0 is not yet released. The current 0.1.0 capabilities and accepted work 
 - `rig show [--profile NAME]`
 - `rig list [--category ID] [--profile NAME]`
 - `rig explain TOOL`
-- `rig paths`
+- `rig diag`
 - `rig completion bash|zsh`
 - `rig help`, `rig --help`, and `rig --version`
 
 #### Foundation
 
 - A standalone Bash 3.2-compatible executable with no required runtime dependency beyond Bash.
-- XDG-aligned config, data, state, and cache paths with explicit Rig overrides.
+- Non-mutating runtime, platform, XDG-path, and configuration diagnostics with explicit Rig overrides.
 - An inert schema 1 loader with deterministic fragment order, validation, composed-profile resolution, transitive requirements, platform selection, and provider-binding resolution.
 - Read-only catalogue queries that do not invoke providers.
 - An installer for released or linked development copies of the executable and `rig(1)` manual.

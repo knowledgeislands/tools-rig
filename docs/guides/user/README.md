@@ -12,15 +12,19 @@ From the repository root, run:
 
 This links `bin/rig` into `${RIG_INSTALL_DIR:-$HOME/.local/bin}` and the manual into `${RIG_MAN_INSTALL_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/man/man1}`. Add the executable directory to `PATH` through your own shell or configuration manager; the installer does not edit startup files.
 
-## Inspect paths
+## Inspect Rig diagnostics
 
 Run:
 
 ```sh
-rig paths
+rig diag
 ```
 
-Rig prints its resolved configuration, data, state, and cache directories. Set an XDG base variable to relocate its whole category, or set the corresponding `RIG_*_HOME` value to replace Rig's complete application directory.
+Rig prints its version, invoked executable, Bash version, active platform, effective configuration, data, state, and cache directories, and a summary of configuration discovery and validity. It does not invoke providers or inspect installed tools.
+
+Status 0 means the configuration is valid. Status 1 means the root configuration is missing or invalid; the available runtime and path diagnostics are still printed. Status 2 is reserved for invalid command syntax. Set an XDG base variable to relocate its whole category, or set the corresponding `RIG_*_HOME` value to replace Rig's complete application directory.
+
+Use the planned `rig doctor` command for selected-profile and provider health rather than treating diagnostics as a machine audit.
 
 ## Generate completion
 

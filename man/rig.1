@@ -15,7 +15,7 @@ rig \- describe and manage a personal working setup
 .B rig explain
 .I TOOL
 .br
-.B rig paths
+.B rig diag
 .br
 .BI "rig completion " bash|zsh
 .br
@@ -54,8 +54,11 @@ The category and profile filters may be combined.
 Show the tool's identity, category, purpose, rationale, supported platforms,
 relationships, profile membership, and compatible provider binding.
 .TP
-.B rig paths
-Print the resolved Rig configuration, data, state, and cache directories.
+.B rig diag
+Print a non-mutating diagnostic snapshot containing Rig and Bash versions,
+the invoked executable, active platform, effective XDG directories, root
+configuration and fragment count, configuration validity, schema, and default
+profile when available. No provider is invoked.
 .TP
 .BI "rig completion " bash|zsh
 Print completion source for the selected shell.
@@ -161,7 +164,9 @@ Default cache directory.
 Success.
 .TP
 .B 1
-Operational failure.
+Diagnostic finding or operational failure. For
+.B rig diag
+this means configuration is missing or invalid.
 .TP
 .B 2
 Invalid command syntax, unknown query identity, or invalid configuration.

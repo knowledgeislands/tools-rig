@@ -22,7 +22,7 @@ Rig MUST place configuration, data, state, and cache beneath the corresponding X
 
 _Conformance:_ conforming
 
-_Verify:_ `bats tests/rig.bats` invokes `rig paths` with isolated XDG and Rig-specific environment values.
+_Verify:_ `bats tests/rig.bats` invokes `rig diag` with isolated XDG and Rig-specific environment values.
 
 _Evidence:_ `tests/rig.bats` covers XDG-derived paths and the precedence of `RIG_CONFIG_HOME`, `RIG_DATA_HOME`, `RIG_STATE_HOME`, and `RIG_CACHE_HOME`.
 
@@ -35,3 +35,15 @@ _Conformance:_ conforming
 _Verify:_ Bats installer tests link into isolated default and overridden destinations.
 
 _Evidence:_ `install.sh` implements the destination contract and `tests/rig.bats` verifies overridden executable and manual destinations.
+
+### RIG-PORT-004 — Local diagnostics
+
+`rig diag` MUST report the Rig version, invoked executable, Bash version, active platform, effective configuration, data, state, and cache directories, root configuration file, fragment count, and configuration status. When configuration is valid it MUST also report the schema and default profile.
+
+Diagnostics MUST NOT invoke a provider. The command MUST return status 0 for valid configuration, status 1 for missing or invalid configuration, and status 2 for invalid command syntax.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats tests compare stable diagnostics for default and overridden paths, linked invocation, valid, missing, and invalid configuration; assert provider non-execution; and cover command help and exit statuses.
+
+_Evidence:_ `tests/rig.bats` covers exact labelled output, XDG and Rig-specific precedence, invoked symlink paths, fragment counting, valid, missing, and invalid configuration, provider non-execution, local help, and removal of `paths`.

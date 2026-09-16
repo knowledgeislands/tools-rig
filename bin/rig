@@ -28,6 +28,7 @@ RIG_COUNT=0
 RIG_RESOLVED_PROFILE=
 RIG_RESOLVED_PLATFORM=
 RIG_ROOT_FILE=
+RIG_INVOKED_PATH=
 
 print_help() {
   printf '%s\n' \
@@ -37,7 +38,7 @@ print_help() {
     '  show [--profile NAME]                 Describe a resolved profile.' \
     '  list [--category ID] [--profile NAME] List declared catalogue tools.' \
     '  explain TOOL                          Explain a declared tool.' \
-    '  paths                 Print resolved Rig XDG directories.' \
+    '  diag                  Print runtime and configuration diagnostics.' \
     '  completion bash|zsh   Print shell completion source.' \
     '  help                  Show this help.' \
     '' \
@@ -64,23 +65,6 @@ require_home() {
   fi
 }
 
-print_paths() {
-  local config_home data_home state_home cache_home
-
-  require_home || return
-
-  config_home=${RIG_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/rig}
-  data_home=${RIG_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/rig}
-  state_home=${RIG_STATE_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/rig}
-  cache_home=${RIG_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/rig}
-
-  printf '%s\n' \
-    "config=$config_home" \
-    "data=$data_home" \
-    "state=$state_home" \
-    "cache=$cache_home"
-}
-
 print_bash_completion() {
   # The emitted completion deliberately retains runtime shell expressions.
   # shellcheck disable=SC2016
@@ -90,12 +74,13 @@ print_bash_completion() {
     '  current=${COMP_WORDS[COMP_CWORD]}' \
     '  command=${COMP_WORDS[1]:-}' \
     '  if [ "$COMP_CWORD" -eq 1 ]; then' \
-    '    COMPREPLY=($(compgen -W "show list explain paths completion help" -- "$current"))' \
+    '    COMPREPLY=($(compgen -W "show list explain diag completion help" -- "$current"))' \
     '    return' \
     '  fi' \
     '  case "$command" in' \
     '    show) COMPREPLY=($(compgen -W "--profile" -- "$current")) ;;' \
     '    list) COMPREPLY=($(compgen -W "--category --profile" -- "$current")) ;;' \
+    '    diag) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
     '    completion) COMPREPLY=($(compgen -W "bash zsh" -- "$current")) ;;' \
     '  esac' \
     '}' \
@@ -115,7 +100,7 @@ print_zsh_completion() {
     "    'show:describe a resolved profile'" \
     "    'list:list declared catalogue tools'" \
     "    'explain:explain a declared tool'" \
-    "    'paths:print resolved Rig XDG directories'" \
+    "    'diag:print runtime and configuration diagnostics'" \
     "    'completion:print shell completion source'" \
     "    'help:show help'" \
     '  )' \
@@ -126,6 +111,7 @@ print_zsh_completion() {
     '      case $words[2] in' \
     "        show) _arguments '--profile[select a profile]:profile name:' ;;" \
     "        list) _arguments '--category[select a category]:category id:' '--profile[select a profile]:profile name:' ;;" \
+    "        diag) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
     "        completion) _values 'shell' bash zsh ;;" \
     '      esac' \
     '      ;;' \
@@ -839,6 +825,114 @@ rig_current_platform() {
   esac
 }
 
+rig_effective_paths() {
+  if [ -n "${RIG_CONFIG_HOME:-}" ]; then
+    RIG_DIAG_CONFIG_HOME=$RIG_CONFIG_HOME
+  elif [ -n "${XDG_CONFIG_HOME:-}" ]; then
+    RIG_DIAG_CONFIG_HOME=$XDG_CONFIG_HOME/rig
+  else
+    require_home || return
+    RIG_DIAG_CONFIG_HOME=$HOME/.config/rig
+  fi
+
+  if [ -n "${RIG_DATA_HOME:-}" ]; then
+    RIG_DIAG_DATA_HOME=$RIG_DATA_HOME
+  elif [ -n "${XDG_DATA_HOME:-}" ]; then
+    RIG_DIAG_DATA_HOME=$XDG_DATA_HOME/rig
+  else
+    require_home || return
+    RIG_DIAG_DATA_HOME=$HOME/.local/share/rig
+  fi
+
+  if [ -n "${RIG_STATE_HOME:-}" ]; then
+    RIG_DIAG_STATE_HOME=$RIG_STATE_HOME
+  elif [ -n "${XDG_STATE_HOME:-}" ]; then
+    RIG_DIAG_STATE_HOME=$XDG_STATE_HOME/rig
+  else
+    require_home || return
+    RIG_DIAG_STATE_HOME=$HOME/.local/state/rig
+  fi
+
+  if [ -n "${RIG_CACHE_HOME:-}" ]; then
+    RIG_DIAG_CACHE_HOME=$RIG_CACHE_HOME
+  elif [ -n "${XDG_CACHE_HOME:-}" ]; then
+    RIG_DIAG_CACHE_HOME=$XDG_CACHE_HOME/rig
+  else
+    require_home || return
+    RIG_DIAG_CACHE_HOME=$HOME/.cache/rig
+  fi
+}
+
+rig_diagnostic_platform() {
+  if [ -n "${RIG_PLATFORM:-}" ]; then
+    RIG_VALUE=$RIG_PLATFORM
+    return
+  fi
+
+  case "${OSTYPE:-unknown}" in
+    darwin*) RIG_VALUE=macos ;;
+    linux*) RIG_VALUE=linux ;;
+    *) RIG_VALUE=unknown ;;
+  esac
+}
+
+rig_count_config_fragments() {
+  local fragment count
+
+  count=0
+  for fragment in "$RIG_DIAG_CONFIG_HOME"/conf.d/*.conf; do
+    [ -f "$fragment" ] || continue
+    count=$((count + 1))
+  done
+  RIG_COUNT=$count
+}
+
+rig_command_diag() {
+  local platform root_file fragment_count config_status schema default_profile exit_code
+
+  if [ "$#" -eq 1 ]; then
+    case "$1" in
+      -h|--help) printf '%s\n' 'Usage: rig diag'; return ;;
+    esac
+  fi
+  [ "$#" -eq 0 ] || syntax_error 'usage: rig diag' || return
+
+  rig_effective_paths || return 1
+  rig_diagnostic_platform
+  platform=$RIG_VALUE
+  root_file=$RIG_DIAG_CONFIG_HOME/rig.conf
+  rig_count_config_fragments
+  fragment_count=$RIG_COUNT
+
+  config_status=missing
+  schema=
+  default_profile=
+  exit_code=1
+  if [ -e "$root_file" ]; then
+    if rig_load_config 2>/dev/null; then
+      config_status=valid
+      rig_get_value rig schema || return 1
+      schema=$RIG_VALUE
+      rig_get_value rig default-profile || return 1
+      default_profile=$RIG_VALUE
+      exit_code=0
+    else
+      config_status=invalid
+    fi
+  fi
+
+  printf 'Runtime:\n  Rig version: %s\n  Executable: %s\n  Bash version: %s\n  Platform: %s\n' \
+    "$RIG_VERSION" "$RIG_INVOKED_PATH" "$BASH_VERSION" "$platform"
+  printf 'Paths:\n  Config home: %s\n  Data home: %s\n  State home: %s\n  Cache home: %s\n' \
+    "$RIG_DIAG_CONFIG_HOME" "$RIG_DIAG_DATA_HOME" "$RIG_DIAG_STATE_HOME" "$RIG_DIAG_CACHE_HOME"
+  printf 'Configuration:\n  Root config: %s\n  Fragment count: %s\n  Status: %s\n' \
+    "$root_file" "$fragment_count" "$config_status"
+  if [ "$config_status" = valid ]; then
+    printf '  Schema: %s\n  Default profile: %s\n' "$schema" "$default_profile"
+  fi
+  return "$exit_code"
+}
+
 rig_sort_query_items() {
   local index scan value previous
   local LC_ALL=C
@@ -1240,6 +1334,7 @@ main() {
   local command_name
 
   set -u
+  RIG_INVOKED_PATH=$0
   command_name=${1:-help}
   case "$command_name" in
     -h|--help|help)
@@ -1262,9 +1357,9 @@ main() {
       shift
       rig_command_explain "$@"
       ;;
-    paths)
-      [ "$#" -eq 1 ] || syntax_error 'usage: rig paths' || return
-      print_paths
+    diag)
+      shift
+      rig_command_diag "$@"
       ;;
     completion)
       [ "$#" -eq 2 ] || syntax_error 'usage: rig completion bash|zsh' || return

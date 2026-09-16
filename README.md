@@ -64,11 +64,13 @@ tool = mgit
 - `rig show [--profile NAME]` summarises the default or named resolved profile.
 - `rig list [--category ID] [--profile NAME]` lists catalogue tools, optionally narrowed by category and profile.
 - `rig explain TOOL` explains a tool's declared meaning, relationships, profile membership, and compatible provider binding.
-- `rig paths` prints the resolved Rig configuration, data, state, and cache directories.
+- `rig diag` reports the effective Rig runtime, active platform, XDG paths, and configuration discovery and validity.
 - `rig completion bash|zsh` prints shell completion source.
 - `rig help`, `rig --help`, and `rig --version` provide command and version information.
 
 Catalogue queries resolve declarations only and never invoke provider code. See `man rig` for the complete command contract.
+
+Diagnostics are also non-mutating and never invoke providers. A valid configuration returns status 0; missing or invalid configuration returns status 1 while still printing the available diagnostic snapshot. The planned `doctor` command is the separate, deeper check of selected tools and providers.
 
 ## Status
 

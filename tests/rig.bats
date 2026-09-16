@@ -111,7 +111,8 @@ write_query_config() {
   [[ "$output" == *"show [--profile NAME]"* ]]
   [[ "$output" == *"list [--category ID] [--profile NAME]"* ]]
   [[ "$output" == *"explain TOOL"* ]]
-  [[ "$output" == *"paths"* ]]
+  [[ "$output" == *"diag"* ]]
+  [[ "$output" != *"paths"* ]]
   [[ "$output" == *"completion bash|zsh"* ]]
 }
 
@@ -122,43 +123,130 @@ write_query_config() {
   [ "$output" = "rig 0.1.0" ]
 }
 
-@test "paths follow XDG base directories" {
+@test "diag reports stable runtime, default paths, and missing configuration" {
+  run env \
+    HOME="$TEST_HOME" \
+    RIG_CONFIG_HOME= RIG_DATA_HOME= RIG_STATE_HOME= RIG_CACHE_HOME= \
+    XDG_CONFIG_HOME= XDG_DATA_HOME= XDG_STATE_HOME= XDG_CACHE_HOME= \
+    RIG_PLATFORM=fixture \
+    "$RIG" diag
+
+  [ "$status" -eq 1 ]
+  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.1.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s/.config/rig\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/.config/rig/rig.conf\n  Fragment count: 0\n  Status: missing' "$RIG" "$BASH_VERSION" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME")" ]
+}
+
+@test "diag follows XDG base directories" {
   run env \
     HOME=/tmp/rig-home \
     XDG_CONFIG_HOME=/tmp/rig-config \
     XDG_DATA_HOME=/tmp/rig-data \
     XDG_STATE_HOME=/tmp/rig-state \
     XDG_CACHE_HOME=/tmp/rig-cache \
-    "$RIG" paths
+    "$RIG" diag
 
-  [ "$status" -eq 0 ]
-  [ "$output" = $'config=/tmp/rig-config/rig\ndata=/tmp/rig-data/rig\nstate=/tmp/rig-state/rig\ncache=/tmp/rig-cache/rig' ]
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"  Config home: /tmp/rig-config/rig"* ]]
+  [[ "$output" == *"  Data home: /tmp/rig-data/rig"* ]]
+  [[ "$output" == *"  State home: /tmp/rig-state/rig"* ]]
+  [[ "$output" == *"  Cache home: /tmp/rig-cache/rig"* ]]
+  [[ "$output" == *"  Root config: /tmp/rig-config/rig/rig.conf"* ]]
 }
 
-@test "Rig path overrides take precedence" {
+@test "Rig diagnostic path overrides take precedence" {
   run env \
     HOME=/tmp/rig-home \
     RIG_CONFIG_HOME=/tmp/custom-config \
     RIG_DATA_HOME=/tmp/custom-data \
     RIG_STATE_HOME=/tmp/custom-state \
     RIG_CACHE_HOME=/tmp/custom-cache \
-    "$RIG" paths
+    "$RIG" diag
 
-  [ "$status" -eq 0 ]
-  [ "$output" = $'config=/tmp/custom-config\ndata=/tmp/custom-data\nstate=/tmp/custom-state\ncache=/tmp/custom-cache' ]
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"  Config home: /tmp/custom-config"* ]]
+  [[ "$output" == *"  Data home: /tmp/custom-data"* ]]
+  [[ "$output" == *"  State home: /tmp/custom-state"* ]]
+  [[ "$output" == *"  Cache home: /tmp/custom-cache"* ]]
+  [[ "$output" == *"  Root config: /tmp/custom-config/rig.conf"* ]]
 }
 
 @test "completion emits shell registration" {
   run "$RIG" completion bash
   [ "$status" -eq 0 ]
   [[ "$output" == *"complete -F _rig rig"* ]]
-  [[ "$output" == *"show list explain paths completion help"* ]]
+  [[ "$output" == *"show list explain diag completion help"* ]]
+  [[ "$output" != *" paths "* ]]
 
   run "$RIG" completion zsh
   [ "$status" -eq 0 ]
   [[ "$output" == *"#compdef rig"* ]]
   [[ "$output" == *"compdef _rig rig"* ]]
   [[ "$output" == *"show:describe a resolved profile"* ]]
+  [[ "$output" == *"diag:print runtime and configuration diagnostics"* ]]
+}
+
+@test "diag reports valid configuration metadata and fragment count" {
+  write_minimal_config
+  printf '%s\n' '# first fragment' >"$CONFIG_HOME/conf.d/10-first.conf"
+  printf '%s\n' '# second fragment' >"$CONFIG_HOME/conf.d/20-second.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
+    XDG_DATA_HOME= XDG_STATE_HOME= XDG_CACHE_HOME= RIG_PLATFORM=fixture "$RIG" diag
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.1.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.conf\n  Fragment count: 2\n  Status: valid\n  Schema: 1\n  Default profile: default' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]
+}
+
+@test "diag summarizes invalid configuration without parser diagnostics" {
+  printf '%s\n' '[rig]' 'schema = 2' 'default-profile = default' >"$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=fixture "$RIG" diag
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"  Status: invalid"* ]]
+  [[ "$output" != *"  Schema:"* ]]
+  [[ "$output" != *"  Default profile:"* ]]
+  [[ "$output" != *"rig: error:"* ]]
+}
+
+@test "diag validates configuration without invoking providers" {
+  write_query_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" diag
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"  Status: valid"* ]]
+  [ ! -e "$QUERY_MARKER" ]
+}
+
+@test "diag reports the invoked linked executable path" {
+  write_minimal_config
+  link_dir=$BATS_TEST_TMPDIR/linked-bin-$BATS_TEST_NUMBER
+  mkdir -p "$link_dir"
+  ln -s "$RIG" "$link_dir/rig"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=fixture "$link_dir/rig" diag
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"  Executable: $link_dir/rig"* ]]
+}
+
+@test "diag help succeeds without configuration and paths is removed" {
+  missing_config=$BATS_TEST_TMPDIR/missing-diag-config-$BATS_TEST_NUMBER
+
+  for flag in -h --help; do
+    run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" diag "$flag"
+    [ "$status" -eq 0 ]
+    [ "$output" = "Usage: rig diag" ]
+  done
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" diag extra
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"rig: error: usage: rig diag"* ]]
+  [[ "$output" != *"cannot read configuration file"* ]]
+
+  run "$RIG" paths
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"rig: error: unknown command: paths"* ]]
 }
 
 @test "show describes default and named resolved profiles deterministically" {
