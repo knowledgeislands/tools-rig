@@ -4,12 +4,12 @@ area: MIG
 title: Extract bootstrap behavior
 theme: migration
 horizon: now
-status: in-progress
-blocks: [RIG-DIST-001, RIG-MIG-005]
+status: awaiting-review
+blocks: []
 blocked_by: []
 baseline_ref: 1418f7c4ff417151a307604c4762c2196bc8ee8c
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-16T23:18:30Z
+updated_at: 2026-09-16T23:37:31Z
 ---
 
 # RIG-MIG-001: Extract bootstrap behavior
@@ -36,12 +36,12 @@ Bootstrap is deliberately one entry into the same resolved provider plan as `rig
 
 ## Steps
 
-- [ ] Define `rig bootstrap [--profile NAME] [--dry-run]` as first materialisation through the same resolver, dependency order, capability checks, dispatch, and reporting used by `rig apply`.
-- [ ] Map legacy `install` to bootstrap or apply semantics and map supported `update`, `cleanup`, and `backup` outcomes to declared provider operations without exposing the nine legacy component scripts as public commands.
-- [ ] Extend the private profile and provider declarations only after RIG-MIG-004 supplies provider bindings and the public provider execution contract is usable.
-- [ ] Add Bats parity coverage for default and selected provider ordering, stale-manifest protection, unsupported capability rejection, provider failure propagation and dependent skipping, and dry-run non-mutation.
-- [ ] Compare the standalone call plan and outcomes with `bin/rig.d/executable_bootstrap` and `bin/env/executable_*` before changing any legacy source.
-- [ ] Align top-level help, command help, Bash and Zsh completion, README inventory, `rig(1)`, and the curated v1 changelog.
+- [x] Define `rig bootstrap [--profile NAME] [--dry-run]` as first materialisation through the same resolver, dependency order, capability checks, dispatch, and reporting used by `rig apply`.
+- [x] Map legacy `install` to bootstrap or apply semantics and map supported `update`, `cleanup`, and `backup` outcomes to declared provider operations without exposing the nine legacy component scripts as public commands.
+- [x] Extend the private profile and provider declarations only after RIG-MIG-004 supplies provider bindings and the public provider execution contract is usable.
+- [x] Add Bats parity coverage for default and selected provider ordering, stale-manifest protection, unsupported capability rejection, provider failure propagation and dependent skipping, and dry-run non-mutation.
+- [x] Compare the standalone call plan and outcomes with `bin/rig.d/executable_bootstrap` and `bin/env/executable_*` before changing any legacy source.
+- [x] Align top-level help, command help, Bash and Zsh completion, README inventory, `rig(1)`, and the curated v1 changelog.
 
 ## Files touched
 
@@ -76,6 +76,32 @@ Update installation and migration guidance with bootstrap usage and provider-ope
 ### Roadmap
 
 Preserve the dependency links to private declaration migration, legacy retirement, and first release; newly discovered provider-specific parity gaps belong in their existing provider or migration owner.
+
+## Review
+
+### Delivered
+
+Public commit `d1d275a` delivers the standalone bootstrap entry point from immutable baseline `1418f7c4ff417151a307604c4762c2196bc8ee8c`; dotfiles commit `e1d8b9b` delivers the private bootstrap profile, provider translation, and declared maintenance operations. The legacy bootstrap and environment helpers remain intact for the later retirement gate.
+
+### Summary of changes
+
+`rig bootstrap [--profile NAME] [--dry-run]` now selects an explicit profile, the configured bootstrap profile, or the default fallback before delegating to the exact `rig apply` plan. The private projection names its bootstrap profile, preserves the nine-unit install order, keeps the stale-Brewfile guard first, avoids duplicate per-tool Homebrew application and premature `mas` preflight, and exposes update, cleanup, and backup through bounded declared operations. Help, completions, README, manual, changelog, Specifications, guides, and parity tests are aligned.
+
+### Verification
+
+Public commit `d1d275a` passed the complete shell gate with all 96 Bats tests, ShellCheck, Bash syntax, `mandoc -T lint`, repository audit, and diff checking. Dotfiles commit `e1d8b9b` passed all 29 Node tests, including side-by-side bootstrap order, stale-manifest, failure, dry-run, and maintenance-operation parity. `chezmoi diff` was reviewed and no `chezmoi apply` was run.
+
+### Outstanding concerns
+
+None. The post-implementation parity audit findings were corrected before delivery: explicit bootstrap-profile selection, aggregate-versus-per-tool Homebrew duplication, `mas` preflight ordering, stale-manifest protection, fixed setup ordering, and update, cleanup, and backup operation coverage.
+
+### Post-change review
+
+Bootstrap is a small alias into the shared orchestration engine, while private provider declarations retain host-specific manifests and scripts. The delivered public and private revisions satisfy the approved parity boundary and are ready for human acceptance.
+
+### Mini recap
+
+Standalone Rig can now perform the first materialisation of the private working setup and reach retained maintenance outcomes without recreating the legacy subsystem command tree.
 
 ## Discussion
 

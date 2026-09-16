@@ -4,12 +4,12 @@ area: MIG
 title: Extract machine audit
 theme: migration
 horizon: now
-status: in-progress
-blocks: [RIG-MIG-005]
+status: awaiting-review
+blocks: []
 blocked_by: []
 baseline_ref: 1418f7c4ff417151a307604c4762c2196bc8ee8c
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-16T23:18:30Z
+updated_at: 2026-09-16T23:37:31Z
 ---
 
 # RIG-MIG-002: Extract machine audit
@@ -34,11 +34,11 @@ The migration maps this extension to private tool `workstation` with operation `
 
 ## Steps
 
-- [ ] Add `workstation` and its macOS-only `audit` observe operation to the generated private Rig configuration without moving the audit implementation or its data into tools-rig.
-- [ ] Bind the operation to an executable provider that invokes the existing Bun audit and accepts no caller argument other than the optional exact value `--verbose`.
-- [ ] Rewrite every dotfiles guide, housekeeping instruction, and agent-facing caller from `rig machine audit [--verbose]` to `rig run workstation audit [-- --verbose]`.
-- [ ] Add focused operation tests for no-argument and verbose invocation, platform rejection, mutation prohibition, literal argument forwarding, and rejection before invocation of every unlisted argument.
-- [ ] Keep the legacy wrapper and its tests live until the parity matrix in RIG-MIG-005 passes.
+- [x] Add `workstation` and its macOS-only `audit` observe operation to the generated private Rig configuration without moving the audit implementation or its data into tools-rig.
+- [x] Bind the operation to an executable provider that invokes the existing Bun audit and accepts no caller argument other than the optional exact value `--verbose`.
+- [x] Rewrite every dotfiles guide, housekeeping instruction, and agent-facing caller from `rig machine audit [--verbose]` to `rig run workstation audit [-- --verbose]`.
+- [x] Add focused operation tests for no-argument and verbose invocation, platform rejection, mutation prohibition, literal argument forwarding, and rejection before invocation of every unlisted argument.
+- [x] Keep the legacy wrapper and its tests live until the parity matrix in RIG-MIG-005 passes.
 
 ## Files touched
 
@@ -73,6 +73,32 @@ Replace every documented `rig machine audit` invocation with `rig run workstatio
 ### Roadmap
 
 Retain RIG-CLI-005 as the public operation owner and RIG-MIG-005 as the retirement gate; do not create a generic machine-command workstream.
+
+## Review
+
+### Delivered
+
+Dotfiles commit `e1d8b9b` delivers the private machine-audit migration against the operation boundary available in public Rig commit `d1d275a`, from immutable baseline `1418f7c4ff417151a307604c4762c2196bc8ee8c`. The Bun audit implementation and workstation-specific data remain private.
+
+### Summary of changes
+
+The generated private configuration now declares exactly one macOS-only `workstation.audit` observe operation backed by the retained provider wrapper. It accepts no caller arguments except the exact optional `--verbose` value, forwards arguments literally to the existing Bun audit, rejects unsupported platform, capability, and argument cases before invocation, removes the former mutating workstation operation, and rewrites guides, housekeeping instructions, and agent-facing callers to `rig run workstation audit [-- --verbose]`.
+
+### Verification
+
+Public commit `d1d275a` passed all 96 Bats tests and the complete ShellCheck, Bash syntax, manual, repository-audit, and diff-check gate. Dotfiles commit `e1d8b9b` passed all 29 Node tests, including no-argument and verbose parity, native outcome comparison, platform and mutation rejection, literal forwarding, and empty invocation logs for rejected input. `chezmoi diff` was reviewed and no `chezmoi apply` was run.
+
+### Outstanding concerns
+
+None. The legacy wrapper remains intentionally available until RIG-MIG-005 completes the final source retirement and applied-machine cutover.
+
+### Post-change review
+
+The migration preserves read-only machine-audit behaviour without adding a machine command family or Bun dependency to public Rig and is ready for human acceptance.
+
+### Mini recap
+
+Machine audit is now a bounded private operation invoked through Rig’s generic command language, with existing audit logic and personal policy still owned by dotfiles.
 
 ## Discussion
 
