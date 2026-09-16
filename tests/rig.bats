@@ -140,8 +140,8 @@ run_loader() {
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" show
   [ "$status" -eq 0 ]
-  [[ "$output" == $'Profile: default\nPlatform: macos\nTools (100):'* ]] || false
-  [[ "$output" == *$'tool-100\tTool 100\tcategory-1\tExercise deterministic catalogue query 100' ]] || false
+  [[ "$output" == $'Profile:  default\nPlatform: macos\nTools:    100\n\nID'* ]] || false
+  [[ "$output" == *'tool-100  Tool 100  category-1  Exercise deterministic catalogue query 100' ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" explain tool-100
@@ -449,12 +449,27 @@ write_query_config() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" OSTYPE=unrecognised RIG_PLATFORM=macos \
     "$RIG" show
   [ "$status" -eq 0 ]
-  [ "$output" = $'Profile: default\nPlatform: macos\nTools (3):\n  fzf\tfzf\tnavigation\tSelect entries quickly\n  git\tGit\tfoundation\tTrack source history\n  mgit\tMGit\tnavigation\tNavigate many repositories' ]
+  [ "$output" = $'Profile:  default\nPlatform: macos\nTools:    3\n\nID    NAME  CATEGORY    PURPOSE\n----  ----  ----------  --------------------------\nfzf   fzf   navigation  Select entries quickly\ngit   Git   foundation  Track source history\nmgit  MGit  navigation  Navigate many repositories' ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" show --profile minimal
   [ "$status" -eq 0 ]
-  [ "$output" = $'Profile: minimal\nPlatform: macos\nTools (1):\n  git\tGit\tfoundation\tTrack source history' ]
+  [ "$output" = $'Profile:  minimal\nPlatform: macos\nTools:    1\n\nID    NAME  CATEGORY    PURPOSE\n----  ----  ----------  --------------------\ngit   Git   foundation  Track source history' ]
+}
+
+@test "show bounds wide table rows and marks abbreviated values" {
+  write_minimal_config
+  long_purpose='Summarise a deliberately long purpose that would otherwise force the profile table beyond its stable terminal width and make the selected rig difficult to scan quickly'
+  sed "s|purpose = Test parsing|purpose = $long_purpose|" \
+    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/wide.conf"
+  mv "$CONFIG_HOME/wide.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" show
+
+  [ "$status" -eq 0 ]
+  [ "${#lines[5]}" -eq 120 ]
+  [[ "${lines[5]}" == *... ]]
 }
 
 @test "queries reject an unknown detected platform unless explicitly overridden" {

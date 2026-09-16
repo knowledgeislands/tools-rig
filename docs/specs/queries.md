@@ -6,13 +6,13 @@ This area of the [Rig Specifications](index.md) defines read-only ways to answer
 
 ### RIG-QUERY-001 — Show a rig
 
-`rig show` MUST describe the resolved default profile, and `rig show --profile NAME` MUST describe a named profile without changing the configured default.
+`rig show` MUST describe the resolved default profile, and `rig show --profile NAME` MUST describe a named profile without changing the configured default. The output MUST present profile metadata and selected tool identity, name, category, and purpose in a human-readable aligned table. Table rows MUST use a stable 120-character budget and mark abbreviated values with `...`; `rig explain TOOL` retains complete metadata.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests compare default and named profile summaries from one isolated catalogue.
+_Verify:_ Bats tests compare exact aligned default and named profile summaries and exercise bounded-width abbreviation.
 
-_Evidence:_ `tests/rig.bats` asserts exact deterministic default and named-profile output, including selected tools and active platform.
+_Evidence:_ `tests/rig.bats` asserts exact deterministic default and named-profile metadata and aligned table output, including selected tools and active platform, plus a 120-character wide-row fixture.
 
 ### RIG-QUERY-002 — List catalogue tools
 

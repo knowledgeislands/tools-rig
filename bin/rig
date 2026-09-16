@@ -1512,6 +1512,107 @@ rig_print_tool_row() {
   printf '  %s\t%s\t%s\t%s\n' "$tool" "$name" "$category" "$purpose"
 }
 
+rig_repeat_character() {
+  local character count repeated
+
+  character=$1
+  count=$2
+  repeated=
+  while [ "${#repeated}" -lt "$count" ]; do
+    repeated=$repeated$character
+  done
+  RIG_VALUE=$repeated
+}
+
+rig_ellipsize() {
+  local value width prefix_width
+
+  value=$1
+  width=$2
+  if [ "${#value}" -le "$width" ]; then
+    RIG_VALUE=$value
+    return
+  fi
+
+  prefix_width=$((width - 3))
+  RIG_VALUE=${value:0:prefix_width}...
+}
+
+rig_print_profile_tool_table() {
+  local index tool name category purpose
+  local display_tool display_name display_category display_purpose
+  local id_width name_width category_width purpose_width
+  local purpose_limit
+  local id_rule name_rule category_rule purpose_rule
+
+  id_width=4
+  name_width=4
+  category_width=8
+  purpose_width=7
+
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
+    tool=${RIG_SELECTED_TOOLS[$index]}
+    rig_get_value "tool.$tool" name || return
+    name=$RIG_VALUE
+    rig_get_value "tool.$tool" category || return
+    category=$RIG_VALUE
+    rig_get_value "tool.$tool" purpose || return
+    purpose=$RIG_VALUE
+
+    [ "${#tool}" -le "$id_width" ] || id_width=${#tool}
+    [ "${#name}" -le "$name_width" ] || name_width=${#name}
+    [ "${#category}" -le "$category_width" ] || category_width=${#category}
+    [ "${#purpose}" -le "$purpose_width" ] || purpose_width=${#purpose}
+    index=$((index + 1))
+  done
+
+  [ "$id_width" -le 24 ] || id_width=24
+  [ "$name_width" -le 24 ] || name_width=24
+  [ "$category_width" -le 16 ] || category_width=16
+  purpose_limit=$((120 - id_width - name_width - category_width - 6))
+  [ "$purpose_width" -le "$purpose_limit" ] || purpose_width=$purpose_limit
+
+  rig_repeat_character - "$id_width"
+  id_rule=$RIG_VALUE
+  rig_repeat_character - "$name_width"
+  name_rule=$RIG_VALUE
+  rig_repeat_character - "$category_width"
+  category_rule=$RIG_VALUE
+  rig_repeat_character - "$purpose_width"
+  purpose_rule=$RIG_VALUE
+
+  printf '%-*s  %-*s  %-*s  %s\n' \
+    "$id_width" ID "$name_width" NAME "$category_width" CATEGORY PURPOSE
+  printf '%s  %s  %s  %s\n' \
+    "$id_rule" "$name_rule" "$category_rule" "$purpose_rule"
+
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
+    tool=${RIG_SELECTED_TOOLS[$index]}
+    rig_get_value "tool.$tool" name || return
+    name=$RIG_VALUE
+    rig_get_value "tool.$tool" category || return
+    category=$RIG_VALUE
+    rig_get_value "tool.$tool" purpose || return
+    purpose=$RIG_VALUE
+
+    rig_ellipsize "$tool" "$id_width"
+    display_tool=$RIG_VALUE
+    rig_ellipsize "$name" "$name_width"
+    display_name=$RIG_VALUE
+    rig_ellipsize "$category" "$category_width"
+    display_category=$RIG_VALUE
+    rig_ellipsize "$purpose" "$purpose_width"
+    display_purpose=$RIG_VALUE
+
+    printf '%-*s  %-*s  %-*s  %s\n' \
+      "$id_width" "$display_tool" "$name_width" "$display_name" \
+      "$category_width" "$display_category" "$display_purpose"
+    index=$((index + 1))
+  done
+}
+
 rig_profile_declares_tool() {
   local profile tool section_index field_index field_end
 
@@ -1670,7 +1771,7 @@ rig_describe_compatible_binding() {
 }
 
 rig_command_show() {
-  local profile platform tool index
+  local profile platform
 
   profile=
   case "$#" in
@@ -1693,14 +1794,9 @@ rig_command_show() {
   rig_current_platform || return
   platform=$RIG_VALUE
   rig_resolve_profile "$profile" "$platform" || return
-  printf 'Profile: %s\nPlatform: %s\nTools (%s):\n' \
+  printf 'Profile:  %s\nPlatform: %s\nTools:    %s\n\n' \
     "$RIG_RESOLVED_PROFILE" "$platform" "${#RIG_SELECTED_TOOLS[@]}"
-  index=0
-  while [ "$index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
-    tool=${RIG_SELECTED_TOOLS[$index]}
-    rig_print_tool_row "$tool" || return
-    index=$((index + 1))
-  done
+  rig_print_profile_tool_table
 }
 
 rig_command_list() {

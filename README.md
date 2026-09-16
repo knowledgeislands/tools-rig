@@ -74,7 +74,7 @@ Executable custom providers declare exact `observe` and `apply` capabilities. Se
 ## Commands
 
 - `rig` shows top-level help.
-- `rig show [--profile NAME]` summarises the default or named resolved profile.
+- `rig show [--profile NAME]` summarises the default or named resolved profile in a bounded-width, aligned tool table; `rig explain TOOL` provides complete metadata.
 - `rig list [--category ID] [--profile NAME]` lists catalogue tools, optionally narrowed by category and profile.
 - `rig explain TOOL` explains a tool's declared meaning, relationships, profile membership, and compatible provider binding.
 - `rig status [--profile NAME]` compares expected tools with custom-provider observations.
