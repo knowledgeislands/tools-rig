@@ -58,6 +58,7 @@ print_help() {
     '  status [--profile NAME]                Compare expected and observed state.' \
     '  doctor [--profile NAME]                Check whether a rig can operate.' \
     '  apply [--profile NAME] [--dry-run]     Materialise a resolved profile.' \
+    '  run TOOL OPERATION [-- ARGUMENT...]    Invoke a declared operation.' \
     '  export PUBLICATION --output DIRECTORY' \
     '                                     Generate a static public rig.' \
     '  diag                  Print runtime and configuration diagnostics.' \
@@ -92,7 +93,7 @@ print_bash_completion() {
     '  current=${COMP_WORDS[COMP_CWORD]}' \
     '  command=${COMP_WORDS[1]:-}' \
     '  if [ "$COMP_CWORD" -eq 1 ]; then' \
-    '    COMPREPLY=($(compgen -W "-h --help -V --version show list explain status doctor apply export diag completion help" -- "$current"))' \
+    '    COMPREPLY=($(compgen -W "-h --help -V --version show list explain status doctor apply run export diag completion help" -- "$current"))' \
     '    return' \
     '  fi' \
     '  case "$command" in' \
@@ -102,6 +103,7 @@ print_bash_completion() {
     '    status) COMPREPLY=($(compgen -W "-h --help --profile" -- "$current")) ;;' \
     '    doctor) COMPREPLY=($(compgen -W "-h --help --profile" -- "$current")) ;;' \
     '    apply) COMPREPLY=($(compgen -W "-h --help --profile --dry-run" -- "$current")) ;;' \
+    '    run) COMPREPLY=($(compgen -W "-h --help --" -- "$current")) ;;' \
     '    export) COMPREPLY=($(compgen -W "-h --help --output" -- "$current")) ;;' \
     '    diag) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
     '    completion) COMPREPLY=($(compgen -W "bash zsh" -- "$current")) ;;' \
@@ -126,6 +128,7 @@ print_zsh_completion() {
     "    'status:compare expected and observed state'" \
     "    'doctor:check whether a rig can operate'" \
     "    'apply:materialise a resolved profile'" \
+    "    'run:invoke a declared operation'" \
     "    'export:generate a static public rig'" \
     "    'diag:print runtime and configuration diagnostics'" \
     "    'completion:print shell completion source'" \
@@ -142,6 +145,7 @@ print_zsh_completion() {
     "        status) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' ;;" \
     "        doctor) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' ;;" \
     "        apply) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \
+    "        run) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:tool name:' '2:operation name:' '*::operation argument:' ;;" \
     "        export) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' '--output[write complete static tree]:directory:_directories' ;;" \
     "        diag) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
     "        completion) _values 'shell' bash zsh ;;" \
@@ -264,9 +268,9 @@ rig_parse_section_identity() {
       rig_valid_id "$rest" || return 1
       RIG_SECTION_ID=$rest
       ;;
-    binding.*)
-      RIG_SECTION_TYPE=binding
-      rest=${name#binding.}
+    binding.*|operation.*)
+      RIG_SECTION_TYPE=${name%%.*}
+      rest=${name#*.}
       [ "$rest" != "${rest#*.}" ] || return 1
       first=${rest%%.*}
       second=${rest#*.}
@@ -316,13 +320,15 @@ rig_field_kind() {
     tool:name|tool:category|tool:purpose|tool:rationale|\
     provider:adapter|provider:command|provider:executable|provider:manifest|\
     binding:kind|binding:locator|binding:destination|binding:checksum|\
-    publication:profile|publication:title|publication:base-url|publication:publisher)
+    publication:profile|publication:title|publication:base-url|publication:publisher|\
+    operation:provider|operation:capability|operation:mode|operation:description)
       RIG_FIELD_KIND=scalar
       ;;
     tool:platform|tool:requires|tool:related|tool:alternative|\
     profile:profile|profile:tool|\
     provider:argument|provider:capability|\
-    binding:platform|binding:argument)
+    binding:platform|binding:argument|\
+    operation:platform|operation:argument|operation:allow-argument)
       RIG_FIELD_KIND=repeatable
       ;;
     *) return 1 ;;
@@ -665,6 +671,40 @@ rig_validate_binding_adapter() {
   fi
 }
 
+rig_validate_operation() {
+  local section_name tool provider adapter capability mode
+
+  section_name=$1
+  tool=$2
+
+  rig_reference_exists tool "$tool" ||
+    rig_fail "[$section_name] references unknown tool '$tool'" || return
+
+  rig_require_field "$section_name" provider || return
+  provider=$RIG_VALUE
+  rig_valid_id "$provider" && rig_reference_exists provider "$provider" ||
+    rig_fail "[$section_name] references unknown provider '$provider'" || return
+
+  rig_get_value "provider.$provider" adapter || return 2
+  adapter=$RIG_VALUE
+  [ "$adapter" = custom ] ||
+    rig_fail "[$section_name] operations require a custom provider" || return
+
+  rig_require_field "$section_name" capability || return
+  capability=$RIG_VALUE
+  rig_provider_has_capability "$provider" "$capability" ||
+    rig_fail "[$section_name] provider '$provider' does not declare capability '$capability'" || return
+
+  rig_require_field "$section_name" mode || return
+  mode=$RIG_VALUE
+  case "$mode" in
+    observe|mutate) ;;
+    *) rig_fail "[$section_name] mode must be 'observe' or 'mutate'" || return ;;
+  esac
+
+  rig_require_field "$section_name" description || return
+}
+
 rig_validate_model() {
   local index section_name section_type section_id secondary_id adapter
 
@@ -728,6 +768,9 @@ rig_validate_model() {
         rig_require_field "$section_name" publisher || return
         rig_valid_id "$RIG_VALUE" && rig_reference_exists provider "$RIG_VALUE" ||
           rig_fail "[$section_name] references unknown provider '$RIG_VALUE'" || return
+        ;;
+      operation)
+        rig_validate_operation "$section_name" "$section_id" || return
         ;;
     esac
     index=$((index + 1))
@@ -1902,6 +1945,143 @@ rig_current_platform() {
   esac
 }
 
+rig_operation_supports_platform() {
+  local section_name platform section_index field_index field_end found
+
+  section_name=$1
+  platform=$2
+  rig_section_index "$section_name" || return 2
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  found=0
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = platform ]; then
+      found=1
+      case "${RIG_FIELD_VALUES[$field_index]}" in
+        any|"$platform") return 0 ;;
+      esac
+    fi
+    field_index=$((field_index + 1))
+  done
+  [ "$found" -eq 0 ]
+}
+
+rig_operation_allows_argument() {
+  local section_name argument section_index field_index field_end
+
+  section_name=$1
+  argument=$2
+  rig_section_index "$section_name" || return 2
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = allow-argument ] &&
+      [ "${RIG_FIELD_VALUES[$field_index]}" = "$argument" ]; then
+      return 0
+    fi
+    field_index=$((field_index + 1))
+  done
+  return 1
+}
+
+rig_prepare_operation_invocation() {
+  local section_name tool provider capability verb executable
+
+  section_name=$1
+  tool=$2
+  provider=$3
+  capability=$4
+  verb=$5
+
+  rig_get_value "provider.$provider" executable || return 2
+  executable=$RIG_VALUE
+  RIG_INVOKE_ARGUMENTS=()
+  rig_append_arguments "provider.$provider" || return 2
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=rig-provider-v1
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$verb
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$provider
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$tool
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=operation
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$capability
+  rig_append_arguments "$section_name" || return 2
+  RIG_VALUE=$executable
+}
+
+rig_command_run() {
+  local tool operation section_name platform provider capability mode verb executable argument
+  local -a caller_arguments
+
+  if [ "$#" -eq 1 ]; then
+    case "$1" in
+      -h|--help)
+        printf '%s\n' 'Usage: rig run TOOL OPERATION [-- ARGUMENT...]'
+        return
+        ;;
+    esac
+  fi
+
+  [ "$#" -ge 2 ] ||
+    syntax_error 'usage: rig run TOOL OPERATION [-- ARGUMENT...]' || return
+  tool=$1
+  operation=$2
+  shift 2
+  caller_arguments=()
+  if [ "$#" -gt 0 ]; then
+    [ "$1" = -- ] ||
+      syntax_error 'usage: rig run TOOL OPERATION [-- ARGUMENT...]' || return
+    shift
+    caller_arguments=("$@")
+  fi
+
+  rig_valid_id "$tool" || rig_fail "invalid tool identity '$tool'" || return
+  rig_valid_id "$operation" || rig_fail "invalid operation identity '$operation'" || return
+  rig_load_config || return
+  section_name=operation.$tool.$operation
+  rig_section_index "$section_name" ||
+    rig_fail "unknown operation '$tool $operation'" || return
+
+  rig_current_platform || return
+  platform=$RIG_VALUE
+  rig_tool_supports_platform "$tool" "$platform" ||
+    rig_fail "tool '$tool' is not supported on platform '$platform'" || return
+  rig_operation_supports_platform "$section_name" "$platform" ||
+    rig_fail "operation '$tool $operation' is not supported on platform '$platform'" || return
+
+  rig_get_value "$section_name" provider || return 2
+  provider=$RIG_VALUE
+  rig_get_value "$section_name" capability || return 2
+  capability=$RIG_VALUE
+  rig_get_value "$section_name" mode || return 2
+  mode=$RIG_VALUE
+  case "$mode" in
+    observe) verb=observe ;;
+    mutate) verb=apply ;;
+    *) return 2 ;;
+  esac
+
+  if [ "${#caller_arguments[@]}" -gt 0 ]; then
+    for argument in "${caller_arguments[@]}"; do
+      rig_operation_allows_argument "$section_name" "$argument" ||
+        rig_fail "argument is not allowed for operation '$tool $operation': $argument" || return
+    done
+  fi
+
+  rig_get_value "provider.$provider" executable || return 2
+  executable=$RIG_VALUE
+  rig_executable_available "$executable" ||
+    rig_fail "provider '$provider' executable unavailable: $executable" || return
+  rig_prepare_operation_invocation "$section_name" "$tool" "$provider" "$capability" "$verb" || return
+  executable=$RIG_VALUE
+  if [ "${#caller_arguments[@]}" -gt 0 ]; then
+    for argument in "${caller_arguments[@]}"; do
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$argument
+    done
+  fi
+  "$executable" "${RIG_INVOKE_ARGUMENTS[@]}"
+}
+
 rig_effective_paths() {
   if [ -n "${RIG_CONFIG_HOME:-}" ]; then
     RIG_DIAG_CONFIG_HOME=$RIG_CONFIG_HOME
@@ -2905,6 +3085,10 @@ main() {
     apply)
       shift
       rig_command_apply "$@"
+      ;;
+    run)
+      shift
+      rig_command_run "$@"
       ;;
     export)
       shift

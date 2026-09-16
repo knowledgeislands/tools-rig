@@ -171,14 +171,18 @@ _Evidence:_ `rig_command_apply` redirects provider stdout to stderr while leavin
 
 `rig run TOOL OPERATION` MUST resolve one declared operation, verify that it supports the active platform, verify that its provider declares the configured capability, and invoke that capability with the configured arguments. It MUST preserve the provider's native outcome and MUST reject invalid input before provider invocation.
 
-_Conformance:_ pending
+_Conformance:_ conforming
 
 _Verify:_ Bats tests use recording providers to assert exact operation selection, platform and capability validation, invocation boundaries, exit status, and no invocation after validation failure.
+
+_Evidence:_ `rig_command_run` maps declared modes to the versioned custom-provider ABI, preflights the selected operation and executable, passes provider output through, and preserves its native exit status; `tests/rig.bats` records exact invocations.
 
 ### RIG-ORCH-013 — Bounded caller arguments
 
 `rig run TOOL OPERATION [-- ARGUMENT...]` MUST accept a caller argument only when it exactly matches one `allow-argument` value. Rig MUST append accepted caller arguments literally without shell interpretation. An operation with no `allow-argument` fields MUST reject all caller arguments.
 
-_Conformance:_ pending
+_Conformance:_ conforming
 
 _Verify:_ Bats tests cover allowed and rejected arguments containing spaces and shell metacharacters, exact-match behaviour, argument order, and an empty provider-call log for rejected input.
+
+_Evidence:_ `rig_operation_allows_argument` performs literal equality checks before dispatch; `rig_command_run` appends accepted caller arguments without evaluation; `tests/rig.bats` covers rejection and literal boundary preservation.

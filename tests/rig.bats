@@ -257,6 +257,7 @@ write_query_config() {
   [[ "$output" == *"explain TOOL"* ]]
   [[ "$output" == *"status [--profile NAME]"* ]] || false
   [[ "$output" == *"apply [--profile NAME] [--dry-run]"* ]] || false
+  [[ "$output" == *"run TOOL OPERATION [-- ARGUMENT...]"* ]] || false
   [[ "$output" == *"export PUBLICATION --output DIRECTORY"* ]] || false
   [[ "$output" == *"diag"* ]]
   [[ "$output" != *"paths"* ]]
@@ -320,14 +321,15 @@ write_query_config() {
   run "$RIG" completion bash
   [ "$status" -eq 0 ]
   [[ "$output" == *"complete -F _rig rig"* ]]
-  [[ "$output" == *"-h --help -V --version show list explain status doctor apply export diag completion help"* ]] || false
+  [[ "$output" == *"-h --help -V --version show list explain status doctor apply run export diag completion help"* ]] || false
   [[ "$output" == *'show) COMPREPLY=($(compgen -W "-h --help --profile"'* ]]
   [[ "$output" == *'explain) COMPREPLY=($(compgen -W "-h --help"'* ]]
   [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile"'* ]] || false
   [[ "$output" == *'doctor) COMPREPLY=($(compgen -W "-h --help --profile"'* ]] || false
   [[ "$output" == *'apply) COMPREPLY=($(compgen -W "-h --help --profile --dry-run"'* ]] || false
+  [[ "$output" == *'run) COMPREPLY=($(compgen -W "-h --help --"'* ]] || false
   [[ "$output" == *'export) COMPREPLY=($(compgen -W "-h --help --output"'* ]] || false
-  [[ "$output" == *"show list explain status doctor apply export diag completion help"* ]] || false
+  [[ "$output" == *"show list explain status doctor apply run export diag completion help"* ]] || false
   [[ "$output" != *" paths "* ]]
 
   run "$RIG" completion zsh
@@ -338,6 +340,7 @@ write_query_config() {
   [[ "$output" == *"diag:print runtime and configuration diagnostics"* ]]
   [[ "$output" == *"doctor:check whether a rig can operate"* ]]
   [[ "$output" == *"export:generate a static public rig"* ]] || false
+  [[ "$output" == *"run:invoke a declared operation"* ]] || false
   [[ "$output" == *"'(-V --version)'{-V,--version}"* ]]
   [[ "$output" == *"explain) _arguments '(-h --help)'"* ]]
 }
@@ -361,14 +364,18 @@ write_query_config() {
     COMP_CWORD=2
     _rig
     printf "status:%s\n" "${COMPREPLY[*]}"
-    COMP_WORDS=(rig doctor --)
-    COMP_CWORD=2
-    _rig
-    printf "doctor:%s\n" "${COMPREPLY[*]}"
-    COMP_WORDS=(rig apply --)
-    COMP_CWORD=2
-    _rig
-    printf "apply:%s\n" "${COMPREPLY[*]}"
+      COMP_WORDS=(rig doctor --)
+      COMP_CWORD=2
+      _rig
+      printf "doctor:%s\n" "${COMPREPLY[*]}"
+      COMP_WORDS=(rig apply --)
+      COMP_CWORD=2
+      _rig
+      printf "apply:%s\n" "${COMPREPLY[*]}"
+      COMP_WORDS=(rig run --)
+      COMP_CWORD=2
+      _rig
+      printf "run:%s\n" "${COMPREPLY[*]}"
   ' bash "$RIG"
 
   [ "$status" -eq 0 ]
@@ -378,6 +385,7 @@ write_query_config() {
   [[ "$output" == *"status:--help --profile"* ]] || false
   [[ "$output" == *"doctor:--help --profile"* ]] || false
   [[ "$output" == *"apply:--help --profile --dry-run"* ]] || false
+  [[ "$output" == *"run:--help --"* ]] || false
 
   run zsh -f -c '
     autoload -Uz compinit && compinit -C
@@ -2171,4 +2179,207 @@ write_publication_config() {
   run "$RIG" export site
   [ "$status" -eq 2 ]
   [[ "$output" == *'usage: rig export PUBLICATION --output DIRECTORY'* ]] || false
+}
+
+write_operation_config() {
+  OPERATION_LOG=$BATS_TEST_TMPDIR/operation-log-$BATS_TEST_NUMBER
+  OPERATION_PROVIDER=$BATS_TEST_TMPDIR/operation-provider-$BATS_TEST_NUMBER
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'printf "BEGIN\n" >>"$RIG_OPERATION_LOG"' \
+    'for argument in "$@"; do printf "ARG=<%s>\n" "$argument" >>"$RIG_OPERATION_LOG"; done' \
+    '[ -z "${RIG_OPERATION_STDOUT:-}" ] || printf "%s\n" "$RIG_OPERATION_STDOUT"' \
+    '[ -z "${RIG_OPERATION_STDERR:-}" ] || printf "%s\n" "$RIG_OPERATION_STDERR" >&2' \
+    'exit "${RIG_OPERATION_EXIT:-0}"' >"$OPERATION_PROVIDER"
+  chmod +x "$OPERATION_PROVIDER"
+
+  printf '%s\n' \
+    '[rig]' \
+    'schema = 1' \
+    'default-profile = default' \
+    '[category.core]' \
+    'name = Core' \
+    'purpose = Core tools' \
+    '[tool.alpha]' \
+    'name = Alpha' \
+    'category = core' \
+    'purpose = Exercise declared operations' \
+    'rationale = Keeps host actions configuration-led' \
+    'platform = macos' \
+    'platform = linux' \
+    '[profile.default]' \
+    'tool = alpha' \
+    '[provider.runner]' \
+    'adapter = custom' \
+    "executable = $OPERATION_PROVIDER" \
+    'argument = provider value;$(touch provider-marker)' \
+    'capability = audit' \
+    'capability = restart' \
+    '[operation.alpha.audit]' \
+    'provider = runner' \
+    'capability = audit' \
+    'mode = observe' \
+    'description = Inspect Alpha' \
+    'platform = macos' \
+    'argument = configured value' \
+    'argument = configured * literal' \
+    'allow-argument = --verbose' \
+    'allow-argument = value with spaces' \
+    'allow-argument = semi;$(touch caller-marker)' \
+    '[operation.alpha.restart]' \
+    'provider = runner' \
+    'capability = restart' \
+    'mode = mutate' \
+    'description = Restart Alpha' \
+    'argument = restart now' >"$CONFIG_HOME/rig.conf"
+}
+
+@test "run dispatches declared observe and mutate operations with literal arguments" {
+  local expected
+  write_operation_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_OPERATION_LOG="$OPERATION_LOG" RIG_OPERATION_STDOUT='operation stdout' \
+    RIG_OPERATION_STDERR='operation stderr' RIG_OPERATION_EXIT=7 \
+    "$RIG" run alpha audit -- --verbose 'value with spaces' --verbose 'semi;$(touch caller-marker)'
+
+  [ "$status" -eq 7 ]
+  [[ "$output" == *'operation stdout'* ]] || false
+  [[ "$output" == *'operation stderr'* ]] || false
+  expected=$(printf '%s\n' \
+    'BEGIN' \
+    'ARG=<provider value;$(touch provider-marker)>' \
+    'ARG=<rig-provider-v1>' \
+    'ARG=<observe>' \
+    'ARG=<runner>' \
+    'ARG=<alpha>' \
+    'ARG=<operation>' \
+    'ARG=<audit>' \
+    'ARG=<configured value>' \
+    'ARG=<configured * literal>' \
+    'ARG=<--verbose>' \
+    'ARG=<value with spaces>' \
+    'ARG=<--verbose>' \
+    'ARG=<semi;$(touch caller-marker)>')
+  [ "$(cat "$OPERATION_LOG")" = "$expected" ]
+
+  rm -f "$OPERATION_LOG"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=linux \
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha restart
+
+  [ "$status" -eq 0 ]
+  expected=$(printf '%s\n' \
+    'BEGIN' \
+    'ARG=<provider value;$(touch provider-marker)>' \
+    'ARG=<rig-provider-v1>' \
+    'ARG=<apply>' \
+    'ARG=<runner>' \
+    'ARG=<alpha>' \
+    'ARG=<operation>' \
+    'ARG=<restart>' \
+    'ARG=<restart now>')
+  [ "$(cat "$OPERATION_LOG")" = "$expected" ]
+}
+
+@test "run rejects undeclared caller arguments and unsupported platforms before invocation" {
+  local argument
+  write_operation_config
+
+  for argument in '' verbose '--verbose=yes' 'VALUE WITH SPACES'; do
+    rm -f "$OPERATION_LOG"
+    run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+      RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit -- "$argument"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *'argument is not allowed'* ]] || false
+    [ ! -e "$OPERATION_LOG" ]
+  done
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=linux \
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"operation 'alpha audit' is not supported on platform 'linux'"* ]] || false
+  [ ! -e "$OPERATION_LOG" ]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha restart -- --verbose
+  [ "$status" -eq 2 ]
+  [ ! -e "$OPERATION_LOG" ]
+}
+
+@test "operation schema rejects invalid trust declarations before invocation" {
+  local original
+  write_operation_config
+  original=$BATS_TEST_TMPDIR/operation-original-$BATS_TEST_NUMBER
+  cp "$CONFIG_HOME/rig.conf" "$original"
+
+  sed 's/mode = observe/mode = execute/' "$original" >"$CONFIG_HOME/rig.conf"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"mode must be 'observe' or 'mutate'"* ]] || false
+  [ ! -e "$OPERATION_LOG" ]
+
+  sed '/\[operation.alpha.audit\]/,$ s/capability = audit/capability = undeclared/' \
+    "$original" >"$CONFIG_HOME/rig.conf"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"does not declare capability 'undeclared'"* ]] || false
+  [ ! -e "$OPERATION_LOG" ]
+
+  sed 's/provider = runner/provider = absent/' "$original" >"$CONFIG_HOME/rig.conf"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"references unknown provider 'absent'"* ]] || false
+  [ ! -e "$OPERATION_LOG" ]
+
+  sed 's/adapter = custom/adapter = homebrew/' "$original" >"$CONFIG_HOME/rig.conf"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'operations require a custom provider'* ]] || false
+  [ ! -e "$OPERATION_LOG" ]
+
+  sed '/description = Inspect Alpha/d' "$original" >"$CONFIG_HOME/rig.conf"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"requires field 'description'"* ]] || false
+  [ ! -e "$OPERATION_LOG" ]
+
+  sed 's/\[operation.alpha.audit\]/[operation.ghost.audit]/' "$original" >"$CONFIG_HOME/rig.conf"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"references unknown tool 'ghost'"* ]] || false
+  [ ! -e "$OPERATION_LOG" ]
+
+  sed 's/\[operation.alpha.audit\]/[operation.alpha.audit.extra]/' "$original" >"$CONFIG_HOME/rig.conf"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'invalid section identity [operation.alpha.audit.extra]'* ]] || false
+  [ ! -e "$OPERATION_LOG" ]
+}
+
+@test "run rejects unavailable provider and exposes local help" {
+  write_operation_config
+  sed "s#executable = $OPERATION_PROVIDER#executable = $BATS_TEST_TMPDIR/missing-operation-provider#" \
+    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/unavailable.conf"
+  mv "$CONFIG_HOME/unavailable.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"provider 'runner' executable unavailable"* ]] || false
+  [ ! -e "$OPERATION_LOG" ]
+
+  run "$RIG" run --help
+  [ "$status" -eq 0 ]
+  [ "$output" = 'Usage: rig run TOOL OPERATION [-- ARGUMENT...]' ]
+
+  run "$RIG" run alpha
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'usage: rig run TOOL OPERATION [-- ARGUMENT...]'* ]] || false
 }

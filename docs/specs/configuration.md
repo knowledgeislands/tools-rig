@@ -154,6 +154,8 @@ Schema 1 MUST additionally accept `[operation.TOOL.NAME]` section identities, wh
 
 The provider MUST exist and declare the referenced capability. The `mode` MUST be `observe` or `mutate`. Configured and allowed arguments remain literal values with the same repeated-field boundaries as other schema lists.
 
-_Conformance:_ pending
+_Conformance:_ conforming
 
 _Verify:_ Bats table tests accept valid operation records; reject malformed identities, missing required fields, invalid modes, unknown tools or providers, and undeclared capabilities; and preserve configured and allow-listed argument boundaries.
+
+_Evidence:_ `rig_parse_section_identity`, `rig_field_kind`, and `rig_validate_operation` enforce bounded operation records; `tests/rig.bats` covers valid declarations and rejection before invocation.

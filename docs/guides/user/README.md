@@ -50,6 +50,35 @@ Keep Homebrew manifests, uv state, and chezmoi source state in their native syst
 
 For direct downloads, declare an HTTPS locator, absolute destination, and lowercase `sha256:` checksum. Rig refuses symlink and non-regular destinations and verifies a sibling temporary file before replacement. Review `rig apply --dry-run` before the first installation.
 
+## Run a declared operation
+
+Operations keep host-specific audits and controls in private configuration while giving them one bounded command surface:
+
+```toml
+[provider.local]
+adapter = custom
+executable = ~/.local/libexec/rig-local-provider
+capability = service-status
+
+[operation.launchd.service-status]
+provider = local
+capability = service-status
+mode = observe
+description = Inspect configured launchd services
+platform = macos
+argument = user
+allow-argument = verbose
+```
+
+Invoke the declaration by tool and operation identity:
+
+```bash
+rig run launchd service-status
+rig run launchd service-status -- verbose
+```
+
+Rig invokes only a custom provider that declares the exact configured capability. `observe` maps to the provider's `observe` verb and `mutate` maps to `apply`. Configured arguments precede caller arguments, and every caller argument must exactly match one repeated `allow-argument` value. Values remain literal; Rig does not evaluate shell text. The command passes provider output through and returns its native status.
+
 ## Export a public rig
 
 Declare a publication that names the one profile intended for disclosure. The publisher remains a provider declaration for the separate deployment boundary; export does not invoke it.

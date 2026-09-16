@@ -26,6 +26,9 @@ rig \- describe and manage a personal working setup
 .RI [ \-\-profile " NAME" ]
 .RI [ \-\-dry-run ]
 .br
+.BI "rig run " TOOL " " OPERATION
+.RI [ \-\- " ARGUMENT..." ]
+.br
 .BI "rig export " PUBLICATION
 .BI " \-\-output " DIRECTORY
 .br
@@ -43,9 +46,10 @@ Its catalogue records tools, categories, purposes, rationale, relationships,
 supported platforms, profiles, and provider bindings.
 .PP
 Catalogue queries and diagnostics parse inert configuration and do not invoke
-provider code. Status and doctor invoke observation capabilities. Apply
-crosses the
-explicit mutation boundary only after complete plan preflight. Package and
+provider code. Status and doctor invoke observation capabilities.
+Apply crosses the explicit mutation boundary only after complete plan preflight.
+Run crosses an
+explicit operation trust boundary after validating its declaration. Package and
 configuration systems retain authority over their native manifests,
 resolution, configuration, and state.
 .SH INSTALLATION
@@ -125,6 +129,16 @@ Apply a named resolved profile without changing the configured default.
 .TP
 .B rig apply \-\-dry-run
 Perform complete preflight and print planned work without invoking a provider.
+.TP
+.BI "rig run " TOOL " " OPERATION " [\-\- " ARGUMENT... "]"
+Invoke one configuration-defined operation through its selected custom provider.
+An
+.B observe
+operation uses the provider's observation verb; a
+.B mutate
+operation uses its application verb. Configured arguments precede accepted
+caller arguments. Rig passes provider output through and preserves its native
+exit status.
 .TP
 .BI "rig export " PUBLICATION " \-\-output " DIRECTORY
 Generate a deterministic static
@@ -326,6 +340,25 @@ requires
 .BR base-url ,
 and
 .BR publisher .
+.B [operation.TOOL.NAME]
+requires
+.BR provider ,
+.BR capability ,
+.BR mode ,
+and
+.BR description .
+It accepts repeated
+.BR platform ,
+.BR argument ,
+and
+.B allow-argument
+fields. The mode is exactly
+.B observe
+or
+.BR mutate .
+Only the executable
+.B custom
+adapter dispatches operations in schema 1.
 .PP
 The
 .B base-url
@@ -459,6 +492,25 @@ or
 .BR apply .
 Rig preserves every configured value as one argument and performs no
 evaluation, shell expansion, or implicit word splitting.
+.PP
+For a declared operation, Rig fixes
+.I KIND
+to
+.B operation
+and
+.I LOCATOR
+to the declared capability:
+.PP
+.nf
+EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 VERB PROVIDER TOOL operation CAPABILITY
+    [OPERATION_ARGUMENT ...] [CALLER_ARGUMENT ...]
+.fi
+.PP
+The provider must declare that exact capability. Each caller argument must
+exactly match one repeated
+.B allow-argument
+value before invocation. Provider stdout and stderr pass through and the
+native exit status is preserved.
 .PP
 Observation stdout must contain exactly one of
 .BR present ,

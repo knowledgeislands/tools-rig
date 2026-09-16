@@ -15,6 +15,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work is summarised as this evolving baseli
 - `rig status [--profile NAME]`
 - `rig doctor [--profile NAME]`
 - `rig apply [--profile NAME] [--dry-run]`
+- `rig run TOOL OPERATION [-- ARGUMENT...]`
 - `rig export PUBLICATION --output DIRECTORY`
 - `rig diag`
 - `rig completion bash|zsh`
@@ -33,6 +34,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work is summarised as this evolving baseli
 - Five-state observation with deterministic provider, state, and detail reporting without a competing state database.
 - A concise read-only doctor synthesis for configuration, XDG accessibility, provider availability, selected-tool health, and informational catalogue-only or incompatible tools.
 - Complete application preflight, a non-mutating dry-run, and dependency-first execution.
+- Configuration-defined observe and mutate operations with custom-provider capability checks, literal argument allow-lists, and native outcome propagation.
 - Failure handling that suppresses only transitive dependants while independent work continues.
 - Deterministic offline static export of an explicitly selected public profile with HTML escaping, relationship closure, portable base URLs, disclosure allow-listing, and safe complete-tree replacement.
 
