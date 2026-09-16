@@ -17,3 +17,10 @@ policy: safe-local-v1
 ## Run ledger
 
 <!-- ki-batch-run: RIG-BATCH-005-RUN-001 3f7deeb7b35fdf914e48761e57976b357d08e473c107623940b9ca23b5c92362 -->
+| Item | Result | Baseline | Result commit | Exception |
+| --- | --- | --- | --- | --- |
+| RIG-MIG-001 | done | `1418f7c4ff417151a307604c4762c2196bc8ee8c` | `0ef804d666f50ef846bd8aa399b2e1df87217cfd` | Full repository audit retains nine pre-existing live GitHub settings findings; chezmoi source changes were reviewed but not applied. |
+| RIG-MIG-002 | done | `1418f7c4ff417151a307604c4762c2196bc8ee8c` | `0ef804d666f50ef846bd8aa399b2e1df87217cfd` | Full repository audit retains nine pre-existing live GitHub settings findings; chezmoi source changes were reviewed but not applied. |
+| RIG-MIG-003 | done | `1418f7c4ff417151a307604c4762c2196bc8ee8c` | `0ef804d666f50ef846bd8aa399b2e1df87217cfd` | Full repository audit retains nine pre-existing live GitHub settings findings; chezmoi source changes were reviewed but not applied. |
+
+<!-- ki-batch-close: RIG-BATCH-005 done 0ef804d666f50ef846bd8aa399b2e1df87217cfd -->
