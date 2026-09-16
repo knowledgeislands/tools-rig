@@ -4,12 +4,12 @@ area: CLI
 title: Replace paths with diagnostics
 theme: cli
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 5ac6ab7be9dfa23c3b518d0ab7a9a2a2122ee50f
 created_at: 2026-09-16T12:04:13Z
-updated_at: 2026-09-16T12:16:33Z
+updated_at: 2026-09-16T21:37:27Z
 ---
 
 # RIG-CLI-006: Replace paths with diagnostics
@@ -98,6 +98,10 @@ Independent read-only review found no defect and confirmed Bash 3.2 and `set -u`
 ### Mini recap
 
 Rig now has one useful local troubleshooting command instead of a path-only command, while doctor remains reserved for selected-profile and provider health. All scoped checks pass and no compatibility alias was retained in the pre-v1 surface.
+
+## Done
+
+Accepted 2026-09-16 by Kris Brown on review packet above.
 
 ## Discussion
 

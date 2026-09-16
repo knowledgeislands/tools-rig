@@ -4,12 +4,12 @@ area: CORE
 title: Build orchestration engine
 theme: orchestration
 horizon: now
-status: awaiting-review
-blocks: [RIG-CLI-001]
+status: done
+blocks: []
 blocked_by: []
 baseline_ref: 6925c31d2bf8bdeb1a2eb9ed65b57ba375ecebad
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-16T20:50:21Z
+updated_at: 2026-09-16T21:37:27Z
 ---
 
 # RIG-CORE-002: Build orchestration engine
@@ -107,6 +107,10 @@ The implementation stays within the approved custom-provider boundary, adds no r
 ### Mini recap
 
 Rig can now compare a selected rig with custom-provider observations and materialise it through an explicit, dependency-aware apply boundary. The item is ready for human review and has not been self-accepted.
+
+## Done
+
+Accepted 2026-09-16 by Kris Brown on review packet above.
 
 ## Discussion
 

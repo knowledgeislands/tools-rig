@@ -6,10 +6,10 @@ theme: cli
 horizon: now
 status: draft
 blocks: [RIG-CLI-004, RIG-CLI-005, RIG-DIST-001, RIG-DIST-002, RIG-MIG-004]
-blocked_by: [RIG-CORE-002]
+blocked_by: []
 baseline_ref: null
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-16T17:05:41Z
+updated_at: 2026-09-16T21:37:27Z
 ---
 
 # RIG-CLI-001: Add provider adapters

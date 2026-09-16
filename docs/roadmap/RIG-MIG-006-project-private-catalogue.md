@@ -4,12 +4,12 @@ area: MIG
 title: Project private catalogue
 theme: migration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 40e2eec36299b6c88ab098b7c11768f8095eed95
 created_at: 2026-09-16T12:57:39Z
-updated_at: 2026-09-16T13:18:50Z
+updated_at: 2026-09-16T21:37:27Z
 ---
 
 # RIG-MIG-006: Project private catalogue
@@ -107,7 +107,15 @@ Independent review found the projection functionally clean at the current 12-cat
 
 The private catalogue now has one source of truth and a tested Rig projection ready for explicit chezmoi application. The live `~/.config/rig/rig.conf` remains absent by design until approval.
 
+## Done
+
+Accepted 2026-09-16 by Kris Brown on review packet above.
+
 ## Discussion
+
+### Post-review application
+
+At acceptance, the projected `~/.config/rig/rig.conf` exists at mode `0600`, `chezmoi verify` passes, and both `chezmoi status` and `chezmoi diff` are clean. This subsequent application supersedes the review packet's historical pending-add state without changing the reviewed projection boundary.
 
 ### Transitional authority
 

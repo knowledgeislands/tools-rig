@@ -5,11 +5,11 @@ title: Curate v1 baseline
 theme: distribution
 horizon: now
 status: done
-blocks: [RIG-DIST-001]
+blocks: []
 blocked_by: []
 baseline_ref: c8d905571d7d4ba7f28ebe654a6406fd41b00726
 created_at: 2026-09-15T13:04:11Z
-updated_at: 2026-09-16T09:56:12Z
+updated_at: 2026-09-16T21:37:27Z
 ---
 
 # RIG-DIST-003: Curate v1 baseline

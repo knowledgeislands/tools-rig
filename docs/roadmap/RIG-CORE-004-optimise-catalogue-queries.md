@@ -4,12 +4,12 @@ area: CORE
 title: Optimise catalogue queries
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: f344e2829978f258e5ad86b68ff454a5de1a104a
 created_at: 2026-09-16T12:57:39Z
-updated_at: 2026-09-16T17:32:00Z
+updated_at: 2026-09-16T21:37:27Z
 ---
 
 # RIG-CORE-004: Optimise catalogue queries
@@ -98,6 +98,10 @@ The implementation preserves the parser's contiguous-field invariant, rejects du
 ### Mini recap
 
 Realistic catalogue queries now complete comfortably inside the two-second acceptance target with no public contract change. The item is ready for human review; it has not been self-accepted.
+
+## Done
+
+Accepted 2026-09-16 by Kris Brown on review packet above.
 
 ## Discussion
 

@@ -4,12 +4,12 @@ area: DIST
 title: Align public CLI surfaces
 theme: distribution
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: a26e5c382237ad997e248609739baad251919485
 created_at: 2026-09-16T13:25:02Z
-updated_at: 2026-09-16T13:29:15Z
+updated_at: 2026-09-16T21:37:27Z
 ---
 
 # RIG-DIST-004: Align public CLI surfaces
@@ -110,6 +110,10 @@ The comparison against `tools-mgit` and `tools-ki` found no retired command in R
 ### Mini recap
 
 Rig now follows the shared KI CLI presentation and distribution pattern while remaining a deliberately smaller pre-v1 tool.
+
+## Done
+
+Accepted 2026-09-16 by Kris Brown on review packet above.
 
 ## Discussion
 

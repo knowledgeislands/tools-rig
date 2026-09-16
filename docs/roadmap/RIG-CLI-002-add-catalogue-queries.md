@@ -4,12 +4,12 @@ area: CLI
 title: Add catalogue queries
 theme: cli
 horizon: now
-status: awaiting-review
-blocks: [RIG-DIST-001, RIG-MIG-004]
+status: done
+blocks: []
 blocked_by: []
 baseline_ref: 78ff885cc7cfcc93f929625934c0a52c4e5a5c40
 created_at: 2026-09-15T11:53:55Z
-updated_at: 2026-09-16T11:27:09Z
+updated_at: 2026-09-16T21:37:27Z
 ---
 
 # RIG-CLI-002: Add catalogue queries
@@ -99,6 +99,10 @@ An independent read-only review found and then verified fixes for empty option v
 ### Mini recap
 
 Rig can now answer what the selected rig contains, filter the catalogue by category or profile, and explain why a tool belongs. The next sequenced item is the already-ready orchestration engine; acceptance of this delivery remains a human decision.
+
+## Done
+
+Accepted 2026-09-16 by Kris Brown on review packet above.
 
 ## Discussion
 
