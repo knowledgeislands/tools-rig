@@ -6,36 +6,73 @@ Profiles select catalogue subsets for machines, roles, or contexts. Rig can comp
 
 ## Principles
 
-- **Catalogue first** — stable categories and tool identities make the setup understandable before any installation or mutation occurs.
-- **Purpose and rationale** — the catalogue records both what a tool does and why it belongs in this rig.
+- **Catalogue first** — stable categories and tool identities make the setup understandable before installation or mutation.
+- **Purpose and rationale** — the catalogue records both what a tool does and why it belongs.
 - **Composable profiles** — named subsets describe machines, roles, contexts, and a deliberately public view.
 - **Provider authority** — Homebrew, uv, chezmoi, downloads, custom executables, and publishers retain their native manifests, resolution, execution, deployment, and state.
-- **Expected versus observed** — Rig reports whether the selected declaration is present, missing, drifted, unavailable, or unknown on a machine.
+- **Expected versus observed** — Rig reports whether selected declarations are present, missing, drifted, unavailable, or unknown.
 - **Safe publication** — a static public projection excludes provider configuration, private profiles, and observed machine state.
-- **Shell-only core** — the installed `rig` executable requires Bash and no language runtime or package-manager dependency.
+- **Shell-only core** — the installed executable requires Bash and no language runtime or package-manager dependency.
 - **XDG-aligned state** — configuration, data, state, and cache use XDG Base Directory locations and explicit Rig overrides.
 
 ## Product model
 
-The catalogue is Rig's source of meaning. Profiles resolve that catalogue for a context. Providers are the manager-of-managers mechanism that observes or materialises selected tools. State compares the resolved intent with provider evidence. Publication projects only an explicitly selected public profile into a reviewable static artifact before a trusted publisher deploys it.
+The catalogue is Rig's source of meaning. Profiles resolve the catalogue for a context. Providers are the manager-of-managers mechanism that observes or materialises selected tools. State compares resolved intent with provider evidence. Declared operations attach host-specific actions to tools without turning them into permanent command families. Publication projects only an explicitly selected public profile into a reviewable static artifact before a trusted publisher deploys it.
 
-Personal catalogue contents and machine-specific paths belong in private Rig configuration, not in this executable. Provider-native manifests such as a Brewfile remain authoritative for their own systems.
+Personal catalogue contents, operations, and machine-specific paths belong in private Rig configuration, not in this executable. Provider-native manifests such as a Brewfile remain authoritative for their own systems.
 
-## Status
+## Install a local checkout
 
-Rig is at its contract stage. The executable currently exposes version, help, completion, and XDG-path discovery. The accepted product, configuration, trust, state, query, and publication contracts are recorded in [Decision Records](docs/decisions/README.md) and [Specifications](docs/specs/index.md); implementation is sequenced through the [roadmap](ROADMAP.md).
-
-## Try the scaffold
-
-Link the checkout into the conventional user executable and manual locations:
+Link the executable and manual from this checkout into their conventional user locations:
 
 ```sh
 ./install.sh --link
+rig --version
 rig --help
-rig paths
 ```
 
-The default executable location is `~/.local/bin`. XDG does not define a binary directory, so `RIG_INSTALL_DIR` remains the explicit installation override.
+The executable defaults to `~/.local/bin/rig`; set `RIG_INSTALL_DIR` to choose another location. The manual defaults beneath `${XDG_DATA_HOME:-$HOME/.local/share}/man/man1`; set `RIG_MAN_INSTALL_DIR` to override it. Re-run `./install.sh --link` after moving the checkout.
+
+## Configure a catalogue
+
+Rig reads `${RIG_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/rig}/rig.conf` followed by optional `conf.d/*.conf` fragments. The grammar is inert data: Rig does not source it as shell code.
+
+Queries derive the active platform from Bash's `OSTYPE`. Set `RIG_PLATFORM` to an explicit catalogue platform identifier when testing a different target or when the host value is not recognised.
+
+```ini
+[rig]
+schema = 1
+default-profile = default
+
+[category.navigation]
+name = Navigation
+purpose = Move through Knowledge Islands
+
+[tool.mgit]
+name = MGit
+category = navigation
+purpose = Navigate related repositories
+rationale = Keeps repository context visible
+platform = macos
+
+[profile.default]
+tool = mgit
+```
+
+## Commands
+
+- `rig show [--profile NAME]` summarises the default or named resolved profile.
+- `rig list [--category ID] [--profile NAME]` lists catalogue tools, optionally narrowed by category and profile.
+- `rig explain TOOL` explains a tool's declared meaning, relationships, profile membership, and compatible provider binding.
+- `rig paths` prints the resolved Rig configuration, data, state, and cache directories.
+- `rig completion bash|zsh` prints shell completion source.
+- `rig help`, `rig --help`, and `rig --version` provide command and version information.
+
+Catalogue queries resolve declarations only and never invoke provider code. See `man rig` for the complete command contract.
+
+## Status
+
+Rig is a pre-v1 tool under active development. Catalogue parsing, validation, profile resolution, provider-binding resolution, and read-only catalogue queries are implemented. Provider observation, apply, doctor, bootstrap migration, declared operations, publication, and the Homebrew formula remain tracked work in the [roadmap](ROADMAP.md).
 
 ## Documentation
 

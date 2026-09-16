@@ -4,28 +4,31 @@ All notable changes to `rig` are documented here. This changelog records the evo
 
 ## [1.0.0] — in progress
 
-Rig 1.0.0 is not yet released. The current 0.1.0 scaffold and the accepted work still needed for v1 are recorded separately below.
+Rig 1.0.0 is not yet released. The current 0.1.0 capabilities and accepted work still needed for v1 are recorded separately below.
 
 ### Available in 0.1.0
 
 #### Commands
 
-- `rig`
-- `rig --help`
-- `rig --version`
-- `rig help`
+- `rig show [--profile NAME]`
+- `rig list [--category ID] [--profile NAME]`
+- `rig explain TOOL`
 - `rig paths`
-- `rig completion bash`
-- `rig completion zsh`
+- `rig completion bash|zsh`
+- `rig help`, `rig --help`, and `rig --version`
 
 #### Foundation
 
 - A standalone Bash 3.2-compatible executable with no required runtime dependency beyond Bash.
-- XDG-aligned config, data, state, and cache path discovery with explicit Rig overrides.
+- XDG-aligned config, data, state, and cache paths with explicit Rig overrides.
+- An inert schema 1 loader with deterministic fragment order, validation, composed-profile resolution, transitive requirements, platform selection, and provider-binding resolution.
+- Read-only catalogue queries that do not invoke providers.
 - An installer for released or linked development copies of the executable and `rig(1)` manual.
 
 ### Accepted for 1.0.0
 
-- A catalogue-first configuration model for tool categories, metadata, rationale, relationships, supported platforms, profiles, providers, publications, and expected-versus-observed state.
-- Profile resolution and manager-of-managers orchestration that leave native manifests, resolution, credentials, and provider state with their owning systems.
-- Catalogue queries, doctor diagnostics, bootstrap, status, apply, public export and publication, and a Homebrew formula remain in progress; none are part of the current 0.1.0 command surface.
+- Provider observation and expected-versus-observed `status` reporting.
+- Explicit `apply`, provider adapters, and top-level `doctor` diagnostics.
+- Bootstrap migration and configuration-led machine-audit and service operations through declared `rig run` operations.
+- Public export and publication suitable for a personal site such as `rig.midnight.ninja`.
+- A formula in the Knowledge Islands Homebrew tap.

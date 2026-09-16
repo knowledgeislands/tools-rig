@@ -21,6 +21,7 @@ RIG_SELECTED_TOOLS=()
 RIG_SELECTED_BINDINGS=()
 RIG_VISIT_NAMES=()
 RIG_VISIT_STATES=()
+RIG_QUERY_ITEMS=()
 RIG_VALUE=
 RIG_INDEX=
 RIG_COUNT=0
@@ -33,6 +34,9 @@ print_help() {
     'Usage: rig <command> [arguments]' \
     '' \
     'Commands:' \
+    '  show [--profile NAME]                 Describe a resolved profile.' \
+    '  list [--category ID] [--profile NAME] List declared catalogue tools.' \
+    '  explain TOOL                          Explain a declared tool.' \
     '  paths                 Print resolved Rig XDG directories.' \
     '  completion bash|zsh   Print shell completion source.' \
     '  help                  Show this help.' \
@@ -82,25 +86,50 @@ print_bash_completion() {
   # shellcheck disable=SC2016
   printf '%s\n' \
     '_rig() {' \
-    '  local current' \
+    '  local current command' \
     '  current=${COMP_WORDS[COMP_CWORD]}' \
-    '  COMPREPLY=($(compgen -W "paths completion help" -- "$current"))' \
+    '  command=${COMP_WORDS[1]:-}' \
+    '  if [ "$COMP_CWORD" -eq 1 ]; then' \
+    '    COMPREPLY=($(compgen -W "show list explain paths completion help" -- "$current"))' \
+    '    return' \
+    '  fi' \
+    '  case "$command" in' \
+    '    show) COMPREPLY=($(compgen -W "--profile" -- "$current")) ;;' \
+    '    list) COMPREPLY=($(compgen -W "--category --profile" -- "$current")) ;;' \
+    '    completion) COMPREPLY=($(compgen -W "bash zsh" -- "$current")) ;;' \
+    '  esac' \
     '}' \
     'complete -F _rig rig'
 }
 
 print_zsh_completion() {
+  # The emitted completion deliberately retains runtime shell expressions.
+  # shellcheck disable=SC2016
   printf '%s\n' \
     '#compdef rig' \
     '' \
     '_rig() {' \
     '  local -a commands' \
+    '  local state' \
     '  commands=(' \
+    "    'show:describe a resolved profile'" \
+    "    'list:list declared catalogue tools'" \
+    "    'explain:explain a declared tool'" \
     "    'paths:print resolved Rig XDG directories'" \
     "    'completion:print shell completion source'" \
     "    'help:show help'" \
     '  )' \
-    "  _describe -t commands 'rig command' commands" \
+    "  _arguments '1:command:->command' '*::argument:->argument'" \
+    '  case $state in' \
+    "    command) _describe -t commands 'rig command' commands ;;" \
+    '    argument)' \
+    '      case $words[2] in' \
+    "        show) _arguments '--profile[select a profile]:profile name:' ;;" \
+    "        list) _arguments '--category[select a category]:category id:' '--profile[select a profile]:profile name:' ;;" \
+    "        completion) _values 'shell' bash zsh ;;" \
+    '      esac' \
+    '      ;;' \
+    '  esac' \
     '}' \
     '' \
     'compdef _rig rig'
@@ -119,6 +148,7 @@ rig_model_reset() {
   RIG_SELECTED_BINDINGS=()
   RIG_VISIT_NAMES=()
   RIG_VISIT_STATES=()
+  RIG_QUERY_ITEMS=()
   RIG_VALUE=
   RIG_INDEX=
   RIG_COUNT=0
@@ -635,7 +665,9 @@ rig_select_tool() {
     [ -z "$required_by" ] && return 0
     rig_fail "tool '$required_by' requires '$tool', which does not support platform '$platform'" || return
   fi
-  rig_array_contains "$tool" "${RIG_SELECTED_TOOLS[@]}" && return 0
+  if [ "${#RIG_SELECTED_TOOLS[@]}" -gt 0 ]; then
+    rig_array_contains "$tool" "${RIG_SELECTED_TOOLS[@]}" && return 0
+  fi
   RIG_SELECTED_TOOLS[${#RIG_SELECTED_TOOLS[@]}]=$tool
 
   rig_section_index "tool.$tool" || return 2
@@ -791,6 +823,419 @@ rig_dump_resolution() {
   done
 }
 
+rig_current_platform() {
+  local shell_platform
+
+  if [ -n "${RIG_PLATFORM:-}" ]; then
+    RIG_VALUE=$RIG_PLATFORM
+    return
+  fi
+
+  shell_platform=${OSTYPE:-unknown}
+  case "$shell_platform" in
+    darwin*) RIG_VALUE=macos ;;
+    linux*) RIG_VALUE=linux ;;
+    *) rig_fail "unsupported platform '$shell_platform'" || return ;;
+  esac
+}
+
+rig_sort_query_items() {
+  local index scan value previous
+  local LC_ALL=C
+
+  index=1
+  while [ "$index" -lt "${#RIG_QUERY_ITEMS[@]}" ]; do
+    value=${RIG_QUERY_ITEMS[$index]}
+    scan=$index
+    while [ "$scan" -gt 0 ]; do
+      previous=${RIG_QUERY_ITEMS[$((scan - 1))]}
+      [[ "$value" < "$previous" ]] || break
+      RIG_QUERY_ITEMS[$scan]=$previous
+      scan=$((scan - 1))
+    done
+    RIG_QUERY_ITEMS[$scan]=$value
+    index=$((index + 1))
+  done
+}
+
+rig_collect_section_ids() {
+  local wanted_type index
+
+  wanted_type=$1
+  RIG_QUERY_ITEMS=()
+  index=0
+  while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+    if [ "${RIG_SECTION_TYPES[$index]}" = "$wanted_type" ]; then
+      RIG_QUERY_ITEMS[${#RIG_QUERY_ITEMS[@]}]=${RIG_SECTION_IDS[$index]}
+    fi
+    index=$((index + 1))
+  done
+  rig_sort_query_items
+}
+
+rig_collect_field_values() {
+  local section_name key section_index field_index
+
+  section_name=$1
+  key=$2
+  RIG_QUERY_ITEMS=()
+  rig_section_index "$section_name" || return 1
+  section_index=$RIG_INDEX
+  field_index=0
+  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+    if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] &&
+      [ "${RIG_FIELD_KEYS[$field_index]}" = "$key" ]; then
+      RIG_QUERY_ITEMS[${#RIG_QUERY_ITEMS[@]}]=${RIG_FIELD_VALUES[$field_index]}
+    fi
+    field_index=$((field_index + 1))
+  done
+  rig_sort_query_items
+}
+
+rig_join_query_items() {
+  local index item joined
+
+  joined=
+  index=0
+  while [ "$index" -lt "${#RIG_QUERY_ITEMS[@]}" ]; do
+    item=${RIG_QUERY_ITEMS[$index]}
+    if [ -n "$joined" ]; then
+      joined="$joined, $item"
+    else
+      joined=$item
+    fi
+    index=$((index + 1))
+  done
+  RIG_VALUE=${joined:-none}
+}
+
+rig_print_tool_row() {
+  local tool name category purpose
+
+  tool=$1
+  rig_get_value "tool.$tool" name || return
+  name=$RIG_VALUE
+  rig_get_value "tool.$tool" category || return
+  category=$RIG_VALUE
+  rig_get_value "tool.$tool" purpose || return
+  purpose=$RIG_VALUE
+  printf '  %s\t%s\t%s\t%s\n' "$tool" "$name" "$category" "$purpose"
+}
+
+rig_profile_declares_tool() {
+  local profile tool section_index field_index
+
+  profile=$1
+  tool=$2
+  rig_section_index "profile.$profile" || return 1
+  section_index=$RIG_INDEX
+  field_index=0
+  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+    if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] &&
+      [ "${RIG_FIELD_KEYS[$field_index]}" = tool ] &&
+      [ "${RIG_FIELD_VALUES[$field_index]}" = "$tool" ]; then
+      return 0
+    fi
+    field_index=$((field_index + 1))
+  done
+  return 1
+}
+
+rig_profile_contains_declared_tool() {
+  local profile tool section_index field_index child
+
+  profile=$1
+  tool=$2
+  rig_profile_declares_tool "$profile" "$tool" && return 0
+  rig_section_index "profile.$profile" || return 1
+  section_index=$RIG_INDEX
+  field_index=0
+  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+    if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] &&
+      [ "${RIG_FIELD_KEYS[$field_index]}" = profile ]; then
+      child=${RIG_FIELD_VALUES[$field_index]}
+      rig_profile_contains_declared_tool "$child" "$tool" && return 0
+    fi
+    field_index=$((field_index + 1))
+  done
+  return 1
+}
+
+rig_tool_requires_tool() {
+  local tool wanted section_index field_index child
+
+  tool=$1
+  wanted=$2
+  rig_section_index "tool.$tool" || return 1
+  section_index=$RIG_INDEX
+  field_index=0
+  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+    if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] &&
+      [ "${RIG_FIELD_KEYS[$field_index]}" = requires ]; then
+      child=${RIG_FIELD_VALUES[$field_index]}
+      [ "$child" != "$wanted" ] || return 0
+      rig_tool_requires_tool "$child" "$wanted" && return 0
+    fi
+    field_index=$((field_index + 1))
+  done
+  return 1
+}
+
+rig_profile_requires_tool() {
+  local profile tool section_index field_index key target
+
+  profile=$1
+  tool=$2
+  rig_section_index "profile.$profile" || return 1
+  section_index=$RIG_INDEX
+  field_index=0
+  while [ "$field_index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+    if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ]; then
+      key=${RIG_FIELD_KEYS[$field_index]}
+      target=${RIG_FIELD_VALUES[$field_index]}
+      case "$key" in
+        profile) rig_profile_requires_tool "$target" "$tool" && return 0 ;;
+        tool) rig_tool_requires_tool "$target" "$tool" && return 0 ;;
+      esac
+    fi
+    field_index=$((field_index + 1))
+  done
+  return 1
+}
+
+rig_collect_profile_memberships() {
+  local tool profile index membership
+  local -a profiles
+
+  tool=$1
+  rig_collect_section_ids profile
+  profiles=()
+  index=0
+  while [ "$index" -lt "${#RIG_QUERY_ITEMS[@]}" ]; do
+    profiles[$index]=${RIG_QUERY_ITEMS[$index]}
+    index=$((index + 1))
+  done
+  RIG_QUERY_ITEMS=()
+  index=0
+  while [ "$index" -lt "${#profiles[@]}" ]; do
+    profile=${profiles[$index]}
+    membership=
+    if rig_profile_declares_tool "$profile" "$tool"; then
+      membership=direct
+    elif rig_profile_contains_declared_tool "$profile" "$tool"; then
+      membership=inherited
+    elif rig_profile_requires_tool "$profile" "$tool"; then
+      membership=required
+    fi
+    if [ -n "$membership" ]; then
+      RIG_QUERY_ITEMS[${#RIG_QUERY_ITEMS[@]}]="$profile ($membership)"
+    fi
+    index=$((index + 1))
+  done
+}
+
+rig_describe_compatible_binding() {
+  local tool platform section_index total matches binding_index provider kind locator
+
+  tool=$1
+  platform=$2
+  section_index=0
+  total=0
+  matches=0
+  binding_index=
+  while [ "$section_index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+    if [ "${RIG_SECTION_TYPES[$section_index]}" = binding ] &&
+      [ "${RIG_SECTION_IDS[$section_index]}" = "$tool" ]; then
+      total=$((total + 1))
+      if rig_binding_supports_platform "$section_index" "$platform"; then
+        matches=$((matches + 1))
+        binding_index=$section_index
+      fi
+    fi
+    section_index=$((section_index + 1))
+  done
+
+  if [ "$matches" -gt 1 ]; then
+    rig_fail "tool '$tool' has ambiguous bindings for platform '$platform'" || return
+  fi
+  if [ "$matches" -eq 0 ]; then
+    if [ "$total" -eq 0 ]; then
+      RIG_VALUE=none
+    else
+      RIG_VALUE="none for $platform"
+    fi
+    return
+  fi
+
+  provider=${RIG_SECTION_SECONDARY_IDS[$binding_index]}
+  rig_get_value "${RIG_SECTION_NAMES[$binding_index]}" kind || return
+  kind=$RIG_VALUE
+  rig_get_value "${RIG_SECTION_NAMES[$binding_index]}" locator || return
+  locator=$RIG_VALUE
+  RIG_VALUE="$provider ($kind: $locator)"
+}
+
+rig_command_show() {
+  local profile platform tool index
+
+  profile=
+  case "$#" in
+    0) ;;
+    1)
+      case "$1" in
+        -h|--help) printf '%s\n' 'Usage: rig show [--profile NAME]'; return ;;
+        *) syntax_error 'usage: rig show [--profile NAME]' || return ;;
+      esac
+      ;;
+    2)
+      [ "$1" = --profile ] && [ -n "$2" ] ||
+        syntax_error 'usage: rig show [--profile NAME]' || return
+      profile=$2
+      ;;
+    *) syntax_error 'usage: rig show [--profile NAME]' || return ;;
+  esac
+
+  rig_load_config || return
+  rig_current_platform || return
+  platform=$RIG_VALUE
+  rig_resolve_profile "$profile" "$platform" || return
+  printf 'Profile: %s\nPlatform: %s\nTools (%s):\n' \
+    "$RIG_RESOLVED_PROFILE" "$platform" "${#RIG_SELECTED_TOOLS[@]}"
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
+    tool=${RIG_SELECTED_TOOLS[$index]}
+    rig_print_tool_row "$tool" || return
+    index=$((index + 1))
+  done
+}
+
+rig_command_list() {
+  local category profile platform category_seen profile_seen tool index declared_category
+  local -a tools
+
+  category=
+  profile=
+  category_seen=0
+  profile_seen=0
+  if [ "$#" -eq 1 ]; then
+    case "$1" in
+      -h|--help) printf '%s\n' 'Usage: rig list [--category ID] [--profile NAME]'; return ;;
+    esac
+  fi
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --category)
+        [ "$category_seen" -eq 0 ] && [ "$#" -ge 2 ] && [ -n "$2" ] ||
+          syntax_error 'usage: rig list [--category ID] [--profile NAME]' || return
+        category=$2
+        category_seen=1
+        shift 2
+        ;;
+      --profile)
+        [ "$profile_seen" -eq 0 ] && [ "$#" -ge 2 ] && [ -n "$2" ] ||
+          syntax_error 'usage: rig list [--category ID] [--profile NAME]' || return
+        profile=$2
+        profile_seen=1
+        shift 2
+        ;;
+      *) syntax_error 'usage: rig list [--category ID] [--profile NAME]' || return ;;
+    esac
+  done
+
+  rig_load_config || return
+  if [ -n "$category" ]; then
+    rig_valid_id "$category" && rig_section_index "category.$category" ||
+      rig_fail "unknown category '$category'" || return
+  fi
+  if [ -n "$profile" ]; then
+    rig_current_platform || return
+    platform=$RIG_VALUE
+    rig_resolve_profile "$profile" "$platform" || return
+    tools=()
+    index=0
+    while [ "$index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
+      tools[$index]=${RIG_SELECTED_TOOLS[$index]}
+      index=$((index + 1))
+    done
+  else
+    rig_collect_section_ids tool
+    tools=()
+    index=0
+    while [ "$index" -lt "${#RIG_QUERY_ITEMS[@]}" ]; do
+      tools[$index]=${RIG_QUERY_ITEMS[$index]}
+      index=$((index + 1))
+    done
+  fi
+
+  printf '%s\n' $'ID\tNAME\tCATEGORY\tPURPOSE'
+  index=0
+  while [ "$index" -lt "${#tools[@]}" ]; do
+    tool=${tools[$index]}
+    if [ -n "$category" ]; then
+      rig_get_value "tool.$tool" category || return
+      declared_category=$RIG_VALUE
+      if [ "$declared_category" != "$category" ]; then
+        index=$((index + 1))
+        continue
+      fi
+    fi
+    rig_print_tool_row "$tool" || return
+    index=$((index + 1))
+  done
+}
+
+rig_command_explain() {
+  local tool name category category_name purpose rationale platforms requires related alternatives profiles platform binding
+
+  if [ "$#" -eq 1 ]; then
+    case "$1" in
+      -h|--help) printf '%s\n' 'Usage: rig explain TOOL'; return ;;
+    esac
+  fi
+  [ "$#" -eq 1 ] || syntax_error 'usage: rig explain TOOL' || return
+  tool=$1
+  rig_load_config || return
+  rig_valid_id "$tool" && rig_section_index "tool.$tool" ||
+    rig_fail "unknown tool '$tool'" || return
+  rig_current_platform || return
+  platform=$RIG_VALUE
+  rig_describe_compatible_binding "$tool" "$platform" || return
+  binding=$RIG_VALUE
+
+  rig_get_value "tool.$tool" name || return
+  name=$RIG_VALUE
+  rig_get_value "tool.$tool" category || return
+  category=$RIG_VALUE
+  rig_get_value "category.$category" name || return
+  category_name=$RIG_VALUE
+  rig_get_value "tool.$tool" purpose || return
+  purpose=$RIG_VALUE
+  rig_get_value "tool.$tool" rationale || return
+  rationale=$RIG_VALUE
+
+  rig_collect_field_values "tool.$tool" platform
+  rig_join_query_items
+  platforms=$RIG_VALUE
+  rig_collect_field_values "tool.$tool" requires
+  rig_join_query_items
+  requires=$RIG_VALUE
+  rig_collect_field_values "tool.$tool" related
+  rig_join_query_items
+  related=$RIG_VALUE
+  rig_collect_field_values "tool.$tool" alternative
+  rig_join_query_items
+  alternatives=$RIG_VALUE
+  rig_collect_profile_memberships "$tool"
+  rig_join_query_items
+  profiles=$RIG_VALUE
+
+  printf 'Tool: %s\nName: %s\nCategory: %s (%s)\nPurpose: %s\nRationale: %s\n' \
+    "$tool" "$name" "$category" "$category_name" "$purpose" "$rationale"
+  printf 'Platforms: %s\nRequires: %s\nRelated: %s\nAlternatives: %s\nProfiles: %s\n' \
+    "$platforms" "$requires" "$related" "$alternatives" "$profiles"
+  printf 'Binding: %s\n' "$binding"
+}
+
 main() {
   local command_name
 
@@ -804,6 +1249,18 @@ main() {
     -V|--version)
       [ "$#" -eq 1 ] || syntax_error "unexpected arguments for $command_name" || return
       printf 'rig %s\n' "$RIG_VERSION"
+      ;;
+    show)
+      shift
+      rig_command_show "$@"
+      ;;
+    list)
+      shift
+      rig_command_list "$@"
+      ;;
+    explain)
+      shift
+      rig_command_explain "$@"
       ;;
     paths)
       [ "$#" -eq 1 ] || syntax_error 'usage: rig paths' || return

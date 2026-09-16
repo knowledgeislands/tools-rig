@@ -1,33 +1,67 @@
-.TH RIG 1 "September 15, 2026" "Rig 0.1.0" "User Commands"
+.TH RIG 1 "September 16, 2026" "Rig 0.1.0" "User Commands"
 .SH NAME
 \&
 .PP
-rig \- configure and orchestrate machine-bootstrap targets
+rig \- describe and manage a personal working setup
 .SH SYNOPSIS
 \&
+.B rig show
+.RI [ \-\-profile " NAME" ]
+.br
+.B rig list
+.RI [ \-\-category " ID" ]
+.RI [ \-\-profile " NAME" ]
+.br
+.B rig explain
+.I TOOL
+.br
+.B rig paths
+.br
+.BI "rig completion " bash|zsh
+.br
 .B rig
-.I command
-.RI [ arguments ]
+.RB [ \-h | \-\-help | \-V | \-\-version ]
 .SH DESCRIPTION
 \&
 .PP
-Rig coordinates package and configuration systems while leaving each target
-responsible for its native manifests, resolution, and state.
+Rig is the declarative description and manager of a person's working setup.
+Its catalogue records tools, categories, purposes, rationale, relationships,
+supported platforms, profiles, and provider bindings.
 .PP
-The current repository scaffold exposes path discovery and completion
-generation.
-Profile and target orchestration are tracked as pending work.
+Catalogue queries parse inert configuration and do not invoke provider code.
+Package and configuration systems retain authority over their native manifests,
+resolution, configuration, and state.
 .SH COMMANDS
 \&
 .TP
-.B paths
+.B rig show
+Describe the resolved default profile.
+.TP
+.BI "rig show \-\-profile " NAME
+Describe the named resolved profile without changing the configured default.
+.TP
+.B rig list
+List every declared catalogue tool in deterministic order.
+.TP
+.BI "rig list \-\-category " ID
+Narrow the list to tools in the declared category.
+.TP
+.BI "rig list \-\-profile " NAME
+Narrow the list to tools selected by the resolved profile.
+The category and profile filters may be combined.
+.TP
+.BI "rig explain " TOOL
+Show the tool's identity, category, purpose, rationale, supported platforms,
+relationships, profile membership, and compatible provider binding.
+.TP
+.B rig paths
 Print the resolved Rig configuration, data, state, and cache directories.
 .TP
-.BI "completion " bash|zsh
+.BI "rig completion " bash|zsh
 Print completion source for the selected shell.
 .TP
-.B help
-Show command help.
+.B rig help
+Show top-level command help.
 .SH OPTIONS
 \&
 .TP
@@ -36,6 +70,22 @@ Show command help.
 .TP
 .BR \-V , " \-\-version"
 Print the Rig version.
+.SH CONFIGURATION
+\&
+.PP
+Rig reads
+.I ${RIG_CONFIG_HOME}/rig.conf
+and then optional
+.I ${RIG_CONFIG_HOME}/conf.d/*.conf
+fragments in bytewise filename order.
+When
+.B RIG_CONFIG_HOME
+is unset, its default is
+.IR ${XDG_CONFIG_HOME:-$HOME/.config}/rig .
+.PP
+Configuration uses Rig's versioned, INI-shaped grammar. Values are literal;
+Rig does not source configuration, evaluate commands, interpret shell quoting,
+or perform general environment expansion.
 .SH ENVIRONMENT
 \&
 .TP
@@ -51,26 +101,50 @@ Override the Rig state directory.
 .B RIG_CACHE_HOME
 Override the Rig cache directory.
 .TP
+.B RIG_PLATFORM
+Override the active catalogue platform used by profile and binding resolution.
+By default Rig maps Bash
+.B OSTYPE
+values beginning with
+.B darwin
+to
+.B macos
+and values beginning with
+.B linux
+to
+.BR linux .
+.TP
 .B XDG_CONFIG_HOME
-Set the base configuration directory when RIG_CONFIG_HOME is unset.
-The fallback is $HOME/.config.
+Set the base configuration directory when
+.B RIG_CONFIG_HOME
+is unset. The fallback is
+.IR $HOME/.config .
 .TP
 .B XDG_DATA_HOME
-Set the base data directory when RIG_DATA_HOME is unset.
-The fallback is $HOME/.local/share.
+Set the base data directory when
+.B RIG_DATA_HOME
+is unset. The fallback is
+.IR $HOME/.local/share .
 .TP
 .B XDG_STATE_HOME
-Set the base state directory when RIG_STATE_HOME is unset.
-The fallback is $HOME/.local/state.
+Set the base state directory when
+.B RIG_STATE_HOME
+is unset. The fallback is
+.IR $HOME/.local/state .
 .TP
 .B XDG_CACHE_HOME
-Set the base cache directory when RIG_CACHE_HOME is unset.
-The fallback is $HOME/.cache.
+Set the base cache directory when
+.B RIG_CACHE_HOME
+is unset. The fallback is
+.IR $HOME/.cache .
 .SH FILES
 \&
 .TP
-.I ${XDG_CONFIG_HOME:-$HOME/.config}/rig
-Default configuration directory.
+.I ${XDG_CONFIG_HOME:-$HOME/.config}/rig/rig.conf
+Default root configuration file.
+.TP
+.I ${XDG_CONFIG_HOME:-$HOME/.config}/rig/conf.d/*.conf
+Optional configuration fragments.
 .TP
 .I ${XDG_DATA_HOME:-$HOME/.local/share}/rig
 Default data directory.
@@ -90,7 +164,7 @@ Success.
 Operational failure.
 .TP
 .B 2
-Invalid Rig command syntax.
+Invalid command syntax, unknown query identity, or invalid configuration.
 .SH SEE ALSO
 \&
 .BR bash (1),

@@ -35,11 +35,82 @@ run_loader() {
     bash -c '. "$1"; rig_load_config' _ "$RIG"
 }
 
+write_query_config() {
+  QUERY_MARKER=$BATS_TEST_TMPDIR/provider-invoked-$BATS_TEST_NUMBER
+  QUERY_PROVIDER=$BATS_TEST_TMPDIR/provider-$BATS_TEST_NUMBER
+  printf '#!/usr/bin/env bash\nprintf invoked >"%s"\n' "$QUERY_MARKER" >"$QUERY_PROVIDER"
+  chmod +x "$QUERY_PROVIDER"
+
+  printf '%s\n' \
+    '[rig]' \
+    'schema = 1' \
+    'default-profile = default' \
+    '[category.foundation]' \
+    'name = Foundation' \
+    'purpose = Core command-line foundations' \
+    '[category.navigation]' \
+    'name = Navigation' \
+    'purpose = Move through Knowledge Islands' \
+    '[profile.minimal]' \
+    'tool = git' \
+    '[profile.knowledge-islands]' \
+    'profile = minimal' \
+    'tool = mgit' \
+    '[profile.focused]' \
+    'tool = mgit' \
+    '[profile.default]' \
+    'profile = knowledge-islands' \
+    'tool = fzf' \
+    '[provider.marker]' \
+    'adapter = custom' \
+    "executable = $QUERY_PROVIDER" \
+    '[binding.mgit.marker]' \
+    'kind = executable' \
+    'locator = mgit' \
+    'platform = macos' >"$CONFIG_HOME/rig.conf"
+
+  printf '%s\n' \
+    '[tool.lazygit]' \
+    'name = LazyGit' \
+    'category = navigation' \
+    'purpose = Browse Git interactively' \
+    'rationale = It is a visual alternative' \
+    'platform = any' >"$CONFIG_HOME/conf.d/10-lazygit.conf"
+  printf '%s\n' \
+    '[tool.git]' \
+    'name = Git' \
+    'category = foundation' \
+    'purpose = Track source history' \
+    'rationale = Other navigation tools depend on it' \
+    'platform = any' >"$CONFIG_HOME/conf.d/20-git.conf"
+  printf '%s\n' \
+    '[tool.mgit]' \
+    'name = MGit' \
+    'category = navigation' \
+    'purpose = Navigate many repositories' \
+    'rationale = It presents the Knowledge Islands estate' \
+    'platform = macos' \
+    'platform = linux' \
+    'requires = git' \
+    'related = fzf' \
+    'alternative = lazygit' >"$CONFIG_HOME/conf.d/30-mgit.conf"
+  printf '%s\n' \
+    '[tool.fzf]' \
+    'name = fzf' \
+    'category = navigation' \
+    'purpose = Select entries quickly' \
+    'rationale = It makes navigation concise' \
+    'platform = any' >"$CONFIG_HOME/conf.d/40-fzf.conf"
+}
+
 @test "help describes the current command surface" {
   run "$RIG" --help
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"Usage: rig"* ]]
+  [[ "$output" == *"show [--profile NAME]"* ]]
+  [[ "$output" == *"list [--category ID] [--profile NAME]"* ]]
+  [[ "$output" == *"explain TOOL"* ]]
   [[ "$output" == *"paths"* ]]
   [[ "$output" == *"completion bash|zsh"* ]]
 }
@@ -81,11 +152,185 @@ run_loader() {
   run "$RIG" completion bash
   [ "$status" -eq 0 ]
   [[ "$output" == *"complete -F _rig rig"* ]]
+  [[ "$output" == *"show list explain paths completion help"* ]]
 
   run "$RIG" completion zsh
   [ "$status" -eq 0 ]
   [[ "$output" == *"#compdef rig"* ]]
   [[ "$output" == *"compdef _rig rig"* ]]
+  [[ "$output" == *"show:describe a resolved profile"* ]]
+}
+
+@test "show describes default and named resolved profiles deterministically" {
+  write_query_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" OSTYPE=unrecognised RIG_PLATFORM=macos \
+    "$RIG" show
+  [ "$status" -eq 0 ]
+  [ "$output" = $'Profile: default\nPlatform: macos\nTools (3):\n  fzf\tfzf\tnavigation\tSelect entries quickly\n  git\tGit\tfoundation\tTrack source history\n  mgit\tMGit\tnavigation\tNavigate many repositories' ]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" show --profile minimal
+  [ "$status" -eq 0 ]
+  [ "$output" = $'Profile: minimal\nPlatform: macos\nTools (1):\n  git\tGit\tfoundation\tTrack source history' ]
+}
+
+@test "queries reject an unknown detected platform unless explicitly overridden" {
+  write_query_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" OSTYPE=unrecognised RIG_PLATFORM= \
+    "$RIG" show
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"rig: error: unsupported platform 'unrecognised'"* ]]
+}
+
+@test "list narrows stable catalogue output by category and resolved profile" {
+  write_query_config
+  expected=$'ID\tNAME\tCATEGORY\tPURPOSE\n  fzf\tfzf\tnavigation\tSelect entries quickly\n  git\tGit\tfoundation\tTrack source history\n  lazygit\tLazyGit\tnavigation\tBrowse Git interactively\n  mgit\tMGit\tnavigation\tNavigate many repositories'
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" list
+  [ "$status" -eq 0 ]
+  [ "$output" = "$expected" ]
+
+  mv "$CONFIG_HOME/conf.d/10-lazygit.conf" "$CONFIG_HOME/conf.d/swap.conf"
+  mv "$CONFIG_HOME/conf.d/40-fzf.conf" "$CONFIG_HOME/conf.d/10-lazygit.conf"
+  mv "$CONFIG_HOME/conf.d/swap.conf" "$CONFIG_HOME/conf.d/40-fzf.conf"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" list
+  [ "$status" -eq 0 ]
+  [ "$output" = "$expected" ]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" list --category navigation
+  [ "$status" -eq 0 ]
+  [ "$output" = $'ID\tNAME\tCATEGORY\tPURPOSE\n  fzf\tfzf\tnavigation\tSelect entries quickly\n  lazygit\tLazyGit\tnavigation\tBrowse Git interactively\n  mgit\tMGit\tnavigation\tNavigate many repositories' ]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" list --profile knowledge-islands
+  [ "$status" -eq 0 ]
+  [ "$output" = $'ID\tNAME\tCATEGORY\tPURPOSE\n  git\tGit\tfoundation\tTrack source history\n  mgit\tMGit\tnavigation\tNavigate many repositories' ]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" list --profile knowledge-islands --category navigation
+  [ "$status" -eq 0 ]
+  [ "$output" = $'ID\tNAME\tCATEGORY\tPURPOSE\n  mgit\tMGit\tnavigation\tNavigate many repositories' ]
+}
+
+@test "explain reports declared and derived tool metadata" {
+  write_query_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" explain mgit
+
+  [ "$status" -eq 0 ]
+  [ "$output" = $'Tool: mgit\nName: MGit\nCategory: navigation (Navigation)\nPurpose: Navigate many repositories\nRationale: It presents the Knowledge Islands estate\nPlatforms: linux, macos\nRequires: git\nRelated: fzf\nAlternatives: lazygit\nProfiles: default (inherited), focused (direct), knowledge-islands (direct)\nBinding: marker (executable: mgit)' ]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" explain git
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Profiles: default (inherited), focused (required), knowledge-islands (inherited), minimal (direct)"* ]]
+}
+
+@test "explain validates binding ambiguity before writing stdout" {
+  write_query_config
+  printf '%s\n' \
+    '[provider.second]' \
+    'adapter = homebrew' \
+    '[binding.mgit.second]' \
+    'kind = formula' \
+    'locator = other-mgit' \
+    'platform = macos' >>"$CONFIG_HOME/rig.conf"
+
+  error_file=$BATS_TEST_TMPDIR/explain-error-$BATS_TEST_NUMBER
+  run bash -c 'error_file=$1; shift; "$@" 2>"$error_file"' _ "$error_file" \
+    env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" explain mgit
+
+  [ "$status" -eq 2 ]
+  [ "$output" = "" ]
+  error_output=$(<"$error_file")
+  [[ "$error_output" == *"rig: error: tool 'mgit' has ambiguous bindings for platform 'macos'"* ]]
+}
+
+@test "catalogue queries never invoke a configured provider" {
+  write_query_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" show
+  [ "$status" -eq 0 ]
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" list --profile default
+  [ "$status" -eq 0 ]
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" explain mgit
+  [ "$status" -eq 0 ]
+  [ ! -e "$QUERY_MARKER" ]
+}
+
+@test "catalogue queries reject unknown identities with status two" {
+  write_query_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" list --category absent
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"rig: error: unknown category 'absent'"* ]]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" show --profile absent
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"rig: error: unknown profile 'absent'"* ]]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" explain absent
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"rig: error: unknown tool 'absent'"* ]]
+  [ ! -e "$QUERY_MARKER" ]
+}
+
+@test "catalogue query syntax is strict and exits two" {
+  write_query_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" "$RIG" show --profile
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"rig: error: usage: rig show [--profile NAME]"* ]]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" "$RIG" list --category navigation --category foundation
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"rig: error: usage: rig list [--category ID] [--profile NAME]"* ]]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" "$RIG" explain mgit extra
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"rig: error: usage: rig explain TOOL"* ]]
+
+  missing_config=$BATS_TEST_TMPDIR/missing-config-$BATS_TEST_NUMBER
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" show --profile ""
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"rig: error: usage: rig show [--profile NAME]"* ]]
+  [[ "$output" != *"cannot read configuration file"* ]]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" list --category ""
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"rig: error: usage: rig list [--category ID] [--profile NAME]"* ]]
+  [[ "$output" != *"cannot read configuration file"* ]]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" list --profile ""
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"rig: error: usage: rig list [--category ID] [--profile NAME]"* ]]
+  [[ "$output" != *"cannot read configuration file"* ]]
+}
+
+@test "catalogue commands provide local help without loading configuration" {
+  missing_config=$BATS_TEST_TMPDIR/missing-help-config-$BATS_TEST_NUMBER
+
+  for flag in -h --help; do
+    run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" show "$flag"
+    [ "$status" -eq 0 ]
+    [ "$output" = "Usage: rig show [--profile NAME]" ]
+
+    run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" list "$flag"
+    [ "$status" -eq 0 ]
+    [ "$output" = "Usage: rig list [--category ID] [--profile NAME]" ]
+
+    run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" explain "$flag"
+    [ "$status" -eq 0 ]
+    [ "$output" = "Usage: rig explain TOOL" ]
+  done
 }
 
 @test "installer links into overridden executable and manual directories" {
