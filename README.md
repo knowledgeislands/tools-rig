@@ -21,7 +21,17 @@ The catalogue is Rig's source of meaning. Profiles resolve the catalogue for a c
 
 Personal catalogue contents, operations, and machine-specific paths belong in private Rig configuration, not in this executable. Provider-native manifests such as a Brewfile remain authoritative for their own systems.
 
-## Install a local checkout
+## Install
+
+Install the latest available release, falling back to the current `main` build while Rig is pre-release:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/main/install.sh | bash
+```
+
+The executable defaults to `~/.local/bin/rig`, and the manual defaults beneath `${XDG_DATA_HOME:-$HOME/.local/share}/man/man1`. Set `RIG_INSTALL_DIR` or `RIG_MAN_INSTALL_DIR` to choose other locations. Set `RIG_VERSION` to install a specific tag or branch.
+
+### Local checkout
 
 Link the executable and manual from this checkout into their conventional user locations:
 
@@ -31,7 +41,7 @@ rig --version
 rig --help
 ```
 
-The executable defaults to `~/.local/bin/rig`; set `RIG_INSTALL_DIR` to choose another location. The manual defaults beneath `${XDG_DATA_HOME:-$HOME/.local/share}/man/man1`; set `RIG_MAN_INSTALL_DIR` to override it. Re-run `./install.sh --link` after moving the checkout.
+Re-run `./install.sh --link` after moving the checkout.
 
 ## Configure a catalogue
 
@@ -61,6 +71,7 @@ tool = mgit
 
 ## Commands
 
+- `rig` shows top-level help.
 - `rig show [--profile NAME]` summarises the default or named resolved profile.
 - `rig list [--category ID] [--profile NAME]` lists catalogue tools, optionally narrowed by category and profile.
 - `rig explain TOOL` explains a tool's declared meaning, relationships, profile membership, and compatible provider binding.

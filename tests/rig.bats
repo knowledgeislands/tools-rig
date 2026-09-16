@@ -107,7 +107,8 @@ write_query_config() {
   run "$RIG" --help
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Usage: rig"* ]]
+  [[ "$output" == *"Usage: rig [options] [command]"* ]]
+  [[ "$output" == *"Describe and manage a person's working setup."* ]]
   [[ "$output" == *"show [--profile NAME]"* ]]
   [[ "$output" == *"list [--category ID] [--profile NAME]"* ]]
   [[ "$output" == *"explain TOOL"* ]]
@@ -173,6 +174,9 @@ write_query_config() {
   run "$RIG" completion bash
   [ "$status" -eq 0 ]
   [[ "$output" == *"complete -F _rig rig"* ]]
+  [[ "$output" == *"-h --help -V --version show list explain diag completion help"* ]]
+  [[ "$output" == *'show) COMPREPLY=($(compgen -W "-h --help --profile"'* ]]
+  [[ "$output" == *'explain) COMPREPLY=($(compgen -W "-h --help"'* ]]
   [[ "$output" == *"show list explain diag completion help"* ]]
   [[ "$output" != *" paths "* ]]
 
@@ -182,6 +186,39 @@ write_query_config() {
   [[ "$output" == *"compdef _rig rig"* ]]
   [[ "$output" == *"show:describe a resolved profile"* ]]
   [[ "$output" == *"diag:print runtime and configuration diagnostics"* ]]
+  [[ "$output" == *"'(-V --version)'{-V,--version}"* ]]
+  [[ "$output" == *"explain) _arguments '(-h --help)'"* ]]
+}
+
+@test "completion definitions evaluate and expose accepted options" {
+  run bash -c '
+    eval "$("$1" completion bash)"
+    COMP_WORDS=(rig --)
+    COMP_CWORD=1
+    _rig
+    printf "root:%s\n" "${COMPREPLY[*]}"
+    COMP_WORDS=(rig show --)
+    COMP_CWORD=2
+    _rig
+    printf "show:%s\n" "${COMPREPLY[*]}"
+    COMP_WORDS=(rig explain --)
+    COMP_CWORD=2
+    _rig
+    printf "explain:%s\n" "${COMPREPLY[*]}"
+  ' bash "$RIG"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"root:--help --version"* ]]
+  [[ "$output" == *"show:--help --profile"* ]]
+  [[ "$output" == *"explain:--help"* ]]
+
+  run zsh -f -c '
+    autoload -Uz compinit && compinit -C
+    eval "$("$1" completion zsh)"
+    [[ ${_comps[rig]} == _rig ]]
+  ' zsh "$RIG"
+
+  [ "$status" -eq 0 ]
 }
 
 @test "diag reports valid configuration metadata and fragment count" {

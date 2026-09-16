@@ -4,12 +4,12 @@ area: DIST
 title: Align public CLI surfaces
 theme: distribution
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: a26e5c382237ad997e248609739baad251919485
 created_at: 2026-09-16T13:25:02Z
-updated_at: 2026-09-16T13:25:02Z
+updated_at: 2026-09-16T13:29:15Z
 ---
 
 # RIG-DIST-004: Align public CLI surfaces
@@ -32,13 +32,13 @@ This item aligns existing public behaviour and documentation only. It does not a
 
 ## Steps
 
-- [ ] Match help's optional-command synopsis and purpose-first shape to sibling tools.
-- [ ] Complete Bash and Zsh candidates for every accepted root and command-local option.
-- [ ] Add executable completion registration and candidate coverage.
-- [ ] Add release, linked-development, completion, and schema-reference guidance to `rig(1)`.
-- [ ] Add the bare `rig` behaviour and release installation route to README.
-- [ ] Reshape the in-progress v1 changelog into shipped commands, behaviours, and distribution baseline without prospective commands.
-- [ ] Verify every public surface and the complete repository gate.
+- [x] Match help's optional-command synopsis and purpose-first shape to sibling tools.
+- [x] Complete Bash and Zsh candidates for every accepted root and command-local option.
+- [x] Add executable completion registration and candidate coverage.
+- [x] Add release, linked-development, completion, and schema-reference guidance to `rig(1)`.
+- [x] Add the bare `rig` behaviour and release installation route to README.
+- [x] Reshape the in-progress v1 changelog into shipped commands, behaviours, and distribution baseline without prospective commands.
+- [x] Verify every public surface and the complete repository gate.
 
 ## Files touched
 
@@ -73,6 +73,43 @@ README and `rig(1)` gain the missing installation and completion routes; no sepa
 ### Roadmap
 
 This record is the canonical delivery boundary. Planned commands remain in their existing roadmap records rather than the changelog.
+
+## Review
+
+### Delivered
+
+Rig's help, completion definitions, README, manual, and pre-v1 changelog now present the same shipped command, option, installation, and configuration contract.
+
+### Summary of changes
+
+- Changed top-level help to the sibling CLI shape with optional options and command plus a purpose line.
+- Added every accepted root and command-local option to Bash and Zsh completion.
+- Added functional completion evaluation and Zsh registration coverage.
+- Added release installation, shell completion, schema 1, and linked-development sections to `rig(1)`.
+- Added the release installer and bare `rig` behaviour to README.
+- Reduced the `1.0.0 — in progress` changelog to shipped commands, behaviours, and distribution; prospective work remains in the roadmap.
+
+### Verification
+
+- `ki repo audit --skill ki-authoring --repo .`: pass.
+- `ki repo audit --skill ki-repo-tools --repo .`: pass.
+- `shellcheck bin/rig install.sh` and `/bin/bash -n bin/rig`: pass.
+- `bats tests/`: 41 tests pass.
+- `mandoc -T lint man/rig.1`: pass; the rendered manual was inspected.
+- `git diff --check`: pass.
+- Full `ki repo audit --repo .`: 14 of 15 skills pass; `ki-repo` reports nine pre-existing live GitHub-settings discrepancies. No remote setting was changed.
+
+### Outstanding concerns
+
+The live GitHub settings remain outside this item's authority and require explicit approval before any mutation. Planned commands and the Homebrew formula remain in their canonical roadmap records.
+
+### Post-change review
+
+The comparison against `tools-mgit` and `tools-ki` found no retired command in Rig's surfaces and confirmed that the Zsh definition registers under `compinit`. The identified option, installation, manual, and changelog gaps are now addressed without broadening the CLI.
+
+### Mini recap
+
+Rig now follows the shared KI CLI presentation and distribution pattern while remaining a deliberately smaller pre-v1 tool.
 
 ## Discussion
 

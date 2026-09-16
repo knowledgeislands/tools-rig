@@ -1,4 +1,4 @@
-.TH RIG 1 "September 16, 2026" "Rig 0.1.0" "User Commands"
+.TH RIG 1 "2026-09-16" "Knowledge Islands" "User Commands"
 .SH NAME
 \&
 .PP
@@ -31,6 +31,28 @@ supported platforms, profiles, and provider bindings.
 Catalogue queries parse inert configuration and do not invoke provider code.
 Package and configuration systems retain authority over their native manifests,
 resolution, configuration, and state.
+.SH INSTALLATION
+\&
+.PP
+Install the latest available release, falling back to the current
+.B main
+build while Rig is pre-release:
+.PP
+.nf
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/main/install.sh | bash
+.fi
+.PP
+The installer writes the executable to
+.I ~/.local/bin
+and the manual beneath
+.I ${XDG_DATA_HOME:-$HOME/.local/share}/man/man1
+by default. Set
+.B RIG_INSTALL_DIR
+or
+.B RIG_MAN_INSTALL_DIR
+to choose different locations. Set
+.B RIG_VERSION
+to install a specific release tag or branch.
 .SH COMMANDS
 \&
 .TP
@@ -65,6 +87,35 @@ Print completion source for the selected shell.
 .TP
 .B rig help
 Show top-level command help.
+.SH SHELL COMPLETION
+\&
+.PP
+The
+.B rig completion bash
+and
+.B rig completion zsh
+print completion definitions for the shipped command and option surface.
+.PP
+For Bash, source the definition from the shell configuration:
+.PP
+.nf
+source <(rig completion bash)
+.fi
+.PP
+For Zsh, write the definition to a file named
+.I _rig
+in a directory on
+.B fpath
+before
+.B compinit
+runs. For example:
+.PP
+.nf
+mkdir -p ~/.zsh/completions
+rig completion zsh > ~/.zsh/completions/_rig
+fpath=(~/.zsh/completions $fpath)
+autoload -Uz compinit && compinit
+.fi
 .SH OPTIONS
 \&
 .TP
@@ -144,7 +195,84 @@ is unset. The fallback is
 \&
 .TP
 .I ${XDG_CONFIG_HOME:-$HOME/.config}/rig/rig.conf
-Default root configuration file.
+Default root configuration file. Schema 1 uses
+.B [rig]
+with
+.B schema
+and
+.BR default-profile ;
+.B [category.ID]
+with
+.B name
+and
+.BR purpose ;
+.B [tool.ID]
+with
+.BR name ,
+.BR category ,
+.BR purpose ,
+.BR rationale ,
+and one or more
+.B platform
+fields; and
+.B [profile.ID]
+with repeated
+.B profile
+or
+.B tool
+fields. Provider and binding sections retain their native locator and argument
+data without executing it while configuration is loaded.
+.B [provider.ID]
+requires
+.B adapter
+and accepts
+.BR command ,
+.BR executable ,
+.BR manifest ,
+and repeated
+.B argument
+or
+.B capability
+fields.
+.B [binding.TOOL.PROVIDER]
+requires
+.B kind
+and
+.B locator
+and accepts repeated
+.B platform
+or
+.B argument
+fields.
+.B [publication.ID]
+requires
+.BR profile ,
+.BR title ,
+.BR base-url ,
+and
+.BR publisher .
+.PP
+A minimal catalogue is:
+.PP
+.nf
+[rig]
+schema = 1
+default-profile = default
+
+[category.navigation]
+name = Navigation
+purpose = Move through Knowledge Islands
+
+[tool.mgit]
+name = MGit
+category = navigation
+purpose = Navigate related repositories
+rationale = Keeps repository context visible
+platform = macos
+
+[profile.default]
+tool = mgit
+.fi
 .TP
 .I ${XDG_CONFIG_HOME:-$HOME/.config}/rig/conf.d/*.conf
 Optional configuration fragments.
@@ -157,6 +285,25 @@ Default state directory.
 .TP
 .I ${XDG_CACHE_HOME:-$HOME/.cache}/rig
 Default cache directory.
+.SH DEVELOPMENT INSTALLATIONS
+\&
+.PP
+For development against a local checkout, run
+.B ./install.sh --link
+to link the current executable and manual into
+.B RIG_INSTALL_DIR
+(default
+.IR ~/.local/bin )
+and
+.B RIG_MAN_INSTALL_DIR
+(default: the XDG data directory beneath
+.IR man/man1 ).
+The linked command follows changes to the checkout and does not download a
+release. Re-run link mode after moving the checkout. Use
+.B ./bin/rig
+directly or
+.B man -l man/rig.1
+to inspect the checked-out artifacts without changing installed paths.
 .SH EXIT STATUS
 \&
 .TP

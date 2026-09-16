@@ -4,12 +4,11 @@ All notable changes to `rig` are documented here. This changelog records the evo
 
 ## [1.0.0] — in progress
 
-Rig 1.0.0 is not yet released. The current 0.1.0 capabilities and accepted work still needed for v1 are recorded separately below.
+Rig 1.0.0 is not yet released. Pre-v1 work is summarised as this evolving baseline; separate 0.x release entries are not maintained.
 
-### Available in 0.1.0
+### Shipped commands
 
-#### Commands
-
+- `rig`
 - `rig show [--profile NAME]`
 - `rig list [--category ID] [--profile NAME]`
 - `rig explain TOOL`
@@ -17,18 +16,15 @@ Rig 1.0.0 is not yet released. The current 0.1.0 capabilities and accepted work 
 - `rig completion bash|zsh`
 - `rig help`, `rig --help`, and `rig --version`
 
-#### Foundation
+### Behaviours
 
 - A standalone Bash 3.2-compatible executable with no required runtime dependency beyond Bash.
 - Non-mutating runtime, platform, XDG-path, and configuration diagnostics with explicit Rig overrides.
 - An inert schema 1 loader with deterministic fragment order, validation, composed-profile resolution, transitive requirements, platform selection, and provider-binding resolution.
 - Read-only catalogue queries that do not invoke providers.
-- An installer for released or linked development copies of the executable and `rig(1)` manual.
 
-### Accepted for 1.0.0
+### Distribution baseline
 
-- Provider observation and expected-versus-observed `status` reporting.
-- Explicit `apply`, provider adapters, and top-level `doctor` diagnostics.
-- Bootstrap migration and configuration-led machine-audit and service operations through declared `rig run` operations.
-- Public export and publication suitable for a personal site such as `rig.midnight.ninja`.
-- A formula in the Knowledge Islands Homebrew tap.
+- `install.sh` supports released and linked development copies.
+- `rig(1)` documents commands, configuration, installation, and shell completion.
+- Bash and Zsh completion definitions cover the shipped command and option surface.

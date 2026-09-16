@@ -32,7 +32,13 @@ RIG_INVOKED_PATH=
 
 print_help() {
   printf '%s\n' \
-    'Usage: rig <command> [arguments]' \
+    'Usage: rig [options] [command]' \
+    '' \
+    "Describe and manage a person's working setup." \
+    '' \
+    'Options:' \
+    '  -h, --help            Show this help.' \
+    '  -V, --version         Print the Rig version.' \
     '' \
     'Commands:' \
     '  show [--profile NAME]                 Describe a resolved profile.' \
@@ -40,11 +46,7 @@ print_help() {
     '  explain TOOL                          Explain a declared tool.' \
     '  diag                  Print runtime and configuration diagnostics.' \
     '  completion bash|zsh   Print shell completion source.' \
-    '  help                  Show this help.' \
-    '' \
-    'Options:' \
-    '  -h, --help            Show this help.' \
-    '  -V, --version         Print the Rig version.'
+    '  help                  Show this help.'
 }
 
 syntax_error() {
@@ -74,12 +76,13 @@ print_bash_completion() {
     '  current=${COMP_WORDS[COMP_CWORD]}' \
     '  command=${COMP_WORDS[1]:-}' \
     '  if [ "$COMP_CWORD" -eq 1 ]; then' \
-    '    COMPREPLY=($(compgen -W "show list explain diag completion help" -- "$current"))' \
+    '    COMPREPLY=($(compgen -W "-h --help -V --version show list explain diag completion help" -- "$current"))' \
     '    return' \
     '  fi' \
     '  case "$command" in' \
-    '    show) COMPREPLY=($(compgen -W "--profile" -- "$current")) ;;' \
-    '    list) COMPREPLY=($(compgen -W "--category --profile" -- "$current")) ;;' \
+    '    show) COMPREPLY=($(compgen -W "-h --help --profile" -- "$current")) ;;' \
+    '    list) COMPREPLY=($(compgen -W "-h --help --category --profile" -- "$current")) ;;' \
+    '    explain) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
     '    diag) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
     '    completion) COMPREPLY=($(compgen -W "bash zsh" -- "$current")) ;;' \
     '  esac' \
@@ -104,13 +107,14 @@ print_zsh_completion() {
     "    'completion:print shell completion source'" \
     "    'help:show help'" \
     '  )' \
-    "  _arguments '1:command:->command' '*::argument:->argument'" \
+    "  _arguments '(-h --help)'{-h,--help}'[show help]' '(-V --version)'{-V,--version}'[print the Rig version]' '1:command:->command' '*::argument:->argument'" \
     '  case $state in' \
     "    command) _describe -t commands 'rig command' commands ;;" \
     '    argument)' \
     '      case $words[2] in' \
-    "        show) _arguments '--profile[select a profile]:profile name:' ;;" \
-    "        list) _arguments '--category[select a category]:category id:' '--profile[select a profile]:profile name:' ;;" \
+    "        show) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select a profile]:profile name:' ;;" \
+    "        list) _arguments '(-h --help)'{-h,--help}'[show command help]' '--category[select a category]:category id:' '--profile[select a profile]:profile name:' ;;" \
+    "        explain) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
     "        diag) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
     "        completion) _values 'shell' bash zsh ;;" \
     '      esac' \
