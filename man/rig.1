@@ -19,6 +19,9 @@ rig \- describe and manage a personal working setup
 .B rig status
 .RI [ \-\-profile " NAME" ]
 .br
+.B rig doctor
+.RI [ \-\-profile " NAME" ]
+.br
 .B rig apply
 .RI [ \-\-profile " NAME" ]
 .RI [ \-\-dry-run ]
@@ -40,7 +43,8 @@ Its catalogue records tools, categories, purposes, rationale, relationships,
 supported platforms, profiles, and provider bindings.
 .PP
 Catalogue queries and diagnostics parse inert configuration and do not invoke
-provider code. Status invokes observation capabilities. Apply crosses the
+provider code. Status and doctor invoke observation capabilities. Apply
+crosses the
 explicit mutation boundary only after complete plan preflight. Package and
 configuration systems retain authority over their native manifests,
 resolution, configuration, and state.
@@ -97,6 +101,19 @@ unavailable rows.
 .TP
 .BI "rig status \-\-profile " NAME
 Compare a named resolved profile without changing the configured default.
+.TP
+.B rig doctor
+Check the resolved default profile and print one compact operational health
+answer. Doctor checks effective XDG path accessibility, provider availability,
+and selected-tool observations. Catalogue-only and incompatible-platform tools
+are informational.
+.TP
+.BI "rig doctor \-\-profile " NAME
+Check a named resolved profile without changing the configured default.
+Doctor invokes only selected providers' exact declared
+.B observe
+capability; it never applies, repairs, publishes, or invokes unselected
+providers.
 .TP
 .B rig apply
 Preflight every selected bound tool, then invoke built-in or custom-provider
@@ -482,11 +499,12 @@ to inspect the checked-out artifacts without changing installed paths.
 \&
 .TP
 .B 0
-Healthy status or successful apply, including neutral catalogue-only rows.
+Healthy status or doctor result, or successful apply, including neutral
+catalogue-only rows.
 .TP
 .B 1
-Valid unhealthy observation, provider runtime failure, dependency suppression,
-or diagnostic finding. For
+Valid unhealthy observation or doctor finding, provider runtime failure,
+dependency suppression, or diagnostic finding. For
 .B rig diag
 this means configuration is missing or invalid.
 .TP

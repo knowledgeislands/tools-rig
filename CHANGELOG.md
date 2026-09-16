@@ -13,6 +13,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work is summarised as this evolving baseli
 - `rig list [--category ID] [--profile NAME]`
 - `rig explain TOOL`
 - `rig status [--profile NAME]`
+- `rig doctor [--profile NAME]`
 - `rig apply [--profile NAME] [--dry-run]`
 - `rig export PUBLICATION --output DIRECTORY`
 - `rig diag`
@@ -30,6 +31,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work is summarised as this evolving baseli
 - Built-in Homebrew formula, cask, and Mac App Store, uv tool, and chezmoi target adapters with exact capability gates and native command mappings.
 - HTTPS direct-download executable adapter with declared SHA-256 verification, sibling temporary files, safe destination checks, atomic replacement, and failure cleanup.
 - Five-state observation with deterministic provider, state, and detail reporting without a competing state database.
+- A concise read-only doctor synthesis for configuration, XDG accessibility, provider availability, selected-tool health, and informational catalogue-only or incompatible tools.
 - Complete application preflight, a non-mutating dry-run, and dependency-first execution.
 - Failure handling that suppresses only transitive dependants while independent work continues.
 - Deterministic offline static export of an explicitly selected public profile with HTML escaping, relationship closure, portable base URLs, disclosure allow-listing, and safe complete-tree replacement.

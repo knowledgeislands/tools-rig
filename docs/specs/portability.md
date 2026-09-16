@@ -47,3 +47,13 @@ _Conformance:_ conforming
 _Verify:_ Bats tests compare stable diagnostics for default and overridden paths, linked invocation, valid, missing, and invalid configuration; assert provider non-execution; and cover command help and exit statuses.
 
 _Evidence:_ `tests/rig.bats` covers exact labelled output, XDG and Rig-specific precedence, invoked symlink paths, fragment counting, valid, missing, and invalid configuration, provider non-execution, local help, and removal of `paths`.
+
+### RIG-PORT-005 — Doctor XDG accessibility
+
+`rig doctor` MUST inspect effective configuration, data, state, and cache application paths without creating or changing them. An existing non-directory or inaccessible path and an absent path without an accessible writable ancestor MUST be a configuration-owned health finding.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats supplies a regular file as an effective Rig data directory and asserts a deterministic status-1 XDG finding while provider mutation remains absent.
+
+_Evidence:_ `rig_doctor_path_finding` performs read-only path checks and the doctor XDG Bats case covers the non-directory boundary.

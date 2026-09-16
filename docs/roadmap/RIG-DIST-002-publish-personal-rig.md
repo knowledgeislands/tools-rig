@@ -4,12 +4,12 @@ area: DIST
 title: Publish personal rig
 theme: distribution
 horizon: now
-status: ready
+status: in-progress
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 8807b5579585f1f22b7de832a97d5af68e7181db
 created_at: 2026-09-15T11:53:55Z
-updated_at: 2026-09-16T22:30:03Z
+updated_at: 2026-09-16T22:30:29Z
 ---
 
 # RIG-DIST-002: Publish personal rig

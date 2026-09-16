@@ -320,13 +320,14 @@ write_query_config() {
   run "$RIG" completion bash
   [ "$status" -eq 0 ]
   [[ "$output" == *"complete -F _rig rig"* ]]
-  [[ "$output" == *"-h --help -V --version show list explain status apply export diag completion help"* ]] || false
+  [[ "$output" == *"-h --help -V --version show list explain status doctor apply export diag completion help"* ]] || false
   [[ "$output" == *'show) COMPREPLY=($(compgen -W "-h --help --profile"'* ]]
   [[ "$output" == *'explain) COMPREPLY=($(compgen -W "-h --help"'* ]]
   [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile"'* ]] || false
+  [[ "$output" == *'doctor) COMPREPLY=($(compgen -W "-h --help --profile"'* ]] || false
   [[ "$output" == *'apply) COMPREPLY=($(compgen -W "-h --help --profile --dry-run"'* ]] || false
   [[ "$output" == *'export) COMPREPLY=($(compgen -W "-h --help --output"'* ]] || false
-  [[ "$output" == *"show list explain status apply export diag completion help"* ]] || false
+  [[ "$output" == *"show list explain status doctor apply export diag completion help"* ]] || false
   [[ "$output" != *" paths "* ]]
 
   run "$RIG" completion zsh
@@ -335,6 +336,7 @@ write_query_config() {
   [[ "$output" == *"compdef _rig rig"* ]]
   [[ "$output" == *"show:describe a resolved profile"* ]]
   [[ "$output" == *"diag:print runtime and configuration diagnostics"* ]]
+  [[ "$output" == *"doctor:check whether a rig can operate"* ]]
   [[ "$output" == *"export:generate a static public rig"* ]] || false
   [[ "$output" == *"'(-V --version)'{-V,--version}"* ]]
   [[ "$output" == *"explain) _arguments '(-h --help)'"* ]]
@@ -359,6 +361,10 @@ write_query_config() {
     COMP_CWORD=2
     _rig
     printf "status:%s\n" "${COMPREPLY[*]}"
+    COMP_WORDS=(rig doctor --)
+    COMP_CWORD=2
+    _rig
+    printf "doctor:%s\n" "${COMPREPLY[*]}"
     COMP_WORDS=(rig apply --)
     COMP_CWORD=2
     _rig
@@ -370,6 +376,7 @@ write_query_config() {
   [[ "$output" == *"show:--help --profile"* ]]
   [[ "$output" == *"explain:--help"* ]]
   [[ "$output" == *"status:--help --profile"* ]] || false
+  [[ "$output" == *"doctor:--help --profile"* ]] || false
   [[ "$output" == *"apply:--help --profile --dry-run"* ]] || false
 
   run zsh -f -c '
@@ -1258,6 +1265,109 @@ write_query_config() {
   [ "$status" -eq 0 ]
   [ "$output" = $'Profile: default\nPlatform: macos\nTOOL\tPROVIDER\tSTATE\tDETAIL\nbase\trunner\tpresent\t-\napp\trunner\tpresent\t-\nindependent\trunner\tpresent\t-\nnotes\t-\tunavailable\tcatalogue-only\nSummary: present=3 missing=0 drifted=0 unavailable=1 unknown=0 catalogue-only=1' ]
   [ "$(grep '^CALL=' "$ORCHESTRATION_LOG")" = $'CALL=observe:base:present\nCALL=observe:app:present\nCALL=observe:independent:present' ]
+}
+
+@test "doctor gives a compact healthy synthesis using observation capabilities only" {
+  write_orchestration_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" doctor
+
+  [ "$status" -eq 0 ]
+  [ "$output" = $'Rig doctor: healthy\nProfile: default\nPlatform: macos\nSummary: findings=0 present=3 catalogue-only=1 incompatible-platform=0' ]
+  [ "$(grep '^CALL=' "$ORCHESTRATION_LOG")" = $'CALL=observe:base:present\nCALL=observe:app:present\nCALL=observe:independent:present' ]
+  ! grep -q '^CALL=apply:' "$ORCHESTRATION_LOG"
+}
+
+@test "doctor groups actionable findings while preserving shared state treatment" {
+  write_orchestration_config
+  sed \
+    -e '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = present/locator = missing/' \
+    -e '/\[binding.app.runner\]/,/\[binding.base.runner\]/ s/locator = present/locator = drifted/' \
+    -e '/\[binding.independent.runner\]/,/^$/ s/locator = present/locator = invalid-response/' \
+    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/doctor-findings.conf"
+  mv "$CONFIG_HOME/doctor-findings.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" doctor
+
+  [ "$status" -eq 1 ]
+  [ "$output" = $'Rig doctor: findings\nProfile: default\nPlatform: macos\nTool findings:\n  base: missing via runner (-); owner=runner; action=run-rig-apply\n  app: drifted via runner (-); owner=runner; action=review-then-run-rig-apply\n  independent: unknown via runner (invalid-response); owner=runner; action=inspect-provider-diagnostics\nSummary: findings=3 present=0 catalogue-only=1 incompatible-platform=0' ]
+  [ "$(grep '^CALL=' "$ORCHESTRATION_LOG")" = $'CALL=observe:base:missing\nCALL=observe:app:drifted\nCALL=observe:independent:invalid-response' ]
+}
+
+@test "doctor reports unavailable providers without invoking mutation" {
+  write_orchestration_config
+  sed "s#executable = .*#executable = $BATS_TEST_TMPDIR/missing-doctor-provider#" \
+    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/doctor-unavailable.conf"
+  mv "$CONFIG_HOME/doctor-unavailable.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" doctor --profile default
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *'base: unavailable via runner (executable-unavailable); owner=runner; action=install-or-configure-provider'* ]] || false
+  [[ "$output" == *'Summary: findings=3 present=0 catalogue-only=1 incompatible-platform=0'* ]] || false
+  [ ! -e "$ORCHESTRATION_LOG" ]
+}
+
+@test "doctor reports inaccessible XDG application paths as configuration-owned findings" {
+  write_orchestration_config
+  data_path=$BATS_TEST_TMPDIR/doctor-data-file-$BATS_TEST_NUMBER
+  touch "$data_path"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_DATA_HOME="$data_path" \
+    RIG_PLATFORM=macos RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" doctor
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"data: $data_path; owner=configuration; action=replace-with-directory"* ]] || false
+  [[ "$output" == *'Summary: findings=1 present=3 catalogue-only=1 incompatible-platform=0'* ]] || false
+  ! grep -q '^CALL=apply:' "$ORCHESTRATION_LOG"
+}
+
+@test "doctor treats incompatible profile tools as information" {
+  write_orchestration_config
+  printf '%s\n' \
+    '[tool.linux-only]' \
+    'name = Linux only' \
+    'category = core' \
+    'purpose = Exercise incompatible doctor information' \
+    'rationale = It is intentionally absent on macOS' \
+    'platform = linux' >>"$CONFIG_HOME/rig.conf"
+  awk '{ print; if ($0 == "tool = notes") print "tool = linux-only" }' \
+    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/doctor-platform.conf"
+  mv "$CONFIG_HOME/doctor-platform.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" doctor
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'linux-only: incompatible-platform; owner=catalogue; action=none'* ]] || false
+  [[ "$output" == *'Summary: findings=0 present=3 catalogue-only=1 incompatible-platform=1'* ]] || false
+}
+
+@test "doctor reserves status 2 for syntax configuration and resolution failures" {
+  missing_config=$BATS_TEST_TMPDIR/missing-doctor-config-$BATS_TEST_NUMBER
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" doctor
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"cannot read configuration file: $missing_config/rig.conf"* ]] || false
+
+  write_orchestration_config
+  printf '%s\n' '[profile.broken]' 'tool = absent' >>"$CONFIG_HOME/rig.conf"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" doctor
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"references unknown tool 'absent'"* ]] || false
+  [ ! -e "$ORCHESTRATION_LOG" ]
+
+  run "$RIG" doctor --profile
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'rig: error: usage: rig doctor [--profile NAME]'* ]] || false
+
+  run "$RIG" doctor --help
+  [ "$status" -eq 0 ]
+  [ "$output" = 'Usage: rig doctor [--profile NAME]' ]
 }
 
 @test "custom provider ABI preserves versioned literal argument boundaries" {

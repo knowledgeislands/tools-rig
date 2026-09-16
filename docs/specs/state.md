@@ -64,6 +64,38 @@ _Verify:_ Bats compares exact status output for a dependency graph whose lexical
 
 _Evidence:_ `rig_build_plan` provides stable dependency order and `rig_command_status` owns the exact table and summary.
 
+### RIG-STATE-013 — Doctor health synthesis
+
+`rig doctor [--profile NAME]` MUST synthesise configuration validity, effective XDG directory accessibility, profile resolution, provider availability, and selected-tool observations into one compact health result. Missing, drifted, unavailable, and unknown bound tools MUST be findings; catalogue-only and incompatible-platform tools MUST remain informational.
+
+Schema 1 has no optional selected-tool marker, so every selected bound tool is required for doctor health.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats tests compare healthy, mixed-observation, unavailable-provider, catalogue-only, incompatible-platform, and explicit-profile results.
+
+_Evidence:_ `rig_command_doctor` consumes the operational plan and provider observation vocabulary and `tests/rig.bats` covers each treatment.
+
+### RIG-STATE-014 — Read-only doctor
+
+`rig doctor` MUST invoke only exact declared `observe` capabilities for providers selected by the resolved profile and MUST NOT invoke apply, repair, publication, or unselected-provider capabilities.
+
+_Conformance:_ conforming
+
+_Verify:_ Recording-provider Bats tests assert only selected `observe` calls and no invocation when a provider executable is unavailable.
+
+_Evidence:_ `rig_observe_plan` supplies status and doctor through the same capability, adapter, and observation gates; recording logs contain only `observe` calls.
+
+### RIG-STATE-015 — Doctor output and outcomes
+
+`rig doctor` MUST print either `Rig doctor: healthy` or `Rig doctor: findings`, deterministic owner and action fields for each finding, and fixed-order summary counts. It MUST exit 0 when healthy, 1 when valid checks find health issues, and 2 for syntax, configuration, or resolution failure.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats compares exact healthy and mixed-finding output and covers statuses 0, 1, and 2.
+
+_Evidence:_ Doctor Bats cases assert exact summaries, actionable findings, and failure classes.
+
 ## Application
 
 ### RIG-STATE-005 — Explicit apply

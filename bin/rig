@@ -28,6 +28,7 @@ RIG_PLAN_BINDINGS=()
 RIG_PLAN_PROVIDERS=()
 RIG_PLAN_RESULTS=()
 RIG_PLAN_DETAILS=()
+RIG_PLAN_STATES=()
 RIG_INVOKE_ARGUMENTS=()
 RIG_VISIT_NAMES=()
 RIG_VISIT_STATES=()
@@ -55,6 +56,7 @@ print_help() {
     '  list [--category ID] [--profile NAME] List declared catalogue tools.' \
     '  explain TOOL                          Explain a declared tool.' \
     '  status [--profile NAME]                Compare expected and observed state.' \
+    '  doctor [--profile NAME]                Check whether a rig can operate.' \
     '  apply [--profile NAME] [--dry-run]     Materialise a resolved profile.' \
     '  export PUBLICATION --output DIRECTORY' \
     '                                     Generate a static public rig.' \
@@ -90,7 +92,7 @@ print_bash_completion() {
     '  current=${COMP_WORDS[COMP_CWORD]}' \
     '  command=${COMP_WORDS[1]:-}' \
     '  if [ "$COMP_CWORD" -eq 1 ]; then' \
-      '    COMPREPLY=($(compgen -W "-h --help -V --version show list explain status apply export diag completion help" -- "$current"))' \
+    '    COMPREPLY=($(compgen -W "-h --help -V --version show list explain status doctor apply export diag completion help" -- "$current"))' \
     '    return' \
     '  fi' \
     '  case "$command" in' \
@@ -98,6 +100,7 @@ print_bash_completion() {
     '    list) COMPREPLY=($(compgen -W "-h --help --category --profile" -- "$current")) ;;' \
     '    explain) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
     '    status) COMPREPLY=($(compgen -W "-h --help --profile" -- "$current")) ;;' \
+    '    doctor) COMPREPLY=($(compgen -W "-h --help --profile" -- "$current")) ;;' \
     '    apply) COMPREPLY=($(compgen -W "-h --help --profile --dry-run" -- "$current")) ;;' \
     '    export) COMPREPLY=($(compgen -W "-h --help --output" -- "$current")) ;;' \
     '    diag) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
@@ -121,6 +124,7 @@ print_zsh_completion() {
     "    'list:list declared catalogue tools'" \
     "    'explain:explain a declared tool'" \
     "    'status:compare expected and observed state'" \
+    "    'doctor:check whether a rig can operate'" \
     "    'apply:materialise a resolved profile'" \
     "    'export:generate a static public rig'" \
     "    'diag:print runtime and configuration diagnostics'" \
@@ -136,6 +140,7 @@ print_zsh_completion() {
     "        list) _arguments '(-h --help)'{-h,--help}'[show command help]' '--category[select a category]:category id:' '--profile[select a profile]:profile name:' ;;" \
     "        explain) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
     "        status) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' ;;" \
+    "        doctor) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' ;;" \
     "        apply) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \
     "        export) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' '--output[write complete static tree]:directory:_directories' ;;" \
     "        diag) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
@@ -168,6 +173,7 @@ rig_model_reset() {
   RIG_PLAN_PROVIDERS=()
   RIG_PLAN_RESULTS=()
   RIG_PLAN_DETAILS=()
+  RIG_PLAN_STATES=()
   RIG_INVOKE_ARGUMENTS=()
   RIG_VISIT_NAMES=()
   RIG_VISIT_STATES=()
@@ -1541,7 +1547,7 @@ rig_apply_provider() {
 }
 
 rig_command_status() {
-  local profile index tool binding provider adapter state detail unhealthy
+  local profile index tool provider state detail unhealthy
   local present missing drifted unavailable unknown catalogue_only
 
   profile=
@@ -1562,6 +1568,7 @@ rig_command_status() {
   esac
 
   rig_resolve_operational_plan "$profile" || return
+  rig_observe_plan || return
   printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   printf 'TOOL\tPROVIDER\tSTATE\tDETAIL\n'
   unhealthy=0
@@ -1571,6 +1578,96 @@ rig_command_status() {
   unavailable=0
   unknown=0
   catalogue_only=0
+  index=0
+  while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
+    tool=${RIG_PLAN_TOOLS[$index]}
+    provider=${RIG_PLAN_PROVIDERS[$index]}
+    state=${RIG_PLAN_STATES[$index]}
+    detail=${RIG_PLAN_DETAILS[$index]}
+    case "$state" in
+      present) present=$((present + 1)) ;;
+      missing) missing=$((missing + 1)) ;;
+      drifted) drifted=$((drifted + 1)) ;;
+      unavailable)
+        unavailable=$((unavailable + 1))
+        [ "${RIG_PLAN_RESULTS[$index]}" = neutral ] && catalogue_only=$((catalogue_only + 1))
+        ;;
+      unknown) unknown=$((unknown + 1)) ;;
+    esac
+    [ "${RIG_PLAN_RESULTS[$index]}" = neutral ] || [ "$state" = present ] || unhealthy=$((unhealthy + 1))
+    printf '%s\t%s\t%s\t%s\n' "$tool" "$provider" "$state" "$detail"
+    index=$((index + 1))
+  done
+  printf 'Summary: present=%s missing=%s drifted=%s unavailable=%s unknown=%s catalogue-only=%s\n' \
+    "$present" "$missing" "$drifted" "$unavailable" "$unknown" "$catalogue_only"
+  [ "$unhealthy" -eq 0 ]
+}
+
+rig_doctor_path_finding() {
+  local label candidate ancestor
+
+  label=$1
+  candidate=$2
+  if [ -e "$candidate" ]; then
+    if [ ! -d "$candidate" ]; then
+      printf '  %s: %s; owner=configuration; action=replace-with-directory\n' "$label" "$candidate"
+      return 0
+    fi
+    if [ ! -r "$candidate" ] || [ ! -x "$candidate" ]; then
+      printf '  %s: %s; owner=configuration; action=restore-directory-access\n' "$label" "$candidate"
+      return 0
+    fi
+    return 1
+  fi
+
+  ancestor=$candidate
+  while [ ! -e "$ancestor" ] && [ "$ancestor" != / ]; do
+    ancestor=${ancestor%/*}
+    [ -n "$ancestor" ] || ancestor=/
+  done
+  if [ ! -d "$ancestor" ] || [ ! -w "$ancestor" ] || [ ! -x "$ancestor" ]; then
+    printf '  %s: %s; owner=configuration; action=make-parent-writable\n' "$label" "$candidate"
+    return 0
+  fi
+  return 1
+}
+
+rig_doctor_incompatible_tools() {
+  local profile platform index tool count information
+  local -a tools
+
+  profile=$1
+  platform=$2
+  count=0
+  information=
+  rig_collect_section_ids tool
+  tools=("${RIG_QUERY_ITEMS[@]}")
+  index=0
+  while [ "$index" -lt "${#tools[@]}" ]; do
+    tool=${tools[$index]}
+    if { rig_profile_contains_declared_tool "$profile" "$tool" ||
+      rig_profile_requires_tool "$profile" "$tool"; } &&
+      ! rig_tool_supports_platform "$tool" "$platform"; then
+      information="${information}  ${tool}: incompatible-platform; owner=catalogue; action=none"$'\n'
+      count=$((count + 1))
+    fi
+    index=$((index + 1))
+  done
+  RIG_COUNT=$count
+  RIG_VALUE=${information%$'\n'}
+}
+
+rig_observe_plan() {
+  local index tool binding provider adapter state detail findings present catalogue_only
+  local findings_output
+
+  findings=0
+  present=0
+  catalogue_only=0
+  findings_output=
+  RIG_PLAN_RESULTS=()
+  RIG_PLAN_DETAILS=()
+  RIG_PLAN_STATES=()
   index=0
   while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
     tool=${RIG_PLAN_TOOLS[$index]}
@@ -1586,12 +1683,10 @@ rig_command_status() {
       state=unknown
       detail=blocked-by:$RIG_VALUE
       RIG_PLAN_RESULTS[$index]=skipped
-      unhealthy=$((unhealthy + 1))
     elif ! rig_provider_has_capability "$provider" observe; then
       state=unavailable
       detail=unsupported-capability:observe
       RIG_PLAN_RESULTS[$index]=failed
-      unhealthy=$((unhealthy + 1))
     else
       rig_get_value "provider.$provider" adapter || return 2
       adapter=$RIG_VALUE
@@ -1609,22 +1704,84 @@ rig_command_status() {
           RIG_PLAN_RESULTS[$index]=failed
         fi
       fi
-      [ "$state" = present ] || unhealthy=$((unhealthy + 1))
     fi
     RIG_PLAN_DETAILS[$index]=$detail
-    case "$state" in
-      present) present=$((present + 1)) ;;
-      missing) missing=$((missing + 1)) ;;
-      drifted) drifted=$((drifted + 1)) ;;
-      unavailable) unavailable=$((unavailable + 1)) ;;
-      unknown) unknown=$((unknown + 1)) ;;
-    esac
-    printf '%s\t%s\t%s\t%s\n' "$tool" "$provider" "$state" "$detail"
+    RIG_PLAN_STATES[$index]=$state
+    if [ "${RIG_PLAN_RESULTS[$index]}" = neutral ]; then
+      :
+    elif [ "$state" = present ]; then
+      present=$((present + 1))
+    else
+      case "$state:$detail" in
+        missing:*) RIG_OBSERVATION_DETAIL=run-rig-apply ;;
+        drifted:*) RIG_OBSERVATION_DETAIL=review-then-run-rig-apply ;;
+        unknown:blocked-by:*) RIG_OBSERVATION_DETAIL=resolve-${detail#blocked-by:} ;;
+        unavailable:unsupported-capability:*) RIG_OBSERVATION_DETAIL=declare-observe-capability ;;
+        unavailable:unsupported-adapter:*) RIG_OBSERVATION_DETAIL=select-supported-adapter ;;
+        unavailable:executable-unavailable) RIG_OBSERVATION_DETAIL=install-or-configure-provider ;;
+        *) RIG_OBSERVATION_DETAIL=inspect-provider-diagnostics ;;
+      esac
+      findings_output="${findings_output}  ${tool}: ${state} via ${provider} (${detail}); owner=${provider}; action=${RIG_OBSERVATION_DETAIL}"$'\n'
+      findings=$((findings + 1))
+    fi
     index=$((index + 1))
   done
-  printf 'Summary: present=%s missing=%s drifted=%s unavailable=%s unknown=%s catalogue-only=%s\n' \
-    "$present" "$missing" "$drifted" "$unavailable" "$unknown" "$catalogue_only"
-  [ "$unhealthy" -eq 0 ]
+  RIG_VALUE=${findings_output%$'\n'}
+  RIG_DOCTOR_FINDINGS=$findings
+  RIG_DOCTOR_PRESENT=$present
+  RIG_DOCTOR_CATALOGUE_ONLY=$catalogue_only
+}
+
+rig_command_doctor() {
+  local profile findings incompatible xdg_findings tool_findings
+
+  profile=
+  case "$#" in
+    0) ;;
+    1)
+      case "$1" in
+        -h|--help) printf '%s\n' 'Usage: rig doctor [--profile NAME]'; return ;;
+        *) syntax_error 'usage: rig doctor [--profile NAME]'; return ;;
+      esac
+      ;;
+    2)
+      [ "$1" = --profile ] && [ -n "$2" ] ||
+        { syntax_error 'usage: rig doctor [--profile NAME]'; return; }
+      profile=$2
+      ;;
+    *) syntax_error 'usage: rig doctor [--profile NAME]'; return ;;
+  esac
+
+  rig_resolve_operational_plan "$profile" || return
+  rig_effective_paths || return 2
+  rig_observe_plan || return
+  tool_findings=$RIG_VALUE
+  findings=$RIG_DOCTOR_FINDINGS
+  xdg_findings=$(rig_doctor_path_finding config "$RIG_DIAG_CONFIG_HOME"; \
+    rig_doctor_path_finding data "$RIG_DIAG_DATA_HOME"; \
+    rig_doctor_path_finding state "$RIG_DIAG_STATE_HOME"; \
+    rig_doctor_path_finding cache "$RIG_DIAG_CACHE_HOME")
+  if [ -n "$xdg_findings" ]; then
+    while IFS= read -r _; do findings=$((findings + 1)); done <<< "$xdg_findings"
+  fi
+
+  printf 'Rig doctor: %s\nProfile: %s\nPlatform: %s\n' \
+    "$([ "$findings" -eq 0 ] && printf healthy || printf findings)" \
+    "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
+  if [ -n "$xdg_findings" ]; then
+    printf 'XDG findings:\n%s\n' "$xdg_findings"
+  fi
+  if [ -n "$tool_findings" ]; then
+    printf 'Tool findings:\n%s\n' "$tool_findings"
+  fi
+  rig_doctor_incompatible_tools "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
+  incompatible=$RIG_COUNT
+  if [ -n "$RIG_VALUE" ]; then
+    printf 'Information:\n%s\n' "$RIG_VALUE"
+  fi
+  printf 'Summary: findings=%s present=%s catalogue-only=%s incompatible-platform=%s\n' \
+    "$findings" "$RIG_DOCTOR_PRESENT" "$RIG_DOCTOR_CATALOGUE_ONLY" "$incompatible"
+  [ "$findings" -eq 0 ]
 }
 
 rig_preflight_apply() {
@@ -2740,6 +2897,10 @@ main() {
     status)
       shift
       rig_command_status "$@"
+      ;;
+    doctor)
+      shift
+      rig_command_doctor "$@"
       ;;
     apply)
       shift

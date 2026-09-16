@@ -4,12 +4,12 @@ area: CLI
 title: Add doctor command
 theme: cli
 horizon: now
-status: ready
+status: in-progress
 blocks: [RIG-DIST-001, RIG-MIG-005]
 blocked_by: []
-baseline_ref: null
+baseline_ref: 8807b5579585f1f22b7de832a97d5af68e7181db
 created_at: 2026-09-15T13:04:11Z
-updated_at: 2026-09-16T22:30:03Z
+updated_at: 2026-09-16T22:30:29Z
 ---
 
 # RIG-CLI-004: Add doctor command

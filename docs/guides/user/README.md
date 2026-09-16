@@ -24,7 +24,14 @@ Rig prints its version, invoked executable, Bash version, active platform, effec
 
 Status 0 means the configuration is valid. Status 1 means the root configuration is missing or invalid; the available runtime and path diagnostics are still printed. Status 2 is reserved for invalid command syntax. Set an XDG base variable to relocate its whole category, or set the corresponding `RIG_*_HOME` value to replace Rig's complete application directory.
 
-Use the planned `rig doctor` command for selected-profile and provider health rather than treating diagnostics as a machine audit.
+Use `rig doctor` for selected-profile and provider health rather than treating diagnostics as a machine audit:
+
+```sh
+rig doctor
+rig doctor --profile developer
+```
+
+Doctor prints one healthy summary or grouped configuration and tool findings. A missing or drifted tool points to `rig apply`; provider availability and observation failures name the provider that owns the next action. Catalogue-only and incompatible-platform declarations are informational. Status 0 means the selected rig is healthy, status 1 means completed checks found issues, and status 2 means syntax, configuration, or profile resolution failed. Doctor invokes only selected providers' declared `observe` capability and does not repair or apply anything.
 
 ## Check and apply a profile
 
@@ -32,6 +39,7 @@ Declare an exact `observe` or `apply` capability on each provider, then inspect 
 
 ```sh
 rig status
+rig doctor
 rig apply --dry-run
 rig apply
 ```

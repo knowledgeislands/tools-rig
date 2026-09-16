@@ -90,19 +90,20 @@ See `man rig` for the exact native command matrix and custom-provider protocol.
 - `rig list [--category ID] [--profile NAME]` lists catalogue tools, optionally narrowed by category and profile.
 - `rig explain TOOL` explains a tool's declared meaning, relationships, profile membership, and compatible provider binding.
 - `rig status [--profile NAME]` compares expected tools with selected built-in or custom-provider observations.
+- `rig doctor [--profile NAME]` gives a compact health answer for configuration, XDG paths, providers, and selected tools.
 - `rig apply [--profile NAME] [--dry-run]` materialises a resolved profile; dry-run preflights and prints planned work without invoking providers.
 - `rig export PUBLICATION --output DIRECTORY` generates a deterministic static site from the publication's explicitly selected public profile.
 - `rig diag` reports the effective Rig runtime, active platform, XDG paths, and configuration discovery and validity.
 - `rig completion bash|zsh` prints shell completion source.
 - `rig help`, `rig --help`, and `rig --version` provide command and version information.
 
-Catalogue queries, `diag`, and `export` never invoke providers. `status` invokes only declared `observe` capabilities. `apply` invokes exact `apply` capabilities only after complete plan preflight. See `man rig` for the complete command contract.
+Catalogue queries, `diag`, and `export` never invoke providers. `status` and `doctor` invoke only declared `observe` capabilities. `apply` invokes exact `apply` capabilities only after complete plan preflight. See `man rig` for the complete command contract.
 
-Diagnostics are also non-mutating and never invoke providers. A valid configuration returns status 0; missing or invalid configuration returns status 1 while still printing the available diagnostic snapshot. The planned `doctor` command is the separate, deeper check of selected tools and providers.
+Use `diag` to inspect Rig's runtime, paths, and configuration discovery without provider execution. Use `doctor` for a concise operational health answer and `status` for the complete expected-versus-observed table. Doctor returns 0 when healthy, 1 when completed checks find issues, and 2 when syntax, configuration, or profile resolution is invalid.
 
 ## Status
 
-Rig is a pre-v1 tool under active development. Catalogue parsing, validation, profile resolution, provider-binding resolution, read-only queries, built-in and custom-provider observation, dependency-ordered application, integrity-checked direct downloads, and deterministic static public export are implemented. Doctor, bootstrap migration, declared operations, trusted publication deployment, and the Homebrew formula remain tracked work in the [roadmap](ROADMAP.md).
+Rig is a pre-v1 tool under active development. Catalogue parsing, validation, profile resolution, provider-binding resolution, read-only queries, operational health checks, built-in and custom-provider observation, dependency-ordered application, integrity-checked direct downloads, and deterministic static public export are implemented. Bootstrap migration, declared operations, trusted publication deployment, and the Homebrew formula remain tracked work in the [roadmap](ROADMAP.md).
 
 ## Documentation
 
