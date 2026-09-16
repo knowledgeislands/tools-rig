@@ -4,12 +4,12 @@ area: MIG
 title: Retire chezmoi Rig
 theme: migration
 horizon: now
-status: draft
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-16T11:06:43Z
-updated_at: 2026-09-16T23:37:31Z
+updated_at: 2026-09-16T23:40:29Z
 ---
 
 # RIG-MIG-005: Retire chezmoi Rig
