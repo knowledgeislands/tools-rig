@@ -4,12 +4,12 @@ area: DIST
 title: Curate v1 baseline
 theme: distribution
 horizon: now
-status: ready
+status: awaiting-review
 blocks: [RIG-DIST-001]
 blocked_by: []
-baseline_ref: null
+baseline_ref: c8d905571d7d4ba7f28ebe654a6406fd41b00726
 created_at: 2026-09-15T13:04:11Z
-updated_at: 2026-09-15T13:20:41Z
+updated_at: 2026-09-15T13:25:21Z
 ---
 
 # RIG-DIST-003: Curate v1 baseline
@@ -32,9 +32,9 @@ This item changes release documentation only. It does not bump the executable ve
 
 ## Steps
 
-- [ ] Replace the generic heading with one `1.0.0 — in progress` baseline.
-- [ ] Separate capabilities available in the current executable from accepted direction still being built, without presenting planned commands as shipped.
-- [ ] Verify the changelog remains concise, accurate, and aligned with the current help and version output.
+- [x] Replace the generic heading with one `1.0.0 — in progress` baseline.
+- [x] Separate capabilities available in the current executable from accepted direction still being built, without presenting planned commands as shipped.
+- [x] Verify the changelog remains concise, accurate, and aligned with the current help and version output.
 
 ## Files touched
 
@@ -69,6 +69,32 @@ No guide change is needed; no user procedure changes.
 ### Roadmap
 
 Delivery satisfies the changelog prerequisite recorded by `RIG-DIST-001`; no additional work item is created.
+
+## Review
+
+### Delivered
+
+Against immutable baseline `c8d905571d7d4ba7f28ebe654a6406fd41b00726`, `CHANGELOG.md` now carries one curated `1.0.0 — in progress` baseline that separates the current 0.1.0 scaffold from accepted v1 work. The executable version, public command surface, tags, releases, formulae, and runtime behavior are unchanged.
+
+### Summary of changes
+
+The generic `Unreleased` section became the single intended v1 baseline. It inventories current help, version, paths, completion, installer, manual, Bash, and XDG foundations, then explicitly labels catalogue queries, doctor, bootstrap, status, apply, publication, and the Homebrew formula as work in progress rather than shipped commands.
+
+### Verification
+
+`./bin/rig --help` and `./bin/rig --version` match every shipped command and version claim. `ki repo audit --skill ki-authoring --repo .`, `ki repo audit --skill ki-repo-tools --repo .`, and `git diff --check` pass.
+
+### Outstanding concerns
+
+None. Later command deliveries must continue updating the same baseline as their public surfaces become real.
+
+### Post-change review
+
+The changelog is honest about both product direction and executable reality, does not imply a release exists, and avoids claiming any planned command is present. The documentation-only boundary held and the item is ready for acceptance review.
+
+### Mini recap
+
+Rig now has the curated pre-v1 changelog shape requested for the 1.0.0 run-up, while 0.1.0 remains the executable version and release work remains separately governed.
 
 ## Discussion
 
