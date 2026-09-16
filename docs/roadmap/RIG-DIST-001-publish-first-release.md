@@ -6,10 +6,10 @@ theme: distribution
 horizon: now
 status: draft
 blocks: []
-blocked_by: [RIG-CLI-004, RIG-MIG-001]
+blocked_by: [RIG-MIG-001]
 baseline_ref: null
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-16T22:26:36Z
+updated_at: 2026-09-16T23:11:52Z
 ---
 
 # RIG-DIST-001: Publish first release

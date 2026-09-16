@@ -4,12 +4,12 @@ area: DIST
 title: Publish personal rig
 theme: distribution
 horizon: now
-status: in-progress
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: 8807b5579585f1f22b7de832a97d5af68e7181db
 created_at: 2026-09-15T11:53:55Z
-updated_at: 2026-09-16T22:30:29Z
+updated_at: 2026-09-16T23:11:52Z
 ---
 
 # RIG-DIST-002: Publish personal rig
@@ -36,13 +36,13 @@ Rig validates publication declarations, but it cannot yet export their static ar
 
 ## Steps
 
-- [ ] Approve `rig publish PUBLICATION` as the only initial network publication command and require it to reuse the provider dispatcher with an explicit `publish` capability rather than introduce a second executable runner.
-- [ ] Approve the publisher handoff contract: Rig generates and validates one isolated export directory, passes its literal path and the selected publication identity through a documented fixed argument protocol, invokes exactly the configured publisher once, and preserves its native exit result.
-- [ ] Approve staging retention and cleanup behaviour for publisher success, publisher failure, and interrupted publication so failure remains diagnosable without silently treating an artifact as deployed.
-- [ ] Generate or validate the static artifact through RIG-CLI-003 before dispatch and reject unknown publications, unavailable publishers, missing capabilities, and invalid output.
-- [ ] Dispatch only the publication's configured publisher through the common capability and trust checks, with no implicit fallback or hosting-specific core behaviour.
-- [ ] Add selection, single-invocation, literal-argument, native-exit, unavailable-capability, failure-cleanup, and non-selected-publisher tests.
-- [ ] Align top-level and command help, completion, README command inventory, `rig(1)`, publishing Specification evidence, and the curated v1 changelog.
+- [x] Approve `rig publish PUBLICATION` as the only initial network publication command and require it to reuse the provider dispatcher with an explicit `publish` capability rather than introduce a second executable runner.
+- [x] Approve the publisher handoff contract: Rig generates and validates one isolated export directory, passes its literal path and the selected publication identity through a documented fixed argument protocol, invokes exactly the configured publisher once, and preserves its native exit result.
+- [x] Approve staging retention and cleanup behaviour for publisher success, publisher failure, and interrupted publication so failure remains diagnosable without silently treating an artifact as deployed.
+- [x] Generate or validate the static artifact through RIG-CLI-003 before dispatch and reject unknown publications, unavailable publishers, missing capabilities, and invalid output.
+- [x] Dispatch only the publication's configured publisher through the common capability and trust checks, with no implicit fallback or hosting-specific core behaviour.
+- [x] Add selection, single-invocation, literal-argument, native-exit, unavailable-capability, failure-cleanup, and non-selected-publisher tests.
+- [x] Align top-level and command help, completion, README command inventory, `rig(1)`, publishing Specification evidence, and the curated v1 changelog.
 
 ## Files touched
 
@@ -87,6 +87,32 @@ Document how to declare, review, invoke, and troubleshoot a publisher without em
 ### Roadmap
 
 Keep RIG-CLI-003 and RIG-CLI-001 as explicit prerequisites and retain hosting-specific integrations as separate work only when a concrete publisher is selected.
+
+## Review
+
+### Delivered
+
+Commit `97d98fa` delivers `rig publish PUBLICATION` from immutable baseline `8807b5579585f1f22b7de832a97d5af68e7181db`. Rig remains hosting-neutral; the selected publisher owns credentials, DNS, deployment, rollback, and remote state.
+
+### Summary of changes
+
+Publish now validates one selected publication and its custom provider, requires the exact `publish` capability, renders and validates a complete static projection before invocation, and hands off one absolute staging directory through the fixed literal ABI. Restrictive staging permissions, phase-aware signal handling, native provider outcomes, success cleanup, retained complete output after publisher failure or post-completion interruption, pre-completion cleanup, parent revalidation, symlink rejection, and fail-closed cleanup protect the handoff boundary. Help, completion, README, manual, changelog, publishing Specification, guide, and tests are aligned.
+
+### Verification
+
+Commit `97d98fa` passes ShellCheck, Bash syntax, `mandoc -T lint`, `git diff --check`, and all 89 Bats tests. Focused cases cover the selected-only ABI, native statuses `7` and `126`, success cleanup, failure retention, pre- and post-completion signals, no publisher invocation during staging failures, and adversarial staging-parent substitution.
+
+### Outstanding concerns
+
+None. A configured publisher remains a trusted executable responsible for network access and deployment semantics beyond the validated local artifact handoff.
+
+### Post-change review
+
+The implementation satisfies the approved selection, staging, cleanup, signal, literal-argv, and native-outcome contract and is ready for human acceptance.
+
+### Mini recap
+
+Rig can now publish a personal projection such as `rig.midnight.ninja` through any explicitly configured publisher without acquiring hosting-specific credentials or deployment logic.
 
 ## Discussion
 

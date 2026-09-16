@@ -6,10 +6,10 @@ theme: migration
 horizon: now
 status: draft
 blocks: []
-blocked_by: [RIG-MIG-001, RIG-MIG-002, RIG-MIG-003, RIG-CLI-004]
+blocked_by: [RIG-MIG-001, RIG-MIG-002, RIG-MIG-003]
 baseline_ref: null
 created_at: 2026-09-16T11:06:43Z
-updated_at: 2026-09-16T21:48:45Z
+updated_at: 2026-09-16T23:11:52Z
 ---
 
 # RIG-MIG-005: Retire chezmoi Rig

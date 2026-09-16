@@ -4,12 +4,12 @@ area: CLI
 title: Add doctor command
 theme: cli
 horizon: now
-status: in-progress
-blocks: [RIG-DIST-001, RIG-MIG-005]
+status: awaiting-review
+blocks: []
 blocked_by: []
 baseline_ref: 8807b5579585f1f22b7de832a97d5af68e7181db
 created_at: 2026-09-15T13:04:11Z
-updated_at: 2026-09-16T22:30:29Z
+updated_at: 2026-09-16T23:11:52Z
 ---
 
 # RIG-CLI-004: Add doctor command
@@ -38,12 +38,12 @@ Selected bound tools are healthy only when present. Missing, drifted, unavailabl
 
 ## Steps
 
-- [ ] Consume the provider observations and public state treatment delivered by RIG-CORE-002 and the built-in availability checks delivered by RIG-CLI-001.
-- [ ] Lock doctor aggregation for required, optional, catalogue-only, incompatible-platform, unavailable, drifted, and unknown tools without inventing a second state vocabulary.
-- [ ] Implement `rig doctor [--profile NAME]` as a read-only synthesis of configuration, XDG accessibility, profile resolution, provider availability, and selected-tool observations.
-- [ ] Emit one compact healthy summary or deterministic grouped findings with actionable ownership and no mutation or network activity.
-- [ ] Test exit statuses `0`, `1`, and `2`, provider non-mutation, missing configuration, invalid graphs, missing provider executables, mixed observations, and explicit profile selection.
-- [ ] Align top-level and command help, Bash and Zsh completion, README, `rig(1)`, changelog, Specifications, and Bats coverage in the delivery commit.
+- [x] Consume the provider observations and public state treatment delivered by RIG-CORE-002 and the built-in availability checks delivered by RIG-CLI-001.
+- [x] Lock doctor aggregation for required, optional, catalogue-only, incompatible-platform, unavailable, drifted, and unknown tools without inventing a second state vocabulary.
+- [x] Implement `rig doctor [--profile NAME]` as a read-only synthesis of configuration, XDG accessibility, profile resolution, provider availability, and selected-tool observations.
+- [x] Emit one compact healthy summary or deterministic grouped findings with actionable ownership and no mutation or network activity.
+- [x] Test exit statuses `0`, `1`, and `2`, provider non-mutation, missing configuration, invalid graphs, missing provider executables, mixed observations, and explicit profile selection.
+- [x] Align top-level and command help, Bash and Zsh completion, README, `rig(1)`, changelog, Specifications, and Bats coverage in the delivery commit.
 
 ## Files touched
 
@@ -78,6 +78,32 @@ Document when to use `diag`, `status`, and `doctor`, and how to interpret action
 ### Roadmap
 
 Record delivery evidence here and unblock distribution health checks and final legacy migration only after the command and all aligned public surfaces land.
+
+## Review
+
+### Delivered
+
+Commit `003c509` delivers the doctor command from immutable baseline `8807b5579585f1f22b7de832a97d5af68e7181db`. The command remains read-only and does not repair, apply, publish, or contact the network.
+
+### Summary of changes
+
+Doctor now aggregates configuration, XDG, profile, provider-availability, and selected-tool observations into a concise health report. It distinguishes actionable required-tool findings from informational catalogue-only or incompatible-platform entries, honours explicit profile selection, returns `0`, `1`, or `2` according to the locked contract, and keeps help, completion, README, manual, changelog, Specifications, and Bats coverage aligned.
+
+### Verification
+
+Delivery verification passed ShellCheck, Bash syntax, `mandoc -T lint`, `git diff --check`, focused doctor cases, and the then-current 80-test Bats suite. The integrated tree at `97d98fa` passes all 89 Bats tests and the same static gates.
+
+### Outstanding concerns
+
+None. A configured custom provider remains a trusted observation boundary; Rig itself performs no network activity for doctor.
+
+### Post-change review
+
+The delivered command satisfies the locked health policy, uses the shared state vocabulary, and is ready for human acceptance.
+
+### Mini recap
+
+Rig now offers a compact top-level health answer above detailed `status`, with aligned user guide, Specifications, help, completion, and manual coverage.
 
 ## Discussion
 

@@ -6,10 +6,10 @@ theme: migration
 horizon: now
 status: draft
 blocks: [RIG-MIG-005]
-blocked_by: [RIG-MIG-004, RIG-CLI-005]
+blocked_by: []
 baseline_ref: null
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-16T21:48:45Z
+updated_at: 2026-09-16T23:11:52Z
 ---
 
 # RIG-MIG-003: Extract service operations

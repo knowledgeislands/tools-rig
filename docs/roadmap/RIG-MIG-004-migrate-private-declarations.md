@@ -4,12 +4,12 @@ area: MIG
 title: Migrate private declarations
 theme: migration
 horizon: now
-status: in-progress
-blocks: [RIG-MIG-001, RIG-MIG-002, RIG-MIG-003]
+status: awaiting-review
+blocks: []
 blocked_by: []
 baseline_ref: 8807b5579585f1f22b7de832a97d5af68e7181db
 created_at: 2026-09-15T11:53:55Z
-updated_at: 2026-09-16T22:30:29Z
+updated_at: 2026-09-16T23:11:52Z
 ---
 
 # RIG-MIG-004: Migrate private declarations
@@ -38,12 +38,12 @@ The 88 application records remain the personal catalogue count. Provider-backed 
 
 ## Steps
 
-- [ ] Reconcile all 88 tool identities against the native Brewfile and classify exactly 61 casks, 3 formulae, 12 Mac App Store or native Brew-backed entries, and 12 catalogue-only entries.
-- [ ] Extend the generated private template with provider and binding records while keeping `.chezmoidata/software.yaml` the single transitional catalogue authority and the Brewfile the native package authority.
-- [ ] Add deterministic render tests for the 12/88/85 catalogue and profile counts, the 76/12 binding partition, unique binding ownership, platform compatibility, and absence of unsupported copied fields.
-- [ ] Add the private `workstation` and `launchcontrol` declarations required by RIG-MIG-002 and RIG-MIG-003 only through the accepted generic provider and operation schema.
-- [ ] Exercise `rig show`, `list`, `explain`, `status`, `doctor`, dry-run apply, and declared-operation validation against the rendered target without invoking mutation.
-- [ ] Run `chezmoi diff` for exact source targets and stop before `chezmoi apply` unless the user separately approves it.
+- [x] Reconcile all 88 tool identities against the native Brewfile and classify exactly 61 casks, 3 formulae, 12 Mac App Store or native Brew-backed entries, and 12 catalogue-only entries.
+- [x] Extend the generated private template with provider and binding records while keeping `.chezmoidata/software.yaml` the single transitional catalogue authority and the Brewfile the native package authority.
+- [x] Add deterministic render tests for the 12/88/85 catalogue and profile counts, the 76/12 binding partition, unique binding ownership, platform compatibility, and absence of unsupported copied fields.
+- [x] Add the private `workstation` and `launchcontrol` declarations required by RIG-MIG-002 and RIG-MIG-003 only through the accepted generic provider and operation schema.
+- [x] Exercise `rig show`, `list`, `explain`, `status`, `doctor`, dry-run apply, and declared-operation validation against the rendered target without invoking mutation.
+- [x] Run `chezmoi diff` for exact source targets and stop before `chezmoi apply` unless the user separately approves it.
 
 ## Files touched
 
@@ -78,6 +78,32 @@ Update private workstation guidance only when provider-backed status, doctor, ap
 ### Roadmap
 
 Record count or classification changes in this item and preserve RIG-MIG-001 through RIG-MIG-003 as downstream consumers; live legacy retirement remains RIG-MIG-005.
+
+## Review
+
+### Delivered
+
+Dotfiles commit `d2971c2` delivers the private declaration projection against public Rig commits `84f5f62` and `97d98fa`, from immutable baseline `8807b5579585f1f22b7de832a97d5af68e7181db`. Personal catalogue data, Brew authority, and private helper executables remain outside tools-rig, and no `chezmoi apply` was run.
+
+### Summary of changes
+
+The generated private Rig configuration now projects 12 categories, 88 tools, and 85 default-profile selections. It binds 76 Brew-backed tools—61 casks, 3 formulae, and 12 Mac App Store entries—while leaving 12 tools catalogue-only, and declares private bootstrap, workstation, and launchcontrol custom-provider shims for downstream migration. Deterministic projection tests and private usage guidance cover the boundary.
+
+### Verification
+
+`node --test tests/rig-catalogue.test.mjs` passes all 4 focused tests: deterministic projection, bootstrap provider, operation providers, and standalone Rig rendered-private-profile behaviour. The rendered configuration was exercised through `show`, `status`, `doctor`, dry-run apply, and operation resolution. The dotfiles worktree is clean, `chezmoi diff` is empty, and no apply was performed.
+
+### Outstanding concerns
+
+None. `.chezmoidata/software.yaml` and the legacy Rig surfaces remain intentionally transitional until their downstream migration and retirement records complete.
+
+### Post-change review
+
+The delivery preserves the approved 12/88/85 and 76/12 partitions, keeps native manifests authoritative, and is ready for human acceptance.
+
+### Mini recap
+
+The private rig is now provider-bound without publishing personal declarations, so bootstrap, machine-audit, and service-operation migrations can proceed against the standalone CLI.
 
 ## Discussion
 
