@@ -9,3 +9,4 @@ Rig keeps living product, architecture, security, and governance decisions in th
 5. [ADR-RIG-003](ADR-RIG-003-declarative-configuration-grammar.md) — defining the inert versioned configuration grammar.
 6. [XDR-RIG-001](XDR-RIG-001-executable-provider-boundary.md) — separating declarative queries from trusted execution and disclosure.
 7. [ADR-RIG-004](ADR-RIG-004-static-publication-projection.md) — separating deterministic static export from hosting deployment.
+8. [ADR-RIG-005](ADR-RIG-005-provider-execution-contract.md) — defining provider invocation, state, ordering, and outcome reporting.

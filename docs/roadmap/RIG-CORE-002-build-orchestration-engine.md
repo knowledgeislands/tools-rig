@@ -4,12 +4,12 @@ area: CORE
 title: Build orchestration engine
 theme: orchestration
 horizon: now
-status: draft
+status: ready
 blocks: [RIG-CLI-001]
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-16T17:02:37Z
+updated_at: 2026-09-16T20:33:22Z
 ---
 
 # RIG-CORE-002: Build orchestration engine
@@ -28,14 +28,20 @@ This item builds the provider execution protocol, expected-versus-observed state
 
 ## Current state
 
-Rig resolves profiles, transitive tool relationships, platform compatibility, and provider bindings without invoking providers. No public command observes machine state or performs materialisation, and no provider execution protocol exists yet. XDR-RIG-001 fixes the executable trust boundary and literal arguments, while the executable-provider ABI and public treatment of observed state remain undecided.
+Rig resolves profiles, transitive tool relationships, platform compatibility, and provider bindings without invoking providers. No public command observes machine state or performs materialisation. ADR-RIG-005 now fixes the custom-provider ABI, dependency-first work model, public state vocabulary, catalogue-only treatment, preflight boundary, deterministic output, and command exit meanings.
+
+## Locked contract
+
+Custom providers use `EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 VERB PROVIDER TOOL KIND LOCATOR [BINDING_ARGUMENT ...]`, where `VERB` is exact capability `observe` or `apply`. Observation returns exactly one accepted state token. Rig owns deterministic stdout, translates native failures into stable details, and uses command statuses 0, 1, and 2 for success, operational findings, and syntax or preflight failure respectively.
+
+Execution creates one work unit per selected binding and orders it dependency-first by `tool.requires`, with bytewise identity as the stable tie-break. Catalogue-only tools are neutral `unavailable` or `skipped` rows. Apply validates the complete selected plan before mutation; dry-run invokes nothing. This item implements only custom providers and leaves built-in adapters to RIG-CLI-001.
 
 ## Steps
 
-- [ ] Record the executable-provider ABI: action verbs, argument order, observation response syntax, output ownership, and native failure translation.
-- [ ] Lock the public state contract: deterministic ordering, catalogue-only and unavailable treatment, summaries, and exit meanings for `status` and `apply --dry-run`.
+- [x] Record the executable-provider ABI: action verbs, argument order, observation response syntax, output ownership, and native failure translation.
+- [x] Lock the public state contract: deterministic ordering, catalogue-only and unavailable treatment, summaries, and exit meanings for `status` and `apply --dry-run`.
 - [ ] Define a literal-argument provider protocol and recording test seam for observation and application capabilities.
-- [ ] Derive deterministic provider work from a resolved profile and its selected bindings.
+- [ ] Derive deterministic binding work from a resolved profile and its selected bindings.
 - [ ] Report each expected tool as `present`, `missing`, `drifted`, `unavailable`, or `unknown` with its responsible provider.
 - [ ] Add `rig status [--profile NAME]` as an observation-only command.
 - [ ] Add `rig apply [--profile NAME] [--dry-run]` with explicit preflight, dependency ordering, native outcomes, and dependent-work suppression after failure.
@@ -52,7 +58,7 @@ Use fake recording executables for exact invocation and failure assertions. Run 
 
 ## Dependencies / blocks
 
-The resolver is complete and no roadmap build dependency remains, but two design locks block readiness. The executable-provider ABI must define invocation and response boundaries before built-in adapters and declared operations can interoperate. The public state treatment must define aggregation, ordering, summaries, and exit meanings before `status`, `apply --dry-run`, and doctor can share one stable model. Record both in ADR-RIG-005 before implementation; delivery then unblocks RIG-CLI-001.
+The catalogue resolver is complete and no roadmap build dependency remains. ADR-RIG-005 records the approved execution and public state contracts, so implementation can proceed. Delivery then unblocks RIG-CLI-001; it does not itself implement Homebrew, uv, chezmoi, or direct-download adapters.
 
 ## Delegation
 
@@ -62,7 +68,7 @@ One bounded implementation worker may edit `bin/rig` and `tests/rig.bats` agains
 
 ### Decision Records
 
-Add ADR-RIG-005 to lock the executable-provider ABI and public state treatment. XDR-RIG-001 owns the trust transition but deliberately does not define transport or presentation semantics.
+ADR-RIG-005 locks the executable-provider ABI and public state treatment. XDR-RIG-001 continues to own the trust transition rather than transport or presentation semantics.
 
 ### Specifications
 
