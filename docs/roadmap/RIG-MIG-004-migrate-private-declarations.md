@@ -9,7 +9,7 @@ blocks: [RIG-MIG-001, RIG-MIG-002, RIG-MIG-003]
 blocked_by: [RIG-CLI-001]
 baseline_ref: null
 created_at: 2026-09-15T11:53:55Z
-updated_at: 2026-09-16T21:37:27Z
+updated_at: 2026-09-16T21:48:45Z
 ---
 
 # RIG-MIG-004: Migrate private declarations
@@ -31,6 +31,10 @@ This item changes chezmoi sources only after the public parser, query, and provi
 The applied schema-1 projection contains 12 categories, 88 tools, and 85 tools selected by `profile.default`. `.chezmoidata/software.yaml` remains the transitional private authority, and `dot_config/rig/private_rig.conf.tmpl` currently derives catalogue and profile records without provider bindings.
 
 The reviewed provider target is 76 Brew-backed tools—61 casks, 3 formulae, and 12 Mac App Store or native declarations represented through the Brew manifest—and 12 catalogue-only tools. Native resolution and state remain owned by the private Brewfile and provider rather than duplicated in Rig.
+
+## Locked contract
+
+The 88 application records remain the personal catalogue count. Provider-backed setup units needed for bootstrap use a separate `setup` category and composed bootstrap profile, with `[rig] bootstrap-profile` selecting that profile without changing the default catalogue view. Homebrew bindings are generated from the private software catalogue and native Brewfile declarations; the Brewfile remains authoritative. Private custom-provider shims translate the versioned Rig protocol to retained workstation helpers without moving personal data into tools-rig.
 
 ## Steps
 

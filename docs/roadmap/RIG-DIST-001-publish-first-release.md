@@ -9,7 +9,7 @@ blocks: []
 blocked_by: [RIG-CLI-001, RIG-CLI-004, RIG-MIG-001]
 baseline_ref: null
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-16T21:37:27Z
+updated_at: 2026-09-16T21:48:45Z
 ---
 
 # RIG-DIST-001: Publish first release
@@ -29,6 +29,10 @@ This item covers release distribution and the cross-repository formula handoff. 
 ## Current state
 
 Rig has an installer, manual, completion, CI, and a curated `1.0.0 — in progress` changelog, but the declared v1 provider, doctor, bootstrap, and release-threshold dependencies are not all complete. No immutable release tag, release archive, checksum, published release, or Homebrew formula exists.
+
+## Locked contract
+
+The release candidate is version `1.0.0`, uses an annotated tag, GitHub's immutable tagged source archive, a recorded SHA-256 checksum, and release notes derived from the curated changelog. Local delivery prepares and verifies that candidate and cross-platform CI. Tag creation, push, GitHub release publication, changelog dating, and the checksum-bound Homebrew formula remain serial external stops under the repository's explicit publication rule.
 
 ## Steps
 

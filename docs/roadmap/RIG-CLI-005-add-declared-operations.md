@@ -9,7 +9,7 @@ blocks: [RIG-MIG-002, RIG-MIG-003]
 blocked_by: [RIG-CLI-001]
 baseline_ref: null
 created_at: 2026-09-16T11:06:43Z
-updated_at: 2026-09-16T17:02:37Z
+updated_at: 2026-09-16T21:48:45Z
 ---
 
 # RIG-CLI-005: Add declared operations
@@ -29,6 +29,10 @@ This item adds the operation schema, resolution, validation, generic command, he
 ## Current state
 
 XDR-RIG-001 defines the explicit trust transition, and RIG-CONF-015 plus RIG-ORCH-012 and RIG-ORCH-013 state the intended operation schema and bounded dispatch behaviour. The parser does not yet accept operation sections, no `rig run` command exists, and the provider ABI and adapter capability mapping needed for dispatch are not implemented.
+
+## Locked contract
+
+An operation declares provider, capability, mode (`observe` or `mutate`), description, optional platforms, repeated configured arguments, and repeated exact caller arguments. Only custom providers dispatch arbitrary operations in v1. They receive `rig-provider-v1`, verb `observe` or `apply` according to mode, provider, tool, kind `operation`, locator equal to capability, then configured and approved caller arguments as literal boundaries. Provider stdout and stderr pass through and `rig run` preserves its native exit; validation failures return 2 before invocation.
 
 ## Steps
 

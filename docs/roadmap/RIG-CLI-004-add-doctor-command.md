@@ -9,7 +9,7 @@ blocks: [RIG-DIST-001, RIG-MIG-005]
 blocked_by: [RIG-CLI-001]
 baseline_ref: null
 created_at: 2026-09-15T13:04:11Z
-updated_at: 2026-09-16T17:02:37Z
+updated_at: 2026-09-16T21:48:45Z
 ---
 
 # RIG-CLI-004: Add doctor command
@@ -31,6 +31,10 @@ This item adds one read-only top-level command. It does not repair configuration
 ## Current state
 
 `rig diag` reports runtime, paths, and configuration validity without invoking providers. Rig has no expected-versus-observed `status`, provider observations, or top-level health synthesis yet, so doctor cannot distinguish a missing required tool from an unavailable optional provider using one shared state model.
+
+## Locked contract
+
+Selected bound tools are healthy only when present. Missing, drifted, unavailable, and unknown observations are findings; catalogue-only tools are informational. Unselected providers are ignored. Doctor returns 0 for a healthy valid rig, 1 for completed checks with findings, and 2 for syntax, configuration, or resolution failure. It invokes observation capabilities only and never repairs, applies, publishes, or contacts the network.
 
 ## Steps
 

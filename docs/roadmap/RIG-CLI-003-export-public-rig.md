@@ -4,12 +4,12 @@ area: CLI
 title: Export public rig
 theme: cli
 horizon: now
-status: draft
+status: ready
 blocks: [RIG-DIST-002]
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-15T11:53:55Z
-updated_at: 2026-09-16T17:07:51Z
+updated_at: 2026-09-16T21:47:31Z
 ---
 
 # RIG-CLI-003: Export public rig
@@ -29,6 +29,12 @@ This item generates a local static artifact. It does not deploy hosting, publish
 ## Current state
 
 Rig can parse and resolve catalogue profiles and publication declarations, but it has no `export` command, public-projection model, or static artifact renderer. The publishing Specification defines the disclosure and determinism requirements; the exact command and artifact ownership contract still needs approval before implementation can be marked Ready.
+
+## Locked contract
+
+`rig export PUBLICATION --output DIRECTORY` writes a complete deterministic `index.html` and `assets/rig.css` tree without timestamps, providers, paths, credentials, profiles outside the selected publication, or observed state. Relationships are included only when both endpoints are public. All free text is HTML-escaped and configured base URLs work at a root, subdomain, or subpath.
+
+Rig renders through a sibling temporary directory and replaces only an explicit safe output directory as one complete tree, never merges stale files, follows a symlink, accepts `/`, `.`, or `..`, invokes a provider or publisher, or performs network access.
 
 ## Steps
 

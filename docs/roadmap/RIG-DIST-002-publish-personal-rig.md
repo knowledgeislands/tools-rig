@@ -9,7 +9,7 @@ blocks: []
 blocked_by: [RIG-CLI-001, RIG-CLI-003]
 baseline_ref: null
 created_at: 2026-09-15T11:53:55Z
-updated_at: 2026-09-16T17:07:51Z
+updated_at: 2026-09-16T21:48:45Z
 ---
 
 # RIG-DIST-002: Publish personal rig
@@ -29,6 +29,10 @@ This item defines and implements publication invocation. It does not provision D
 ## Current state
 
 Rig validates publication declarations, but it cannot yet export their static artifact or dispatch a trusted publisher. The provider dispatcher and public export are both prerequisites. The publisher invocation protocol, artifact handoff, and failure-cleanup contract still need approval before implementation can be marked Ready.
+
+## Locked contract
+
+`rig publish PUBLICATION` renders and validates one isolated export tree under the Rig cache, then invokes exactly one selected custom provider with capability `publish` as `rig-provider-v1 publish PROVIDER PUBLICATION directory ABS_EXPORT_DIR`. It deletes staging after success, preserves the path with a diagnostic after publisher failure or interruption, and preserves the native exit result. Export or validation failure invokes no publisher. Credentials, destination configuration, deployment semantics, DNS, and hosting state remain publisher-owned.
 
 ## Steps
 

@@ -4,12 +4,12 @@ area: CLI
 title: Add provider adapters
 theme: cli
 horizon: now
-status: draft
+status: ready
 blocks: [RIG-CLI-004, RIG-CLI-005, RIG-DIST-001, RIG-DIST-002, RIG-MIG-004]
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-16T21:37:27Z
+updated_at: 2026-09-16T21:47:31Z
 ---
 
 # RIG-CLI-001: Add provider adapters
@@ -29,6 +29,12 @@ Adapters invoke supported native operations but do not reimplement native resolu
 ## Current state
 
 Schema 1 parses providers and bindings, resolves one compatible binding, and keeps unselected provider executables optional. No built-in adapter invokes Homebrew, uv, chezmoi, or direct downloads. RIG-CORE-002 has not yet fixed or implemented the executable-provider ABI on which every adapter depends.
+
+## Locked contract
+
+Homebrew supports `formula`, `cask`, and `mas` bindings through per-tool native observation and application while the private Brewfile remains the declaration source. uv supports `tool` bindings, chezmoi supports `target` bindings, and custom providers retain `rig-provider-v1`. Direct downloads require an HTTPS locator, `destination`, and lowercase `sha256:` checksum; they download to a sibling temporary file, verify before replacement, refuse symlink or non-regular destinations, and clean failed temporary files.
+
+Provider executables may be overridden explicitly for isolated tests and non-default installations. Built-in adapters expose only declared exact capabilities and never invoke unselected providers.
 
 ## Steps
 
