@@ -4,12 +4,12 @@ area: MIG
 title: Extract machine audit
 theme: migration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 1418f7c4ff417151a307604c4762c2196bc8ee8c
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-16T23:37:31Z
+updated_at: 2026-09-16T23:39:56Z
 ---
 
 # RIG-MIG-002: Extract machine audit
@@ -99,6 +99,10 @@ The migration preserves read-only machine-audit behaviour without adding a machi
 ### Mini recap
 
 Machine audit is now a bounded private operation invoked through Rig’s generic command language, with existing audit logic and personal policy still owned by dotfiles.
+
+## Done
+
+Accepted 2026-09-17 by Kris Brown on review packet above.
 
 ## Discussion
 
