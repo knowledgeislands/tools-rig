@@ -12,7 +12,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - `rig show [--profile NAME]`
 - `rig list [--category ID] [--profile NAME]`
 - `rig explain TOOL`
-- `rig status [--profile NAME]`
+- `rig status [--profile NAME] [--unmanaged]`
 - `rig doctor [--profile NAME]`
 - `rig apply [--profile NAME] [--dry-run]`
 - `rig bootstrap [--profile NAME] [--dry-run]`
@@ -34,6 +34,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - Built-in Homebrew formula, cask, and Mac App Store, uv tool, and chezmoi target adapters with exact capability gates and native command mappings.
 - HTTPS direct-download executable adapter with declared SHA-256 verification, sibling temporary files, safe destination checks, atomic replacement, and failure cleanup.
 - Five-state observation with deterministic provider, state, and detail reporting without a competing state database.
+- Reverse reconciliation through the `rig-provider-v1 inventory` protocol: providers declaring the `inventory` capability enumerate their domain, and `rig status --unmanaged` reports every observed identity that no binding declares as an informational row.
 - A concise read-only doctor synthesis for configuration, XDG accessibility, provider availability, selected-tool health, and informational catalogue-only or incompatible tools.
 - Complete application preflight, a non-mutating dry-run, and dependency-first execution.
 - Bootstrap-profile selection with explicit-profile precedence and default-profile fallback, delegated to the exact application plan and safety boundaries.

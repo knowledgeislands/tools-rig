@@ -118,6 +118,16 @@ unavailable rows.
 .BI "rig status \-\-profile " NAME
 Compare a named resolved profile without changing the configured default.
 .TP
+.B rig status \-\-unmanaged
+Additionally ask every provider declaring the
+.B inventory
+capability to enumerate its domain, and report each observed identity that no
+binding declares. Unmanaged rows are informational and do not make the result
+unhealthy; a provider that cannot inventory reports its own state and detail
+instead. Reverse reconciliation answers the opposite question to the tool
+table: not whether declared software is installed, but whether installed
+software was ever declared.
+.TP
 .B rig doctor
 Check the resolved default profile and print one compact operational health
 answer. Doctor checks effective XDG path accessibility, provider availability,
@@ -596,6 +606,27 @@ EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 publish PROVIDER PUBLICATION
 The publisher must declare the exact
 .B publish
 capability. Rig passes publisher output through and preserves its native result.
+.PP
+Reverse reconciliation uses a separate fixed protocol that names no tool,
+because it enumerates a provider's whole domain rather than observing one
+declaration:
+.PP
+.nf
+EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 inventory PROVIDER
+.fi
+.PP
+The provider must declare the exact
+.B inventory
+capability. Inventory stdout contains zero or more lines, each beginning with
+an identity comparable to a binding
+.BR locator ,
+optionally followed by a space and provider detail that Rig treats as opaque.
+Rig reports every identity that no binding declares for that provider. A
+non-zero exit yields state
+.B unknown
+with detail
+.BR exit:N .
+Inventory is an observation and must not mutate the machine.
 .PP
 Observation stdout must contain exactly one of
 .BR present ,

@@ -58,7 +58,7 @@ print_help() {
     '  show [--profile NAME]                 Describe a resolved profile.' \
     '  list [--category ID] [--profile NAME] List declared catalogue tools.' \
     '  explain TOOL                          Explain a declared tool.' \
-    '  status [--profile NAME]                Compare expected and observed state.' \
+    '  status [--profile NAME] [--unmanaged]  Compare expected and observed state.' \
     '  doctor [--profile NAME]                Check whether a rig can operate.' \
     '  apply [--profile NAME] [--dry-run]     Materialise a resolved profile.' \
     '  bootstrap [--profile NAME] [--dry-run]' \
@@ -106,7 +106,7 @@ print_bash_completion() {
     '    show) COMPREPLY=($(compgen -W "-h --help --profile" -- "$current")) ;;' \
     '    list) COMPREPLY=($(compgen -W "-h --help --category --profile" -- "$current")) ;;' \
     '    explain) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
-    '    status) COMPREPLY=($(compgen -W "-h --help --profile" -- "$current")) ;;' \
+    '    status) COMPREPLY=($(compgen -W "-h --help --profile --unmanaged" -- "$current")) ;;' \
     '    doctor) COMPREPLY=($(compgen -W "-h --help --profile" -- "$current")) ;;' \
     '    apply) COMPREPLY=($(compgen -W "-h --help --profile --dry-run" -- "$current")) ;;' \
     '    bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --dry-run" -- "$current")) ;;' \
@@ -153,7 +153,7 @@ print_zsh_completion() {
     "        show) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select a profile]:profile name:' ;;" \
     "        list) _arguments '(-h --help)'{-h,--help}'[show command help]' '--category[select a category]:category id:' '--profile[select a profile]:profile name:' ;;" \
     "        explain) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
-    "        status) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' ;;" \
+    "        status) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--unmanaged[report observed items no binding declares]' ;;" \
     "        doctor) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' ;;" \
     "        apply) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \
     "        bootstrap) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \
@@ -1497,6 +1497,98 @@ rig_observe_provider() {
   esac
 }
 
+rig_prepare_inventory_invocation() {
+  local provider executable
+
+  provider=$1
+  rig_get_value "provider.$provider" executable || return 2
+  executable=$RIG_VALUE
+  RIG_INVOKE_ARGUMENTS=()
+  rig_append_arguments "provider.$provider" || return 2
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=rig-provider-v1
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=inventory
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$provider
+  RIG_VALUE=$executable
+}
+
+rig_binding_declares_locator() {
+  local provider identity index
+
+  provider=$1
+  identity=$2
+  index=0
+  while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+    if [ "${RIG_SECTION_TYPES[$index]}" = binding ] &&
+      [ "${RIG_SECTION_SECONDARY_IDS[$index]}" = "$provider" ]; then
+      if rig_get_value "${RIG_SECTION_NAMES[$index]}" locator &&
+        [ "$RIG_VALUE" = "$identity" ]; then
+        return 0
+      fi
+    fi
+    index=$((index + 1))
+  done
+  return 1
+}
+
+rig_inventory_provider() {
+  local provider adapter executable identity detail line
+
+  provider=$1
+  RIG_INVENTORY_STATE=observed
+  RIG_INVENTORY_DETAIL=-
+  rig_get_value "provider.$provider" adapter || return 2
+  adapter=$RIG_VALUE
+  if [ "$adapter" != custom ]; then
+    RIG_INVENTORY_STATE=unavailable
+    RIG_INVENTORY_DETAIL="unsupported-adapter:$adapter"
+    return 0
+  fi
+  rig_get_value "provider.$provider" executable || return 2
+  executable=$RIG_VALUE
+  if ! rig_executable_available "$executable"; then
+    RIG_INVENTORY_STATE=unavailable
+    RIG_INVENTORY_DETAIL='executable-unavailable'
+    return 0
+  fi
+  rig_prepare_inventory_invocation "$provider" || return
+  executable=$RIG_VALUE
+  rig_capture_invocation "$executable"
+  if [ "$RIG_NATIVE_STATUS" -ne 0 ]; then
+    RIG_INVENTORY_STATE=unknown
+    RIG_INVENTORY_DETAIL="exit:$RIG_NATIVE_STATUS"
+    return 0
+  fi
+  [ -n "$RIG_CAPTURED_OUTPUT" ] || return 0
+  while IFS=' ' read -r identity detail; do
+    [ -n "$identity" ] || continue
+    rig_binding_declares_locator "$provider" "$identity" && continue
+    [ -n "$detail" ] || detail=-
+    RIG_UNMANAGED_IDENTITIES[${#RIG_UNMANAGED_IDENTITIES[@]}]=$identity
+    RIG_UNMANAGED_PROVIDERS[${#RIG_UNMANAGED_PROVIDERS[@]}]=$provider
+    RIG_UNMANAGED_DETAILS[${#RIG_UNMANAGED_DETAILS[@]}]=$detail
+  done <<< "$RIG_CAPTURED_OUTPUT"
+}
+
+rig_collect_unmanaged() {
+  local index provider
+
+  RIG_UNMANAGED_IDENTITIES=()
+  RIG_UNMANAGED_PROVIDERS=()
+  RIG_UNMANAGED_DETAILS=()
+  RIG_UNMANAGED_PROBLEMS=()
+  rig_collect_section_ids provider || return 0
+  index=0
+  while [ "$index" -lt "${#RIG_QUERY_ITEMS[@]}" ]; do
+    provider=${RIG_QUERY_ITEMS[$index]}
+    index=$((index + 1))
+    rig_provider_has_capability "$provider" inventory || continue
+    rig_inventory_provider "$provider" || return
+    if [ "$RIG_INVENTORY_STATE" != observed ]; then
+      RIG_UNMANAGED_PROBLEMS[${#RIG_UNMANAGED_PROBLEMS[@]}]="$provider	$RIG_INVENTORY_STATE	$RIG_INVENTORY_DETAIL"
+    fi
+  done
+}
+
 rig_preflight_provider() {
   local tool binding provider adapter kind executable destination parent
 
@@ -1613,27 +1705,35 @@ rig_apply_provider() {
 }
 
 rig_command_status() {
-  local profile index tool provider state detail unhealthy
+  local profile index tool provider state detail unhealthy unmanaged_requested
   local present missing drifted unavailable unknown catalogue_only
 
   profile=
-  case "$#" in
-    0) ;;
-    1)
-      case "$1" in
-        -h|--help) printf '%s\n' 'Usage: rig status [--profile NAME]'; return ;;
-        *) syntax_error 'usage: rig status [--profile NAME]'; return ;;
-      esac
-      ;;
-    2)
-      if [ "$1" != --profile ] || [ -z "$2" ]; then
-        syntax_error 'usage: rig status [--profile NAME]'
+  unmanaged_requested=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      -h|--help)
+        printf '%s\n' 'Usage: rig status [--profile NAME] [--unmanaged]'
         return
-      fi
-      profile=$2
-      ;;
-    *) syntax_error 'usage: rig status [--profile NAME]'; return ;;
-  esac
+        ;;
+      --unmanaged)
+        unmanaged_requested=1
+        shift
+        ;;
+      --profile)
+        if [ "$#" -lt 2 ] || [ -z "$2" ]; then
+          syntax_error 'usage: rig status [--profile NAME] [--unmanaged]'
+          return
+        fi
+        profile=$2
+        shift 2
+        ;;
+      *)
+        syntax_error 'usage: rig status [--profile NAME] [--unmanaged]'
+        return
+        ;;
+    esac
+  done
 
   rig_resolve_operational_plan "$profile" || return
   rig_observe_plan || return
@@ -1668,6 +1768,24 @@ rig_command_status() {
   done
   printf 'Summary: present=%s missing=%s drifted=%s unavailable=%s unknown=%s catalogue-only=%s\n' \
     "$present" "$missing" "$drifted" "$unavailable" "$unknown" "$catalogue_only"
+  if [ "$unmanaged_requested" -eq 1 ]; then
+    rig_collect_unmanaged || return
+    printf '\nIDENTITY\tPROVIDER\tSTATE\tDETAIL\n'
+    index=0
+    while [ "$index" -lt "${#RIG_UNMANAGED_IDENTITIES[@]}" ]; do
+      printf '%s\t%s\tunmanaged\t%s\n' \
+        "${RIG_UNMANAGED_IDENTITIES[$index]}" \
+        "${RIG_UNMANAGED_PROVIDERS[$index]}" \
+        "${RIG_UNMANAGED_DETAILS[$index]}"
+      index=$((index + 1))
+    done
+    index=0
+    while [ "$index" -lt "${#RIG_UNMANAGED_PROBLEMS[@]}" ]; do
+      printf '%s\n' "${RIG_UNMANAGED_PROBLEMS[$index]}"
+      index=$((index + 1))
+    done
+    printf 'Unmanaged: %s\n' "${#RIG_UNMANAGED_IDENTITIES[@]}"
+  fi
   [ "$unhealthy" -eq 0 ]
 }
 

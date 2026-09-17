@@ -350,7 +350,7 @@ write_query_config() {
   [[ "$output" == *"-h --help -V --version show list explain status doctor apply bootstrap run export publish diag completion help"* ]] || false
   [[ "$output" == *'show) COMPREPLY=($(compgen -W "-h --help --profile"'* ]]
   [[ "$output" == *'explain) COMPREPLY=($(compgen -W "-h --help"'* ]]
-  [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile"'* ]] || false
+  [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile --unmanaged"'* ]] || false
   [[ "$output" == *'doctor) COMPREPLY=($(compgen -W "-h --help --profile"'* ]] || false
   [[ "$output" == *'apply) COMPREPLY=($(compgen -W "-h --help --profile --dry-run"'* ]] || false
   [[ "$output" == *'bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --dry-run"'* ]] || false
@@ -1893,7 +1893,7 @@ bootstrap-profile = absent' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bootstrap.con
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" status --help
   [ "$status" -eq 0 ]
-  [ "$output" = 'Usage: rig status [--profile NAME]' ]
+  [ "$output" = 'Usage: rig status [--profile NAME] [--unmanaged]' ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --help
   [ "$status" -eq 0 ]
@@ -2863,4 +2863,144 @@ write_operation_config() {
   run "$RIG" run alpha
   [ "$status" -eq 2 ]
   [[ "$output" == *'usage: rig run TOOL OPERATION [-- ARGUMENT...]'* ]] || false
+}
+
+write_inventory_config() {
+  INVENTORY_PROVIDER=$BATS_TEST_TMPDIR/inventory-provider-$BATS_TEST_NUMBER
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'set -eu' \
+    '[ "$1" = rig-provider-v1 ] || exit 64' \
+    'case "$2" in' \
+    '  observe) printf "present\n" ;;' \
+    '  inventory)' \
+    '    case "${RIG_TEST_INVENTORY:-normal}" in' \
+    '      exit-7) exit 7 ;;' \
+    '      empty) : ;;' \
+    '      mutating) printf "declared\nundeclared-one native\n" ;;' \
+    '      *) printf "declared\nundeclared-one native\nundeclared-two\n" ;;' \
+    '    esac' \
+    '    ;;' \
+    '  *) exit 65 ;;' \
+    'esac' >"$INVENTORY_PROVIDER"
+  chmod +x "$INVENTORY_PROVIDER"
+  printf '%s\n' \
+    '[rig]' \
+    'schema = 1' \
+    'default-profile = default' \
+    '[category.core]' \
+    'name = Core' \
+    'purpose = Essential tools' \
+    '[tool.alpha]' \
+    'name = Alpha' \
+    'category = core' \
+    'purpose = Test inventory' \
+    'rationale = A dependable test tool' \
+    'platform = any' \
+    '[profile.default]' \
+    'tool = alpha' \
+    "[provider.surveyor]" \
+    'adapter = custom' \
+    "executable = $INVENTORY_PROVIDER" \
+    'capability = observe' \
+    'capability = inventory' \
+    '[binding.alpha.surveyor]' \
+    'kind = app' \
+    'locator = declared' >"$CONFIG_HOME/rig.conf"
+}
+
+@test "status reports observed identities that no binding declares" {
+  write_inventory_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" status --unmanaged
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'alpha\tsurveyor\tpresent\t-'* ]] || false
+  [[ "$output" == *$'undeclared-one\tsurveyor\tunmanaged\tnative'* ]] || false
+  [[ "$output" == *$'undeclared-two\tsurveyor\tunmanaged\t-'* ]] || false
+  [[ "$output" == *'Unmanaged: 2'* ]] || false
+}
+
+@test "status omits declared locators from the unmanaged table" {
+  write_inventory_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" status --unmanaged
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *$'declared\tsurveyor\tunmanaged'* ]] || false
+}
+
+@test "unmanaged findings are informational and do not make status unhealthy" {
+  write_inventory_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" status --unmanaged
+
+  [ "$status" -eq 0 ]
+}
+
+@test "status without the unmanaged flag invokes no inventory" {
+  write_inventory_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" status
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *'Unmanaged:'* ]] || false
+  [[ "$output" != *'IDENTITY'* ]] || false
+}
+
+@test "status reports an inventory native failure without exposing the provider exit" {
+  write_inventory_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_INVENTORY=exit-7 "$RIG" status --unmanaged
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'surveyor\tunknown\texit:7'* ]] || false
+  [[ "$output" == *'Unmanaged: 0'* ]] || false
+}
+
+@test "status reports an empty inventory as no unmanaged identities" {
+  write_inventory_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_INVENTORY=empty "$RIG" status --unmanaged
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'Unmanaged: 0'* ]] || false
+}
+
+@test "status reports an unavailable inventory executable without invocation" {
+  write_inventory_config
+  rm -f "$INVENTORY_PROVIDER"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" status --unmanaged
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'surveyor\tunavailable\texecutable-unavailable'* ]] || false
+}
+
+@test "providers that declare no inventory capability are never asked to enumerate" {
+  write_inventory_config
+  sed '/capability = inventory/d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/no-inventory.conf"
+  mv "$CONFIG_HOME/no-inventory.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" status --unmanaged
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'Unmanaged: 0'* ]] || false
+}
+
+@test "status rejects an unknown flag alongside unmanaged" {
+  write_inventory_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" status --unmanaged --bogus
+
+  [ "$status" -eq 2 ]
 }
