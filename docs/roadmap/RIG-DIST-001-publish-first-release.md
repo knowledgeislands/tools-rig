@@ -4,12 +4,12 @@ area: DIST
 title: Publish first release
 theme: distribution
 horizon: now
-status: in-progress
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: 02a63f55aefb8f7d9b11cdaddbe020af898c2982
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-17T06:17:45Z
+updated_at: 2026-09-17T06:31:05Z
 ---
 
 # RIG-DIST-001: Publish first release
@@ -28,7 +28,7 @@ This item covers release distribution and the cross-repository formula handoff. 
 
 ## Current state
 
-Rig has an installer, manual, completion, cross-platform CI, a curated `1.0.0 — in progress` changelog, and the accepted pre-v1 command baseline. No immutable release tag, release archive, checksum, published release, or Homebrew formula exists.
+Rig v0.1.0 is published from the verified pre-v1 command baseline with immutable release notes, a checksum-bound archive, a tested curl installer, and a Homebrew formula. The curated `1.0.0 — in progress` changelog remains open for ongoing development.
 
 ## Locked contract
 
@@ -38,11 +38,11 @@ The first preview release candidate is `0.1.0`, matching the executable's existi
 
 - [x] Confirm every `blocked_by` item is accepted and shipped help, command-specific help, README inventory, completion, manual, and changelog describe one command surface.
 - [x] Lock the local preview contract: version `0.1.0`, dated changelog snapshot while `1.0.0 — in progress` stays open, annotated `v0.1.0` tag, tagged archive checksum, and changelog-derived release notes.
-- [ ] Run the complete repository gate and cross-platform shell CI on the exact release-candidate revision.
+- [x] Run the complete repository gate and cross-platform shell CI on the exact release-candidate revision.
 - [x] Add the approved dated `0.1.0` release snapshot to `CHANGELOG.md` without closing or duplicating the ongoing `1.0.0 — in progress` baseline.
-- [ ] Obtain separate publication approval, push the exact candidate, create and push the annotated tag, publish the GitHub release and notes, and record the archive checksum.
-- [ ] In `knowledgeislands/homebrew-tap`, follow its repository workflow to add `Formula/rig.rb` against the immutable archive checksum and verify installation, `rig --help`, `rig --version`, and `rig(1)`.
-- [ ] Verify the documented curl installer against the immutable release rather than `main`, then update release installation guidance.
+- [x] Obtain separate publication approval, push the exact candidate, create and push the annotated tag, publish the GitHub release and notes, and record the archive checksum.
+- [x] In `knowledgeislands/homebrew-tap`, follow its repository workflow to add `Formula/rig.rb` against the immutable archive checksum and verify installation, `rig --help`, `rig --version`, and `rig(1)`.
+- [x] Verify the documented curl installer against the immutable release rather than `main`, then update release installation guidance.
 
 ## Files touched
 
@@ -95,7 +95,33 @@ Retain this item through cross-repository formula verification and record the ex
 
 Local hardening landed in `3fc0759`: CI now triggers for version tags, exercises Bash 3.2 on macOS as well as Ubuntu, and rejects tag/version mismatches; the installer validates both executable and manual before replacing either; command-local completion and help coverage is aligned. The complete local gate passes with 98 Bats tests. The repository audit remains 14/15 only because of nine approval-gated live GitHub settings.
 
-The local candidate is frozen as `0.1.0`: the changelog now records the dated public preview while `1.0.0 — in progress` remains open, the manual is dated, and README/manual installation guidance names immutable `v0.1.0`. No tag, push, hosted CI result, GitHub release, archive checksum, or tap formula exists. Explicit approval is required before those publication steps and live GitHub settings changes.
+The exact candidate `5c00ca7` passed hosted main run `35189621552` and tag run `35189698096`. Annotated tag `v0.1.0` and its GitHub release publish the immutable archive with SHA-256 `5edcbe3b0a753b499c7dcb1b62640957c61f24b378cd2d3a520af01e10fd2bf6`. The pinned curl installer and Homebrew formula both install `rig 0.1.0`, its help, and its manual successfully.
+
+## Review
+
+### Delivered
+
+Published Rig v0.1.0 as the first public preview, including the annotated tag, GitHub release, immutable source archive checksum, verified curl installation, and checksum-bound Homebrew formula.
+
+### Summary of changes
+
+The release candidate fixes hosted ShellCheck and Linux completion dependencies, keeps the ongoing `1.0.0 — in progress` changelog open, adds the dated v0.1.0 snapshot, and pins documentation to the immutable release. Homebrew tap commit `1c3d202` adds `Formula/rig.rb` and its README catalogue entry.
+
+### Verification
+
+The release revision passed 98 Bats tests, ShellCheck, Bash syntax, mandoc lint, diff checks, Ubuntu CI, macOS Bash 3.2 CI, and tag/version validation. GitHub Actions runs `35189621552` and `35189698096` passed. The tagged curl installer returned `rig 0.1.0` and installed a lint-clean manual. Homebrew strict online audit and style passed; source installation, `brew test`, explicit version/help execution, and installed-manual lint passed from `knowledgeislands/tap/rig`.
+
+### Outstanding concerns
+
+The Rig repository still has nine approval-gated live GitHub settings findings; no settings changed. The Homebrew tap's hosted governance run `35190059122` remains red because of its pre-existing `BREW-002` roadmap-record finding, while the Rig formula-specific KI audit and all Homebrew checks pass.
+
+### Post-change review
+
+The published release points only at tag `v0.1.0`; its archive checksum matches both the release notes and formula. The formula installs the executable and `rig(1)` without adding runtime dependencies. The live chezmoi cutover remains a separate, unapplied review boundary.
+
+### Mini recap
+
+Rig v0.1.0 and its Homebrew formula are published and independently installation-tested. This record is ready for human acceptance; v1 remains explicitly in progress.
 
 ## Discussion
 
