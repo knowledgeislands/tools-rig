@@ -2877,8 +2877,8 @@ write_inventory_config() {
     '    case "${RIG_TEST_INVENTORY:-normal}" in' \
     '      exit-7) exit 7 ;;' \
     '      empty) : ;;' \
-    '      mutating) printf "declared\nundeclared-one native\n" ;;' \
-    '      *) printf "declared\nundeclared-one native\nundeclared-two\n" ;;' \
+    '      mutating) printf "declared\nundeclared-one\tnative\n" ;;' \
+    '      *) printf "declared\nundeclared-one\tnative\nundeclared two\n" ;;' \
     '    esac' \
     '    ;;' \
     '  *) exit 65 ;;' \
@@ -2918,7 +2918,7 @@ write_inventory_config() {
   [ "$status" -eq 0 ]
   [[ "$output" == *$'alpha\tsurveyor\tpresent\t-'* ]] || false
   [[ "$output" == *$'undeclared-one\tsurveyor\tunmanaged\tnative'* ]] || false
-  [[ "$output" == *$'undeclared-two\tsurveyor\tunmanaged\t-'* ]] || false
+  [[ "$output" == *$'undeclared two\tsurveyor\tunmanaged\t-'* ]] || false
   [[ "$output" == *'Unmanaged: 2'* ]] || false
 }
 
@@ -3016,13 +3016,13 @@ write_inventory_config() {
 
   [ "$status" -eq 0 ]
   [[ "$output" != *$'undeclared-one\tsurveyor\tunmanaged'* ]] || false
-  [[ "$output" == *$'undeclared-two\tsurveyor\tunmanaged\t-'* ]] || false
+  [[ "$output" == *$'undeclared two\tsurveyor\tunmanaged\t-'* ]] || false
   [[ "$output" == *'Unmanaged: 1'* ]] || false
 }
 
 @test "a tool may declare several artifacts" {
   write_inventory_config
-  sed 's|^platform = any$|platform = any\nartifact = undeclared-one\nartifact = undeclared-two|' \
+  sed 's|^platform = any$|platform = any\nartifact = undeclared-one\nartifact = undeclared two|' \
     "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/artifacts.conf"
   mv "$CONFIG_HOME/artifacts.conf" "$CONFIG_HOME/rig.conf"
 

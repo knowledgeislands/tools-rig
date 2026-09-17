@@ -1573,7 +1573,7 @@ rig_inventory_provider() {
     return 0
   fi
   [ -n "$RIG_CAPTURED_OUTPUT" ] || return 0
-  while IFS=' ' read -r identity detail; do
+  while IFS=$'\t' read -r identity detail; do
     [ -n "$identity" ] || continue
     rig_binding_declares_locator "$provider" "$identity" && continue
     [ -n "$detail" ] || detail=-

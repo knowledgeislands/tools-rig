@@ -620,7 +620,8 @@ The provider must declare the exact
 capability. Inventory stdout contains zero or more lines, each beginning with
 an identity comparable to a binding
 .BR locator ,
-optionally followed by a space and provider detail that Rig treats as opaque.
+optionally followed by a tab and provider detail that Rig treats as opaque.
+The separator is a tab because an identity may be a path containing spaces.
 Rig reports every identity that no binding declares. A binding declares an
 identity either through its
 .B locator
