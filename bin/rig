@@ -341,7 +341,7 @@ rig_field_kind() {
     tool:platform|tool:requires|tool:related|tool:alternative|\
     profile:profile|profile:tool|\
     provider:argument|provider:capability|\
-    binding:platform|binding:argument|\
+    binding:platform|binding:argument|binding:artifact|\
     operation:platform|operation:argument|operation:allow-argument)
       RIG_FIELD_KIND=repeatable
       ;;
@@ -1512,17 +1512,29 @@ rig_prepare_inventory_invocation() {
 }
 
 rig_binding_declares_locator() {
-  local provider identity index
+  local provider identity index section_name artifact_index
 
   provider=$1
   identity=$2
   index=0
   while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
-    if [ "${RIG_SECTION_TYPES[$index]}" = binding ] &&
-      [ "${RIG_SECTION_SECONDARY_IDS[$index]}" = "$provider" ]; then
-      if rig_get_value "${RIG_SECTION_NAMES[$index]}" locator &&
+    if [ "${RIG_SECTION_TYPES[$index]}" = binding ]; then
+      section_name=${RIG_SECTION_NAMES[$index]}
+      # A locator is meaningful only inside its own provider's namespace: a
+      # Mac App Store numeric identity and a cask name may coincide.
+      if [ "${RIG_SECTION_SECONDARY_IDS[$index]}" = "$provider" ] &&
+        rig_get_value "$section_name" locator &&
         [ "$RIG_VALUE" = "$identity" ]; then
         return 0
+      fi
+      # An artifact is a machine-observable path rather than a provider
+      # identity, so it matches whichever provider observed it.
+      if rig_collect_field_values "$section_name" artifact; then
+        artifact_index=0
+        while [ "$artifact_index" -lt "${#RIG_QUERY_ITEMS[@]}" ]; do
+          [ "${RIG_QUERY_ITEMS[$artifact_index]}" = "$identity" ] && return 0
+          artifact_index=$((artifact_index + 1))
+        done
       fi
     fi
     index=$((index + 1))

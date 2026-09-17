@@ -621,7 +621,14 @@ capability. Inventory stdout contains zero or more lines, each beginning with
 an identity comparable to a binding
 .BR locator ,
 optionally followed by a space and provider detail that Rig treats as opaque.
-Rig reports every identity that no binding declares for that provider. A
+Rig reports every identity that no binding declares. A binding declares an
+identity either through its
+.B locator
+, matched only within that binding's own provider namespace because a Mac App
+Store numeric identity and a cask name may coincide, or through a repeatable
+.B artifact
+value naming a machine-observable path the declaration materialises, matched
+whichever provider observed it. A
 non-zero exit yields state
 .B unknown
 with detail
