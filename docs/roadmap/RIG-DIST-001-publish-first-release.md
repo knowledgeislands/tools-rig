@@ -4,12 +4,12 @@ area: DIST
 title: Publish first release
 theme: distribution
 horizon: now
-status: ready
+status: in-progress
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 02a63f55aefb8f7d9b11cdaddbe020af898c2982
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-17T06:14:03Z
+updated_at: 2026-09-17T06:17:45Z
 ---
 
 # RIG-DIST-001: Publish first release
@@ -39,7 +39,7 @@ The first preview release candidate is `0.1.0`, matching the executable's existi
 - [x] Confirm every `blocked_by` item is accepted and shipped help, command-specific help, README inventory, completion, manual, and changelog describe one command surface.
 - [x] Lock the local preview contract: version `0.1.0`, dated changelog snapshot while `1.0.0 — in progress` stays open, annotated `v0.1.0` tag, tagged archive checksum, and changelog-derived release notes.
 - [ ] Run the complete repository gate and cross-platform shell CI on the exact release-candidate revision.
-- [ ] Add the approved dated `0.1.0` release snapshot to `CHANGELOG.md` without closing or duplicating the ongoing `1.0.0 — in progress` baseline.
+- [x] Add the approved dated `0.1.0` release snapshot to `CHANGELOG.md` without closing or duplicating the ongoing `1.0.0 — in progress` baseline.
 - [ ] Obtain separate publication approval, push the exact candidate, create and push the annotated tag, publish the GitHub release and notes, and record the archive checksum.
 - [ ] In `knowledgeislands/homebrew-tap`, follow its repository workflow to add `Formula/rig.rb` against the immutable archive checksum and verify installation, `rig --help`, `rig --version`, and `rig(1)`.
 - [ ] Verify the documented curl installer against the immutable release rather than `main`, then update release installation guidance.
@@ -95,7 +95,7 @@ Retain this item through cross-repository formula verification and record the ex
 
 Local hardening landed in `3fc0759`: CI now triggers for version tags, exercises Bash 3.2 on macOS as well as Ubuntu, and rejects tag/version mismatches; the installer validates both executable and manual before replacing either; command-local completion and help coverage is aligned. The complete local gate passes with 98 Bats tests. The repository audit remains 14/15 only because of nine approval-gated live GitHub settings.
 
-The candidate is intentionally not frozen: `RIG_VERSION` remains `0.1.0`, the changelog remains `1.0.0 — in progress`, mutable development installation wording remains in place, and no tag, push, GitHub release, checksum, or tap formula exists. Explicit approval is required before those publication steps and live GitHub settings changes.
+The local candidate is frozen as `0.1.0`: the changelog now records the dated public preview while `1.0.0 — in progress` remains open, the manual is dated, and README/manual installation guidance names immutable `v0.1.0`. No tag, push, hosted CI result, GitHub release, archive checksum, or tap formula exists. Explicit approval is required before those publication steps and live GitHub settings changes.
 
 ## Discussion
 

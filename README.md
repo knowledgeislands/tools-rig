@@ -23,10 +23,10 @@ Personal catalogue contents, operations, and machine-specific paths belong in pr
 
 ## Install
 
-Install the latest available release, falling back to the current `main` build while Rig is pre-release:
+Install the `v0.1.0` public preview:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.1.0/install.sh | bash
 ```
 
 The executable defaults to `~/.local/bin/rig`, and the manual defaults beneath `${XDG_DATA_HOME:-$HOME/.local/share}/man/man1`. Set `RIG_INSTALL_DIR` or `RIG_MAN_INSTALL_DIR` to choose other locations. Set `RIG_VERSION` to install a specific tag or branch.

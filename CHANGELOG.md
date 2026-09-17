@@ -4,7 +4,7 @@ All notable changes to `rig` are documented here. This changelog records the evo
 
 ## [1.0.0] — in progress
 
-Rig 1.0.0 is not yet released. Pre-v1 work is summarised as this evolving baseline; separate 0.x release entries are not maintained.
+Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving baseline; dated 0.x entries record public preview snapshots.
 
 ### Shipped commands
 
@@ -47,3 +47,19 @@ Rig 1.0.0 is not yet released. Pre-v1 work is summarised as this evolving baseli
 - `install.sh` supports released and linked development copies.
 - `rig(1)` documents commands, configuration, installation, and shell completion.
 - Bash and Zsh completion definitions cover the shipped command and option surface, including command-local help.
+
+## [0.1.0] — 2026-09-17
+
+First public preview of the catalogue-first Rig baseline. The `1.0.0 — in progress` section remains the authority for ongoing v1 development.
+
+### Added
+
+- Declarative categories, tool metadata, rationale, relationships, profiles, providers, publications, and expected-versus-observed state.
+- Catalogue queries, operational status and doctor checks, provider-backed apply and bootstrap, bounded declared operations, static export, and trusted publisher handoff.
+- Bash and Zsh completion, the `rig(1)` manual, XDG-aware installation, local development linking, and macOS Bash 3.2 plus Ubuntu CI coverage.
+- Built-in Homebrew, uv, chezmoi, and integrity-checked direct-download adapters alongside the versioned custom-provider protocol.
+
+### Distribution
+
+- `RIG_VERSION=0.1.0` is the single executable version source for the annotated `v0.1.0` preview tag.
+- The installer stages and validates both the executable and manual before replacing either destination.
