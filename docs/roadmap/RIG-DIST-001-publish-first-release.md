@@ -4,12 +4,12 @@ area: DIST
 title: Publish first release
 theme: distribution
 horizon: now
-status: draft
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-17T00:02:00Z
+updated_at: 2026-09-17T06:14:03Z
 ---
 
 # RIG-DIST-001: Publish first release
@@ -28,21 +28,21 @@ This item covers release distribution and the cross-repository formula handoff. 
 
 ## Current state
 
-Rig has an installer, manual, completion, CI, and a curated `1.0.0 — in progress` changelog, but the declared v1 provider, doctor, bootstrap, and release-threshold dependencies are not all complete. No immutable release tag, release archive, checksum, published release, or Homebrew formula exists.
+Rig has an installer, manual, completion, cross-platform CI, a curated `1.0.0 — in progress` changelog, and the accepted pre-v1 command baseline. No immutable release tag, release archive, checksum, published release, or Homebrew formula exists.
 
 ## Locked contract
 
-The release candidate is version `1.0.0`, uses an annotated tag, GitHub's immutable tagged source archive, a recorded SHA-256 checksum, and release notes derived from the curated changelog. Local delivery prepares and verifies that candidate and cross-platform CI. Tag creation, push, GitHub release publication, changelog dating, and the checksum-bound Homebrew formula remain serial external stops under the repository's explicit publication rule.
+The first preview release candidate is `0.1.0`, matching the executable's existing version, and leaves the curated `1.0.0 — in progress` baseline open. It uses an annotated `v0.1.0` tag, GitHub's immutable tagged source archive, a recorded SHA-256 checksum, and release notes derived from a dated `0.1.0` changelog entry. Local delivery prepares and verifies the candidate and cross-platform CI. Tag creation, push, GitHub release publication, and the checksum-bound Homebrew formula remain serial external stops under the repository's explicit publication rule.
 
 ## Steps
 
-- [ ] Confirm every `blocked_by` item is accepted and the shipped help, command-specific help, README inventory, completion, manual, and changelog describe one command surface.
-- [ ] Approve the release contract and external actions: version `1.0.0`, final changelog date, signed or annotated tag policy, archive origin, checksum recording, release-note source, GitHub release action, and explicit permission to push and publish.
-- [ ] Run the complete repository gate and cross-platform shell CI at the exact release candidate revision.
-- [ ] Finalise `CHANGELOG.md` from `1.0.0 — in progress` to the approved dated `1.0.0` release without adding unshipped work.
-- [ ] With separate publication approval, create and push the immutable tag and publish the release archive and notes; record the archive checksum.
-- [ ] In `knowledgeislands/homebrew-tap`, follow that repository's workflow to add `Formula/rig.rb` against the immutable archive and checksum, then verify installation, `rig --help`, `rig --version`, and `rig(1)`.
-- [ ] Verify the documented curl installer against the immutable release rather than `main`, and update release installation guidance where required.
+- [x] Confirm every `blocked_by` item is accepted and shipped help, command-specific help, README inventory, completion, manual, and changelog describe one command surface.
+- [x] Lock the local preview contract: version `0.1.0`, dated changelog snapshot while `1.0.0 — in progress` stays open, annotated `v0.1.0` tag, tagged archive checksum, and changelog-derived release notes.
+- [ ] Run the complete repository gate and cross-platform shell CI on the exact release-candidate revision.
+- [ ] Add the approved dated `0.1.0` release snapshot to `CHANGELOG.md` without closing or duplicating the ongoing `1.0.0 — in progress` baseline.
+- [ ] Obtain separate publication approval, push the exact candidate, create and push the annotated tag, publish the GitHub release and notes, and record the archive checksum.
+- [ ] In `knowledgeislands/homebrew-tap`, follow its repository workflow to add `Formula/rig.rb` against the immutable archive checksum and verify installation, `rig --help`, `rig --version`, and `rig(1)`.
+- [ ] Verify the documented curl installer against the immutable release rather than `main`, then update release installation guidance.
 
 ## Files touched
 
