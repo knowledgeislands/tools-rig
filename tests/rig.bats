@@ -3005,9 +3005,9 @@ write_inventory_config() {
   [ "$status" -eq 2 ]
 }
 
-@test "an artifact declared on another provider's binding is not unmanaged" {
+@test "an artifact declared on a tool is not unmanaged whichever provider observed it" {
   write_inventory_config
-  sed 's|^locator = declared$|locator = declared\nartifact = undeclared-one|' \
+  sed 's|^platform = any$|platform = any\nartifact = undeclared-one|' \
     "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/artifact.conf"
   mv "$CONFIG_HOME/artifact.conf" "$CONFIG_HOME/rig.conf"
 
@@ -3020,9 +3020,9 @@ write_inventory_config() {
   [[ "$output" == *'Unmanaged: 1'* ]] || false
 }
 
-@test "a binding may declare several artifacts" {
+@test "a tool may declare several artifacts" {
   write_inventory_config
-  sed 's|^locator = declared$|locator = declared\nartifact = undeclared-one\nartifact = undeclared-two|' \
+  sed 's|^platform = any$|platform = any\nartifact = undeclared-one\nartifact = undeclared-two|' \
     "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/artifacts.conf"
   mv "$CONFIG_HOME/artifacts.conf" "$CONFIG_HOME/rig.conf"
 

@@ -338,10 +338,10 @@ rig_field_kind() {
     operation:provider|operation:capability|operation:mode|operation:description)
       RIG_FIELD_KIND=scalar
       ;;
-    tool:platform|tool:requires|tool:related|tool:alternative|\
+    tool:platform|tool:requires|tool:related|tool:alternative|tool:artifact|\
     profile:profile|profile:tool|\
     provider:argument|provider:capability|\
-    binding:platform|binding:argument|binding:artifact|\
+    binding:platform|binding:argument|\
     operation:platform|operation:argument|operation:allow-argument)
       RIG_FIELD_KIND=repeatable
       ;;
@@ -1527,15 +1527,17 @@ rig_binding_declares_locator() {
         [ "$RIG_VALUE" = "$identity" ]; then
         return 0
       fi
-      # An artifact is a machine-observable path rather than a provider
-      # identity, so it matches whichever provider observed it.
-      if rig_collect_field_values "$section_name" artifact; then
-        artifact_index=0
-        while [ "$artifact_index" -lt "${#RIG_QUERY_ITEMS[@]}" ]; do
-          [ "${RIG_QUERY_ITEMS[$artifact_index]}" = "$identity" ] && return 0
-          artifact_index=$((artifact_index + 1))
-        done
-      fi
+    fi
+    # An artifact is a machine-observable path rather than a provider identity,
+    # so it matches whichever provider observed it. It is declared on the tool
+    # because a catalogue-only tool has no binding to carry it.
+    if [ "${RIG_SECTION_TYPES[$index]}" = tool ] &&
+      rig_collect_field_values "${RIG_SECTION_NAMES[$index]}" artifact; then
+      artifact_index=0
+      while [ "$artifact_index" -lt "${#RIG_QUERY_ITEMS[@]}" ]; do
+        [ "${RIG_QUERY_ITEMS[$artifact_index]}" = "$identity" ] && return 0
+        artifact_index=$((artifact_index + 1))
+      done
     fi
     index=$((index + 1))
   done

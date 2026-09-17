@@ -34,7 +34,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - Built-in Homebrew formula, cask, and Mac App Store, uv tool, and chezmoi target adapters with exact capability gates and native command mappings.
 - HTTPS direct-download executable adapter with declared SHA-256 verification, sibling temporary files, safe destination checks, atomic replacement, and failure cleanup.
 - Five-state observation with deterministic provider, state, and detail reporting without a competing state database.
-- A repeatable binding `artifact` field naming a machine-observable path a declaration materialises, so one provider can inventory what another installed.
+- A repeatable tool `artifact` field naming a machine-observable path a tool materialises, so one provider can inventory what another installed and catalogue-only tools remain reconcilable.
 - Reverse reconciliation through the `rig-provider-v1 inventory` protocol: providers declaring the `inventory` capability enumerate their domain, and `rig status --unmanaged` reports every observed identity that no binding declares as an informational row.
 - A concise read-only doctor synthesis for configuration, XDG accessibility, provider availability, selected-tool health, and informational catalogue-only or incompatible tools.
 - Complete application preflight, a non-mutating dry-run, and dependency-first execution.
