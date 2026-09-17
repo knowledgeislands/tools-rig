@@ -1626,8 +1626,10 @@ rig_command_status() {
       esac
       ;;
     2)
-      [ "$1" = --profile ] && [ -n "$2" ] ||
-        { syntax_error 'usage: rig status [--profile NAME]'; return; }
+      if [ "$1" != --profile ] || [ -z "$2" ]; then
+        syntax_error 'usage: rig status [--profile NAME]'
+        return
+      fi
       profile=$2
       ;;
     *) syntax_error 'usage: rig status [--profile NAME]'; return ;;
@@ -1811,8 +1813,10 @@ rig_command_doctor() {
       esac
       ;;
     2)
-      [ "$1" = --profile ] && [ -n "$2" ] ||
-        { syntax_error 'usage: rig doctor [--profile NAME]'; return; }
+      if [ "$1" != --profile ] || [ -z "$2" ]; then
+        syntax_error 'usage: rig doctor [--profile NAME]'
+        return
+      fi
       profile=$2
       ;;
     *) syntax_error 'usage: rig doctor [--profile NAME]'; return ;;
@@ -1879,8 +1883,10 @@ rig_command_apply() {
         return
         ;;
       --profile)
-        [ "$profile_seen" -eq 0 ] && [ "$#" -ge 2 ] && [ -n "$2" ] ||
-          { syntax_error 'usage: rig apply [--profile NAME] [--dry-run]'; return; }
+        if [ "$profile_seen" -ne 0 ] || [ "$#" -lt 2 ] || [ -z "$2" ]; then
+          syntax_error 'usage: rig apply [--profile NAME] [--dry-run]'
+          return
+        fi
         profile=$2
         profile_seen=1
         shift 2
@@ -1970,10 +1976,10 @@ rig_command_bootstrap() {
         return
         ;;
       --profile)
-        [ "$profile_seen" -eq 0 ] && [ "$#" -ge 2 ] && [ -n "$2" ] || {
+        if [ "$profile_seen" -ne 0 ] || [ "$#" -lt 2 ] || [ -z "$2" ]; then
           syntax_error 'usage: rig bootstrap [--profile NAME] [--dry-run]'
           return
-        }
+        fi
         profile=$2
         profile_seen=1
         shift 2
