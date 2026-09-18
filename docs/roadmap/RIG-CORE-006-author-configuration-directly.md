@@ -4,12 +4,12 @@ area: CORE
 title: Author configuration directly
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 584a2e9e66e234f5d900c02daa32b7bd28e9c66c
 created_at: 2026-09-17T00:00:00Z
-updated_at: 2026-09-18T03:25:24Z
+updated_at: 2026-09-18T04:06:34Z
 ---
 
 # RIG-CORE-006: Author configuration directly
@@ -115,6 +115,10 @@ The implementation meets the direct-authoring goal without introducing another c
 ### Mini recap
 
 Rig configuration can now be authored directly as a fragment directory, and private Rig-only providers can live under the data directory without rendered executable paths. All local implementation and documentation checks pass. The private migration remains the established follow-up rather than being folded into this delivery.
+
+## Done
+
+Accepted 2026-09-18 by Kris Brown on the review packet above.
 
 ## Discussion
 

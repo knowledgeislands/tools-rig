@@ -4,12 +4,12 @@ area: CORE
 title: Normalise identities before comparing
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 6925a79a8a840868ef58fbe93bdcf15a3ed68c74
 created_at: 2026-09-17T00:00:00Z
-updated_at: 2026-09-18T03:13:01Z
+updated_at: 2026-09-18T04:06:34Z
 ---
 
 # RIG-CORE-005: Normalise identities before comparing
@@ -114,6 +114,10 @@ The implementation satisfies the item goal and preserves the declared trust and 
 ### Mini recap
 
 Rig now compares equivalent identities without changing what the person authored or what providers receive for materialisation. Automated and live checks confirm the two false missing findings are gone. No new durable learning route is proposed beyond the amended decision and specifications.
+
+## Done
+
+Accepted 2026-09-18 by Kris Brown on the review packet above.
 
 ## Discussion
 

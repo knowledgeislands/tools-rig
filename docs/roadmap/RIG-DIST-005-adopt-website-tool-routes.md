@@ -4,12 +4,12 @@ area: DIST
 title: Adopt website tool routes
 theme: distribution
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: bb7715cb08b11f07b761fd308e7ecadda93abee3
 created_at: 2026-09-17T21:05:58Z
-updated_at: 2026-09-18T03:33:15Z
+updated_at: 2026-09-18T04:06:34Z
 ---
 
 # RIG-DIST-005: Adopt website tool routes
@@ -114,6 +114,10 @@ The implementation keeps immutable release selection explicit and avoids a mutab
 ### Mini recap
 
 Rig can now install an exact release with `install.sh vX.Y.Z`, automation can retain `RIG_VERSION=vX.Y.Z`, and unpinned use still discovers the latest exact release. The intended website routes need receiving-site follow-through before they can truthfully advertise v0.1.0.
+
+## Done
+
+Accepted 2026-09-18 by Kris Brown on the review packet above.
 
 ## Discussion
 
