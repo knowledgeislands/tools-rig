@@ -265,7 +265,8 @@ write_query_config() {
   [[ "$output" == *"show [--profile NAME]"* ]]
   [[ "$output" == *"list [--category ID] [--profile NAME]"* ]]
   [[ "$output" == *"explain TOOL"* ]]
-  [[ "$output" == *"status [--profile NAME]"* ]] || false
+  [[ "$output" == *"status [--profile NAME] [--unmanaged]"* ]] || false
+  [[ "$output" == *"doctor [--profile NAME]"* ]] || false
   [[ "$output" == *"apply [--profile NAME] [--dry-run]"* ]] || false
   [[ "$output" == *"bootstrap [--profile NAME] [--dry-run]"* ]] || false
   [[ "$output" == *"run TOOL OPERATION [-- ARGUMENT...]"* ]] || false
@@ -274,6 +275,46 @@ write_query_config() {
   [[ "$output" == *"diag"* ]]
   [[ "$output" != *"paths"* ]]
   [[ "$output" == *"completion bash|zsh"* ]]
+  [[ "$output" == *"help"* ]]
+}
+
+@test "public command inventory stays aligned across documentation" {
+  repo_root=$BATS_TEST_DIRNAME/..
+  bash_completion=$("$RIG" completion bash)
+  zsh_completion=$("$RIG" completion zsh)
+  man_synopsis=$(sed -n '/^.SH SYNOPSIS/,/^.SH DESCRIPTION/p' "$repo_root/man/rig.1")
+
+  for command in show list explain status doctor apply bootstrap run export publish diag completion help; do
+    grep -Fq "\`rig $command" "$repo_root/README.md"
+    grep -Fq "\`rig $command" "$repo_root/CHANGELOG.md"
+    grep -Fq "rig $command" "$repo_root/man/rig.1"
+    [[ "$bash_completion" == *" $command"* ]] || false
+    [[ "$zsh_completion" == *"$command:"* ]] || false
+  done
+
+  for synopsis in \
+    'show [--profile NAME]' \
+    'list [--category ID] [--profile NAME]' \
+    'explain TOOL' \
+    'status [--profile NAME] [--unmanaged]' \
+    'doctor [--profile NAME]' \
+    'apply [--profile NAME] [--dry-run]' \
+    'bootstrap [--profile NAME] [--dry-run]' \
+    'run TOOL OPERATION [-- ARGUMENT...]' \
+    'export PUBLICATION --output DIRECTORY' \
+    'publish PUBLICATION' \
+    'diag' \
+    'completion bash|zsh' \
+    'help [-h|--help]'; do
+    grep -Fq "\`rig $synopsis\`" "$repo_root/README.md"
+    grep -Fq "\`rig $synopsis\`" "$repo_root/CHANGELOG.md"
+  done
+
+  grep -Fq 'rig --help' "$repo_root/README.md"
+  grep -Fq 'rig --version' "$repo_root/README.md"
+  grep -Fq 'rig --help' "$repo_root/CHANGELOG.md"
+  grep -Fq 'rig --version' "$repo_root/CHANGELOG.md"
+  [[ "$man_synopsis" == *$'.B rig status\n.RI [ \\-\\-profile " NAME" ]\n.RI [ \\-\\-unmanaged ]'* ]] || false
 }
 
 @test "completion and help provide command-local help" {

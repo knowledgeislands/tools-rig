@@ -52,6 +52,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - `install.sh` supports released and linked development copies, exact positional `vX.Y.Z` selection, exact-version `RIG_VERSION` compatibility, and fail-before-network validation.
 - `rig(1)` documents commands, configuration, installation, and shell completion.
 - Bash and Zsh completion definitions cover the shipped command and option surface, including command-local help.
+- A repository definition-of-done checklist and Bats alignment test keep help, README, user guides, manual, completions, changelog, and distribution guidance synchronised.
 
 ## [0.1.0] — 2026-09-17
 

@@ -103,7 +103,7 @@ See `man rig` for the exact native command matrix and custom-provider protocol.
 - `rig show [--profile NAME]` summarises the default or named resolved profile in a bounded-width, aligned tool table; `rig explain TOOL` provides complete metadata.
 - `rig list [--category ID] [--profile NAME]` lists catalogue tools, optionally narrowed by category and profile.
 - `rig explain TOOL` explains a tool's declared meaning, relationships, profile membership, and compatible provider binding.
-- `rig status [--profile NAME]` compares expected tools with selected built-in or custom-provider observations.
+- `rig status [--profile NAME] [--unmanaged]` compares expected tools with selected built-in or custom-provider observations.
 - `rig status --unmanaged` asks every provider declaring the `inventory` capability to enumerate its domain, then reports observed identities that no binding declares. It answers the opposite question to the tool table: not whether declared software is installed, but whether installed software was ever declared. Unmanaged rows are informational and never make the result unhealthy.
 - `rig doctor [--profile NAME]` gives a compact health answer for configuration, XDG paths, providers, and selected tools.
 - `rig apply [--profile NAME] [--dry-run]` materialises a resolved profile; dry-run preflights and prints planned work without invoking providers.

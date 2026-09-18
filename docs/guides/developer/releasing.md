@@ -9,7 +9,7 @@ The website routes are an indirection layer, not release authority. A website ha
 
 ## Prepare the release
 
-1. Confirm the intended version is represented in `bin/rig`, `CHANGELOG.md`, the manual, completion output, and README.
+1. Complete the repository [definition of done](done.md), then confirm the intended version is represented in `bin/rig`, `CHANGELOG.md`, the manual, completion output, and README.
 2. Run the complete repository verification gate from the [developer guide](README.md).
 3. Review the release diff and obtain the authority required to tag, push, and publish. These are separate external mutations and are never implied by preparing repository changes.
 4. Create the annotated `vX.Y.Z` tag and GitHub release from the verified commit according to the repository's release workflow.

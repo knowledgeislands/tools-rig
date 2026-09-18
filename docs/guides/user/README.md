@@ -1,6 +1,18 @@
 # Install and inspect Rig
 
-Rig is currently an early scaffold. Use a local development link until a tagged release is published.
+Rig `v0.1.0` is a public preview. Install the released executable and manual together:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.1.0/install.sh | bash
+```
+
+To request that exact release explicitly, pass it to the installer:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.1.0/install.sh | bash -s -- v0.1.0
+```
+
+Use a local development link when working from a checkout.
 
 ## Link a checkout
 
