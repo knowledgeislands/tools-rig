@@ -335,7 +335,7 @@ write_query_config() {
   run "$RIG" --version
 
   [ "$status" -eq 0 ]
-  [ "$output" = "rig 0.1.0" ]
+  [ "$output" = "rig 0.2.0" ]
 }
 
 @test "diag reports stable runtime, default paths, and missing configuration" {
@@ -347,7 +347,7 @@ write_query_config() {
     "$RIG" diag
 
   [ "$status" -eq 1 ]
-  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.1.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s/.config/rig\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/.config/rig/rig.conf (absent)\n  Fragment count: 0\n  Status: missing' "$RIG" "$BASH_VERSION" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME")" ]
+  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.2.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s/.config/rig\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/.config/rig/rig.conf (absent)\n  Fragment count: 0\n  Status: missing' "$RIG" "$BASH_VERSION" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME")" ]
 }
 
 @test "diag follows XDG base directories" {
@@ -501,7 +501,7 @@ write_query_config() {
     XDG_DATA_HOME= XDG_STATE_HOME= XDG_CACHE_HOME= RIG_PLATFORM=fixture "$RIG" diag
 
   [ "$status" -eq 0 ]
-  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.1.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.conf\n  Fragment count: 2\n  Status: valid\n  Schema: 1\n  Default profile: default' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]
+  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.2.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.conf\n  Fragment count: 2\n  Status: valid\n  Schema: 1\n  Default profile: default' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]
 }
 
 @test "diag accepts fragment-only configuration and reports the optional root absent" {
@@ -958,7 +958,7 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   run bash -c '. "$1"; printf "sourced:%s\n" "$RIG_VERSION"' _ "$RIG"
 
   [ "$status" -eq 0 ]
-  [ "$output" = "sourced:0.1.0" ]
+  [ "$output" = "sourced:0.2.0" ]
 }
 
 @test "configuration loads only the XDG root and bytewise ordered fragments" {

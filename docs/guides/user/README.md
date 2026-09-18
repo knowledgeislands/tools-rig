@@ -1,15 +1,15 @@
 # Install and inspect Rig
 
-Rig `v0.1.0` is a public preview. Install the released executable and manual together:
+Rig `v0.2.0` is a public preview. Install the released executable and manual together:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.1.0/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.2.0/install.sh | bash
 ```
 
 To request that exact release explicitly, pass it to the installer:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.1.0/install.sh | bash -s -- v0.1.0
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.2.0/install.sh | bash -s -- v0.2.0
 ```
 
 Use a local development link when working from a checkout.

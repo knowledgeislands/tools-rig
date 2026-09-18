@@ -23,16 +23,16 @@ Personal catalogue contents, operations, and machine-specific paths belong in pr
 
 ## Install
 
-Install the `v0.1.0` public preview:
+Install the `v0.2.0` public preview:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.1.0/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.2.0/install.sh | bash
 ```
 
 Pin an exact release explicitly when invoking an installer:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.1.0/install.sh | bash -s -- v0.1.0
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.2.0/install.sh | bash -s -- v0.2.0
 ```
 
 The executable defaults to `~/.local/bin/rig`, and the manual defaults beneath `${XDG_DATA_HOME:-$HOME/.local/share}/man/man1`. Set `RIG_INSTALL_DIR` or `RIG_MAN_INSTALL_DIR` to choose other locations. `RIG_VERSION=vX.Y.Z` remains available for automation; an explicit positional version takes precedence. Both forms accept exact v-prefixed semantic versions only. With neither form, the installer discovers the latest GitHub release.

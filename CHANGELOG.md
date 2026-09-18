@@ -54,6 +54,27 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - Bash and Zsh completion definitions cover the shipped command and option surface, including command-local help.
 - A repository definition-of-done checklist and Bats alignment test keep help, README, user guides, manual, completions, changelog, and distribution guidance synchronised.
 
+## [0.2.0] — 2026-09-18
+
+Second public preview of the catalogue-led Rig baseline.
+
+### Added
+
+- `rig status --unmanaged` reverse reconciliation through the custom-provider `inventory` capability, with informational undeclared identities scoped to each provider.
+- Machine-observable tool `artifact` declarations, allowing catalogue-only tools to be reconciled independently of their materialising provider.
+- Direct fragment-only configuration and conventional custom-provider executables beneath `${RIG_DATA_HOME}/providers/ID`.
+- Exact positional release selection through `install.sh vX.Y.Z`, while retaining `RIG_VERSION=vX.Y.Z` for automation.
+- Deterministic `rig-publication` version 1 JSON export for platform-neutral public profiles and trusted one-file publisher handoff.
+
+### Changed
+
+- Normalised provider observations to preserve stable identities separately from version and diagnostic detail.
+- Aligned help, completions, README, user guide, manual, changelog, Decision Records, and Specifications with the complete CLI and publication contract.
+
+### Migration
+
+- `rig export` and `rig publish` now produce exactly one `rig.json` artifact instead of `index.html` and `assets/rig.css`. Receiving websites own presentation and must consume the documented version-1 schema.
+
 ## [0.1.0] — 2026-09-17
 
 First public preview of the catalogue-first Rig baseline. The `1.0.0 — in progress` section remains the authority for ongoing v1 development.
