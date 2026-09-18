@@ -4,12 +4,12 @@ area: DIST
 title: Publish first release
 theme: distribution
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 02a63f55aefb8f7d9b11cdaddbe020af898c2982
 created_at: 2026-09-15T09:54:44Z
-updated_at: 2026-09-17T06:31:05Z
+updated_at: 2026-09-18T02:34:25Z
 ---
 
 # RIG-DIST-001: Publish first release
@@ -122,6 +122,10 @@ The published release points only at tag `v0.1.0`; its archive checksum matches 
 ### Mini recap
 
 Rig v0.1.0 and its Homebrew formula are published and independently installation-tested. This record is ready for human acceptance; v1 remains explicitly in progress.
+
+## Done
+
+Accepted 2026-09-18 by Kris Brown on the review packet above.
 
 ## Discussion
 

@@ -4,12 +4,12 @@ area: MIG
 title: Retire chezmoi Rig
 theme: migration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: d9175e86084ba88d9022f1c29b23eac9cbad0f7a
 created_at: 2026-09-16T11:06:43Z
-updated_at: 2026-09-16T23:49:47Z
+updated_at: 2026-09-18T02:34:25Z
 ---
 
 # RIG-MIG-005: Retire chezmoi Rig
@@ -79,7 +79,7 @@ This item reached Awaiting review only after all four direct prerequisites and t
 
 ### Delivered
 
-Dotfiles commit `d59f856` delivers the reviewed legacy-source retirement from tools-rig baseline `d9175e86084ba88d9022f1c29b23eac9cbad0f7a`. It builds on private declaration commit `d2971c2`, dotfiles parity commit `e1d8b9b`, and public bootstrap and operation support in `d1d275a`. No `chezmoi apply`, push, release, publication, or live GitHub settings change was performed.
+Dotfiles commit `d59f856` delivers the reviewed legacy-source retirement from tools-rig baseline `d9175e86084ba88d9022f1c29b23eac9cbad0f7a`. It builds on private declaration commit `d2971c2`, dotfiles parity commit `e1d8b9b`, and public bootstrap and operation support in `d1d275a`. Dotfiles adoption commit `5eb788a` then records the approved cutover to the Knowledge Islands tap release.
 
 ### Summary of changes
 
@@ -87,19 +87,23 @@ The dotfiles source no longer owns `bin/executable_rig` or the legacy bootstrap,
 
 ### Verification
 
-Dotfiles commit `d59f856` passed all 22 Node tests plus ShellCheck, Bash syntax, Markdown, completion-identity, and diff checks. The tools-rig gate passed all 96 Bats tests, ShellCheck, Bash syntax, and `mandoc -T lint`; the repository audit retained only the known live GitHub-settings findings outside this item's authority. `chezmoi diff` exited successfully with exactly the expected unapplied transition. Before application, `type -a rig` reports standalone `~/.local/bin/rig` first and legacy `~/bin/rig` second, proving both the replacement and rollback executable remain available at the review stop.
+Dotfiles commit `d59f856` passed all 22 Node tests plus ShellCheck, Bash syntax, Markdown, completion-identity, and diff checks. The tools-rig gate passed all 96 Bats tests, ShellCheck, Bash syntax, and `mandoc -T lint`; the repository audit retained only the known live GitHub-settings findings outside this item's authority. Post-cutover verification confirms `~/.local/bin/rig` is the standalone development link, `/opt/homebrew/bin/rig` is the v0.1.0 package installation, all four legacy targets are absent and no longer managed by chezmoi, and Rig help, Bash and Zsh completion, bootstrap dry-run, workstation audit, and launch-control list operations succeed. Live `doctor` and `status` complete against the private catalogue and consistently report 71 present, two missing, and 12 catalogue-only tools.
 
 ### Outstanding concerns
 
-Explicit human approval is still required before `chezmoi apply`. After that separately authorised application, acceptance must prove `type -a rig` reports only the intended standalone installation, run standalone help and completion checks, read-only status and doctor, bootstrap dry-run, and operation smoke tests, and confirm the four legacy targets are absent. This post-approval cutover is an acceptance gate, not unfinished source implementation.
+The live private catalogue reports `codexbar` and `one-password-cli` missing because tap-qualified declared identities do not yet normalise to Homebrew's short installed identities. `RIG-CORE-005` owns that comparison defect; it does not indicate legacy Rig remains installed or managed.
 
 ### Post-change review
 
-The source transition removes only the legacy command facade and dispatchers. Private declarations, provider/native authority, fail-fast bootstrap ordering, operation allow-lists, mutation boundaries, and host-specific helpers remain intact. The reviewed unapplied diff is ready for human acceptance at the explicit machine-change boundary.
+The applied transition removes only the legacy command facade and dispatchers. Private declarations, provider/native authority, fail-fast bootstrap ordering, operation allow-lists, mutation boundaries, and host-specific helpers remain intact. Both active `rig` resolutions now execute the standalone Knowledge Islands implementation rather than the retired chezmoi dispatcher.
 
 ### Mini recap
 
-Standalone Rig has complete private parity and the obsolete chezmoi sources are retired in `d59f856`; the live legacy executable remains deliberately present until approved application. Deleted sources remain recoverable from pre-retirement dotfiles commit `e1d8b9b`, providing the documented rollback point.
+Standalone Rig has complete private parity, the obsolete chezmoi sources are retired, and the live legacy executable and dispatchers are absent. Deleted sources remain recoverable from pre-retirement dotfiles commit `e1d8b9b`, providing the documented rollback point.
+
+## Done
+
+Accepted 2026-09-18 by Kris Brown on the review packet above.
 
 ## Discussion
 
