@@ -11,13 +11,13 @@ harnesses = ["knowledgeislands/ki-agentic-harness"]
 [skills.ki-repo]
 repository = "https://github.com/knowledgeislands/tools-rig"
 title = "Rig"
-description = "Configure and orchestrate package and configuration systems for bootstrapping machines."
+description = "Describe and manage a person's working setup through catalogues, profiles, providers, and machine state."
 repo_code = "RIG"
 supported_runtimes = ["claude-code", "claude-desktop", "chatgpt-codex"]
 visibility = "public"
 license = "MIT"
 
-# Custom topics will be selected when the public surface settles.
+# Live topics remain deferred until authenticated GitHub settings are reviewed and explicitly approved.
 [skills.ki-repo.checks]
 topics = false
 
