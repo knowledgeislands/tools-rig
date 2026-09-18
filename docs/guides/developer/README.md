@@ -26,3 +26,7 @@ mandoc -T utf8 man/rig.1 | col -b
 ```
 
 If a required checker is absent, install it through your workstation's existing package-management policy; do not add it as a Rig runtime dependency.
+
+## Release
+
+Follow [Release Rig](releasing.md) to verify, publish, and hand a new recommended version to the Knowledge Islands website without transferring release authority.

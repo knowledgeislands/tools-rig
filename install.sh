@@ -20,9 +20,9 @@ die() {
 
 usage() {
   printf '%s\n' \
-    'Usage: ./install.sh [--link]' \
+    'Usage: ./install.sh [vX.Y.Z|--link]' \
     '' \
-    'Install the latest released Rig, or use --link from a local checkout.'
+    'Install the latest released Rig, pin an exact release, or link a local checkout.'
 }
 
 if [ "$#" -gt 1 ]; then
@@ -30,6 +30,7 @@ if [ "$#" -gt 1 ]; then
   exit 2
 fi
 
+version_argument=
 case "${1:-}" in
   '') mode='release' ;;
   --link) mode='link' ;;
@@ -37,11 +38,15 @@ case "${1:-}" in
     usage
     exit 0
     ;;
-  *)
-    usage >&2
-    exit 2
-    ;;
+  *) mode='release'; version_argument=$1 ;;
 esac
+
+if [ -n "$version_argument" ] &&
+  ! [[ "$version_argument" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  printf 'rig-install: error: version must match vX.Y.Z: %s\n' "$version_argument" >&2
+  usage >&2
+  exit 2
+fi
 
 if [ "$mode" = link ]; then
   source_bin=$SCRIPT_DIR/bin/rig
@@ -58,10 +63,21 @@ fi
 
 command -v curl >/dev/null 2>&1 || die 'curl is required to install a release'
 
-ref=${RIG_VERSION:-}
+ref=$version_argument
+if [ -z "$ref" ]; then
+  ref=${RIG_VERSION:-}
+  if [ -n "$ref" ] && ! [[ "$ref" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    printf 'rig-install: error: RIG_VERSION must match vX.Y.Z: %s\n' "$ref" >&2
+    usage >&2
+    exit 2
+  fi
+fi
+
 if [ -z "$ref" ]; then
   ref=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n 1) || true
-  [ -n "$ref" ] || ref=main
+  [ -n "$ref" ] || die 'latest release tag unavailable'
+  [[ "$ref" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
+    die "latest release tag is not an exact version: $ref"
 fi
 
 source_url=https://raw.githubusercontent.com/$REPO/$ref/bin/rig

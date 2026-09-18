@@ -49,7 +49,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 
 ### Distribution baseline
 
-- `install.sh` supports released and linked development copies.
+- `install.sh` supports released and linked development copies, exact positional `vX.Y.Z` selection, exact-version `RIG_VERSION` compatibility, and fail-before-network validation.
 - `rig(1)` documents commands, configuration, installation, and shell completion.
 - Bash and Zsh completion definitions cover the shipped command and option surface, including command-local help.
 

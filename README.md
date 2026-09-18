@@ -29,7 +29,13 @@ Install the `v0.1.0` public preview:
 curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.1.0/install.sh | bash
 ```
 
-The executable defaults to `~/.local/bin/rig`, and the manual defaults beneath `${XDG_DATA_HOME:-$HOME/.local/share}/man/man1`. Set `RIG_INSTALL_DIR` or `RIG_MAN_INSTALL_DIR` to choose other locations. Set `RIG_VERSION` to install a specific tag or branch.
+Pin an exact release explicitly when invoking an installer:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.1.0/install.sh | bash -s -- v0.1.0
+```
+
+The executable defaults to `~/.local/bin/rig`, and the manual defaults beneath `${XDG_DATA_HOME:-$HOME/.local/share}/man/man1`. Set `RIG_INSTALL_DIR` or `RIG_MAN_INSTALL_DIR` to choose other locations. `RIG_VERSION=vX.Y.Z` remains available for automation; an explicit positional version takes precedence. Both forms accept exact v-prefixed semantic versions only. With neither form, the installer discovers the latest GitHub release.
 
 ### Local checkout
 

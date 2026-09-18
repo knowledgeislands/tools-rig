@@ -57,3 +57,15 @@ _Conformance:_ conforming
 _Verify:_ Bats supplies a regular file as an effective Rig data directory and asserts a deterministic status-1 XDG finding while provider mutation remains absent.
 
 _Evidence:_ `rig_doctor_path_finding` performs read-only path checks and the doctor XDG Bats case covers the non-directory boundary.
+
+### RIG-PORT-006 — Exact release selection
+
+The release installer MUST accept an optional positional version in exact `vX.Y.Z` form. The positional version MUST take precedence over the `RIG_VERSION` compatibility environment variable, which MUST accept the same exact form. With neither input, the installer MUST discover the latest GitHub release and MUST NOT fall back to a mutable branch.
+
+Invalid positional or environment versions MUST return status 2 before network access or destination mutation. A discovered tag that is absent or not an exact version MUST fail before artifact download. Valid release installation MUST continue to stage and validate both the executable and manual before replacing either destination.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats installer fixtures cover positional precedence, environment compatibility, latest-release discovery, invalid-input non-execution, immutable artifact URLs, and staged validation.
+
+_Evidence:_ `install.sh` implements the exact-version contract and `tests/rig.bats` exercises it with isolated network fixtures and destinations.

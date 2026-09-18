@@ -4,12 +4,12 @@ area: DIST
 title: Adopt website tool routes
 theme: distribution
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: bb7715cb08b11f07b761fd308e7ecadda93abee3
 created_at: 2026-09-17T21:05:58Z
-updated_at: 2026-09-18T02:36:43Z
+updated_at: 2026-09-18T03:33:15Z
 ---
 
 # RIG-DIST-005: Adopt website tool routes
@@ -40,11 +40,11 @@ The website registry, `/tooling/rig/` page, and `/install/rig` redirect already 
 
 ## Steps
 
-- [ ] Extend `install.sh` to accept one optional exact `vX.Y.Z` positional version while retaining unpinned latest-release discovery, `RIG_VERSION`, and the separate `--link` mode; reject malformed versions and extra arguments before network or filesystem mutation.
-- [ ] Add installer tests for latest discovery, positional pinning, `RIG_VERSION` compatibility, positional precedence, invalid syntax, help output, and unchanged staged executable-and-manual validation.
-- [ ] Align installer usage, README installation examples, `rig(1)`, portability specification, and changelog with the positional version contract.
-- [ ] Add a developer release guide that makes the `ki-website` registry update a named follow-up after each recommended Rig release, carrying the exact version and immutable installer target.
-- [ ] Link the release guide from the developer guide index and verify the currently advertised website route remains pinned to v0.1.0 without changing website authority or state.
+- [x] Extend `install.sh` to accept one optional exact `vX.Y.Z` positional version while retaining unpinned latest-release discovery, `RIG_VERSION`, and the separate `--link` mode; reject malformed versions and extra arguments before network or filesystem mutation.
+- [x] Add installer tests for latest discovery, positional pinning, `RIG_VERSION` compatibility, positional precedence, invalid syntax, help output, and unchanged staged executable-and-manual validation.
+- [x] Align installer usage, README installation examples, `rig(1)`, portability specification, and changelog with the positional version contract.
+- [x] Add a developer release guide that makes the `ki-website` registry update a named follow-up after each recommended Rig release, carrying the exact version and immutable installer target.
+- [x] Link the release guide from the developer guide index and verify the current website routes without changing website authority or state; both intended Knowledge Islands routes returned HTTP 404 while `rig.midnight.ninja` returned HTTP 200.
 
 ## Files touched
 
@@ -88,6 +88,32 @@ Add the developer release handoff procedure and align user-facing installation e
 ### Roadmap
 
 No additional local work item is required. A future release creates a concrete website handoff in the receiving repository under its own workflow.
+
+## Review
+
+### Delivered
+
+Rig's installer now supports exact positional release selection while preserving unpinned latest-release discovery, exact-version environment compatibility, local link mode, and staged executable-and-manual replacement. The developer documentation defines the cross-repository website handoff without moving release authority.
+
+### Summary of changes
+
+`install.sh` validates optional `vX.Y.Z` input before network access or destination mutation, gives it precedence over `RIG_VERSION`, validates discovered tags, and no longer falls back to `main`. Installer fixtures cover pinning, precedence, latest discovery, malformed input, local help, and staged artifact validation. README, manual, changelog, portability specification, and developer release guidance now describe the same contract.
+
+### Verification
+
+Focused installer tests, ShellCheck, Bash syntax validation, manual lint, and diff hygiene pass. The complete repository gate is recorded in the enclosing batch review. A read-only live check on 2026-09-18 found `https://knowledgeislands.info/tooling/rig/` and `https://knowledgeislands.info/install/rig` both returning HTTP 404; `https://rig.midnight.ninja/` returned HTTP 200.
+
+### Outstanding concerns
+
+The intended Knowledge Islands website routes do not currently expose the advertised v0.1.0 state described when this item was planned. That receiving-site deployment remains outside this repository and requires its own workflow. No website, GitHub setting, tag, release, or remote repository was mutated here.
+
+### Post-change review
+
+The implementation keeps immutable release selection explicit and avoids a mutable-branch fallback. Regression risk centres on installer URL selection and early validation; isolated fixtures cover both. The website handoff is documented as recommendation drift rather than a build dependency, so unavailable receiving routes remain visible without weakening Rig's release boundary.
+
+### Mini recap
+
+Rig can now install an exact release with `install.sh vX.Y.Z`, automation can retain `RIG_VERSION=vX.Y.Z`, and unpinned use still discovers the latest exact release. The intended website routes need receiving-site follow-through before they can truthfully advertise v0.1.0.
 
 ## Discussion
 

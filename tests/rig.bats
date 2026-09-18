@@ -755,7 +755,7 @@ write_query_config() {
 
   run env \
     PATH="$fake_bin:$PATH" \
-    RIG_VERSION=v-test \
+    RIG_VERSION=v0.1.0 \
     RIG_INSTALL_DIR=$install_bin \
     RIG_MAN_INSTALL_DIR=$install_man \
     RIG_TEST_DOWNLOAD_BIN=$downloaded_bin \
@@ -769,7 +769,7 @@ write_query_config() {
 
   run env \
     PATH="$fake_bin:$PATH" \
-    RIG_VERSION=v-test \
+    RIG_VERSION=v0.1.0 \
     RIG_INSTALL_DIR=$install_bin \
     RIG_MAN_INSTALL_DIR=$install_man \
     RIG_TEST_DOWNLOAD_BIN=$downloaded_bin \
@@ -785,7 +785,7 @@ write_query_config() {
   printf '%s\n' '.TH RIG 1 "test" "Rig" "User Commands"' >"$downloaded_man"
   run env \
     PATH="$fake_bin:$PATH" \
-    RIG_VERSION=v-test \
+    RIG_VERSION=v0.1.0 \
     RIG_INSTALL_DIR=$install_bin \
     RIG_MAN_INSTALL_DIR=$install_man \
     RIG_TEST_DOWNLOAD_BIN=$downloaded_bin \
@@ -797,6 +797,113 @@ write_query_config() {
   cmp "$downloaded_bin" "$install_bin/rig"
   cmp "$downloaded_man" "$install_man/rig.1"
   [ -x "$install_bin/rig" ]
+}
+
+@test "release installer positional version takes precedence over environment" {
+  fake_bin=$BATS_TEST_TMPDIR/pinned-installer-bin-$BATS_TEST_NUMBER
+  install_bin=$BATS_TEST_TMPDIR/pinned-installed-bin-$BATS_TEST_NUMBER
+  install_man=$BATS_TEST_TMPDIR/pinned-installed-man-$BATS_TEST_NUMBER
+  curl_log=$BATS_TEST_TMPDIR/pinned-curl-log-$BATS_TEST_NUMBER
+  mkdir -p "$fake_bin"
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'printf "%s\n" "$2" >>"$RIG_TEST_CURL_LOG"' \
+    'case "$2" in' \
+    '  */bin/rig) printf "%s\n" "#!/usr/bin/env bash" "exit 0" >"$4" ;;' \
+    '  */man/rig.1) printf "%s\n" ".TH RIG 1 \"test\" \"Rig\" \"User Commands\"" >"$4" ;;' \
+    '  *) exit 70 ;;' \
+    'esac' >"$fake_bin/curl"
+  chmod +x "$fake_bin/curl"
+
+  run env \
+    PATH="$fake_bin:$PATH" \
+    RIG_VERSION=v9.9.9 \
+    RIG_INSTALL_DIR=$install_bin \
+    RIG_MAN_INSTALL_DIR=$install_man \
+    RIG_TEST_CURL_LOG=$curl_log \
+    "$BATS_TEST_DIRNAME/../install.sh" v0.1.0
+
+  [ "$status" -eq 0 ]
+  [ "$(sed -n '1p' "$curl_log")" = \
+    "https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.1.0/bin/rig" ]
+  [ "$(sed -n '2p' "$curl_log")" = \
+    "https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.1.0/man/rig.1" ]
+  [ "$(wc -l <"$curl_log" | tr -d ' ')" -eq 2 ]
+}
+
+@test "release installer unpinned invocation discovers the latest exact release" {
+  fake_bin=$BATS_TEST_TMPDIR/latest-installer-bin-$BATS_TEST_NUMBER
+  install_bin=$BATS_TEST_TMPDIR/latest-installed-bin-$BATS_TEST_NUMBER
+  install_man=$BATS_TEST_TMPDIR/latest-installed-man-$BATS_TEST_NUMBER
+  curl_log=$BATS_TEST_TMPDIR/latest-curl-log-$BATS_TEST_NUMBER
+  mkdir -p "$fake_bin"
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'printf "%s\n" "$2" >>"$RIG_TEST_CURL_LOG"' \
+    'case "$2" in' \
+    '  https://api.github.com/*) printf "%s\n" "{\"tag_name\":\"v0.2.3\"}" ;;' \
+    '  */bin/rig) printf "%s\n" "#!/usr/bin/env bash" "exit 0" >"$4" ;;' \
+    '  */man/rig.1) printf "%s\n" ".TH RIG 1 \"test\" \"Rig\" \"User Commands\"" >"$4" ;;' \
+    '  *) exit 70 ;;' \
+    'esac' >"$fake_bin/curl"
+  chmod +x "$fake_bin/curl"
+
+  run env \
+    PATH="$fake_bin:$PATH" \
+    RIG_INSTALL_DIR=$install_bin \
+    RIG_MAN_INSTALL_DIR=$install_man \
+    RIG_TEST_CURL_LOG=$curl_log \
+    "$BATS_TEST_DIRNAME/../install.sh"
+
+  [ "$status" -eq 0 ]
+  [ "$(sed -n '1p' "$curl_log")" = \
+    "https://api.github.com/repos/knowledgeislands/tools-rig/releases/latest" ]
+  [ "$(sed -n '2p' "$curl_log")" = \
+    "https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.2.3/bin/rig" ]
+  [ "$(sed -n '3p' "$curl_log")" = \
+    "https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.2.3/man/rig.1" ]
+}
+
+@test "release installer rejects invalid versions before download or replacement" {
+  fake_bin=$BATS_TEST_TMPDIR/invalid-installer-bin-$BATS_TEST_NUMBER
+  install_bin=$BATS_TEST_TMPDIR/invalid-installed-bin-$BATS_TEST_NUMBER
+  install_man=$BATS_TEST_TMPDIR/invalid-installed-man-$BATS_TEST_NUMBER
+  curl_marker=$BATS_TEST_TMPDIR/invalid-curl-marker-$BATS_TEST_NUMBER
+  mkdir -p "$fake_bin" "$install_bin" "$install_man"
+  printf '%s\n' '#!/usr/bin/env bash' 'touch "$RIG_TEST_CURL_MARKER"' 'exit 70' \
+    >"$fake_bin/curl"
+  chmod +x "$fake_bin/curl"
+  printf '%s\n' old-rig >"$install_bin/rig"
+  printf '%s\n' old-man >"$install_man/rig.1"
+
+  run env PATH="$fake_bin:$PATH" RIG_INSTALL_DIR=$install_bin \
+    RIG_MAN_INSTALL_DIR=$install_man RIG_TEST_CURL_MARKER=$curl_marker \
+    "$BATS_TEST_DIRNAME/../install.sh" 1.2.3
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"version must match vX.Y.Z: 1.2.3"* ]]
+
+  run env PATH="$fake_bin:$PATH" RIG_VERSION=main RIG_INSTALL_DIR=$install_bin \
+    RIG_MAN_INSTALL_DIR=$install_man RIG_TEST_CURL_MARKER=$curl_marker \
+    "$BATS_TEST_DIRNAME/../install.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"RIG_VERSION must match vX.Y.Z: main"* ]]
+
+  run env PATH="$fake_bin:$PATH" RIG_INSTALL_DIR=$install_bin \
+    RIG_MAN_INSTALL_DIR=$install_man RIG_TEST_CURL_MARKER=$curl_marker \
+    "$BATS_TEST_DIRNAME/../install.sh" v0.1.0 extra
+  [ "$status" -eq 2 ]
+  [ ! -e "$curl_marker" ]
+  [ "$(cat "$install_bin/rig")" = old-rig ]
+  [ "$(cat "$install_man/rig.1")" = old-man ]
+}
+
+@test "release installer help is local and documents exact version pinning" {
+  run "$BATS_TEST_DIRNAME/../install.sh" --help
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "Usage: ./install.sh [vX.Y.Z|--link]
+
+Install the latest released Rig, pin an exact release, or link a local checkout." ]
 }
 
 @test "invalid syntax is namespaced and exits two" {

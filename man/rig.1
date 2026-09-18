@@ -75,6 +75,12 @@ public preview:
 curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.1.0/install.sh | bash
 .fi
 .PP
+Pin an exact release explicitly:
+.PP
+.nf
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.1.0/install.sh | bash -s -- v0.1.0
+.fi
+.PP
 The installer writes the executable to
 .I ~/.local/bin
 and the manual beneath
@@ -85,7 +91,10 @@ or
 .B RIG_MAN_INSTALL_DIR
 to choose different locations. Set
 .B RIG_VERSION
-to install a specific release tag or branch.
+to an exact
+.B vX.Y.Z
+release for automation compatibility. A positional version takes precedence.
+Without either form, the installer discovers the latest GitHub release.
 .SH COMMANDS
 \&
 .TP
@@ -642,7 +651,8 @@ identity either through its
 .B locator
 , matched only within that binding's own provider namespace because a
 Mac App
-Store numeric identity and a cask name may coincide, or through a repeatable tool
+Store numeric identity and a cask name may coincide, or through a
+repeatable tool
 .B artifact
 value naming a machine-observable path the tool materialises, matched
 whichever provider observed it. A
