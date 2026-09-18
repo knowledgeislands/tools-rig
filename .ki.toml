@@ -17,10 +17,6 @@ supported_runtimes = ["claude-code", "claude-desktop", "chatgpt-codex"]
 visibility = "public"
 license = "MIT"
 
-# Live topics remain deferred until authenticated GitHub settings are reviewed and explicitly approved.
-[skills.ki-repo.checks]
-topics = false
-
 [skills.ki-authoring]
 
 # -----------------------------------------------------------------------------
