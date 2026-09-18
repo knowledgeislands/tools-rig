@@ -4,12 +4,12 @@ area: DIST
 title: Publish versioned rig data
 theme: distribution
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 1fa544fe76be91a7420961aca92069b617d0f121
 created_at: 2026-09-18T03:36:25Z
-updated_at: 2026-09-18T04:38:41Z
+updated_at: 2026-09-18T06:25:50Z
 ---
 
 # RIG-DIST-006: Publish versioned rig data
@@ -141,6 +141,10 @@ The change was compared with immutable baseline `1fa544fe76be91a7420961aca92069b
 ### Mini recap
 
 RIG-DIST-006 is implemented and verified: Rig owns deterministic public data, while the receiving website owns presentation and deployment.
+
+## Done
+
+Accepted 2026-09-18 by Kris Brown on the review packet above.
 
 ## Discussion
 
