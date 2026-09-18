@@ -187,17 +187,17 @@ caller arguments. Rig passes provider output through and preserves its native
 exit status.
 .TP
 .BI "rig export " PUBLICATION " \-\-output " DIRECTORY
-Generate a deterministic static
-.I index.html
-and
-.I assets/rig.css
-tree from the publication's explicitly selected profile. Export invokes no
-provider, publisher, or network command.
+Generate a deterministic, versioned
+.I rig.json
+artifact from the publication's explicitly selected, platform-neutral profile.
+Export invokes no provider, publisher, or network command.
 .TP
 .BI "rig publish " PUBLICATION
-Render and validate one isolated static export beneath the effective Rig cache,
-then invoke the publication's selected trusted custom publisher exactly once.
-The publisher owns credentials, destination, deployment, and rollback.
+Render and validate one isolated public-data export beneath the effective Rig
+cache, then invoke the publication's selected trusted custom publisher exactly
+once.
+The publisher and receiving website own presentation, credentials, destination,
+deployment, and rollback.
 .TP
 .B rig diag
 Print a non-mutating diagnostic snapshot containing Rig and Bash versions,
@@ -441,8 +441,9 @@ adapter dispatches operations in schema 1.
 The
 .B base-url
 must be an absolute HTTP or HTTPS URL without a query or fragment. Rig appends
-a trailing slash when omitted so stylesheet, catalogue, and relationship links
-work at a domain root, subdomain, or subpath.
+a trailing slash when omitted and projects it as
+.B publication.canonical_url
+metadata. Rig does not generate presentation or navigation.
 .PP
 A minimal catalogue is:
 .PP
@@ -485,17 +486,33 @@ Default state directory.
 .TP
 .I ${XDG_CACHE_HOME:-$HOME/.cache}/rig
 Default cache directory.
-.SH STATIC EXPORT
+.SH PUBLIC DATA EXPORT
 \&
 .PP
 The
 .B rig export
-command renders only public category and tool identity, name, purpose,
-rationale, platform, and relationship fields from the publication's selected
-profile.
-Relationships are included only when both endpoints are selected. Dynamic text
-is HTML-escaped. Provider and binding configuration, other profiles, observed
-state, credentials, and machine paths are not rendered.
+writes exactly one regular, non-symlink
+.I rig.json
+file. Its top-level
+.B format
+is
+.B rig-publication
+and its integer
+.B version
+is 1. It contains publication metadata, profile identity, selected categories,
+and selected tool identity, name, purpose, rationale, declared platforms, and
+closed relationships. Category, tool, platform, and relationship values use
+deterministic bytewise ordering.
+.PP
+The public profile is resolved independently of the active host platform while
+each tool retains its declared platforms. Relationships are included only when
+both endpoints are selected. Provider and binding configuration, private
+profiles, observed state, credentials, and machine paths are not rendered.
+Consumers should check both
+.B format
+and
+.B version
+before interpreting the remaining document.
 .PP
 Rig first renders a complete sibling staging tree and then replaces the named
 output directory. It never merges with an existing tree. For safety, Rig
@@ -523,10 +540,8 @@ staging, and render failures invoke no publisher.
 .PP
 Cleanup revalidates the canonical cache parent and operates relative to that
 pinned directory. It unlinks only
-.I index.html
-and
-.I assets/rig.css
-before removing their empty directories. A substituted parent, symlink,
+.I rig.json
+before removing the empty directory. A substituted parent, symlink,
 unexpected file, or other unsafe shape fails closed without recursive traversal.
 .SH PROVIDER EXECUTION
 \&

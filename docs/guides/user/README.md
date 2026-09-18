@@ -135,15 +135,16 @@ base-url = https://rig.midnight.ninja/
 publisher = site
 ```
 
-Generate a complete static tree and inspect it before making it public:
+Generate the complete public-data tree and inspect it before making it public:
 
 ```sh
 rig export personal-site --output ./public-rig
+cat ./public-rig/rig.json
 ```
 
-The tree contains `index.html` and `assets/rig.css`. Re-export replaces that complete directory so stale files cannot survive. Rig rejects `/`, `.`, `..`, symlinks, and non-directory output targets. The artifact contains only the selected profile's public catalogue fields and relationships whose endpoints are both public; it excludes provider configuration, other profiles, paths, credentials, and observed machine state.
+The tree contains exactly one regular file, `rig.json`. It declares `format` as `rig-publication` and integer `version` as `1`; consumers should check both fields before reading the remaining document. Re-export replaces the complete directory so stale files cannot survive. Rig rejects `/`, `.`, `..`, symlinks, and non-directory output targets. The artifact contains only the selected profile's public catalogue fields and relationships whose endpoints are both public; it excludes provider configuration, other profiles, paths, credentials, and observed machine state.
 
-Set `base-url` to the final domain root, subdomain, or subpath, including `https://rig.midnight.ninja/` or `https://midnight.ninja/rig/`. Export is offline and does not deploy the result.
+Set `base-url` to the final domain root, subdomain, or subpath, including `https://rig.midnight.ninja/` or `https://midnight.ninja/rig/`. Rig normalizes it into `publication.canonical_url` metadata; it does not generate presentation or navigation. Export is offline and does not deploy the result.
 
 ## Publish a public rig
 
@@ -153,13 +154,13 @@ After reviewing the public profile and an offline export, dispatch the configure
 rig publish personal-site
 ```
 
-Rig validates the publication, publisher adapter, exact `publish` capability, executable, profile, and generated static tree before invocation. It then calls the selected executable once with this fixed literal protocol:
+Rig validates the publication, publisher adapter, exact `publish` capability, executable, profile, and generated one-file data tree before invocation. It then calls the selected executable once with this fixed literal protocol:
 
 ```text
 EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 publish PROVIDER PUBLICATION directory ABS_EXPORT_DIR
 ```
 
-The publisher owns credentials, hosting destination, deployment, and rollback. Rig removes the isolated cache export after success. A staging or render failure invokes no publisher, and an interruption before the export is complete removes its incomplete known files. Once the export is complete, publisher failure or interruption returns the native or conventional signal status, reports the retained export path, and leaves that tree available for diagnosis. Cleanup revalidates and pins the cache parent before unlinking only Rig's two known files; a path substitution or unexpected tree fails closed. Remove a retained tree after inspection; Rig never treats it as deployed.
+The publisher and receiving website own presentation, credentials, hosting destination, deployment, and rollback. Rig removes the isolated cache export after success. A staging or render failure invokes no publisher, and an interruption before the export is complete removes its incomplete `rig.json`. Once the export is complete, publisher failure or interruption returns the native or conventional signal status, reports the retained export path, and leaves that tree available for diagnosis. Cleanup revalidates and pins the cache parent before unlinking only `rig.json`; a path substitution or unexpected tree fails closed. Remove a retained tree after inspection; Rig never treats it as deployed.
 
 ## Generate completion
 

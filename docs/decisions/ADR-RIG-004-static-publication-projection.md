@@ -12,26 +12,28 @@ decision_depends_on: [PDR-RIG-001, ADR-RIG-003, XDR-RIG-001]
 
 ## Context
 
-A public rig should be usable at a personal subdomain such as `rig.midnight.ninja` or beneath a site path such as `midnight.ninja/rig`. Hosting systems already own domain configuration, credentials, uploads, builds, caching, and rollback. Making a remote site the catalogue authority would couple local machine management to network availability and deployment state.
+A public rig should be usable at a personal subdomain such as `rig.midnight.ninja` or beneath a site path such as `midnight.ninja/rig`. Hosting systems already own domain configuration, credentials, builds, presentation, caching, deployment, and rollback. Making a remote site the catalogue authority would couple local machine management to network availability and deployment state.
 
-Generating and deploying a site also have different trust and portability properties. Rendering can be deterministic and offline, while deployment necessarily invokes a trusted external system.
+Rig originally generated an HTML and CSS tree. That proved the public-profile privacy boundary and trusted publisher handoff, but made one presentation part of Rig's durable contract. A receiving website can make better use of reviewed catalogue data while retaining its own navigation, accessibility, and visual conventions.
 
 ## Decision
 
-Rig treats a published rig as a derived static projection of one explicitly configured public profile. `rig export` generates the projection into a local output directory without invoking providers, publishers, or the network. The publication declaration supplies a base URL so generated navigation works at a domain root, subdomain, or subpath.
+Rig treats a published rig as a derived, versioned data projection of one explicitly configured public profile. `rig export` generates exactly one `rig.json` file in a complete local output tree without invoking providers, publishers, or the network.
 
-`rig publish` is a separate explicit operation that invokes the publication's configured trusted publisher. The publisher owns deployment, credentials, destination state, and rollback. Rig owns selection of the public profile, generation of the bounded artifact, publisher dispatch, and outcome reporting.
+The projection is platform-neutral: profile membership records public intent, while each tool retains its declared supported platforms. It has top-level format identity `rig-publication`, integer schema version `1`, publication metadata, profile identity, selected categories, and selected tools with public catalogue metadata and closed relationships. The publication's configured `base-url` is projected as `canonical_url` metadata.
 
-The local catalogue remains canonical. Rebuilding the same schema version, resolved public profile, and publication configuration produces equivalent content independent of the hosting service.
+`rig publish` remains a separate explicit operation that invokes the publication's configured trusted publisher. The publisher and receiving website own rendering, credentials, hosting destination, deployment, and rollback. Rig owns deterministic selection, schema serialization, bounded artifact generation, trusted dispatch, and outcome reporting.
+
+The local catalogue remains canonical. A published file is never authority for private configuration or observed machine state. Rebuilding from the same schema version, resolved public profile, and publication configuration produces byte-equivalent data regardless of declaration order or publishing host platform.
 
 ## Consequences
 
-A person can host their rig using a personal server, Cloudflare Pages, GitHub Pages, or another static destination without adding a hosting dependency to Rig core. Exported artifacts can be inspected before any disclosure occurs and can be tested without network access.
+A person can inspect or validate `rig.json` before disclosure, and a website can render it without reading private Rig configuration. The same artifact can support a personal server, Cloudflare, GitHub, or another site without adding a hosting or presentation dependency to Rig core.
 
-Interactive or server-side features are outside the initial publication contract. Hosting-specific setup remains in the selected publisher or external site configuration rather than entering the catalogue schema.
+Schema consumers must select support by the top-level format and version. Presentation previews, templates, themes, and interactive or server-side features remain outside Rig. Hosting-specific setup remains in the selected publisher or external site configuration rather than entering the catalogue schema.
 
-## References
+## Related decisions
 
-- [PDR-RIG-001](PDR-RIG-001-catalogue-led-working-setup.md) — defines the published rig as a derived public view.
-- [ADR-RIG-003](ADR-RIG-003-declarative-configuration-grammar.md) — defines publication declarations.
-- [XDR-RIG-001](XDR-RIG-001-executable-provider-boundary.md) — defines disclosure and publisher trust boundaries.
+- [PDR-RIG-001](PDR-RIG-001-catalogue-led-working-setup.md)
+- [ADR-RIG-003](ADR-RIG-003-declarative-configuration-grammar.md)
+- [XDR-RIG-001](XDR-RIG-001-executable-provider-boundary.md)

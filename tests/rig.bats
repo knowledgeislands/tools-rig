@@ -411,8 +411,8 @@ write_query_config() {
   [[ "$output" == *"diag:print runtime and configuration diagnostics"* ]]
   [[ "$output" == *"doctor:check whether a rig can operate"* ]]
   [[ "$output" == *"bootstrap:materialise the bootstrap profile"* ]] || false
-  [[ "$output" == *"export:generate a static public rig"* ]] || false
-  [[ "$output" == *"publish:deploy a static public rig"* ]] || false
+  [[ "$output" == *"export:generate public rig data"* ]] || false
+  [[ "$output" == *"publish:publish public rig data"* ]] || false
   [[ "$output" == *"run:invoke a declared operation"* ]] || false
   [[ "$output" == *"run) _arguments"*"'3:separator:(--)'"* ]] || false
   [[ "$output" == *"'(-V --version)'{-V,--version}"* ]]
@@ -2423,7 +2423,7 @@ write_publication_config() {
     'category = navigation' \
     'purpose = Browse public material' \
     'rationale = Complements Alpha' \
-    'platform = macos' \
+    'platform = linux' \
     '[tool.secret]' \
     'name = Secret Tool' \
     'category = private' \
@@ -2453,7 +2453,7 @@ write_publication_config() {
     'publisher = publisher' >"$CONFIG_HOME/rig.conf"
 }
 
-@test "export writes escaped allow-listed public profile as complete static tree" {
+@test "export writes valid allow-listed versioned public data as complete tree" {
   local destination file_count
   destination=$BATS_TEST_TMPDIR/public-site-$BATS_TEST_NUMBER
   write_publication_config
@@ -2465,17 +2465,34 @@ write_publication_config() {
 
   [ "$status" -eq 0 ]
   [ "$output" = "Exported site to $destination" ]
-  [ -f "$destination/index.html" ]
-  [ -f "$destination/assets/rig.css" ]
+  [ -f "$destination/rig.json" ]
+  [ ! -L "$destination/rig.json" ]
   [ ! -e "$destination/obsolete/stale.txt" ]
   file_count=$(find "$destination" -type f | wc -l | tr -d ' ')
-  [ "$file_count" -eq 2 ]
-  grep -F 'Kris &amp; Rig' "$destination/index.html"
-  grep -F 'Alpha &lt;One&gt;' "$destination/index.html"
-  grep -F 'Find &amp; select' "$destination/index.html"
-  grep -F 'Safer &quot;choice&quot; for public work' "$destination/index.html"
-  grep -F 'Navigation &amp; Search' "$destination/index.html"
-  grep -F 'href="https://example.test/rig/#tool-beta"' "$destination/index.html"
+  [ "$file_count" -eq 1 ]
+  run python3 -c '
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as source:
+    data = json.load(source)
+assert data["format"] == "rig-publication"
+assert data["version"] == 1
+assert data["publication"] == {
+    "id": "site",
+    "title": "Kris & Rig",
+    "canonical_url": "https://example.test/rig/",
+}
+assert data["profile"]["id"] == "public"
+assert data["profile"]["categories"] == [{
+    "id": "navigation",
+    "name": "Navigation & Search",
+    "purpose": "Find <things> safely",
+}]
+assert [tool["id"] for tool in data["profile"]["tools"]] == ["alpha", "beta"]
+assert data["profile"]["tools"][0]["name"] == "Alpha <One>"
+assert data["profile"]["tools"][0]["rationale"] == "Safer \"choice\" for public work"
+assert data["profile"]["tools"][1]["platforms"] == ["linux"]
+' "$destination/rig.json"
+  [ "$status" -eq 0 ]
   ! grep -R -E 'Secret Tool|private-purpose-token|private-rationale-token|provider-manifest-token|provider-argument-token|private-locator-token|binding-argument-token' "$destination"
   [ ! -e "$PUBLICATION_MARKER" ]
 }
@@ -2489,13 +2506,21 @@ write_publication_config() {
     "$RIG" export site --output "$destination"
 
   [ "$status" -eq 0 ]
-  grep -F '<dt>Related</dt>' "$destination/index.html"
-  grep -F '>Beta <span class="identity">(beta)</span></a>' "$destination/index.html"
-  ! grep -F '<dt>Alternatives</dt>' "$destination/index.html"
-  ! grep -F '#tool-secret' "$destination/index.html"
+  run python3 -c '
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as source:
+    tools = {tool["id"]: tool for tool in json.load(source)["profile"]["tools"]}
+assert tools["alpha"]["relationships"]["related"] == ["beta"]
+assert tools["alpha"]["relationships"]["alternatives"] == []
+assert tools["beta"]["relationships"] == {
+    "requires": [], "related": [], "alternatives": []
+}
+' "$destination/rig.json"
+  [ "$status" -eq 0 ]
+  ! grep -F 'secret' "$destination/rig.json"
 }
 
-@test "export is deterministic across equivalent declaration order" {
+@test "export is deterministic across declaration order and active host platform" {
   local second_config first_output second_output
   second_config=$BATS_TEST_TMPDIR/config-reordered-$BATS_TEST_NUMBER
   first_output=$BATS_TEST_TMPDIR/site-first-$BATS_TEST_NUMBER
@@ -2510,13 +2535,13 @@ write_publication_config() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" export site --output "$first_output"
   [ "$status" -eq 0 ]
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$second_config" RIG_PLATFORM=macos \
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$second_config" RIG_PLATFORM=linux \
     "$RIG" export site --output "$second_output"
   [ "$status" -eq 0 ]
   diff -r "$first_output" "$second_output"
 }
 
-@test "export uses root subdomain and subpath base URLs for navigation" {
+@test "export normalizes base URL as canonical publication metadata" {
   local destination
   destination=$BATS_TEST_TMPDIR/url-site-$BATS_TEST_NUMBER
   write_publication_config
@@ -2528,9 +2553,7 @@ write_publication_config() {
     "$RIG" export site --output "$destination"
 
   [ "$status" -eq 0 ]
-  grep -F 'href="https://rig.example.test/assets/rig.css"' "$destination/index.html"
-  grep -F 'href="https://rig.example.test/#catalogue"' "$destination/index.html"
-  grep -F 'href="https://rig.example.test/#tool-beta"' "$destination/index.html"
+  grep -F '"canonical_url": "https://rig.example.test/"' "$destination/rig.json"
 }
 
 @test "export invokes neither publisher provider nor network command" {
@@ -2629,9 +2652,8 @@ write_publish_config() {
     '  stage_name=${stage##*/}' \
     '  mv -- "$root" "$RIG_PUBLISH_SWAP_MOVED"' \
     '  ln -s -- "$RIG_PUBLISH_SWAP_TARGET" "$root"' \
-    '  mkdir -p -- "$RIG_PUBLISH_SWAP_TARGET/$stage_name/assets"' \
-    '  printf victim >"$RIG_PUBLISH_SWAP_TARGET/$stage_name/index.html"' \
-    '  printf victim >"$RIG_PUBLISH_SWAP_TARGET/$stage_name/assets/rig.css"' \
+    '  mkdir -p -- "$RIG_PUBLISH_SWAP_TARGET/$stage_name"' \
+    '  printf victim >"$RIG_PUBLISH_SWAP_TARGET/$stage_name/rig.json"' \
     'fi' \
     'if [ "${RIG_PUBLISH_SIGNAL:-}" = term ]; then kill -TERM "$PPID"; exit 0; fi' \
     '[ -z "${RIG_PUBLISH_STDOUT:-}" ] || printf "%s\n" "$RIG_PUBLISH_STDOUT"' \
@@ -2704,10 +2726,9 @@ write_publish_config() {
     [[ "$output" == *'publisher stderr'* ]] || false
     stage=$(printf '%s\n' "$output" | sed -n 's/^rig: publish failed; retained export: //p')
     [ -d "$stage" ]
-    [ -f "$stage/index.html" ]
-    [ -f "$stage/assets/rig.css" ]
+    [ -f "$stage/rig.json" ]
     file_count=$(find "$stage" -type f | wc -l | tr -d ' ')
-    [ "$file_count" -eq 2 ]
+    [ "$file_count" -eq 1 ]
     [ ! -e "$OTHER_PUBLISH_LOG" ]
     rm -rf -- "$stage"
   done
@@ -2725,8 +2746,7 @@ write_publish_config() {
 
   [ "$status" -eq 143 ]
   stage=$(printf '%s\n' "$output" | sed -n 's/^rig: publish interrupted; retained export: //p')
-  [ -f "$stage/index.html" ]
-  [ -f "$stage/assets/rig.css" ]
+  [ -f "$stage/rig.json" ]
   [ ! -e "$OTHER_PUBLISH_LOG" ]
   rm -rf -- "$stage"
 }
@@ -2738,8 +2758,8 @@ write_publish_config() {
   mkdir -p "$cache/publish"
   root=$(cd "$cache/publish" && pwd -P)
   stage=$root/site.rig-publish.partial
-  mkdir -p "$stage/assets"
-  printf partial >"$stage/index.html"
+  mkdir -p "$stage"
+  printf partial >"$stage/rig.json"
 
   run env RIG_TEST_ROOT="$root" RIG_TEST_STAGE="$stage" /bin/bash -c '
     . "$1"
@@ -2797,10 +2817,8 @@ write_publish_config() {
   stage=${stage%>}
   stage_name=${stage##*/}
   [ -L "$cache_real/publish" ]
-  [ "$(cat "$victim/$stage_name/index.html")" = victim ]
-  [ "$(cat "$victim/$stage_name/assets/rig.css")" = victim ]
-  [ -f "$moved/$stage_name/index.html" ]
-  [ -f "$moved/$stage_name/assets/rig.css" ]
+  [ "$(cat "$victim/$stage_name/rig.json")" = victim ]
+  [ -f "$moved/$stage_name/rig.json" ]
 
   rm -- "$cache_real/publish"
   rm -rf -- "$moved" "$victim"

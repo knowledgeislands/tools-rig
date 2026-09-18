@@ -4,12 +4,12 @@ area: DIST
 title: Publish versioned rig data
 theme: distribution
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 1fa544fe76be91a7420961aca92069b617d0f121
 created_at: 2026-09-18T03:36:25Z
-updated_at: 2026-09-18T04:23:41Z
+updated_at: 2026-09-18T04:38:41Z
 ---
 
 # RIG-DIST-006: Publish versioned rig data
@@ -47,12 +47,12 @@ No receiving-site implementation belongs in this repository. The currently confi
 
 ## Steps
 
-- [ ] Add Bash 3.2-compatible JSON escaping and deterministic rendering for the version-1 public schema.
-- [ ] Resolve publication profiles independently of the active host while retaining declared tool platforms and relationship closure.
-- [ ] Replace export and publish staging with exactly one regular non-symlink `rig.json`; update safe cleanup and interruption handling without recursive deletion.
-- [ ] Update Bats fixtures for byte-stable JSON, schema parsing, platform neutrality, allow-listing, relationship closure, offline export, safe replacement, and publisher lifecycle safety.
-- [ ] Align help, completions, README, manual, changelog, user guide, publication Decision Record, and publishing Specifications with the data-first contract.
-- [ ] Run the full repository gate and record the six-part delivery review packet.
+- [x] Add Bash 3.2-compatible JSON escaping and deterministic rendering for the version-1 public schema.
+- [x] Resolve publication profiles independently of the active host while retaining declared tool platforms and relationship closure.
+- [x] Replace export and publish staging with exactly one regular non-symlink `rig.json`; update safe cleanup and interruption handling without recursive deletion.
+- [x] Update Bats fixtures for byte-stable JSON, schema parsing, platform neutrality, allow-listing, relationship closure, offline export, safe replacement, and publisher lifecycle safety.
+- [x] Align help, completions, README, manual, changelog, user guide, publication Decision Record, and publishing Specifications with the data-first contract.
+- [x] Run the full repository gate and record the six-part delivery review packet.
 
 ## Files touched
 
@@ -62,6 +62,9 @@ No receiving-site implementation belongs in this repository. The currently confi
 - `man/rig.1`
 - `CHANGELOG.md`
 - `docs/decisions/ADR-RIG-004-static-publication-projection.md`
+- `docs/decisions/README.md`
+- `docs/specs/index.md`
+- `docs/specs/portability.md`
 - `docs/specs/publishing.md`
 - `docs/guides/user/README.md`
 - `docs/roadmap/RIG-DIST-006-publish-versioned-rig-data.md`
@@ -103,6 +106,41 @@ Explain how a person selects a public profile, inspects `rig.json`, and hands it
 ### Roadmap
 
 Keep receiving-site renderer and deployment work in that site's canonical workflow. Link future receiving work to this schema rather than duplicating website delivery here.
+
+## Review
+
+### Delivered
+
+Rig now exports and publishes one deterministic `rig-publication` version 1 JSON artifact containing only the explicitly selected public catalogue projection.
+
+### Summary of changes
+
+- Replaced generated HTML and CSS with one regular, non-symlink `rig.json` file for both offline export and trusted publisher staging.
+- Added Bash 3.2-compatible JSON escaping, bytewise category, tool, platform, and relationship ordering, platform-neutral publication resolution, and relationship closure.
+- Preserved complete-tree replacement, offline export, fixed publisher handoff, native result propagation, interruption retention, and fail-closed exact-file cleanup.
+- Aligned help, Zsh completion descriptions, README, manual, changelog, user guide, Decision Record, Specifications, and documentation indexes.
+
+### Verification
+
+- `bash -n bin/rig install.sh` passed.
+- `shellcheck bin/rig install.sh` passed.
+- `bats tests/` passed all 121 tests under macOS Bash 3.2.
+- `mandoc -T lint man/rig.1` passed, and the rendered public-data and publication sections were inspected.
+- `ki repo audit --repo .` and focused authoring, Decision Record, Specification, and tool-repository audits passed.
+- `git diff --check` passed. Isolated fixtures parsed JSON, compared byte output across declaration order and host platform, and exercised disclosure and publisher safety boundaries.
+
+### Outstanding concerns
+
+- The receiving website still needs to consume and render this documented schema through its own canonical work record; that external presentation work does not block Rig's data projection.
+- No release, version bump, Homebrew formula update, push, live private-catalogue export, or external deployment is included in this delivery.
+
+### Post-change review
+
+The change was compared with immutable baseline `1fa544fe76be91a7420961aca92069b617d0f121`. It removes presentation authority from Rig without widening disclosure or publisher authority. The executable retains its Bash-only runtime, XDG contract, command syntax, publication configuration, and directory-handoff ABI. Publisher cleanup remains non-recursive and permits only the declared `rig.json` artifact.
+
+### Mini recap
+
+RIG-DIST-006 is implemented and verified: Rig owns deterministic public data, while the receiving website owns presentation and deployment.
 
 ## Discussion
 

@@ -11,13 +11,13 @@ Profiles select catalogue subsets for machines, roles, or contexts. Rig can comp
 - **Composable profiles** — named subsets describe machines, roles, contexts, and a deliberately public view.
 - **Provider authority** — Homebrew, uv, chezmoi, downloads, custom executables, and publishers retain their native manifests, resolution, execution, deployment, and state.
 - **Expected versus observed** — Rig reports whether selected declarations are present, missing, drifted, unavailable, or unknown.
-- **Safe publication** — a static public projection excludes provider configuration, private profiles, and observed machine state.
+- **Safe publication** — versioned public data excludes provider configuration, private profiles, and observed machine state.
 - **Shell-only core** — the installed executable requires Bash and no language runtime or package-manager dependency.
 - **XDG-aligned state** — configuration, data, state, and cache use XDG Base Directory locations and explicit Rig overrides.
 
 ## Product model
 
-The catalogue is Rig's source of meaning. Profiles resolve the catalogue for a context. Providers are the manager-of-managers mechanism that observes or materialises selected tools. State compares resolved intent with provider evidence. Declared operations attach host-specific actions to tools without turning them into permanent command families. Publication projects only an explicitly selected public profile into a reviewable static artifact before a trusted publisher deploys it.
+The catalogue is Rig's source of meaning. Profiles resolve the catalogue for a context. Providers are the manager-of-managers mechanism that observes or materialises selected tools. State compares resolved intent with provider evidence. Declared operations attach host-specific actions to tools without turning them into permanent command families. Publication projects only an explicitly selected public profile into reviewable, versioned data before a trusted publisher deploys it.
 
 Personal catalogue contents, operations, and machine-specific paths belong in private Rig configuration, not in this executable. Provider-native manifests such as a Brewfile remain authoritative for their own systems.
 
@@ -93,7 +93,7 @@ For a custom provider, omit `executable` to use `${RIG_DATA_HOME:-${XDG_DATA_HOM
 
 `[operation.TOOL.NAME]` declarations bind one tool to a custom provider's exact capability. Their mode is `observe` or `mutate`; repeated `argument` values are fixed configuration, while repeated `allow-argument` values are the only caller arguments accepted after `--`.
 
-`[publication.ID]` names one public profile and one publisher. Offline `export` never invokes that provider. Explicit `publish` requires its `custom` adapter to declare the exact `publish` capability and passes one isolated static tree through the versioned provider protocol.
+`[publication.ID]` names one public profile and one publisher. Offline `export` never invokes that provider. Explicit `publish` requires its `custom` adapter to declare the exact `publish` capability and passes one isolated `rig.json` tree through the versioned provider protocol.
 
 See `man rig` for the exact native command matrix and custom-provider protocol.
 
@@ -109,8 +109,8 @@ See `man rig` for the exact native command matrix and custom-provider protocol.
 - `rig apply [--profile NAME] [--dry-run]` materialises a resolved profile; dry-run preflights and prints planned work without invoking providers.
 - `rig bootstrap [--profile NAME] [--dry-run]` materialises the configured bootstrap profile through the same apply plan; an explicit profile wins, and older configurations fall back to `default-profile`.
 - `rig run TOOL OPERATION [-- ARGUMENT...]` invokes one declared custom-provider operation with bounded literal arguments.
-- `rig export PUBLICATION --output DIRECTORY` generates a deterministic static site from the publication's explicitly selected public profile.
-- `rig publish PUBLICATION` renders an isolated static export and hands it to the publication's one trusted custom publisher.
+- `rig export PUBLICATION --output DIRECTORY` generates deterministic, versioned `rig.json` from the publication's explicitly selected public profile.
+- `rig publish PUBLICATION` renders an isolated public-data export and hands it to the publication's one trusted custom publisher.
 - `rig diag` reports the effective Rig runtime, active platform, XDG paths, and configuration discovery and validity.
 - `rig completion bash|zsh` prints shell completion source; `-h` or `--help` prints command usage.
 - `rig help [-h|--help]`, `rig --help`, and `rig --version` provide command and version information.
@@ -121,7 +121,7 @@ Use `diag` to inspect Rig's runtime, paths, and configuration discovery without 
 
 ## Status
 
-Rig is a pre-v1 tool under active development. Catalogue parsing, validation, profile resolution, provider-binding resolution, read-only queries, operational health checks, built-in and custom-provider observation, dependency-ordered application and bootstrap, declared operations, integrity-checked direct downloads, deterministic static public export, and trusted publication dispatch are implemented. Private cutover and the Homebrew formula remain tracked work in the [roadmap](ROADMAP.md).
+Rig is a pre-v1 tool under active development. Catalogue parsing, validation, profile resolution, provider-binding resolution, read-only queries, operational health checks, built-in and custom-provider observation, dependency-ordered application and bootstrap, declared operations, integrity-checked direct downloads, deterministic versioned public-data export, and trusted publication dispatch are implemented. Private cutover and the Homebrew formula remain tracked work in the [roadmap](ROADMAP.md).
 
 ## Documentation
 

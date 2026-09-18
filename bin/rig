@@ -41,6 +41,7 @@ RIG_INVOKED_PATH=
 RIG_PUBLISH_STAGE=
 RIG_PUBLISH_ROOT=
 RIG_PUBLISH_COMPLETE=0
+RIG_PUBLICATION_PLATFORM_NEUTRAL=0
 
 print_help() {
   printf '%s\n' \
@@ -63,8 +64,8 @@ print_help() {
     '                                         Materialise the bootstrap profile.' \
     '  run TOOL OPERATION [-- ARGUMENT...]    Invoke a declared operation.' \
     '  export PUBLICATION --output DIRECTORY' \
-    '                                     Generate a static public rig.' \
-    '  publish PUBLICATION                 Deploy a static public rig.' \
+    '                                     Generate public rig data.' \
+    '  publish PUBLICATION                 Publish public rig data.' \
     '  diag                  Print runtime and configuration diagnostics.' \
     '  completion bash|zsh   Print shell completion source.' \
     '  help                  Show this help.'
@@ -137,8 +138,8 @@ print_zsh_completion() {
     "    'apply:materialise a resolved profile'" \
     "    'bootstrap:materialise the bootstrap profile'" \
     "    'run:invoke a declared operation'" \
-    "    'export:generate a static public rig'" \
-    "    'publish:deploy a static public rig'" \
+    "    'export:generate public rig data'" \
+    "    'publish:publish public rig data'" \
     "    'diag:print runtime and configuration diagnostics'" \
     "    'completion:print shell completion source'" \
     "    'help:show help'" \
@@ -156,7 +157,7 @@ print_zsh_completion() {
     "        apply) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \
     "        bootstrap) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \
     "        run) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:tool name:' '2:operation name:' '3:separator:(--)' '*::operation argument:' ;;" \
-    "        export) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' '--output[write complete static tree]:directory:_directories' ;;" \
+    "        export) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' '--output[write complete public data tree]:directory:_directories' ;;" \
     "        publish) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' ;;" \
     "        diag) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
     "        completion) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:shell:(bash zsh)' ;;" \
@@ -198,6 +199,7 @@ rig_model_reset() {
   RIG_COUNT=0
   RIG_RESOLVED_PROFILE=
   RIG_RESOLVED_PLATFORM=
+  RIG_PUBLICATION_PLATFORM_NEUTRAL=0
 }
 
 rig_trim() {
@@ -820,6 +822,7 @@ rig_load_config() {
 rig_tool_supports_platform() {
   local tool platform section_index field_index field_end
 
+  [ "$RIG_PUBLICATION_PLATFORM_NEUTRAL" -ne 1 ] || return 0
   tool=$1
   platform=$2
   rig_section_index "tool.$tool" || return 1
@@ -997,6 +1000,21 @@ rig_resolve_profile() {
   rig_sort_selected_tools
   RIG_RESOLVED_PROFILE=$profile
   RIG_RESOLVED_PLATFORM=$platform
+}
+
+rig_resolve_publication_profile() {
+  local profile platform exit_code
+
+  profile=$1
+  platform=$2
+  RIG_PUBLICATION_PLATFORM_NEUTRAL=1
+  if rig_resolve_profile "$profile" "$platform"; then
+    exit_code=0
+  else
+    exit_code=$?
+  fi
+  RIG_PUBLICATION_PLATFORM_NEUTRAL=0
+  return "$exit_code"
 }
 
 rig_resolve_bindings() {
@@ -2968,8 +2986,9 @@ rig_command_explain() {
   printf 'Binding: %s\n' "$binding"
 }
 
-rig_html_escape() {
-  local value escaped index character
+rig_json_escape() {
+  local value escaped index character code
+  local LC_ALL=C
 
   value=$1
   escaped=
@@ -2977,12 +2996,20 @@ rig_html_escape() {
   while [ "$index" -lt "${#value}" ]; do
     character=${value:$index:1}
     case "$character" in
-      '&') escaped=$escaped'&amp;' ;;
-      '<') escaped=$escaped'&lt;' ;;
-      '>') escaped=$escaped'&gt;' ;;
-      '"') escaped=$escaped'&quot;' ;;
-      "'") escaped=$escaped'&#39;' ;;
-      *) escaped=$escaped$character ;;
+      '"') escaped="${escaped}\\\"" ;;
+      \\) escaped="${escaped}\\\\" ;;
+      $'\b') escaped=$escaped'\b' ;;
+      $'\f') escaped=$escaped'\f' ;;
+      $'\n') escaped=$escaped'\n' ;;
+      $'\r') escaped=$escaped'\r' ;;
+      $'\t') escaped=$escaped'\t' ;;
+      *)
+        printf -v code '%d' "'$character"
+        if [ "$code" -lt 32 ]; then
+          printf -v character '\\u%04x' "$code"
+        fi
+        escaped=$escaped$character
+        ;;
     esac
     index=$((index + 1))
   done
@@ -3052,169 +3079,129 @@ rig_publication_base_url() {
   RIG_VALUE=$base_url
 }
 
-rig_render_public_relationship() {
-  local tool field label index target printed escaped_target escaped_name escaped_url
-  local -a targets
+rig_render_json_values() {
+  local section_name field selected_only index value printed
 
-  tool=$1
+  section_name=$1
   field=$2
-  label=$3
-  rig_collect_field_values "tool.$tool" "$field" || return
-  targets=()
+  selected_only=$3
+  rig_collect_field_values "$section_name" "$field" || return
+  printf '['
   index=0
+  printed=0
   while [ "$index" -lt "${#RIG_QUERY_ITEMS[@]}" ]; do
-    target=${RIG_QUERY_ITEMS[$index]}
-    if rig_array_contains "$target" "${RIG_SELECTED_TOOLS[@]}"; then
-      targets[${#targets[@]}]=$target
+    value=${RIG_QUERY_ITEMS[$index]}
+    if [ "$selected_only" = no ] ||
+      rig_array_contains "$value" "${RIG_SELECTED_TOOLS[@]}"; then
+      [ "$printed" -eq 0 ] || printf ', '
+      rig_json_escape "$value"
+      printf '"%s"' "$RIG_VALUE"
+      printed=$((printed + 1))
     fi
     index=$((index + 1))
   done
+  printf ']'
+}
 
-  [ "${#targets[@]}" -gt 0 ] || return 0
-  rig_html_escape "$label"
-  printf '          <dt>%s</dt>\n          <dd>' "$RIG_VALUE"
-  index=0
-  printed=0
-  while [ "$index" -lt "${#targets[@]}" ]; do
-    target=${targets[$index]}
-    rig_get_value "tool.$target" name || return
-    rig_html_escape "$RIG_VALUE"
-    escaped_name=$RIG_VALUE
-    rig_html_escape "$target"
-    escaped_target=$RIG_VALUE
-    rig_html_escape "$RIG_PUBLICATION_BASE_URL#tool-$target"
-    escaped_url=$RIG_VALUE
-    [ "$printed" -eq 0 ] || printf ', '
-    printf '<a href="%s">%s <span class="identity">(%s)</span></a>' \
-      "$escaped_url" "$escaped_name" "$escaped_target"
-    printed=$((printed + 1))
-    index=$((index + 1))
-  done
-  printf '</dd>\n'
+rig_render_public_category() {
+  local category name purpose
+
+  category=$1
+  rig_get_value "category.$category" name || return
+  name=$RIG_VALUE
+  rig_get_value "category.$category" purpose || return
+  purpose=$RIG_VALUE
+  rig_json_escape "$category"
+  printf '        {"id": "%s", ' "$RIG_VALUE"
+  rig_json_escape "$name"
+  printf '"name": "%s", ' "$RIG_VALUE"
+  rig_json_escape "$purpose"
+  printf '"purpose": "%s"}' "$RIG_VALUE"
 }
 
 rig_render_public_tool() {
-  local tool name category category_name category_purpose purpose rationale platforms
-  local escaped_tool escaped_name escaped_category escaped_category_name
-  local escaped_category_purpose escaped_purpose escaped_rationale escaped_platforms
+  local tool name category purpose rationale
 
   tool=$1
   rig_get_value "tool.$tool" name || return
   name=$RIG_VALUE
   rig_get_value "tool.$tool" category || return
   category=$RIG_VALUE
-  rig_get_value "category.$category" name || return
-  category_name=$RIG_VALUE
-  rig_get_value "category.$category" purpose || return
-  category_purpose=$RIG_VALUE
   rig_get_value "tool.$tool" purpose || return
   purpose=$RIG_VALUE
   rig_get_value "tool.$tool" rationale || return
   rationale=$RIG_VALUE
-  rig_collect_field_values "tool.$tool" platform || return
-  rig_join_query_items
-  platforms=$RIG_VALUE
 
-  rig_html_escape "$tool"
-  escaped_tool=$RIG_VALUE
-  rig_html_escape "$name"
-  escaped_name=$RIG_VALUE
-  rig_html_escape "$category"
-  escaped_category=$RIG_VALUE
-  rig_html_escape "$category_name"
-  escaped_category_name=$RIG_VALUE
-  rig_html_escape "$category_purpose"
-  escaped_category_purpose=$RIG_VALUE
-  rig_html_escape "$purpose"
-  escaped_purpose=$RIG_VALUE
-  rig_html_escape "$rationale"
-  escaped_rationale=$RIG_VALUE
-  rig_html_escape "$platforms"
-  escaped_platforms=$RIG_VALUE
-
-  printf '      <article class="tool" id="tool-%s">\n' "$escaped_tool"
-  printf '        <p class="category">%s</p>\n' "$escaped_category_name"
-  printf '        <h2>%s</h2>\n' "$escaped_name"
-  printf '        <p class="identity">%s</p>\n' "$escaped_tool"
-  printf '        <p class="purpose">%s</p>\n' "$escaped_purpose"
-  printf '        <p>%s</p>\n' "$escaped_rationale"
-  printf '        <dl>\n'
-  printf '          <dt>Category</dt>\n'
-  printf '          <dd>%s <span class="identity">(%s)</span> — %s</dd>\n' \
-    "$escaped_category_name" "$escaped_category" "$escaped_category_purpose"
-  printf '          <dt>Platforms</dt>\n          <dd>%s</dd>\n' "$escaped_platforms"
-  rig_render_public_relationship "$tool" requires Requires || return
-  rig_render_public_relationship "$tool" related Related || return
-  rig_render_public_relationship "$tool" alternative Alternatives || return
-  printf '        </dl>\n'
-  printf '      </article>\n'
+  rig_json_escape "$tool"
+  printf '        {\n          "id": "%s",\n' "$RIG_VALUE"
+  rig_json_escape "$name"
+  printf '          "name": "%s",\n' "$RIG_VALUE"
+  rig_json_escape "$category"
+  printf '          "category": "%s",\n' "$RIG_VALUE"
+  rig_json_escape "$purpose"
+  printf '          "purpose": "%s",\n' "$RIG_VALUE"
+  rig_json_escape "$rationale"
+  printf '          "rationale": "%s",\n' "$RIG_VALUE"
+  printf '          "platforms": '
+  rig_render_json_values "tool.$tool" platform no || return
+  printf ',\n          "relationships": {\n'
+  printf '            "requires": '
+  rig_render_json_values "tool.$tool" requires yes || return
+  printf ',\n            "related": '
+  rig_render_json_values "tool.$tool" related yes || return
+  printf ',\n            "alternatives": '
+  rig_render_json_values "tool.$tool" alternative yes || return
+  printf '\n          }\n        }'
 }
 
-rig_render_publication_html() {
-  local title profile platform tool index escaped_title escaped_profile escaped_platform
-  local escaped_base_url
+rig_render_publication_json() {
+  local publication title profile base_url tool category index
+  local -a categories
 
-  title=$1
-  profile=$2
-  platform=$3
-  rig_html_escape "$title"
-  escaped_title=$RIG_VALUE
-  rig_html_escape "$profile"
-  escaped_profile=$RIG_VALUE
-  rig_html_escape "$platform"
-  escaped_platform=$RIG_VALUE
-  rig_html_escape "$RIG_PUBLICATION_BASE_URL"
-  escaped_base_url=$RIG_VALUE
+  publication=$1
+  title=$2
+  profile=$3
+  base_url=$4
 
-  printf '%s\n' '<!doctype html>' '<html lang="en">' '<head>'
-  printf '  <meta charset="utf-8">\n'
-  printf '  <meta name="viewport" content="width=device-width, initial-scale=1">\n'
-  printf '  <title>%s</title>\n' "$escaped_title"
-  printf '  <link rel="canonical" href="%s">\n' "$escaped_base_url"
-  printf '  <link rel="stylesheet" href="%sassets/rig.css">\n' "$escaped_base_url"
-  printf '%s\n' '</head>' '<body>' '  <header class="masthead">'
-  printf '    <p class="eyebrow">Public rig</p>\n'
-  printf '    <h1>%s</h1>\n' "$escaped_title"
-  printf '    <p class="summary">Profile <strong>%s</strong> · Platform <strong>%s</strong> · %s tools</p>\n' \
-    "$escaped_profile" "$escaped_platform" "${#RIG_SELECTED_TOOLS[@]}"
-  printf '    <nav><a href="%s#catalogue">Catalogue</a></nav>\n' "$escaped_base_url"
-  printf '%s\n' '  </header>' '  <main id="catalogue" class="catalogue">'
+  categories=()
   index=0
   while [ "$index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
     tool=${RIG_SELECTED_TOOLS[$index]}
-    rig_render_public_tool "$tool" || return
+    rig_get_value "tool.$tool" category || return
+    category=$RIG_VALUE
+    if [ "${#categories[@]}" -eq 0 ] ||
+      ! rig_array_contains "$category" "${categories[@]}"; then
+      categories[${#categories[@]}]=$category
+    fi
     index=$((index + 1))
   done
-  printf '%s\n' '  </main>' '  <footer>Generated by Rig from an explicitly public profile.</footer>' '</body>' '</html>'
-}
+  RIG_QUERY_ITEMS=("${categories[@]}")
+  rig_sort_query_items
+  categories=("${RIG_QUERY_ITEMS[@]}")
 
-rig_render_publication_css() {
-  printf '%s\n' \
-    ':root {' \
-    '  color-scheme: light dark;' \
-    '  font-family: ui-sans-serif, system-ui, sans-serif;' \
-    '  line-height: 1.5;' \
-    '  --accent: #7357d9;' \
-    '  --surface: color-mix(in srgb, Canvas 94%, var(--accent));' \
-    '  --border: color-mix(in srgb, CanvasText 20%, transparent);' \
-    '}' \
-    '* { box-sizing: border-box; }' \
-    'body { margin: 0; background: Canvas; color: CanvasText; }' \
-    'a { color: var(--accent); }' \
-    '.masthead, .catalogue, footer { width: min(72rem, calc(100% - 2rem)); margin-inline: auto; }' \
-    '.masthead { padding-block: 4rem 2rem; }' \
-    '.eyebrow, .category, .identity { font-family: ui-monospace, monospace; }' \
-    '.eyebrow, .category { color: var(--accent); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }' \
-    'h1 { font-size: clamp(2.4rem, 8vw, 5.5rem); line-height: 1; margin: .25rem 0 1rem; }' \
-    '.summary { font-size: 1.05rem; }' \
-    '.catalogue { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: 1rem; }' \
-    '.tool { border: 1px solid var(--border); border-radius: .75rem; background: var(--surface); padding: 1.25rem; }' \
-    '.tool h2 { margin: .2rem 0 0; }' \
-    '.tool .identity { margin-top: 0; opacity: .72; }' \
-    '.purpose { font-size: 1.15rem; font-weight: 650; }' \
-    'dt { font-weight: 700; margin-top: .65rem; }' \
-    'dd { margin-left: 0; }' \
-    'footer { padding-block: 2rem 4rem; opacity: .72; }'
+  printf '{\n  "format": "rig-publication",\n  "version": 1,\n  "publication": {\n'
+  rig_json_escape "$publication"
+  printf '    "id": "%s",\n' "$RIG_VALUE"
+  rig_json_escape "$title"
+  printf '    "title": "%s",\n' "$RIG_VALUE"
+  rig_json_escape "$base_url"
+  printf '    "canonical_url": "%s"\n  },\n  "profile": {\n' "$RIG_VALUE"
+  rig_json_escape "$profile"
+  printf '    "id": "%s",\n    "categories": [\n' "$RIG_VALUE"
+  index=0
+  while [ "$index" -lt "${#categories[@]}" ]; do
+    [ "$index" -eq 0 ] || printf ',\n'
+    rig_render_public_category "${categories[$index]}" || return
+    index=$((index + 1))
+  done
+  printf '\n    ],\n    "tools": [\n'
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
+    [ "$index" -eq 0 ] || printf ',\n'
+    rig_render_public_tool "${RIG_SELECTED_TOOLS[$index]}" || return
+    index=$((index + 1))
+  done
+  printf '\n    ]\n  }\n}\n'
 }
 
 rig_export_cleanup() {
@@ -3263,10 +3250,9 @@ rig_replace_export_tree() {
   mkdir -- "$temporary" || rig_fail "cannot create export staging directory: $temporary" || return
   RIG_EXPORT_TEMP=$temporary
   trap rig_export_cleanup EXIT HUP INT TERM
-  mkdir -- "$temporary/assets" || return
-  rig_render_publication_html "$RIG_EXPORT_TITLE" "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM" \
-    >"$temporary/index.html" || return
-  rig_render_publication_css >"$temporary/assets/rig.css" || return
+  rig_render_publication_json \
+    "$RIG_EXPORT_PUBLICATION" "$RIG_EXPORT_TITLE" "$RIG_RESOLVED_PROFILE" "$RIG_PUBLICATION_BASE_URL" \
+    >"$temporary/rig.json" || return
 
   [ ! -L "$target" ] || rig_fail "export output became a symlink: $target" || return
   if [ -e "$target" ]; then
@@ -3321,7 +3307,7 @@ rig_command_export() {
   RIG_PUBLICATION_BASE_URL=$RIG_VALUE
   rig_current_platform || return
   platform=$RIG_VALUE
-  rig_resolve_profile "$profile" "$platform" || return
+  rig_resolve_publication_profile "$profile" "$platform" || return
   RIG_EXPORT_PUBLICATION=$publication
   RIG_EXPORT_TITLE=$title
   (
@@ -3352,29 +3338,16 @@ rig_cleanup_publish_stage() {
     [ -d "$stage_name" ] || exit 2
     cd "$stage_name" || exit 2
     [ "$(pwd -P)" = "$RIG_PUBLISH_STAGE" ] || exit 2
-    [ ! -L index.html ] || exit 2
-    [ ! -e index.html ] || [ -f index.html ] || exit 2
-    [ ! -L assets ] || exit 2
-    [ ! -e assets ] || [ -d assets ] || exit 2
-    [ ! -L assets/rig.css ] || exit 2
-    [ ! -e assets/rig.css ] || [ -f assets/rig.css ] || exit 2
+    [ ! -L rig.json ] || exit 2
+    [ ! -e rig.json ] || [ -f rig.json ] || exit 2
     for entry in ./* ./.[!.]* ./..?*; do
       [ -e "$entry" ] || [ -L "$entry" ] || continue
       case "$entry" in
-        ./index.html|./assets) ;;
+        ./rig.json) ;;
         *) exit 2 ;;
       esac
     done
-    for entry in assets/* assets/.[!.]* assets/..?*; do
-      [ -e "$entry" ] || [ -L "$entry" ] || continue
-      case "$entry" in
-        assets/rig.css) ;;
-        *) exit 2 ;;
-      esac
-    done
-    [ ! -e index.html ] || rm -f -- index.html || exit 2
-    [ ! -e assets/rig.css ] || rm -f -- assets/rig.css || exit 2
-    [ ! -d assets ] || rmdir -- assets || exit 2
+    [ ! -e rig.json ] || rm -f -- rig.json || exit 2
     cd .. || exit 2
     rmdir -- "$stage_name" || exit 2
   ); then
@@ -3421,25 +3394,19 @@ rig_prepare_publish_stage() {
     stage=$RIG_PUBLISH_ROOT/$publication.rig-publish.$suffix
   done
   RIG_PUBLISH_STAGE=$stage
-  if ! mkdir -- "$stage" || ! mkdir -- "$stage/assets"; then
+  if ! mkdir -- "$stage"; then
     rig_cleanup_publish_stage || true
     rig_fail "cannot create publication staging directory: $stage" || return
     return 2
   fi
-  if ! rig_render_publication_html \
-    "$RIG_EXPORT_TITLE" "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM" \
-    >"$stage/index.html"; then
+  if ! rig_render_publication_json \
+    "$publication" "$RIG_EXPORT_TITLE" "$RIG_RESOLVED_PROFILE" "$RIG_PUBLICATION_BASE_URL" \
+    >"$stage/rig.json"; then
     rig_cleanup_publish_stage || true
-    rig_fail "cannot render publication document: $stage/index.html" || return
+    rig_fail "cannot render publication data: $stage/rig.json" || return
     return 2
   fi
-  if ! rig_render_publication_css >"$stage/assets/rig.css"; then
-    rig_cleanup_publish_stage || true
-    rig_fail "cannot render publication stylesheet: $stage/assets/rig.css" || return
-    return 2
-  fi
-  if [ ! -f "$stage/index.html" ] || [ -L "$stage/index.html" ] ||
-    [ ! -f "$stage/assets/rig.css" ] || [ -L "$stage/assets/rig.css" ]; then
+  if [ ! -f "$stage/rig.json" ] || [ -L "$stage/rig.json" ]; then
     rig_cleanup_publish_stage || true
     rig_fail "publication export is incomplete: $stage" || return
   fi
@@ -3514,7 +3481,7 @@ rig_command_publish() {
 
     rig_current_platform || return
     platform=$RIG_VALUE
-    rig_resolve_profile "$profile" "$platform" || return
+    rig_resolve_publication_profile "$profile" "$platform" || return
     RIG_EXPORT_PUBLICATION=$publication
     RIG_EXPORT_TITLE=$title
     umask 077

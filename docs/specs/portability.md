@@ -6,7 +6,7 @@ This area of the [Rig Specifications](index.md) defines the installed runtime an
 
 ### RIG-PORT-001 — Shell-only core
 
-The installed Rig executable MUST require only Bash 3.2 or later for its own command parsing, path resolution, catalogue and profile resolution, provider dispatch, and static export.
+The installed Rig executable MUST require only Bash 3.2 or later for its own command parsing, path resolution, catalogue and profile resolution, provider dispatch, and public-data export.
 
 _Conformance:_ conforming
 
