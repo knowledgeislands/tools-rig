@@ -3,46 +3,44 @@ id: RIG-CORE-006
 area: CORE
 title: Author configuration directly
 theme: orchestration
-horizon: next
-status: draft
+horizon: now
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-17T00:00:00Z
-updated_at: 2026-09-17T00:00:00Z
+updated_at: 2026-09-18T02:36:43Z
 ---
 
-# RIG-CORE-006: Author Configuration Directly
+# RIG-CORE-006: Author configuration directly
 
 ## Goal
 
-A person can author and read Rig's statement of intent directly, as a set of files Rig owns, without a templating layer standing between the source and the loaded configuration.
+Let a person author and read Rig's declaration of intent directly in files Rig owns, without requiring a templating layer to remain the source of the loaded configuration.
 
 ## Context
 
-Rig loads one `rig.conf`. Its first real consumer is a chezmoi source repository, which does not author that file: it models the workstation in `.chezmoidata/software.yaml` and renders `rig.conf` from a template. That layering has two costs the consumer has now hit.
+Rig currently requires `${RIG_CONFIG_HOME}/rig.conf` and then loads optional `${RIG_CONFIG_HOME}/conf.d/*.conf` fragments. Its first real consumer, the chezmoi source repository, still models the workstation in `.chezmoidata/software.yaml` and renders the loaded configuration from templates. That layering is now a direct cost: checked-in source is not itself the machine's intended rig even though Rig's schema, section model, and fail-closed validation already provide the model.
 
-The model only exists after a build step, so the checked-in source cannot be read to understand what the machine is meant to be. And it puts a second modelling layer in front of Rig, when Rig's configuration format — with its schema, section model, and fail-closed validation — is already a model.
-
-A single file is also the wrong shape at real size. The consumer's rendered configuration is roughly ninety sections across eighty-one tools, their bindings, providers, profiles, and operations. Nothing outside this repository depends on the file being singular; that is a decision still open to us.
-
-Provider discovery pushes the same problem outward. Because `executable` takes a path, the consumer must place provider executables somewhere and name that path in configuration; today they sit in `~/bin`, a user command surface, even though they are never invoked by hand.
+Fragments solve the physical size problem for the roughly ninety-section private catalogue, but the mandatory root file still prevents a directory of directly authored declarations from being the complete configuration. Provider discovery pushes the same problem outward. Because every custom provider requires an `executable`, consumers must choose and render a path even for private Rig-only providers that could live in a conventional application data directory.
 
 ## Boundary
 
-This item covers where Rig reads configuration from and how providers are located. It does not change the section model, field semantics, or validation rules; it does not add templating, includes with logic, or any generation step inside Rig; and it does not migrate the consumer, which is that repository's own work.
+This item covers where Rig reads configuration and how omitted custom-provider executables resolve. It does not change catalogue section meaning, add variables or executable includes, introduce a generation step inside Rig, migrate the private consumer, or apply changes to another repository.
 
 ## Current state
 
-`rig.conf` is a single file at a single path. `provider.*` sections name provider executables by path. The consumer renders both from chezmoi templates.
+Root-file and deterministic bytewise `conf.d/*.conf` loading are already accepted in ADR-RIG-003, implemented by `rig_load_config`, specified by RIG-CONF-001 and RIG-CONF-003, and covered by Bats. The root file remains mandatory and must supply the `[rig]` section. A custom provider still requires an explicit executable command or path; Rig defines no `${RIG_DATA_HOME}/providers` convention. The private consumer migration remains separate repository-owned work.
 
 ## Steps
 
-- [ ] Load configuration from a directory of plain files as well as a single file, with a defined and stable ordering, so a large catalogue can be split along its natural seams.
-- [ ] Define the precedence between a single-file and a directory configuration, and fail closed rather than merging ambiguously when both are present.
-- [ ] Give Rig a default provider directory under its XDG data location, so a provider can be declared by name and a consumer need not choose a filesystem location or write an absolute path.
-- [ ] Keep an explicit `executable` path working for providers outside that directory.
-- [ ] Confirm a directory configuration is validated exactly as a single file is, including duplicate section detection across files.
+- [ ] Amend the configuration decision and specification so `rig.conf` is optional when at least one regular `conf.d/*.conf` fragment exists; retain root-first then bytewise-fragment ordering when the root is present, and fail when no configuration source exists.
+- [ ] Load and validate fragment-only configuration through the existing parser, requiring exactly one `[rig]` section across all sources and preserving duplicate section, duplicate scalar, unknown field, and reference failures across file boundaries.
+- [ ] Make `rig diag` describe an absent optional root and the effective fragment count without treating valid fragment-only configuration as missing.
+- [ ] Define `${RIG_DATA_HOME}/providers/<provider-id>` as the default executable for a custom provider that omits `executable`, while retaining explicit command names and paths unchanged when `executable` is declared.
+- [ ] Validate and invoke the default provider through the existing custom-provider trust and capability boundary; do not copy, generate, discover recursively, or execute undeclared provider files.
+- [ ] Add focused Bats coverage for fragment-only loading, mixed root-plus-fragment ordering, no-source failure, cross-file duplicates, default provider resolution, explicit executable override, unavailable default provider, and XDG/Rig data-home overrides.
+- [ ] Align README, `rig(1)`, changelog, user guidance, relevant Decision Records, and Specifications with the direct-authoring and provider-directory contracts.
 
 ## Files touched
 
@@ -51,42 +49,59 @@ This item covers where Rig reads configuration from and how providers are locate
 - `man/rig.1`
 - `README.md`
 - `CHANGELOG.md`
+- `docs/decisions/ADR-RIG-002-xdg-directory-contract.md`
+- `docs/decisions/ADR-RIG-003-declarative-configuration-grammar.md`
+- `docs/decisions/ADR-RIG-005-provider-execution-contract.md`
+- `docs/specs/configuration.md`
+- `docs/specs/orchestration.md`
+- `docs/guides/user/README.md`
 
 ## Verify
 
 - `bats tests/`
-- `shellcheck bin/rig`
+- `shellcheck bin/rig install.sh`
+- `bash -n bin/rig install.sh`
 - `mandoc -T lint man/rig.1`
-- A configuration split across a directory loads identically to the equivalent single file, including error behaviour on a duplicate section.
+- `ki repo audit --repo .`
+- A fragment-only configuration loads identically to an equivalent root-plus-fragment configuration; ordering remains locale-independent and cross-file duplicates fail before provider invocation.
+- A custom provider without `executable` resolves only its exact `${RIG_DATA_HOME}/providers/<provider-id>` path, while an explicit executable preserves existing command and path behaviour.
 
 ## Dependencies / blocks
 
-Independent of RIG-CORE-005, though both must land before the consumer can drop its templating layer.
+This item is independent of RIG-CORE-005, though both should land before the private consumer can drop its templating layer. Both touch `bin/rig`, `tests/rig.bats`, and `CHANGELOG.md`, so implementation should serialize their commits rather than treating them as parallel file lanes.
 
 ## Documentation impact
 
 ### Decision Records
 
-Expect one. Where configuration is read from, and whether Rig owns a provider location, are contract decisions rather than implementation details. Consolidate into an existing configuration or XDG record rather than adding a third alongside them.
+Amend ADR-RIG-002 and ADR-RIG-003 for the provider data directory and optional root source, and ADR-RIG-005 for omitted-executable resolution. Do not add a new record for consequences already owned by those decisions.
 
 ### Specifications
 
-Update the configuration loading contract to cover directory sources, ordering, and precedence.
+Update configuration loading and provider execution contracts for fragment-only sources, root-plus-fragment ordering, exact validation, the default provider path, and explicit override behaviour.
 
 ### Guides
 
-Show authoring a split configuration, and declaring a provider by name.
+Show how to author split configuration directly, choose a root-plus-fragment or fragment-only layout, place a Rig-only provider, and retain an explicit external executable.
 
 ### Roadmap
 
-None.
+The private chezmoi consumer migration remains separate follow-up work after this capability lands; do not edit or apply that repository within this item.
 
 ## Discussion
 
 ### Authoring, not generating
 
-The point is that the loaded configuration is the authored configuration. Adding includes, variables, or conditionals inside Rig would recreate the templating layer this is meant to remove, one level down.
+The point is that loaded configuration is authored configuration. Adding includes, variables, or conditionals inside Rig would recreate the templating layer this item is intended to remove, one level down.
 
-### The manifest stays an observation
+### Root and fragment semantics
 
-The consumer's Homebrew Brewfile must not become a generated projection of this configuration. Rig states what is wanted; the manifest and the live machine are what is there. Generating one side from the other makes the comparison vacuous and destroys the ability to notice that something was installed outside the declaration — which is the drift worth detecting. Nothing in this item should make generation of an acquisition manifest easier or more expected.
+There is one ordered configuration stream, not competing single-file and directory modes. Parse an existing root first, then regular fragments in bytewise filename order. At least one source must exist, and the merged model must contain exactly one `[rig]` section. Existing validation remains model-wide and fail closed.
+
+### Provider naming
+
+Omitting `executable` on a custom provider means exactly `${RIG_DATA_HOME}/providers/<provider-id>`. It does not search the directory, inspect adjacent files, or add the provider directory to `PATH`. An explicit `executable` continues to support an external command name or path and always overrides the default.
+
+### Manifests stay observations
+
+The consumer's Homebrew Brewfile must not become a generated projection of Rig configuration. Rig states what is wanted; the manifest and live machine state what is there. Generating one side from the other would make comparison vacuous and destroy the ability to notice something installed outside the declaration, which is useful drift.
