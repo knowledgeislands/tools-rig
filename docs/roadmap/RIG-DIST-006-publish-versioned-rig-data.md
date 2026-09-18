@@ -3,13 +3,13 @@ id: RIG-DIST-006
 area: DIST
 title: Publish versioned rig data
 theme: distribution
-horizon: triage
-status: draft
+horizon: now
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-18T03:36:25Z
-updated_at: 2026-09-18T03:36:25Z
+updated_at: 2026-09-18T04:23:41Z
 ---
 
 # RIG-DIST-006: Publish versioned rig data
@@ -20,81 +20,100 @@ Make Rig publish a deterministic, versioned public data projection that a person
 
 ## Context
 
-Rig currently exports a complete static tree containing `index.html` and `assets/rig.css`. That proves the public-profile privacy boundary and trusted publisher handoff, but couples the product's durable catalogue meaning to one presentation. `rig.midnight.ninja` is now available as a receiving site and should be free to combine the Rig projection with its existing documentation, navigation, accessibility, and visual conventions.
+Rig currently exports a complete static tree containing `index.html` and `assets/rig.css`. That proves the public-profile privacy boundary and trusted publisher handoff, but couples the product's durable catalogue meaning to one presentation. `rig.midnight.ninja` is available as a receiving site and should be free to combine the Rig projection with its documentation, navigation, accessibility, and visual conventions.
 
-The catalogue remains authoritative. A published artifact is a derived public projection and the receiving website remains authoritative for presentation, routing, deployment, and rollback.
+The catalogue remains authoritative. A published artifact is a derived public projection, and the receiving website remains authoritative for presentation, routing, deployment, and rollback.
 
 ## Boundary
 
-The projection must contain only explicitly selected public-profile catalogue data. It must not contain provider declarations or bindings, executable paths, credentials, private profiles, local configuration paths, observed machine state, health findings, unmanaged inventory, or host-specific publication state.
+The projection contains only explicitly selected public-profile catalogue data. It excludes provider declarations and bindings, executable paths, credentials, private profiles, local configuration paths, observed machine state, health findings, unmanaged inventory, and host-specific publication state.
 
-Rig owns deterministic selection, relationship closure, schema versioning, serialization, complete-tree replacement, and offline validation. The website owns parsing, rendering, caching, navigation, accessibility, deployment, and failure presentation. A publisher transports a validated artifact but does not redefine it.
+Rig owns deterministic selection, relationship closure, schema versioning, serialization, complete-tree replacement, offline validation, and trusted publisher dispatch. The website owns parsing, rendering, caching, navigation, accessibility, deployment, and failure presentation. A publisher transports a validated artifact but does not redefine it.
 
-## Discussion
+## Current state
 
-### Candidate contract
+`rig export` and the internal `rig publish` staging path render two presentation files. The export is host-filtered because it resolves the publication profile through the active platform. Cleanup and interruption safety deliberately recognise only `index.html` and `assets/rig.css`. Existing tests cover allow-listing, relationship closure, deterministic file trees, portable base URLs, offline execution, safe replacement, and publisher staging.
 
-Prefer one deterministic `rig.json` artifact with top-level `format = "rig-publication"` and integer `version = 1`. The document should include publication metadata, selected public profile identity, sorted categories, and sorted tools with public catalogue metadata and closed relationships. Canonical site URL may be included as metadata but must not become configuration authority.
+No receiving-site implementation belongs in this repository. The currently configured `base-url` remains useful canonical metadata even when Rig does not generate links.
 
-The default recommendation is a platform-neutral projection: profile membership is public intent, while each tool retains its declared supported platforms. Host filtering would make a personal public rig vary according to the machine that happened to publish it.
+## Decisions
 
-### Questions to resolve before planning
+- Replace the HTML and CSS tree with one `rig.json` artifact now. Rig is pre-1.0, so no dual-output transition or compatibility presentation files are required.
+- Publish a platform-neutral profile. Include every tool selected by the declared profile and each tool's declared `platform` values; do not vary public data according to the publishing host.
+- Retain required configuration field `base-url` and project it as publication metadata key `canonical_url`. This avoids an unrelated configuration migration while naming its public meaning clearly.
+- Use top-level `format: "rig-publication"` and integer `version: 1`. Include publication metadata, profile identity, selected categories, and selected tools with public metadata and closed relationship arrays.
+- Keep `rig export PUBLICATION --output DIRECTORY`, `rig publish PUBLICATION`, and the publisher directory handoff unchanged. Only the complete tree's declared artifact changes.
+- Leave preview and rendering entirely to the receiving website. Rig will not add a local server, templates, themes, or a second presentation command.
 
-- Replace HTML and CSS in the next pre-1.0 publication contract, or provide one explicitly bounded dual-output transition?
-- Confirm platform-neutral publication rather than active-host filtering.
-- Retain `base-url` as required canonical metadata, make it optional, or replace it with a clearer `canonical-url` field?
-- Which repository owns the `rig.midnight.ninja` renderer and publisher transport, and what receiving-site work record should consume the schema?
-- Should a local human preview remain a separate Rig command or be entirely website-owned?
+## Steps
 
-### Candidate steps
+- [ ] Add Bash 3.2-compatible JSON escaping and deterministic rendering for the version-1 public schema.
+- [ ] Resolve publication profiles independently of the active host while retaining declared tool platforms and relationship closure.
+- [ ] Replace export and publish staging with exactly one regular non-symlink `rig.json`; update safe cleanup and interruption handling without recursive deletion.
+- [ ] Update Bats fixtures for byte-stable JSON, schema parsing, platform neutrality, allow-listing, relationship closure, offline export, safe replacement, and publisher lifecycle safety.
+- [ ] Align help, completions, README, manual, changelog, user guide, publication Decision Record, and publishing Specifications with the data-first contract.
+- [ ] Run the full repository gate and record the six-part delivery review packet.
 
-- [ ] Decide the data-only or bounded-transition contract and record any durable authority change.
-- [ ] Specify the exact public schema, deterministic ordering, escaping, relationship closure, privacy exclusions, compatibility policy, and validation failures.
-- [ ] Implement Bash 3.2-compatible serialization without adding a required runtime dependency.
-- [ ] Align `rig export`, `rig publish`, help, completion, manual, README, changelog, guides, and publication specifications.
-- [ ] Add fixtures proving deterministic byte output, public allow-listing, private-state exclusion, complete-tree replacement, and unchanged trusted publisher boundaries.
-- [ ] Create the receiving-site roadmap item in its owning repository once that repository and transport are confirmed.
-
-### Files likely touched
+## Files touched
 
 - `bin/rig`
 - `tests/rig.bats`
 - `README.md`
 - `man/rig.1`
 - `CHANGELOG.md`
-- `docs/decisions/ADR-RIG-004-safe-public-projection.md`
+- `docs/decisions/ADR-RIG-004-static-publication-projection.md`
 - `docs/specs/publishing.md`
 - `docs/guides/user/README.md`
+- `docs/roadmap/RIG-DIST-006-publish-versioned-rig-data.md`
 
-### Verify
+## Verify
 
 - `shellcheck bin/rig install.sh`
 - `bash -n bin/rig install.sh`
 - `bats tests/`
 - `mandoc -T lint man/rig.1`
 - `ki repo audit --repo .`
-- An exported fixture is byte-identical across declaration order and host platform.
-- A schema consumer can render the complete selected public profile without reading private Rig configuration.
+- Exported `rig.json` is byte-identical across declaration order and active host platform.
+- A JSON parser accepts the complete artifact and observes `format = rig-publication`, `version = 1`.
 - No provider, binding, executable, path, credential, observed-state, or non-public-profile data appears in the artifact.
+- Publisher success, native failure, interruption, and adversarial cache-parent substitution preserve their existing safety boundaries with the one-file tree.
 
-### Dependencies / blocks
+## Dependencies / blocks
 
-No current Ready batch item depends on this proposal. Planning depends on the publication-contract decisions above and identification of the receiving website repository. Existing HTML export remains supported until a later approved implementation explicitly changes it with equivalent tests.
+No implementation dependency remains. The receiving website repository and its renderer can consume the documented schema later through their own canonical workflow; they do not block Rig's offline data projection.
 
-### Documentation impact
+## Delegation
 
-#### Decision Records
+No delegated lane is planned. The serializer, filesystem allow-list, publishing cleanup, fixtures, and contract documentation are tightly coupled and should land as one locally integrated delivery.
 
-Review ADR-RIG-004. Amend it if the authority boundary is unchanged and only the projection representation changes; supersede it only if the durable publication authority model changes.
+## Documentation impact
 
-#### Specifications
+### Decision Records
 
-Define a versioned machine-readable publication schema and compatibility policy in the publishing specification before implementation.
+Amend ADR-RIG-004 because the authority boundary is unchanged while the projection representation moves from presentation files to versioned data.
 
-#### Guides
+### Specifications
 
-Explain how a person selects a public profile, inspects exported data, and hands it to a website-owned renderer and publisher.
+Replace HTML-specific publication requirements with the exact versioned machine-readable schema, platform-neutral resolution, deterministic ordering, privacy exclusions, and single-file tree.
 
-#### Roadmap
+### Guides
 
-Keep receiving-site renderer and deployment work in that site's canonical workflow. Link the two records rather than duplicating website delivery here.
+Explain how a person selects a public profile, inspects `rig.json`, and hands it to a website-owned renderer and publisher.
+
+### Roadmap
+
+Keep receiving-site renderer and deployment work in that site's canonical workflow. Link future receiving work to this schema rather than duplicating website delivery here.
+
+## Discussion
+
+### Data is the durable product
+
+Categories, purposes, rationale, platform support, and relationships are Rig's durable public meaning. HTML and CSS are one consumer's presentation choice. A versioned data artifact lets `rig.midnight.ninja` and future consumers use the same reviewed projection without importing private Rig configuration.
+
+### Privacy remains allow-listed
+
+Changing representation must not widen disclosure. The schema names every allowed field, closes relationships over the selected public set, and excludes provider and observed state by construction. A single deterministic artifact is easier to inspect and compare than generated presentation assets.
+
+### Pre-1.0 compatibility
+
+The public preview can replace the original HTML contract before 1.0, provided help, manual, changelog, Decision Record, Specification, tests, and publisher cleanup move together. Retaining both formats would create an unnecessary compatibility surface and obscure which artifact a website should consume.
