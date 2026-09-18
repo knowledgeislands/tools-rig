@@ -18,7 +18,7 @@ Personal catalogues can be large and should remain convenient to organise in dot
 
 ## Decision
 
-Rig adopts a versioned, INI-shaped declarative grammar. `${RIG_CONFIG_HOME}/rig.conf` is the root file and `${RIG_CONFIG_HOME}/conf.d/*.conf` provides optional fragments loaded afterward in deterministic bytewise filename order.
+Rig adopts a versioned, INI-shaped declarative grammar. `${RIG_CONFIG_HOME}/rig.conf` is an optional root file loaded first when present, followed by regular `${RIG_CONFIG_HOME}/conf.d/*.conf` fragments in deterministic bytewise filename order. At least one source must exist, and the merged stream must contain exactly one `[rig]` section.
 
 The grammar consists of named sections, `key = literal value` records, blank lines, and whole-line comments. Section types and keys are schema-controlled. Known list fields repeat the key; scalar duplication, unknown fields, conflicting identities, and unsupported schema versions fail closed. The parser splits a record at the first equals sign and performs no quoting, escaping, command evaluation, or general environment expansion. Documented path fields alone expand a leading `~/`. Comparison may derive an absolute artifact identity from a leading `~/` or `$HOME/`, but the authored declaration remains unchanged and no other variable syntax is interpreted.
 

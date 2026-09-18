@@ -88,13 +88,13 @@ _Evidence:_ `rig_build_plan` emits a stable dependency-first work plan consumed 
 
 ### RIG-ORCH-006 — Initial provider classes
 
-Rig MUST support Homebrew, uv, chezmoi, direct-download, and explicitly configured executable providers without requiring an unselected provider's executable.
+Rig MUST support Homebrew, uv, chezmoi, direct-download, and custom executable providers without requiring an unselected provider's executable. A selected custom provider without `executable` MUST resolve exactly `${RIG_DATA_HOME}/providers/PROVIDER-ID`, respecting Rig then XDG data-home precedence; an explicit executable MUST win.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests exercise each provider through fakes and run an unrelated profile while all five native executables are absent.
+_Verify:_ Bats tests exercise each provider through fakes, cover explicit and conventional custom executables under Rig and XDG data homes, and run an unrelated profile while native executables are absent.
 
-_Evidence:_ `rig_provider_executable` resolves defaults only for selected bindings; Bats records all built-in adapter calls and proves a declared unselected missing executable is not invoked.
+_Evidence:_ `rig_provider_executable` and `rig_custom_provider_executable` resolve defaults only for selected actions; Bats records built-in and custom adapter calls and proves a declared unselected missing executable is not invoked.
 
 ### RIG-ORCH-017 — Built-in native command matrix
 
@@ -127,13 +127,13 @@ _Evidence:_ `tests/rig.bats` covers exact, `any`, platform-independent, ambiguou
 
 ### RIG-ORCH-010 — Literal executable arguments
 
-Rig MUST invoke a custom provider as one configured executable with each configured provider and binding argument preserved as a literal argument boundary.
+Rig MUST invoke a custom provider as one resolved executable with each configured provider and binding argument preserved as a literal argument boundary. Resolution MUST use only the explicit field or exact conventional data-home path and MUST NOT search, copy, generate, or recursively discover executables.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests record custom-provider arguments containing spaces and shell metacharacters and assert no shell interpretation occurs.
+_Verify:_ Bats tests record custom-provider arguments containing spaces and shell metacharacters, exercise every invocation surface through the conventional provider directory, and assert no shell interpretation or directory discovery occurs.
 
-_Evidence:_ `rig_prepare_provider_invocation` constructs a Bash indexed argument array; Bats verifies spaces, globs, and command syntax remain inert.
+_Evidence:_ `rig_custom_provider_executable` resolves one explicit or conventional path and `rig_prepare_provider_invocation` constructs a Bash indexed argument array; Bats verifies paths, spaces, globs, and command syntax remain inert.
 
 ### RIG-ORCH-011 — Ordered failure boundary
 

@@ -68,6 +68,8 @@ _Evidence:_ `tests/rig.bats` shadows the network client and configures an execut
 
 ### RIG-PUB-007 — Explicit trusted publisher
 
+A selected publisher whose custom provider omits `executable` MUST resolve exactly `${RIG_DATA_HOME}/providers/PROVIDER-ID`; an explicit executable MUST take precedence. Resolution MUST use the same no-search trust boundary as observation, application, inventory, and declared operations.
+
 `rig publish PUBLICATION` MUST validate and render one complete isolated export beneath the effective Rig cache before invoking only that publication's configured publisher. The publisher MUST use the `custom` adapter and declare the exact `publish` capability. Rig MUST invoke it once as `EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 publish PROVIDER PUBLICATION directory ABS_EXPORT_DIR`, preserving every literal argument boundary and the publisher's native deployment result. Validation, staging, or render failure MUST invoke no publisher. An interruption before the export is complete MUST remove only the incomplete Rig-owned staging files and return the conventional signal status without reporting a retained export. Once the export is complete, publisher failure or interruption MUST retain and report its path. Successful cleanup MUST revalidate the canonical staging parent, operate relative to that pinned directory, and unlink only the two known files before removing their now-empty directories; a substituted parent, symlink, unexpected file, or other unsafe shape MUST fail closed without recursive traversal.
 
 _Conformance:_ conforming

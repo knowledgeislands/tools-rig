@@ -22,7 +22,7 @@ rig diag
 
 Rig prints its version, invoked executable, Bash version, active platform, effective configuration, data, state, and cache directories, and a summary of configuration discovery and validity. It does not invoke providers or inspect installed tools.
 
-Status 0 means the configuration is valid. Status 1 means the root configuration is missing or invalid; the available runtime and path diagnostics are still printed. Status 2 is reserved for invalid command syntax. Set an XDG base variable to relocate its whole category, or set the corresponding `RIG_*_HOME` value to replace Rig's complete application directory.
+Status 0 means the configuration is valid. Status 1 means no configuration source exists or the merged configuration is invalid; the available runtime and path diagnostics are still printed. `rig.conf` is optional when at least one regular `conf.d/*.conf` fragment supplies the complete model, including exactly one `[rig]` section. Status 2 is reserved for invalid command syntax. Set an XDG base variable to relocate its whole category, or set the corresponding `RIG_*_HOME` value to replace Rig's complete application directory.
 
 Use `rig doctor` for selected-profile and provider health rather than treating diagnostics as a machine audit:
 
@@ -44,7 +44,7 @@ rig apply --dry-run
 rig apply
 ```
 
-Built-in adapters use `brew` or `mas` for Homebrew bindings, `uv` for uv tools, `chezmoi` for managed targets, and `curl` plus an available SHA-256 utility for direct downloads. Set provider `executable` only when the native command has a non-default path or a test fake is required. Rig checks executables only for selected bindings.
+Built-in adapters use `brew` or `mas` for Homebrew bindings, `uv` for uv tools, `chezmoi` for managed targets, and `curl` plus an available SHA-256 utility for direct downloads. A custom provider without `executable` resolves exactly `${RIG_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/rig}/providers/PROVIDER`; Rig does not search the directory or execute adjacent files. Declare `executable` when an external command, non-default path, or test fake is required. Rig checks executables only for selected bindings.
 
 Keep Homebrew manifests, uv state, and chezmoi source state in their native systems. Rig selects and orders catalogue work; it does not replace those authorities. In particular, `rig status` never runs `chezmoi apply`, and `rig apply --dry-run` invokes no provider.
 

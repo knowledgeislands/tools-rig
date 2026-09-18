@@ -4,12 +4,12 @@ area: CORE
 title: Author configuration directly
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 584a2e9e66e234f5d900c02daa32b7bd28e9c66c
 created_at: 2026-09-17T00:00:00Z
-updated_at: 2026-09-18T02:36:43Z
+updated_at: 2026-09-18T03:25:24Z
 ---
 
 # RIG-CORE-006: Author configuration directly
@@ -34,13 +34,13 @@ Root-file and deterministic bytewise `conf.d/*.conf` loading are already accepte
 
 ## Steps
 
-- [ ] Amend the configuration decision and specification so `rig.conf` is optional when at least one regular `conf.d/*.conf` fragment exists; retain root-first then bytewise-fragment ordering when the root is present, and fail when no configuration source exists.
-- [ ] Load and validate fragment-only configuration through the existing parser, requiring exactly one `[rig]` section across all sources and preserving duplicate section, duplicate scalar, unknown field, and reference failures across file boundaries.
-- [ ] Make `rig diag` describe an absent optional root and the effective fragment count without treating valid fragment-only configuration as missing.
-- [ ] Define `${RIG_DATA_HOME}/providers/<provider-id>` as the default executable for a custom provider that omits `executable`, while retaining explicit command names and paths unchanged when `executable` is declared.
-- [ ] Validate and invoke the default provider through the existing custom-provider trust and capability boundary; do not copy, generate, discover recursively, or execute undeclared provider files.
-- [ ] Add focused Bats coverage for fragment-only loading, mixed root-plus-fragment ordering, no-source failure, cross-file duplicates, default provider resolution, explicit executable override, unavailable default provider, and XDG/Rig data-home overrides.
-- [ ] Align README, `rig(1)`, changelog, user guidance, relevant Decision Records, and Specifications with the direct-authoring and provider-directory contracts.
+- [x] Amend the configuration decision and specification so `rig.conf` is optional when at least one regular `conf.d/*.conf` fragment exists; retain root-first then bytewise-fragment ordering when the root is present, and fail when no configuration source exists.
+- [x] Load and validate fragment-only configuration through the existing parser, requiring exactly one `[rig]` section across all sources and preserving duplicate section, duplicate scalar, unknown field, and reference failures across file boundaries.
+- [x] Make `rig diag` describe an absent optional root and the effective fragment count without treating valid fragment-only configuration as missing.
+- [x] Define `${RIG_DATA_HOME}/providers/<provider-id>` as the default executable for a custom provider that omits `executable`, while retaining explicit command names and paths unchanged when `executable` is declared.
+- [x] Validate and invoke the default provider through the existing custom-provider trust and capability boundary; do not copy, generate, discover recursively, or execute undeclared provider files.
+- [x] Add focused Bats coverage for fragment-only loading, mixed root-plus-fragment ordering, no-source failure, cross-file duplicates, default provider resolution, explicit executable override, unavailable default provider, and XDG/Rig data-home overrides.
+- [x] Align README, `rig(1)`, changelog, user guidance, relevant Decision Records, and Specifications with the direct-authoring and provider-directory contracts.
 
 ## Files touched
 
@@ -52,8 +52,10 @@ Root-file and deterministic bytewise `conf.d/*.conf` loading are already accepte
 - `docs/decisions/ADR-RIG-002-xdg-directory-contract.md`
 - `docs/decisions/ADR-RIG-003-declarative-configuration-grammar.md`
 - `docs/decisions/ADR-RIG-005-provider-execution-contract.md`
+- `docs/decisions/XDR-RIG-001-executable-provider-boundary.md`
 - `docs/specs/configuration.md`
 - `docs/specs/orchestration.md`
+- `docs/specs/publishing.md`
 - `docs/guides/user/README.md`
 
 ## Verify
@@ -87,6 +89,32 @@ Show how to author split configuration directly, choose a root-plus-fragment or 
 ### Roadmap
 
 The private chezmoi consumer migration remains separate follow-up work after this capability lands; do not edit or apply that repository within this item.
+
+## Review
+
+### Delivered
+
+Delivered direct configuration authoring and conventional custom-provider resolution from immutable baseline `584a2e9e66e234f5d900c02daa32b7bd28e9c66c`. A complete declaration may now live entirely in regular `conf.d/*.conf` fragments, while root-plus-fragment loading retains root-first bytewise order. Custom provider and publisher actions resolve one explicit executable or the exact effective data-home `providers/ID` path. No includes, variables, generation, recursive discovery, private-consumer migration, or native-manifest projection was added.
+
+### Summary of changes
+
+`bin/rig` now accepts one or more configuration sources, validates the merged model, reports an absent optional root in `rig diag`, and centralises custom executable resolution across observation, application, operations, inventory, and publication. Bats coverage exercises fragment-only and mixed layouts, no-source and cross-file failures, Rig/XDG data-home precedence, explicit overrides, missing defaults, and every custom trust-boundary invocation. README, the manual, changelog, user guide, three ADRs, the executable-boundary decision, and configuration, orchestration, and publishing specifications now describe the same contract. The XDR and publishing specification additions are a boundary-consistency expansion discovered during implementation.
+
+### Verification
+
+`shellcheck bin/rig install.sh`, `bash -n bin/rig install.sh`, `mandoc -T lint man/rig.1`, and all 116 Bats tests pass. The authoring, decision-record, and specification audits pass. The manual's pre-existing line-length finding was corrected while that file was already in scope. The repository-wide audit remains limited to the nine pre-existing approval-gated GitHub settings findings.
+
+### Outstanding concerns
+
+The private chezmoi consumer has not been migrated; that remains outside this item's boundary. The repository-wide GitHub settings findings require separate explicit authority. No implementation concern remains within the item.
+
+### Post-change review
+
+The implementation meets the direct-authoring goal without introducing another configuration language or weakening the executable trust boundary. Regression risk centres on source discovery and consistent executable resolution; both are covered through every affected command surface and explicit no-source, unavailable, and override cases. The item is ready for acceptance review.
+
+### Mini recap
+
+Rig configuration can now be authored directly as a fragment directory, and private Rig-only providers can live under the data directory without rendered executable paths. All local implementation and documentation checks pass. The private migration remains the established follow-up rather than being folded into this delivery.
 
 ## Discussion
 

@@ -13,7 +13,6 @@ RIG_SECTION_NAMES=()
 RIG_SECTION_TYPES=()
 RIG_SECTION_IDS=()
 RIG_SECTION_SECONDARY_IDS=()
-RIG_SECTION_FILES=()
 RIG_SECTION_FIELD_STARTS=()
 RIG_SECTION_FIELD_ENDS=()
 RIG_SECTION_LOOKUP_NAMES=()
@@ -38,7 +37,6 @@ RIG_INDEX=
 RIG_COUNT=0
 RIG_RESOLVED_PROFILE=
 RIG_RESOLVED_PLATFORM=
-RIG_ROOT_FILE=
 RIG_INVOKED_PATH=
 RIG_PUBLISH_STAGE=
 RIG_PUBLISH_ROOT=
@@ -176,7 +174,6 @@ rig_model_reset() {
   RIG_SECTION_TYPES=()
   RIG_SECTION_IDS=()
   RIG_SECTION_SECONDARY_IDS=()
-  RIG_SECTION_FILES=()
   RIG_SECTION_FIELD_STARTS=()
   RIG_SECTION_FIELD_ENDS=()
   RIG_SECTION_LOOKUP_NAMES=()
@@ -201,7 +198,6 @@ rig_model_reset() {
   RIG_COUNT=0
   RIG_RESOLVED_PROFILE=
   RIG_RESOLVED_PLATFORM=
-  RIG_ROOT_FILE=
 }
 
 rig_trim() {
@@ -315,7 +311,6 @@ rig_add_section() {
   RIG_SECTION_TYPES[$index]=$RIG_SECTION_TYPE
   RIG_SECTION_IDS[$index]=$RIG_SECTION_ID
   RIG_SECTION_SECONDARY_IDS[$index]=$RIG_SECTION_SECONDARY_ID
-  RIG_SECTION_FILES[$index]=$file
   RIG_SECTION_FIELD_STARTS[$index]=${#RIG_FIELD_KEYS[@]}
   RIG_SECTION_FIELD_ENDS[$index]=${#RIG_FIELD_KEYS[@]}
   rig_index_section_name "$name" "$index"
@@ -618,9 +613,7 @@ rig_validate_provider_adapter() {
   section_name=$1
   adapter=$2
   case "$adapter" in
-    custom)
-      rig_require_field "$section_name" executable || return
-      ;;
+    custom) ;;
     homebrew|uv|chezmoi|direct-download) ;;
   esac
 }
@@ -723,8 +716,6 @@ rig_validate_model() {
   local index section_name section_type section_id secondary_id adapter
 
   rig_section_index rig || rig_fail 'missing [rig] section' || return
-  [ "${RIG_SECTION_FILES[$RIG_INDEX]}" = "$RIG_ROOT_FILE" ] ||
-    rig_fail '[rig] section must be declared in rig.conf' || return
   rig_require_field rig schema || return
   [ "$RIG_VALUE" = 1 ] || rig_fail "unsupported schema version '$RIG_VALUE'" || return
   rig_require_field rig default-profile || return
@@ -799,7 +790,7 @@ rig_validate_model() {
 }
 
 rig_load_config() {
-  local config_home root_file fragment
+  local config_home root_file fragment source_count
   local LC_ALL=C
 
   rig_model_reset
@@ -811,12 +802,18 @@ rig_load_config() {
   fi
 
   root_file=$config_home/rig.conf
-  RIG_ROOT_FILE=$root_file
-  rig_parse_file "$root_file" || return
+  source_count=0
+  if [ -e "$root_file" ]; then
+    rig_parse_file "$root_file" || return
+    source_count=$((source_count + 1))
+  fi
   for fragment in "$config_home"/conf.d/*.conf; do
     [ -f "$fragment" ] || continue
     rig_parse_file "$fragment" || return
+    source_count=$((source_count + 1))
   done
+  [ "$source_count" -gt 0 ] ||
+    rig_fail "no configuration sources under: $config_home" || return
   rig_validate_model
 }
 
@@ -1137,7 +1134,7 @@ rig_prepare_custom_invocation() {
   kind=$4
   locator=$5
 
-  rig_get_value "provider.$provider" executable || return 2
+  rig_custom_provider_executable "$provider" || return 2
   executable=$RIG_VALUE
   RIG_INVOKE_ARGUMENTS=()
   rig_append_arguments "provider.$provider" || return 2
@@ -1225,6 +1222,29 @@ rig_adapter_is_builtin() {
     homebrew|uv|chezmoi|direct-download) return 0 ;;
   esac
   return 1
+}
+
+rig_effective_data_home() {
+  if [ -n "${RIG_DATA_HOME:-}" ]; then
+    RIG_VALUE=$RIG_DATA_HOME
+  elif [ -n "${XDG_DATA_HOME:-}" ]; then
+    RIG_VALUE=$XDG_DATA_HOME/rig
+  else
+    require_home || return
+    RIG_VALUE=$HOME/.local/share/rig
+  fi
+}
+
+rig_custom_provider_executable() {
+  local provider data_home
+
+  provider=$1
+  if rig_get_value "provider.$provider" executable; then
+    return 0
+  fi
+  rig_effective_data_home || return
+  data_home=$RIG_VALUE
+  RIG_VALUE=$data_home/providers/$provider
 }
 
 rig_provider_executable() {
@@ -1447,7 +1467,7 @@ rig_observe_provider() {
   locator=$RIG_VALUE
 
   if [ "$adapter" = custom ]; then
-    rig_get_value "provider.$provider" executable || return 2
+    rig_custom_provider_executable "$provider" || return 2
     executable=$RIG_VALUE
     if ! rig_executable_available "$executable"; then
       RIG_OBSERVATION=unavailable
@@ -1540,7 +1560,7 @@ rig_prepare_inventory_invocation() {
   local provider executable
 
   provider=$1
-  rig_get_value "provider.$provider" executable || return 2
+  rig_custom_provider_executable "$provider" || return 2
   executable=$RIG_VALUE
   RIG_INVOKE_ARGUMENTS=()
   rig_append_arguments "provider.$provider" || return 2
@@ -1609,7 +1629,7 @@ rig_inventory_provider() {
     RIG_INVENTORY_DETAIL="unsupported-adapter:$adapter"
     return 0
   fi
-  rig_get_value "provider.$provider" executable || return 2
+  rig_custom_provider_executable "$provider" || return 2
   executable=$RIG_VALUE
   if ! rig_executable_available "$executable"; then
     RIG_INVENTORY_STATE=unavailable
@@ -1666,7 +1686,7 @@ rig_preflight_provider() {
   rig_provider_has_capability "$provider" apply ||
     rig_fail "provider '$provider' does not declare capability 'apply'" || return
   if [ "$adapter" = custom ]; then
-    rig_get_value "provider.$provider" executable || return 2
+    rig_custom_provider_executable "$provider" || return 2
     executable=$RIG_VALUE
     rig_executable_available "$executable" ||
       rig_fail "provider '$provider' executable is unavailable: $executable" || return
@@ -2332,7 +2352,7 @@ rig_command_run() {
     done
   fi
 
-  rig_get_value "provider.$provider" executable || return 2
+  rig_custom_provider_executable "$provider" || return 2
   executable=$RIG_VALUE
   rig_executable_available "$executable" ||
     rig_fail "provider '$provider' executable unavailable: $executable" || return
@@ -2356,14 +2376,8 @@ rig_effective_paths() {
     RIG_DIAG_CONFIG_HOME=$HOME/.config/rig
   fi
 
-  if [ -n "${RIG_DATA_HOME:-}" ]; then
-    RIG_DIAG_DATA_HOME=$RIG_DATA_HOME
-  elif [ -n "${XDG_DATA_HOME:-}" ]; then
-    RIG_DIAG_DATA_HOME=$XDG_DATA_HOME/rig
-  else
-    require_home || return
-    RIG_DIAG_DATA_HOME=$HOME/.local/share/rig
-  fi
+  rig_effective_data_home || return
+  RIG_DIAG_DATA_HOME=$RIG_VALUE
 
   if [ -n "${RIG_STATE_HOME:-}" ]; then
     RIG_DIAG_STATE_HOME=$RIG_STATE_HOME
@@ -2409,7 +2423,7 @@ rig_count_config_fragments() {
 }
 
 rig_command_diag() {
-  local platform root_file fragment_count config_status schema default_profile exit_code
+  local platform root_file root_display fragment_count config_status schema default_profile exit_code
 
   if [ "$#" -eq 1 ]; then
     case "$1" in
@@ -2422,14 +2436,16 @@ rig_command_diag() {
   rig_diagnostic_platform
   platform=$RIG_VALUE
   root_file=$RIG_DIAG_CONFIG_HOME/rig.conf
+  root_display=$root_file
   rig_count_config_fragments
   fragment_count=$RIG_COUNT
+  [ -e "$root_file" ] || root_display="$root_file (absent)"
 
   config_status=missing
   schema=
   default_profile=
   exit_code=1
-  if [ -e "$root_file" ]; then
+  if [ -e "$root_file" ] || [ "$fragment_count" -gt 0 ]; then
     if rig_load_config 2>/dev/null; then
       config_status=valid
       rig_get_value rig schema || return 1
@@ -2447,7 +2463,7 @@ rig_command_diag() {
   printf 'Paths:\n  Config home: %s\n  Data home: %s\n  State home: %s\n  Cache home: %s\n' \
     "$RIG_DIAG_CONFIG_HOME" "$RIG_DIAG_DATA_HOME" "$RIG_DIAG_STATE_HOME" "$RIG_DIAG_CACHE_HOME"
   printf 'Configuration:\n  Root config: %s\n  Fragment count: %s\n  Status: %s\n' \
-    "$root_file" "$fragment_count" "$config_status"
+    "$root_display" "$fragment_count" "$config_status"
   if [ "$config_status" = valid ]; then
     printf '  Schema: %s\n  Default profile: %s\n' "$schema" "$default_profile"
   fi
@@ -3491,7 +3507,7 @@ rig_command_publish() {
       rig_fail "publication '$publication' requires a custom publisher" || return
     rig_provider_has_capability "$publisher" publish ||
       rig_fail "publisher '$publisher' does not declare capability 'publish'" || return
-    rig_get_value "provider.$publisher" executable || return 2
+  rig_custom_provider_executable "$publisher" || return 2
     executable=$RIG_VALUE
     rig_executable_available "$executable" ||
       rig_fail "publisher '$publisher' executable unavailable: $executable" || return

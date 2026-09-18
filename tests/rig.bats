@@ -306,7 +306,7 @@ write_query_config() {
     "$RIG" diag
 
   [ "$status" -eq 1 ]
-  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.1.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s/.config/rig\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/.config/rig/rig.conf\n  Fragment count: 0\n  Status: missing' "$RIG" "$BASH_VERSION" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME")" ]
+  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.1.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s/.config/rig\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/.config/rig/rig.conf (absent)\n  Fragment count: 0\n  Status: missing' "$RIG" "$BASH_VERSION" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME")" ]
 }
 
 @test "diag follows XDG base directories" {
@@ -461,6 +461,19 @@ write_query_config() {
 
   [ "$status" -eq 0 ]
   [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.1.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.conf\n  Fragment count: 2\n  Status: valid\n  Schema: 1\n  Default profile: default' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]
+}
+
+@test "diag accepts fragment-only configuration and reports the optional root absent" {
+  write_minimal_config
+  mv "$CONFIG_HOME/rig.conf" "$CONFIG_HOME/conf.d/20-complete.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=fixture "$RIG" diag
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"  Root config: $CONFIG_HOME/rig.conf (absent)"* ]] || false
+  [[ "$output" == *"  Fragment count: 1"* ]] || false
+  [[ "$output" == *"  Status: valid"* ]] || false
+  [[ "$output" == *"  Schema: 1"* ]] || false
 }
 
 @test "diag summarizes invalid configuration without parser diagnostics" {
@@ -806,7 +819,13 @@ write_query_config() {
     >"$TEST_HOME/.config/rig/rig.conf"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"cannot read configuration file: $CONFIG_HOME/rig.conf"* ]]
+  [[ "$output" == *"no configuration sources under: $CONFIG_HOME"* ]]
+
+  write_minimal_config
+  mv "$CONFIG_HOME/rig.conf" "$CONFIG_HOME/conf.d/20-complete.conf"
+  run_loader
+  [ "$status" -eq 0 ]
+  rm "$CONFIG_HOME/conf.d/20-complete.conf"
 
   write_minimal_config
   printf '%s\n' \
@@ -1053,7 +1072,7 @@ write_query_config() {
   [[ "$output" == *"duplicate section [category.core]"* ]]
 }
 
-@test "required catalogue and custom provider fields are validated" {
+@test "required catalogue and provider adapter fields are validated" {
   write_minimal_config
   sed '/rationale =/d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/missing.conf"
   mv "$CONFIG_HOME/missing.conf" "$CONFIG_HOME/rig.conf"
@@ -1069,10 +1088,10 @@ write_query_config() {
   [[ "$output" == *"[tool.alpha] requires field 'platform'"* ]]
 
   write_minimal_config
-  printf '%s\n' '[provider.runner]' 'adapter = custom' >>"$CONFIG_HOME/rig.conf"
+  printf '%s\n' '[provider.runner]' >>"$CONFIG_HOME/rig.conf"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"[provider.runner] requires field 'executable'"* ]]
+  [[ "$output" == *"[provider.runner] requires field 'adapter'"* ]]
 }
 
 @test "catalogue profile binding and publication references are validated" {
@@ -1483,7 +1502,7 @@ write_query_config() {
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" doctor
   [ "$status" -eq 2 ]
-  [[ "$output" == *"cannot read configuration file: $missing_config/rig.conf"* ]] || false
+  [[ "$output" == *"no configuration sources under: $missing_config"* ]] || false
 
   write_orchestration_config
   printf '%s\n' '[profile.broken]' 'tool = absent' >>"$CONFIG_HOME/rig.conf"
@@ -2942,6 +2961,94 @@ write_inventory_config() {
     '[binding.alpha.surveyor]' \
     'kind = app' \
     'locator = declared' >"$CONFIG_HOME/rig.conf"
+}
+
+@test "custom provider default executable covers every trust-boundary invocation" {
+  local data_home
+  data_home=$BATS_TEST_TMPDIR/rig-data-$BATS_TEST_NUMBER
+  mkdir -p "$data_home/providers"
+
+  write_orchestration_config
+  cp "$ORCHESTRATION_PROVIDER" "$data_home/providers/runner"
+  chmod +x "$data_home/providers/runner"
+  sed '/^executable = /d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/default-provider.conf"
+  mv "$CONFIG_HOME/default-provider.conf" "$CONFIG_HOME/rig.conf"
+  run env -u HOME RIG_CONFIG_HOME="$CONFIG_HOME" RIG_DATA_HOME="$data_home" \
+    RIG_PLATFORM=macos RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
+  [ "$status" -eq 0 ]
+  run env -u HOME RIG_CONFIG_HOME="$CONFIG_HOME" RIG_DATA_HOME="$data_home" \
+    RIG_PLATFORM=macos RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply
+  [ "$status" -eq 0 ]
+
+  write_operation_config
+  cp "$OPERATION_PROVIDER" "$data_home/providers/runner"
+  chmod +x "$data_home/providers/runner"
+  sed '/^executable = /d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/default-provider.conf"
+  mv "$CONFIG_HOME/default-provider.conf" "$CONFIG_HOME/rig.conf"
+  run env -u HOME RIG_CONFIG_HOME="$CONFIG_HOME" RIG_DATA_HOME="$data_home" \
+    RIG_PLATFORM=macos RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
+  [ "$status" -eq 0 ]
+
+  write_inventory_config
+  cp "$INVENTORY_PROVIDER" "$data_home/providers/surveyor"
+  chmod +x "$data_home/providers/surveyor"
+  sed '/^executable = /d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/default-provider.conf"
+  mv "$CONFIG_HOME/default-provider.conf" "$CONFIG_HOME/rig.conf"
+  run env -u HOME RIG_CONFIG_HOME="$CONFIG_HOME" RIG_DATA_HOME="$data_home" \
+    RIG_PLATFORM=macos "$RIG" status --unmanaged
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'Unmanaged: 2'* ]] || false
+
+  write_publication_config
+  cp "$PUBLICATION_PROVIDER" "$data_home/providers/publisher"
+  chmod +x "$data_home/providers/publisher"
+  sed '/^executable = /d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/default-provider.conf"
+  mv "$CONFIG_HOME/default-provider.conf" "$CONFIG_HOME/rig.conf"
+  run env -u HOME RIG_CONFIG_HOME="$CONFIG_HOME" RIG_DATA_HOME="$data_home" \
+    RIG_CACHE_HOME="$BATS_TEST_TMPDIR/publish-cache-$BATS_TEST_NUMBER" \
+    RIG_STATE_HOME="$BATS_TEST_TMPDIR/publish-state-$BATS_TEST_NUMBER" \
+    RIG_PLATFORM=macos RIG_PUBLICATION_MARKER="$PUBLICATION_MARKER" "$RIG" publish site
+  [ "$status" -eq 0 ]
+  [ -e "$PUBLICATION_MARKER" ]
+}
+
+@test "custom provider default follows XDG data home and explicit executable wins" {
+  local xdg_data missing_data
+  xdg_data=$BATS_TEST_TMPDIR/xdg-data-$BATS_TEST_NUMBER
+  missing_data=$BATS_TEST_TMPDIR/missing-data-$BATS_TEST_NUMBER
+  mkdir -p "$xdg_data/rig/providers"
+
+  write_orchestration_config
+  cp "$ORCHESTRATION_PROVIDER" "$xdg_data/rig/providers/runner"
+  chmod +x "$xdg_data/rig/providers/runner"
+  sed '/^executable = /d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/default-provider.conf"
+  mv "$CONFIG_HOME/default-provider.conf" "$CONFIG_HOME/rig.conf"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_DATA_HOME= \
+    XDG_DATA_HOME="$xdg_data" RIG_PLATFORM=macos RIG_TEST_LOG="$ORCHESTRATION_LOG" \
+    "$RIG" status
+  [ "$status" -eq 0 ]
+
+  write_orchestration_config
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_DATA_HOME="$missing_data" \
+    XDG_DATA_HOME="$missing_data" RIG_PLATFORM=macos RIG_TEST_LOG="$ORCHESTRATION_LOG" \
+    "$RIG" status
+  [ "$status" -eq 0 ]
+}
+
+@test "missing custom provider default reports its exact conventional path" {
+  local data_home expected
+  data_home=$BATS_TEST_TMPDIR/empty-rig-data-$BATS_TEST_NUMBER
+  expected=$data_home/providers/runner
+  write_orchestration_config
+  sed '/^executable = /d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/default-provider.conf"
+  mv "$CONFIG_HOME/default-provider.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_DATA_HOME="$data_home" \
+    RIG_PLATFORM=macos RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'base\trunner\tunavailable\texecutable-unavailable'* ]] || false
+  [ ! -e "$expected" ]
 }
 
 @test "status reports observed identities that no binding declares" {

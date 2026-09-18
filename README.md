@@ -45,7 +45,7 @@ Re-run `./install.sh --link` after moving the checkout.
 
 ## Configure a catalogue
 
-Rig reads `${RIG_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/rig}/rig.conf` followed by optional `conf.d/*.conf` fragments. The grammar is inert data: Rig does not source it as shell code.
+Rig reads an optional `${RIG_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/rig}/rig.conf` followed by `conf.d/*.conf` fragments in bytewise filename order. At least one source must exist and the merged declaration must contain exactly one `[rig]` section. The grammar is inert data: Rig does not source it as shell code.
 
 Queries derive the active platform from Bash's `OSTYPE`. Set `RIG_PLATFORM` to an explicit catalogue platform identifier when testing a different target or when the host value is not recognised.
 
@@ -81,9 +81,9 @@ Providers declare exact `observe` and `apply` capabilities. Built-in adapters ma
 | `uv` | `tool` | `uv` | uv-managed tools |
 | `chezmoi` | `target` | `chezmoi` | chezmoi target state |
 | `direct-download` | `executable` | `curl` | HTTPS artifact selected by its declared SHA-256 |
-| `custom` | Configured by its executable | Required `executable` | Versioned `rig-provider-v1` protocol |
+| `custom` | Any declared kind | `${RIG_DATA_HOME}/providers/ID` | Versioned `rig-provider-v1` protocol |
 
-Set a provider `executable` to use a non-default installation or an isolated test fake. Provider and binding `argument` fields remain literal argument boundaries. A direct-download binding additionally requires an HTTPS `locator`, absolute `destination`, and lowercase `checksum = sha256:...`; Rig verifies a sibling temporary file before replacing a regular destination.
+For a custom provider, omit `executable` to use `${RIG_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/rig}/providers/ID`. Set `executable` to use an external command, a non-default path, or an isolated test fake. Rig resolves only the declared provider ID and does not search or execute adjacent files. Provider and binding `argument` fields remain literal argument boundaries. A direct-download binding additionally requires an HTTPS `locator`, an absolute `destination`, and a lowercase `checksum = sha256:...`; Rig verifies a sibling temporary file before replacing a regular destination.
 
 `[operation.TOOL.NAME]` declarations bind one tool to a custom provider's exact capability. Their mode is `observe` or `mutate`; repeated `argument` values are fixed configuration, while repeated `allow-argument` values are the only caller arguments accepted after `--`.
 

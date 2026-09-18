@@ -248,11 +248,14 @@ Print the Rig version.
 .SH CONFIGURATION
 \&
 .PP
-Rig reads
+Rig reads an optional
 .I ${RIG_CONFIG_HOME}/rig.conf
-and then optional
+first when present and then regular
 .I ${RIG_CONFIG_HOME}/conf.d/*.conf
-fragments in bytewise filename order.
+fragments in bytewise filename order. At least one source must exist, and the
+merged declaration must contain exactly one
+.B [rig]
+section.
 When
 .B RIG_CONFIG_HOME
 is unset, its default is
@@ -316,7 +319,7 @@ is unset. The fallback is
 \&
 .TP
 .I ${XDG_CONFIG_HOME:-$HOME/.config}/rig/rig.conf
-Default root configuration file. Schema 1 uses
+Optional root configuration file. Schema 1 uses
 .B [rig]
 with
 .B schema
@@ -357,6 +360,14 @@ and repeated
 or
 .B capability
 fields.
+For a
+.B custom
+provider, omitted
+.B executable
+resolves exactly beneath the effective Rig data directory as
+.IR providers/ID .
+An explicit value overrides that convention. Rig does not search the provider
+directory or execute adjacent files.
 The execution engine supports built-in
 .BR homebrew ,
 .BR uv ,
@@ -454,6 +465,10 @@ Optional configuration fragments.
 .TP
 .I ${XDG_DATA_HOME:-$HOME/.local/share}/rig
 Default data directory.
+.TP
+.I ${XDG_DATA_HOME:-$HOME/.local/share}/rig/providers/ID
+Conventional executable for custom provider
+.IR ID .
 .TP
 .I ${XDG_STATE_HOME:-$HOME/.local/state}/rig
 Default state directory.
@@ -625,7 +640,8 @@ The separator is a tab because an identity may be a path containing spaces.
 Rig reports every identity that no binding declares. A binding declares an
 identity either through its
 .B locator
-, matched only within that binding's own provider namespace because a Mac App
+, matched only within that binding's own provider namespace because a
+Mac App
 Store numeric identity and a cask name may coincide, or through a repeatable tool
 .B artifact
 value naming a machine-observable path the tool materialises, matched

@@ -28,9 +28,11 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - A standalone Bash 3.2-compatible executable with no required runtime dependency beyond Bash.
 - Non-mutating runtime, platform, XDG-path, and configuration diagnostics with explicit Rig overrides.
 - An inert schema 1 loader with deterministic fragment order, validation, composed-profile resolution, transitive requirements, platform selection, and provider-binding resolution.
+- Direct fragment-only configuration when `rig.conf` is absent, retaining root-first bytewise ordering and model-wide fail-closed validation.
 - Read-only catalogue queries that do not invoke providers.
 - Human-readable `rig show` profile metadata and bounded-width, aligned selected-tool tables.
 - Versioned `rig-provider-v1` custom-provider invocation that preserves every configured literal argument boundary.
+- Conventional custom-provider executables at `${RIG_DATA_HOME}/providers/ID`, with explicit `executable` declarations retaining precedence.
 - Built-in Homebrew formula, cask, and Mac App Store, uv tool, and chezmoi target adapters with exact capability gates and native command mappings.
 - Bounded reconciliation identities for tap-qualified Homebrew formula and cask locators and leading `~/` or `$HOME/` tool artifacts, while provider application retains the authored locator.
 - HTTPS direct-download executable adapter with declared SHA-256 verification, sibling temporary files, safe destination checks, atomic replacement, and failure cleanup.

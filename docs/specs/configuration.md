@@ -6,13 +6,13 @@ This area of the [Rig Specifications](index.md) defines the inert configuration 
 
 ### RIG-CONF-001 — XDG configuration files
 
-Rig MUST read its root declaration from `${RIG_CONFIG_HOME}/rig.conf` and optional fragments from `${RIG_CONFIG_HOME}/conf.d/*.conf`.
+Rig MUST read an optional root declaration from `${RIG_CONFIG_HOME}/rig.conf` followed by regular fragments from `${RIG_CONFIG_HOME}/conf.d/*.conf`. At least one source MUST exist, and the merged model MUST contain exactly one `[rig]` section.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests isolate `RIG_CONFIG_HOME`, create a root file and fragments, and assert Rig reads no undeclared configuration location.
+_Verify:_ Bats tests isolate `RIG_CONFIG_HOME`, exercise root-only, root-plus-fragment, fragment-only, and no-source layouts, and assert Rig reads no undeclared configuration location.
 
-_Evidence:_ `tests/rig.bats` isolates both `HOME` and `RIG_CONFIG_HOME`; `rig_load_config` reads only the selected root and fragment directory.
+_Evidence:_ `tests/rig.bats` isolates both `HOME` and `RIG_CONFIG_HOME`; `rig_load_config` accepts one or more selected sources and reads only the selected root and fragment directory.
 
 ### RIG-CONF-002 — Explicit schema version
 
@@ -26,7 +26,7 @@ _Evidence:_ `tests/rig.bats` covers accepted schema 1 plus missing, duplicate, a
 
 ### RIG-CONF-003 — Deterministic fragment order
 
-Rig MUST load the root file first and then matching fragments in bytewise filename order independent of the user's locale.
+Rig MUST load the root file first when present and then matching fragments in bytewise filename order independent of the user's locale.
 
 _Conformance:_ conforming
 
@@ -120,13 +120,13 @@ _Evidence:_ `tests/rig.bats` composes nested profiles, repeats profile and tool 
 
 ### RIG-CONF-012 — Provider fields
 
-Schema 1 provider sections MUST require `adapter` and accept `command`, `executable`, `manifest`, repeated `argument`, and repeated `capability` fields. A provider whose adapter is `custom` MUST identify one `executable`; other adapter-specific field and capability rules belong to the selected provider adapter.
+Schema 1 provider sections MUST require `adapter` and accept `command`, `executable`, `manifest`, repeated `argument`, and repeated `capability` fields. A provider whose adapter is `custom` MAY omit `executable`; Rig MUST then resolve exactly `${RIG_DATA_HOME}/providers/PROVIDER-ID`. An explicit `executable` MUST take precedence. Other adapter-specific field and capability rules belong to the selected provider adapter.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests parse provider fields, require an adapter, require a custom provider executable, and preserve other adapter declarations for later adapter-specific validation.
+_Verify:_ Bats tests parse provider fields, require an adapter, resolve omitted custom executables through Rig and XDG data-home precedence, preserve explicit executable overrides, and report unavailable conventional paths without discovery.
 
-_Evidence:_ `rig_validate_model` requires provider adapters and custom executables; `tests/rig.bats` preserves provider commands, manifests, arguments, and capabilities literally.
+_Evidence:_ `rig_validate_model` requires provider adapters; `rig_custom_provider_executable` applies one exact conventional path or the explicit override; `tests/rig.bats` exercises every custom-provider trust-boundary invocation.
 
 ### RIG-CONF-013 — Binding fields
 

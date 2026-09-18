@@ -18,7 +18,7 @@ Publication adds a second risk: a useful catalogue contains rationale and relati
 
 ## Decision
 
-Rig never sources or evaluates configuration. Built-in adapters are trusted code shipped with Rig. A custom provider or publisher is an explicit executable trust transition and must identify one executable; Rig passes configured arguments literally without `eval`, shell command strings, or implicit shell expansion.
+Rig never sources or evaluates configuration. Built-in adapters are trusted code shipped with Rig. A custom provider or publisher is an explicit executable trust transition and must resolve one executable, either from its literal `executable` declaration or the exact `${RIG_DATA_HOME}/providers/PROVIDER-ID` convention. Rig performs no search or discovery and passes configured arguments literally without `eval`, shell command strings, or implicit shell expansion.
 
 `show`, `list`, and `explain` resolve declarations without invoking provider code. `status` and `doctor` may invoke only declared observation capabilities and remain non-mutating by contract, although a custom observer must still be trusted by its owner.
 

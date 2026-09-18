@@ -15,7 +15,7 @@ decision_depends_on: [PDR-RIG-001, ADR-RIG-003, XDR-RIG-001]
 
 Rig resolves a profile to tools and compatible provider bindings, but declarative resolution alone cannot compare that selection with a machine or materialise it. Built-in adapters and custom executables need one state model and orchestration boundary without making Rig a competing package database. Schema 1 describes tool dependencies but no provider dependency graph, so execution order must follow resolved tool relationships.
 
-Custom providers cross the executable trust boundary established by XDR-RIG-001. Their invocation must preserve literal argument boundaries, distinguish observation from mutation, keep public output deterministic, and expose native failures without allowing an arbitrary provider exit code to become Rig's command contract. Catalogue-only tools also remain valid declarations even though no provider can observe or materialise them.
+Custom providers cross the executable trust boundary established by XDR-RIG-001. Their invocation must preserve literal argument boundaries, distinguish observation from mutation, keep public output deterministic, and expose native failures without allowing an arbitrary provider exit code to become Rig's command contract. An explicit `executable` remains authoritative; when omitted, Rig resolves exactly `${RIG_DATA_HOME}/providers/PROVIDER-ID` without searching or executing adjacent files. Catalogue-only tools also remain valid declarations even though no provider can observe or materialise them.
 
 ## Decision
 
