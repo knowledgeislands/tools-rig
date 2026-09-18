@@ -1263,7 +1263,7 @@ rig_append_arguments() {
 }
 
 rig_prepare_builtin_invocation() {
-  local verb binding provider adapter kind locator
+  local verb binding provider adapter kind locator observation_locator
 
   verb=$1
   binding=$2
@@ -1281,18 +1281,22 @@ rig_prepare_builtin_invocation() {
 
   case "$adapter:$kind:$verb" in
     homebrew:formula:observe)
+      rig_normalize_provider_identity "$adapter" "$kind" "$locator"
+      observation_locator=$RIG_VALUE
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=list
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--formula
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--versions
       rig_append_arguments "$binding" || return
-      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$observation_locator
       ;;
     homebrew:cask:observe)
+      rig_normalize_provider_identity "$adapter" "$kind" "$locator"
+      observation_locator=$RIG_VALUE
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=list
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--cask
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--versions
       rig_append_arguments "$binding" || return
-      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$observation_locator
       ;;
     homebrew:formula:apply|homebrew:cask:apply)
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=install
@@ -1390,6 +1394,41 @@ rig_output_has_identity() {
     [ "$identity" = "$wanted" ] && return 0
   done <<< "$output"
   return 1
+}
+
+rig_normalize_provider_identity() {
+  local adapter kind identity
+
+  adapter=$1
+  kind=$2
+  identity=$3
+  case "$adapter:$kind" in
+    homebrew:formula|homebrew:cask) RIG_VALUE=${identity##*/} ;;
+    *) RIG_VALUE=$identity ;;
+  esac
+}
+
+rig_normalize_artifact_identity() {
+  local identity
+
+  identity=$1
+  case "$identity" in
+    \~/*)
+      if [ -n "${HOME:-}" ]; then
+        RIG_VALUE=$HOME/${identity#\~/}
+      else
+        RIG_VALUE=$identity
+      fi
+      ;;
+    \$HOME/*)
+      if [ -n "${HOME:-}" ]; then
+        RIG_VALUE=$HOME/${identity#\$HOME/}
+      else
+        RIG_VALUE=$identity
+      fi
+      ;;
+    *) RIG_VALUE=$identity ;;
+  esac
 }
 
 rig_observe_provider() {
@@ -1513,6 +1552,7 @@ rig_prepare_inventory_invocation() {
 
 rig_binding_declares_locator() {
   local provider identity index section_name artifact_index
+  local adapter kind declared_identity observed_identity artifact_identity
 
   provider=$1
   identity=$2
@@ -1523,9 +1563,17 @@ rig_binding_declares_locator() {
       # A locator is meaningful only inside its own provider's namespace: a
       # Mac App Store numeric identity and a cask name may coincide.
       if [ "${RIG_SECTION_SECONDARY_IDS[$index]}" = "$provider" ] &&
-        rig_get_value "$section_name" locator &&
-        [ "$RIG_VALUE" = "$identity" ]; then
-        return 0
+        rig_get_value "$section_name" locator; then
+        declared_identity=$RIG_VALUE
+        rig_get_value "provider.$provider" adapter || return 2
+        adapter=$RIG_VALUE
+        rig_get_value "$section_name" kind || return 2
+        kind=$RIG_VALUE
+        rig_normalize_provider_identity "$adapter" "$kind" "$declared_identity"
+        declared_identity=$RIG_VALUE
+        rig_normalize_provider_identity "$adapter" "$kind" "$identity"
+        observed_identity=$RIG_VALUE
+        [ "$declared_identity" = "$observed_identity" ] && return 0
       fi
     fi
     # An artifact is a machine-observable path rather than a provider identity,
@@ -1535,7 +1583,11 @@ rig_binding_declares_locator() {
       rig_collect_field_values "${RIG_SECTION_NAMES[$index]}" artifact; then
       artifact_index=0
       while [ "$artifact_index" -lt "${#RIG_QUERY_ITEMS[@]}" ]; do
-        [ "${RIG_QUERY_ITEMS[$artifact_index]}" = "$identity" ] && return 0
+        rig_normalize_artifact_identity "${RIG_QUERY_ITEMS[$artifact_index]}" || return
+        artifact_identity=$RIG_VALUE
+        rig_normalize_artifact_identity "$identity" || return
+        observed_identity=$RIG_VALUE
+        [ "$artifact_identity" = "$observed_identity" ] && return 0
         artifact_index=$((artifact_index + 1))
       done
     fi

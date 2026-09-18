@@ -1958,8 +1958,10 @@ bootstrap-profile = absent' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bootstrap.con
     'capability = observe' 'capability = apply' \
     '[provider.unselected]' 'adapter = uv' \
     "executable = $BATS_TEST_TMPDIR/missing-unselected" 'capability = observe' \
-    '[binding.formula.brew]' 'kind = formula' 'locator = jq' 'argument = --formula value' \
-    '[binding.cask.brew]' 'kind = cask' 'locator = visual-studio-code' \
+    '[binding.formula.brew]' 'kind = formula' 'locator = homebrew/core/jq' \
+    'argument = --formula value' \
+    '[binding.cask.brew]' 'kind = cask' \
+    'locator = homebrew/cask/visual-studio-code' \
     '[binding.store.store]' 'kind = mas' 'locator = 12345' \
     '[binding.python.python]' 'kind = tool' 'locator = ruff' \
     '[binding.dotfile.dotfiles]' 'kind = target' 'locator = /tmp/example target' \
@@ -1974,6 +1976,8 @@ bootstrap-profile = absent' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bootstrap.con
   [[ "$output" == *$'python\tpython\tpresent\t-'* ]] || false
   [[ "$output" == *$'dotfile\tdotfiles\tpresent\t-'* ]] || false
   [ "$(wc -l <"$native_log" | tr -d ' ')" -eq 5 ]
+  [[ "$(cat "$native_log")" == *$'brew|--global value|list|--formula|--versions|--formula value|jq\n'* ]] || false
+  [[ "$(cat "$native_log")" == *$'brew|--global value|list|--cask|--versions|visual-studio-code\n'* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     PATH="$native_bin:$PATH" RIG_NATIVE_LOG="$native_log" "$RIG" apply --dry-run
@@ -1985,11 +1989,42 @@ bootstrap-profile = absent' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bootstrap.con
     PATH="$native_bin:$PATH" RIG_NATIVE_LOG="$native_log" "$RIG" apply
   [ "$status" -eq 0 ]
   [ "$(cat "$native_log")" = "$(printf '%s\n' \
-    'brew|--global value|install|--cask|visual-studio-code' \
+    'brew|--global value|install|--cask|homebrew/cask/visual-studio-code' \
     'chezmoi|apply|--|/tmp/example target' \
-    'brew|--global value|install|--formula|--formula value|jq' \
+    'brew|--global value|install|--formula|--formula value|homebrew/core/jq' \
     'uv|tool|install|ruff' \
     'mas|install|12345')" ]
+}
+
+@test "Homebrew observation preserves unqualified formula and cask identities" {
+  local native native_log
+  native=$BATS_TEST_TMPDIR/unqualified-brew-$BATS_TEST_NUMBER
+  native_log=$BATS_TEST_TMPDIR/unqualified-brew-log-$BATS_TEST_NUMBER
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'printf "%s\n" "$*" >>"$RIG_NATIVE_LOG"' \
+    'exit 0' >"$native"
+  chmod +x "$native"
+  printf '%s\n' \
+    '[rig]' 'schema = 1' 'default-profile = default' \
+    '[category.core]' 'name = Core' 'purpose = Core tools' \
+    '[tool.formula]' 'name = Formula' 'category = core' 'purpose = Formula test' \
+    'rationale = Formula rationale' 'platform = any' \
+    '[tool.cask]' 'name = Cask' 'category = core' 'purpose = Cask test' \
+    'rationale = Cask rationale' 'platform = any' \
+    '[profile.default]' 'tool = formula' 'tool = cask' \
+    '[provider.brew]' 'adapter = homebrew' "executable = $native" \
+    'capability = observe' \
+    '[binding.formula.brew]' 'kind = formula' 'locator = jq' \
+    '[binding.cask.brew]' 'kind = cask' 'locator = visual-studio-code' \
+    >"$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_NATIVE_LOG="$native_log" "$RIG" status
+
+  [ "$status" -eq 0 ]
+  [[ "$(cat "$native_log")" == *'list --formula --versions jq'* ]] || false
+  [[ "$(cat "$native_log")" == *'list --cask --versions visual-studio-code'* ]] || false
 }
 
 @test "built-in adapter native failures suppress only dependants" {
@@ -2932,6 +2967,22 @@ write_inventory_config() {
   [[ "$output" != *$'declared\tsurveyor\tunmanaged'* ]] || false
 }
 
+@test "unmanaged locator matching remains inside provider namespace" {
+  write_inventory_config
+  printf '%s\n' \
+    '[provider.other]' \
+    'adapter = custom' \
+    "executable = $INVENTORY_PROVIDER" \
+    'capability = inventory' >>"$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" status --unmanaged
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *$'declared\tsurveyor\tunmanaged'* ]] || false
+  [[ "$output" == *$'declared\tother\tunmanaged'* ]] || false
+}
+
 @test "unmanaged findings are informational and do not make status unhealthy" {
   write_inventory_config
 
@@ -3031,4 +3082,40 @@ write_inventory_config() {
 
   [ "$status" -eq 0 ]
   [[ "$output" == *'Unmanaged: 0'* ]] || false
+}
+
+@test "artifact comparison expands only supported leading home prefixes" {
+  write_inventory_config
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    '[ "$1" = rig-provider-v1 ] || exit 64' \
+    'case "$2" in' \
+    '  observe) printf "present\n" ;;' \
+    '  inventory)' \
+    '    printf "%s\n" "$HOME/bin/home-tool" "$HOME/bin/tilde-tool"' \
+    '    printf "%s\n" "/opt/rig/absolute-tool"' \
+    '    printf "%s\n" "prefix-$HOME/bin/embedded" "$HOME/bin/other"' \
+    '    ;;' \
+    '  *) exit 65 ;;' \
+    'esac' >"$INVENTORY_PROVIDER"
+  chmod +x "$INVENTORY_PROVIDER"
+  sed 's|^platform = any$|platform = any\
+artifact = $HOME/bin/home-tool\
+artifact = ~/bin/tilde-tool\
+artifact = /opt/rig/absolute-tool\
+artifact = prefix-$HOME/bin/embedded\
+artifact = $TOOLS_HOME/bin/other|' \
+    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/artifacts.conf"
+  mv "$CONFIG_HOME/artifacts.conf" "$CONFIG_HOME/rig.conf"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" status --unmanaged
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *$'home-tool\tsurveyor\tunmanaged'* ]] || false
+  [[ "$output" != *$'tilde-tool\tsurveyor\tunmanaged'* ]] || false
+  [[ "$output" != *$'absolute-tool\tsurveyor\tunmanaged'* ]] || false
+  [[ "$output" == *$'prefix-'"$TEST_HOME"$'/bin/embedded\tsurveyor\tunmanaged'* ]] || false
+  [[ "$output" == *$TEST_HOME$'/bin/other\tsurveyor\tunmanaged'* ]] || false
+  [[ "$output" == *'Unmanaged: 2'* ]] || false
 }

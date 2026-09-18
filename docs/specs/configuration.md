@@ -68,13 +68,13 @@ _Evidence:_ `tests/rig.bats` retrieves repeated relationship, profile, capabilit
 
 ### RIG-CONF-007 — Bounded path expansion
 
-Rig MUST expand leading `~/` only in provider `executable` and `manifest` fields and direct-download binding `destination` fields, and MUST preserve all other value text literally.
+Rig MUST expand a leading `~/` only while loading provider `executable` and `manifest` fields and direct-download binding `destination` fields. When comparing a tool `artifact`, Rig MUST derive an absolute comparison identity from a leading `~/` or `$HOME/` without changing the stored declaration. Rig MUST preserve embedded variables, other variable names, relative paths, and all other value text literally.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests compare path and non-path values containing tildes, dollar signs, equals signs, and comment characters under an isolated home directory.
+_Verify:_ Bats tests compare path and non-path values containing supported home prefixes, embedded variables, other variable names, tildes, dollar signs, equals signs, and comment characters under an isolated home directory.
 
-_Evidence:_ `tests/rig.bats` proves only declared path fields expand leading `~/`; other tildes and shell-significant characters remain literal.
+_Evidence:_ `tests/rig.bats` proves loaded path fields expand only a leading `~/`, artifact comparison expands only leading `~/` and `$HOME/`, and all unsupported or embedded shell-significant text remains literal.
 
 ## Schema 1 sections
 

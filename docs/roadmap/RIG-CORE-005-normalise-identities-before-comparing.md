@@ -4,12 +4,12 @@ area: CORE
 title: Normalise identities before comparing
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 6925a79a8a840868ef58fbe93bdcf15a3ed68c74
 created_at: 2026-09-17T00:00:00Z
-updated_at: 2026-09-18T02:57:52Z
+updated_at: 2026-09-18T03:13:01Z
 ---
 
 # RIG-CORE-005: Normalise identities before comparing
@@ -39,12 +39,12 @@ This item normalises identity only at provider observation and comparison bounda
 
 ## Steps
 
-- [ ] Add bounded comparison helpers that derive an observed identity without mutating the stored declaration or the locator passed to an apply operation.
-- [ ] For Homebrew formula and cask observation, reduce a tap-qualified locator to its terminal formula or cask token before the installed-state lookup and inventory comparison; retain the complete qualified locator for installation.
-- [ ] For tool artifacts, expand only leading `~/` and `$HOME/` to the active home directory before comparison with an observed absolute path; leave embedded variables, other variable names, relative paths, and non-path identities literal.
-- [ ] Apply the same normalisation functions wherever status and unmanaged reconciliation compare those identity classes, avoiding command-specific fixes that can diverge.
-- [ ] Add Bats coverage for qualified Homebrew formula and cask locators, unqualified locators, both supported home prefixes, explicit absolute artifacts, non-leading variable text, provider namespace separation, and unchanged apply arguments.
-- [ ] Update the changelog, configuration decision, and configuration, orchestration, and state specifications with the bounded normalisation rules and acquisition-versus-observation distinction.
+- [x] Add bounded comparison helpers that derive an observed identity without mutating the stored declaration or the locator passed to an apply operation.
+- [x] For Homebrew formula and cask observation, reduce a tap-qualified locator to its terminal formula or cask token before the installed-state lookup and inventory comparison; retain the complete qualified locator for installation.
+- [x] For tool artifacts, expand only leading `~/` and `$HOME/` to the active home directory before comparison with an observed absolute path; leave embedded variables, other variable names, relative paths, and non-path identities literal.
+- [x] Apply the same normalisation functions wherever status and unmanaged reconciliation compare those identity classes, avoiding command-specific fixes that can diverge.
+- [x] Add Bats coverage for qualified Homebrew formula and cask locators, unqualified locators, both supported home prefixes, explicit absolute artifacts, non-leading variable text, provider namespace separation, and unchanged apply arguments.
+- [x] Update the changelog, configuration decision, and configuration, orchestration, and state specifications with the bounded normalisation rules and acquisition-versus-observation distinction.
 
 ## Files touched
 
@@ -88,6 +88,32 @@ No guide change is required because both supported locator and artifact spelling
 ### Roadmap
 
 RIG-CORE-006 can rely on direct artifact paths working without consumer-side expansion after this item lands. It remains independently planned and does not become a formal build-order blocker.
+
+## Review
+
+### Delivered
+
+Delivered the approved comparison-only normalisation boundary from immutable baseline `6925a79a8a840868ef58fbe93bdcf15a3ed68c74`. Homebrew observation and unmanaged reconciliation now recognise tap-qualified formula and cask locators, artifact comparison recognises the two bounded home prefixes, and declaration, export, and apply values remain unchanged. No provider inventory, aliasing, or general interpolation behaviour was added.
+
+### Summary of changes
+
+`bin/rig` now derives provider and artifact comparison identities. `tests/rig.bats` covers qualified and unqualified Homebrew observation, unchanged qualified apply arguments, supported and unsupported artifact spellings, absolute paths, and provider namespaces. The changelog, ADR-RIG-003, and configuration, orchestration, and state specifications record the acquisition-versus-observation distinction.
+
+### Verification
+
+`shellcheck bin/rig install.sh`, `bash -n bin/rig install.sh`, and all 112 Bats tests pass. Focused comparison tests pass. Against the live default profile, `rig status` reports `missing=0`, `rig doctor` reports healthy with zero findings, and `rig status --unmanaged` completes with the expected informational inventory. The repository-wide audit still reports only the nine pre-existing approval-gated GitHub settings findings, and `mandoc -T lint man/rig.1` still reports the pre-existing line-629 style finding; neither file or external setting is in this item's change set.
+
+### Outstanding concerns
+
+The private consumer still pre-expands artifact home paths until RIG-CORE-006 migrates it to direct authoring, so the live unmanaged check validates compatibility rather than removal of that workaround. The known repository audit and manual style findings remain for the batch-level gate.
+
+### Post-change review
+
+The implementation satisfies the item goal and preserves the declared trust and provider boundaries. Regression risk is concentrated in comparison helper reuse and is covered across observation, unmanaged inventory, literal apply arguments, unsupported variables, and provider namespace tests. The item is ready for acceptance review once the batch-level known findings are assessed.
+
+### Mini recap
+
+Rig now compares equivalent identities without changing what the person authored or what providers receive for materialisation. Automated and live checks confirm the two false missing findings are gone. No new durable learning route is proposed beyond the amended decision and specifications.
 
 ## Discussion
 

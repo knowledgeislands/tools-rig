@@ -32,6 +32,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - Human-readable `rig show` profile metadata and bounded-width, aligned selected-tool tables.
 - Versioned `rig-provider-v1` custom-provider invocation that preserves every configured literal argument boundary.
 - Built-in Homebrew formula, cask, and Mac App Store, uv tool, and chezmoi target adapters with exact capability gates and native command mappings.
+- Bounded reconciliation identities for tap-qualified Homebrew formula and cask locators and leading `~/` or `$HOME/` tool artifacts, while provider application retains the authored locator.
 - HTTPS direct-download executable adapter with declared SHA-256 verification, sibling temporary files, safe destination checks, atomic replacement, and failure cleanup.
 - Five-state observation with deterministic provider, state, and detail reporting without a competing state database.
 - A repeatable tool `artifact` field naming a machine-observable path a tool materialises, so one provider can inventory what another installed and catalogue-only tools remain reconcilable.

@@ -148,6 +148,16 @@ _Verify:_ Bats compares bootstrap with apply for identical selected-profile plan
 
 _Evidence:_ `rig_command_bootstrap` resolves only the bootstrap profile precedence and delegates materialisation to `rig_command_apply`; focused Bats cases compare both entry points and exercise fallback and failure boundaries.
 
+### RIG-STATE-017 — Bounded comparison identities
+
+Expected-versus-observed reconciliation MUST compare Homebrew formula and cask locators by their terminal token and tool artifacts after expanding only a leading `~/` or `$HOME/`. The same rules MUST govern selected-tool observation and unmanaged inventory comparison. Normalisation MUST NOT rewrite declarations, cross provider namespaces, expand embedded or other variables, or change the locator passed to application.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats tests cover qualified and unqualified Homebrew formula and cask locators, both supported artifact home prefixes, absolute artifacts, unsupported variables, provider namespace separation, and unchanged apply arguments.
+
+_Evidence:_ `rig_normalize_provider_identity` and `rig_normalize_artifact_identity` derive comparison-only values; built-in adapter and unmanaged-inventory Bats cases verify observation and application boundaries.
+
 ### RIG-STATE-012 — Direct-download integrity and replacement
 
 A direct-download observation MUST remain local: a missing destination is `missing`; a regular executable whose SHA-256 matches is `present`; a hash or executable-mode mismatch is `drifted`; a symlink or non-regular destination is `unavailable`. Application MUST restrict the initial request and redirects to HTTPS, download to a previously absent sibling temporary path, verify the declared SHA-256, revalidate destination safety immediately before setting executable mode and renaming over the destination, verify the result is a regular file, and remove the temporary path after every handled failure.
