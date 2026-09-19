@@ -259,20 +259,22 @@ Print the Rig version.
 \&
 .PP
 Rig reads an optional
-.I ${RIG_CONFIG_HOME}/rig.conf
+.I ${RIG_CONFIG_HOME}/rig.toml
 first when present and then regular
-.I ${RIG_CONFIG_HOME}/conf.d/*.conf
+.I ${RIG_CONFIG_HOME}/conf.d/*.toml
 fragments in bytewise filename order. At least one source must exist, and the
 merged declaration must contain exactly one
 .B [rig]
-section.
+table.
 When
 .B RIG_CONFIG_HOME
 is unset, its default is
 .IR ${XDG_CONFIG_HOME:-$HOME/.config}/rig .
 .PP
-Configuration uses Rig's versioned, INI-shaped grammar. Values are literal;
-Rig does not source configuration, evaluate commands, interpret shell quoting,
+Configuration uses schema 1's bounded TOML grammar: named tables, the integer
+schema value, single-line basic strings, single-line string arrays, blank lines,
+and comments. Accepted files are valid TOML. Rig rejects unused TOML features
+and does not source configuration, evaluate commands, interpret shell syntax,
 or perform general environment expansion.
 .SH ENVIRONMENT
 \&
@@ -328,7 +330,7 @@ is unset. The fallback is
 .SH FILES
 \&
 .TP
-.I ${XDG_CONFIG_HOME:-$HOME/.config}/rig/rig.conf
+.I ${XDG_CONFIG_HOME:-$HOME/.config}/rig/rig.toml
 Optional root configuration file. Schema 1 uses
 .B [rig]
 with
@@ -348,16 +350,22 @@ with
 .BR category ,
 .BR purpose ,
 .BR rationale ,
-and one or more
-.B platform
-fields; and
+and a non-empty
+.B platforms
+string array, plus optional
+.BR requires ,
+.BR related ,
+.BR alternatives ,
+and
+.B artifacts
+string arrays; and
 .B [profile.ID]
-with repeated
-.B profile
-or
-.B tool
-fields. Provider and binding sections retain their native locator and argument
-data without executing it while configuration is loaded.
+with
+.B profiles
+and
+.B tools
+string arrays. Provider and binding sections retain their native locator and
+argument data without executing it while configuration is loaded.
 .B [provider.ID]
 requires
 .B adapter
@@ -365,11 +373,11 @@ and accepts
 .BR command ,
 .BR executable ,
 .BR manifest ,
-and repeated
-.B argument
-or
-.B capability
-fields.
+and
+.B arguments
+and
+.B capabilities
+string arrays.
 For a
 .B custom
 provider, omitted
@@ -400,11 +408,12 @@ and accepts optional scalar
 .B destination
 and
 .B checksum
-fields plus repeated
-.B platform
-or
-.B argument
-fields. Destination and checksum are restricted to direct-download bindings.
+fields plus
+.B platforms
+and
+.B arguments
+string arrays. Destination and checksum are restricted to direct-download
+bindings.
 .B [publication.ID]
 requires
 .BR profile ,
@@ -425,12 +434,12 @@ requires
 .BR mode ,
 and
 .BR description .
-It accepts repeated
-.BR platform ,
-.BR argument ,
+It accepts
+.BR platforms ,
+.BR arguments ,
 and
-.B allow-argument
-fields. The mode is exactly
+.B allowed-arguments
+string arrays. The mode is exactly
 .B observe
 or
 .BR mutate .
@@ -450,28 +459,28 @@ A minimal catalogue is:
 .nf
 [rig]
 schema = 1
-default-profile = default
-bootstrap-profile = bootstrap
+default-profile = "default"
+bootstrap-profile = "bootstrap"
 
 [category.navigation]
-name = Navigation
-purpose = Move through Knowledge Islands
+name = "Navigation"
+purpose = "Move through Knowledge Islands"
 
 [tool.mgit]
-name = MGit
-category = navigation
-purpose = Navigate related repositories
-rationale = Keeps repository context visible
-platform = macos
+name = "MGit"
+category = "navigation"
+purpose = "Navigate related repositories"
+rationale = "Keeps repository context visible"
+platforms = ["macos"]
 
 [profile.default]
-tool = mgit
+tools = ["mgit"]
 
 [profile.bootstrap]
-tool = mgit
+tools = ["mgit"]
 .fi
 .TP
-.I ${XDG_CONFIG_HOME:-$HOME/.config}/rig/conf.d/*.conf
+.I ${XDG_CONFIG_HOME:-$HOME/.config}/rig/conf.d/*.toml
 Optional configuration fragments.
 .TP
 .I ${XDG_DATA_HOME:-$HOME/.local/share}/rig
@@ -599,9 +608,9 @@ The
 .B custom
 adapter requires one
 .B executable
-and exact repeated
-.B capability
-values. Capability values are atomic and are not split on commas.
+and an exact
+.B capabilities
+array. Capability values are atomic and are not split on commas.
 .PP
 Rig invokes a custom provider using this versioned literal-argument protocol:
 .PP
@@ -631,9 +640,9 @@ EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 VERB PROVIDER TOOL operation 
 .fi
 .PP
 The provider must declare that exact capability. Each caller argument must
-exactly match one repeated
-.B allow-argument
-value before invocation. Provider stdout and stderr pass through and the
+exactly match one
+.B allowed-arguments
+array item before invocation. Provider stdout and stderr pass through and the
 native exit status is preserved.
 .PP
 Publication uses the separate fixed protocol:

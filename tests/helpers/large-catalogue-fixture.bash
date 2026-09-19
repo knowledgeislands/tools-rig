@@ -6,52 +6,49 @@ write_large_catalogue_fixture() {
 
   output=$1
   index=1
-
   {
     printf '%s\n' \
       '[rig]' \
       'schema = 1' \
-      'default-profile = default'
+      'default-profile = "default"'
 
     while [ "$index" -le 5 ]; do
       printf '\n[category.category-%s]\n' "$index"
-      printf 'name = Category %s\n' "$index"
-      printf 'purpose = Deterministic fixture category %s\n' "$index"
+      printf 'name = "Category %s"\n' "$index"
+      printf 'purpose = "Deterministic fixture category %s"\n' "$index"
       index=$((index + 1))
     done
 
     printf '%s\n' \
       '' \
       '[provider.homebrew]' \
-      'adapter = homebrew' \
+      'adapter = "homebrew"' \
       '' \
       '[provider.fixture]' \
-      'adapter = custom' \
-      'executable = /usr/bin/false' \
-      'capability = install'
+      'adapter = "custom"' \
+      'executable = "/usr/bin/false"' \
+      'capabilities = ["install"]'
 
     index=1
     while [ "$index" -le 100 ]; do
       printf -v tool 'tool-%03d' "$index"
       category=$((index % 5 + 1))
-
       printf '\n[tool.%s]\n' "$tool"
-      printf 'name = Tool %03d\n' "$index"
-      printf 'category = category-%s\n' "$category"
-      printf 'purpose = Exercise deterministic catalogue query %03d\n' "$index"
-      printf 'rationale = Keep fixture tool %03d for correctness and timing coverage\n' "$index"
-      printf '%s\n' 'platform = any' 'platform = macos'
-
+      printf 'name = "Tool %03d"\n' "$index"
+      printf 'category = "category-%s"\n' "$category"
+      printf 'purpose = "Exercise deterministic catalogue query %03d"\n' "$index"
+      printf 'rationale = "Keep fixture tool %03d correctness timing coverage"\n' "$index"
+      printf '%s\n' 'platforms = ["any", "macos"]'
       if [ "$index" -gt 1 ]; then
         printf -v previous 'tool-%03d' "$((index - 1))"
-        printf 'requires = %s\n' "$previous"
+        printf 'requires = ["%s"]\n' "$previous"
       fi
       if [ "$index" -lt 100 ]; then
         printf -v next 'tool-%03d' "$((index + 1))"
-        printf 'related = %s\n' "$next"
+        printf 'related = ["%s"]\n' "$next"
       fi
       if [ "$index" -gt 2 ]; then
-        printf '%s\n' 'alternative = tool-001'
+        printf '%s\n' 'alternatives = ["tool-001"]'
       fi
 
       if [ $((index % 2)) -eq 0 ]; then
@@ -60,23 +57,22 @@ write_large_catalogue_fixture() {
         provider=homebrew
       fi
       printf '\n[binding.%s.%s]\n' "$tool" "$provider"
-      printf '%s\n' 'kind = formula'
-      printf 'locator = fixture/%s\n' "$tool"
-      printf '%s\n' 'platform = macos'
-
+      printf '%s\n' 'kind = "formula"'
+      printf 'locator = "fixture/%s"\n' "$tool"
+      printf '%s\n' 'platforms = ["macos"]'
       index=$((index + 1))
     done
 
     printf '%s\n' \
       '' \
       '[profile.base]' \
-      'tool = tool-001' \
+      'tools = ["tool-001"]' \
       '' \
       '[profile.developer]' \
-      'profile = base' \
-      'tool = tool-100' \
+      'profiles = ["base"]' \
+      'tools = ["tool-100"]' \
       '' \
       '[profile.default]' \
-      'profile = developer'
+      'profiles = ["developer"]'
   } >"$output"
 }

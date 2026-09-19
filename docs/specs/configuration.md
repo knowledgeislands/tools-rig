@@ -1,161 +1,157 @@
 # Declarative configuration — RIG-CONF
 
-This area of the [Rig Specifications](index.md) defines the inert configuration contract established by [ADR-RIG-003](../decisions/ADR-RIG-003-declarative-configuration-grammar.md) and protected by [XDR-RIG-001](../decisions/XDR-RIG-001-executable-provider-boundary.md).
+This area of the [Rig Specifications](index.md) defines the inert TOML configuration contract established by [ADR-RIG-003](../decisions/ADR-RIG-003-declarative-configuration-grammar.md) and protected by [XDR-RIG-001](../decisions/XDR-RIG-001-executable-provider-boundary.md).
 
 ## Files and versioning
 
 ### RIG-CONF-001 — XDG configuration files
 
-Rig MUST read an optional root declaration from `${RIG_CONFIG_HOME}/rig.conf` followed by regular fragments from `${RIG_CONFIG_HOME}/conf.d/*.conf`. At least one source MUST exist, and the merged model MUST contain exactly one `[rig]` section.
+Rig MUST read the optional root declaration `${RIG_CONFIG_HOME}/rig.toml` followed by regular fragments `${RIG_CONFIG_HOME}/conf.d/*.toml`. At least one source MUST exist, and the merged model MUST contain exactly one `[rig]` table.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests isolate `RIG_CONFIG_HOME`, exercise root-only, root-plus-fragment, fragment-only, and no-source layouts, and assert Rig reads no undeclared configuration location.
+_Verify:_ Bats tests isolate `RIG_CONFIG_HOME`, exercise root-only, root-plus-fragment, fragment-only, and no-source layouts, and assert that Rig reads no undeclared configuration location.
 
-_Evidence:_ `tests/rig.bats` isolates both `HOME` and `RIG_CONFIG_HOME`; `rig_load_config` accepts one or more selected sources and reads only the selected root and fragment directory.
+_Evidence:_ `rig_load_config` reads only the selected root and fragment directory; `tests/rig.bats` covers every supported source layout.
 
 ### RIG-CONF-002 — Explicit schema version
 
-Every configuration MUST declare one supported schema version in its root `rig` section.
+Every configuration MUST declare exactly one decimal integer `schema = 1` in the root `rig` table. Rig MUST reject a missing, duplicated, non-integer, or unsupported version before resolving declarations.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests accept schema version 1 and reject missing, duplicate, and unsupported versions before resolving declarations.
+_Verify:_ Bats tests accept schema version 1 and reject missing, duplicate, float, and unsupported versions.
 
-_Evidence:_ `tests/rig.bats` covers accepted schema 1 plus missing, duplicate, and unsupported root schema values.
+_Evidence:_ `rig_toml_field`, `rig_toml_mark_field`, and `rig_validate_model` enforce the version contract; `tests/rig.bats` covers its accepted and rejected forms.
 
 ### RIG-CONF-003 — Deterministic fragment order
 
-Rig MUST load the root file first when present and then matching fragments in bytewise filename order independent of the user's locale.
+Rig MUST load the root file first and fragments in bytewise filename order independently of the user's locale.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests create fragments whose names and declarations reveal load order, vary `LC_ALL`, and assert one stable result.
+_Verify:_ Bats tests create fragments whose declarations reveal load order and invoke Rig under different locale settings.
 
-_Evidence:_ `rig_load_config` scopes `LC_ALL=C` around root-first fragment loading; `tests/rig.bats` asserts bytewise fragment precedence.
+_Evidence:_ `rig_load_config` scopes discovery and ordering under `LC_ALL=C`; `tests/rig.bats` proves root-first bytewise loading.
 
-## Grammar and validation
+### RIG-CONF-004 — Inert bounded TOML
 
-### RIG-CONF-004 — Inert records
-
-Rig MUST parse configuration as named sections and literal `key = value` records without sourcing files, evaluating commands, interpreting shell quoting, or performing general environment expansion.
+Rig MUST accept schema 1 tables, bare keys, decimal integer schema value, single-line basic strings, single-line arrays of basic strings, blank lines, and `#` comments without sourcing files, evaluating commands, interpreting shell syntax, or performing general environment expansion. Every accepted source MUST be valid TOML. Rig MUST reject unsupported TOML types and syntax before returning a resolved rig.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests place shell syntax and command substitutions in values, assert no marker command runs, and inspect the literal parsed values.
+_Verify:_ Bats tests validate representative Rig files with a general TOML reader, prove shell-significant text remains inert, and reject literal strings, multiline arrays, non-string array members, floats, and unsupported escapes.
 
-_Evidence:_ `tests/rig.bats` loads command substitutions and shell metacharacters as literal values and proves the marker command is not executed.
+_Evidence:_ `rig_parse_file` and its `rig_toml_*` helpers implement the bounded parser without `eval` or external commands; `tests/rig.bats` exercises interoperability, inert values, comments, escapes, and rejection.
 
 ### RIG-CONF-005 — Schema-controlled declarations
 
-Rig MUST reject unknown section types, unknown keys, duplicate scalar fields, conflicting identities, and malformed records before returning a resolved rig.
+Rig MUST reject unknown table types, unknown keys, duplicate keys, duplicate tables, conflicting identities, malformed assignments, and unsupported values before returning a resolved rig.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats table tests provide each invalid declaration class and assert status 2 with no provider invocation.
 
-_Evidence:_ `tests/rig.bats` exercises unknown sections and fields, duplicate scalars and sections, malformed records, and invalid identities with exit status 2.
+_Evidence:_ `rig_parse_section_identity`, `rig_toml_field`, `rig_toml_mark_field`, and `rig_validate_model` fail closed; `tests/rig.bats` covers the rejection classes.
 
-### RIG-CONF-006 — Repeatable list fields
+### RIG-CONF-006 — Array item boundaries
 
-Rig MUST preserve every occurrence of a schema-defined repeatable field without treating commas or shell words as implicit separators.
+Rig MUST preserve each item in a schema-defined string array as one ordered value without treating commas, spaces, glob characters, or shell syntax inside a string as separators.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests repeat platform, relationship, profile-tool, and capability fields containing spaces or commas and assert exact item boundaries.
+_Verify:_ Bats tests load platform, relationship, profile, tool, capability, argument, artifact, and allowed-argument arrays containing spaces, commas, and shell-significant text and assert exact item boundaries.
 
-_Evidence:_ `tests/rig.bats` retrieves repeated relationship, profile, capability, argument, platform, space-containing, and comma-containing values by occurrence.
+_Evidence:_ `rig_toml_parse_array` decodes one basic string at a time into the existing ordered field model; `tests/rig.bats` inspects values by occurrence and provider argument boundaries.
 
 ### RIG-CONF-007 — Bounded path expansion
 
-Rig MUST expand a leading `~/` only while loading provider `executable` and `manifest` fields and direct-download binding `destination` fields. When comparing a tool `artifact`, Rig MUST derive an absolute comparison identity from a leading `~/` or `$HOME/` without changing the stored declaration. Rig MUST preserve embedded variables, other variable names, relative paths, and all other value text literally.
+Rig MUST expand a leading `~/` only while loading provider `executable` and `manifest` fields and direct-download binding `destination` fields. When comparing tool artifacts, Rig MUST derive absolute comparison identity from a leading `~/` or `$HOME/` without changing the stored declaration. Rig MUST preserve embedded variables, other variable names, relative paths, and all other value text literally.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests compare path and non-path values containing supported home prefixes, embedded variables, other variable names, tildes, dollar signs, equals signs, and comment characters under an isolated home directory.
+_Verify:_ Bats tests compare path and non-path values containing supported home prefixes, embedded variables, variable names, tildes, dollar signs, equals signs, and comment characters under an isolated home directory.
 
-_Evidence:_ `tests/rig.bats` proves loaded path fields expand only a leading `~/`, artifact comparison expands only leading `~/` and `$HOME/`, and all unsupported or embedded shell-significant text remains literal.
+_Evidence:_ `rig_add_field` performs the loading expansion allow-list; artifact comparison has its own bounded identity conversion; `tests/rig.bats` proves unsupported shell-significant text remains literal.
 
-## Schema 1 sections
+## Schema 1 tables
 
-### RIG-CONF-008 — Canonical section identities
+### RIG-CONF-008 — Canonical table identities
 
-Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[profile.ID]`, `[provider.ID]`, `[binding.TOOL.PROVIDER]`, and `[publication.ID]` section identities whose ID segments match `[a-z][a-z0-9-]*`.
+Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[profile.ID]`, `[provider.ID]`, `[binding.TOOL.PROVIDER]`, `[publication.ID]`, and `[operation.TOOL.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats table tests accept each section form and reject uppercase, empty, dotted, whitespace-containing, and digit-leading identifier segments.
+_Verify:_ Bats table tests accept every table form and reject uppercase, empty, extra, whitespace-containing, and digit-leading segments.
 
-_Evidence:_ `tests/rig.bats` loads every schema 1 section form and rejects malformed category and binding identities.
+_Evidence:_ `rig_parse_section_identity` validates table arity and identity segments; `tests/rig.bats` covers canonical and malformed identities.
 
 ### RIG-CONF-009 — Root fields
 
-The schema 1 `rig` section MUST require one `schema` field and one `default-profile` field and MAY accept one `bootstrap-profile` field. Both profile fields MUST name declared profiles. A missing `bootstrap-profile` preserves `default-profile` as the bootstrap fallback.
+The schema 1 `rig` table MUST require `schema` and `default-profile` and MAY contain `bootstrap-profile`. Both profile fields MUST name declared profiles. An omitted `bootstrap-profile` MUST preserve `default-profile` as the bootstrap fallback.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats tests resolve required root fields, accept one optional bootstrap profile, and reject missing, repeated, or unknown references.
 
-_Evidence:_ `rig_validate_model` requires one root schema and default profile and validates the optional bootstrap reference; `tests/rig.bats` covers fallback, explicit selection, and invalid root scalars.
+_Evidence:_ `rig_validate_model` validates root fields and references; bootstrap selection tests cover explicit, configured, and fallback profiles.
 
 ### RIG-CONF-010 — Catalogue fields
 
-Schema 1 category and tool sections MUST accept category `name` and `purpose` fields and tool `name`, `category`, `purpose`, `rationale`, repeated `platform`, repeated `requires`, repeated `related`, and repeated `alternative` fields.
+Schema 1 category tables MUST require string `name` and `purpose`. Tool tables MUST require string `name`, `category`, `purpose`, and `rationale`, MUST require a non-empty `platforms` string array, and MAY contain `requires`, `related`, `alternatives`, and `artifacts` string arrays.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests parse every catalogue field, preserve repeated-field boundaries, and reject a field in the wrong section type.
+_Verify:_ Bats tests parse every catalogue field, preserve array boundaries, resolve relationships, compare artifacts, and reject missing or misplaced fields.
 
-_Evidence:_ `tests/rig.bats` loads every catalogue field, validates required category and tool meaning, and exercises relationship preservation.
+_Evidence:_ `rig_toml_field` maps public TOML keys into the catalogue model; `rig_validate_model` validates required meaning and references; `tests/rig.bats` covers resolution and rejection.
 
 ### RIG-CONF-011 — Profile fields
 
-Schema 1 profile sections MUST accept repeated `profile` and `tool` fields.
+Schema 1 profile tables MAY contain `profiles` and `tools` string arrays. Every item MUST name a declared profile or tool respectively.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests parse nested profile and tool membership and reject scalar treatment of either repeated field.
+_Verify:_ Bats tests compose profiles and tool membership, preserve array item boundaries, reject unknown references, and detect profile cycles.
 
-_Evidence:_ `tests/rig.bats` composes nested profiles, repeats profile and tool fields, and resolves their de-duplicated selection.
+_Evidence:_ `rig_validate_references_for_field` and `rig_validate_cycles` validate the mapped values; `tests/rig.bats` covers composition and cycles.
 
 ### RIG-CONF-012 — Provider fields
 
-Schema 1 provider sections MUST require `adapter` and accept `command`, `executable`, `manifest`, repeated `argument`, and repeated `capability` fields. A provider whose adapter is `custom` MAY omit `executable`; Rig MUST then resolve exactly `${RIG_DATA_HOME}/providers/PROVIDER-ID`. An explicit `executable` MUST take precedence. Other adapter-specific field and capability rules belong to the selected provider adapter.
+Schema 1 provider tables MUST require string `adapter`, MAY contain string `command`, `executable`, and `manifest`, and MAY contain `arguments` and `capabilities` string arrays. A provider whose adapter is `custom` MAY omit `executable`; Rig MUST then resolve exactly `${RIG_DATA_HOME}/providers/PROVIDER-ID`. An explicit executable MUST take precedence.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests parse provider fields, require an adapter, resolve omitted custom executables through Rig and XDG data-home precedence, preserve explicit executable overrides, and report unavailable conventional paths without discovery.
+_Verify:_ Bats tests parse provider fields, require the adapter, preserve argument and capability boundaries, resolve conventional custom executables, and preserve explicit overrides.
 
-_Evidence:_ `rig_validate_model` requires provider adapters; `rig_custom_provider_executable` applies one exact conventional path or the explicit override; `tests/rig.bats` exercises every custom-provider trust-boundary invocation.
+_Evidence:_ `rig_validate_model` and `rig_custom_provider_executable` enforce the provider contract; `tests/rig.bats` exercises every executable trust-boundary invocation.
 
 ### RIG-CONF-013 — Binding fields
 
-Schema 1 binding sections MUST accept `kind`, `locator`, optional scalar `destination` and `checksum`, and repeated `platform` and `argument` fields for the tool and provider named by the section identity. `destination` and `checksum` are valid only for `direct-download` bindings. A Homebrew `mas` binding MUST use a numeric application identity as its locator. A direct-download binding MUST use kind `executable`, an HTTPS locator, an absolute destination after bounded path expansion, and a checksum of `sha256:` followed by exactly 64 lowercase hexadecimal characters.
+Schema 1 binding tables MUST require string `kind` and `locator`, MAY contain string `destination` and `checksum`, and MAY contain `platforms` and `arguments` string arrays. `destination` and `checksum` MUST be valid only for `direct-download` bindings. Homebrew `mas` locators MUST be numeric application identities. Direct-download bindings MUST use kind `executable`, an HTTPS locator, an absolute expanded destination, and a checksum containing `sha256:` followed by exactly 64 lowercase hexadecimal characters.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests resolve binding ownership, reject section identities whose tool or provider does not exist, and reject incomplete, non-HTTPS, or malformed direct-download bindings.
+_Verify:_ Bats tests resolve binding ownership and reject unknown tools or providers, incompatible adapter kinds, unsafe downloads, malformed checksums, and invalid Mac App Store identities.
 
-_Evidence:_ `rig_validate_binding_adapter` enforces the adapter-kind and direct-download integrity schema; `tests/rig.bats` exercises valid and invalid direct-download declarations.
+_Evidence:_ `rig_validate_binding_adapter` enforces adapter-specific binding integrity; `tests/rig.bats` covers valid and invalid declarations.
 
 ### RIG-CONF-014 — Publication fields
 
-Schema 1 publication sections MUST require `profile`, `title`, `base-url`, and `publisher` fields, with `profile` naming a declared profile and `publisher` naming a declared provider.
+Schema 1 publication tables MUST require string `profile`, `title`, `base-url`, and `publisher`. The profile MUST name a declared profile and the publisher MUST name a declared provider.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests resolve a public profile and publisher from one publication and reject missing or unknown references.
+_Verify:_ Bats tests resolve one publication and reject missing or unknown profile and publisher references.
 
-_Evidence:_ `tests/rig.bats` loads all publication fields and rejects missing and unknown profile or provider references.
+_Evidence:_ `rig_validate_model` validates publication fields and references; `tests/rig.bats` covers the contract.
 
 ### RIG-CONF-015 — Operation fields
 
-Schema 1 MUST additionally accept `[operation.TOOL.NAME]` section identities, where both identifier segments match `[a-z][a-z0-9-]*`. An operation MUST name one declared tool through its section identity and MUST require scalar `provider`, `capability`, `mode`, and `description` fields. It MAY repeat `platform`, `argument`, and `allow-argument` fields.
-
-The provider MUST exist, use the `custom` adapter in schema 1, and declare the referenced capability. The `mode` MUST be `observe` or `mutate`. Configured and allowed arguments remain literal values with the same repeated-field boundaries as other schema lists.
+Schema 1 operation tables MUST require string `provider`, `capability`, `mode`, and `description` and MAY contain `platforms`, `arguments`, and `allowed-arguments` string arrays. The provider MUST exist, use the `custom` adapter, and declare the referenced capability. Mode MUST be `observe` or `mutate`. Configured and caller-allowed arguments MUST retain their literal array boundaries.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats table tests accept valid operation records; reject malformed identities, missing required fields, invalid modes, unknown tools or providers, and undeclared capabilities; and preserve configured and allow-listed argument boundaries.
+_Verify:_ Bats table tests accept valid operation records; reject malformed identities, missing fields, invalid modes, unknown tools or providers, and undeclared capabilities; and preserve configured allow-listed argument boundaries.
 
-_Evidence:_ `rig_parse_section_identity`, `rig_field_kind`, and `rig_validate_operation` enforce bounded operation records; `tests/rig.bats` covers valid declarations and rejection before invocation.
+_Evidence:_ `rig_validate_operation` validates bounded operation records; `tests/rig.bats` covers declarations and rejection before invocation.

@@ -189,7 +189,7 @@ _Evidence:_ `rig_command_run` maps declared modes to the versioned custom-provid
 
 ### RIG-ORCH-013 — Bounded caller arguments
 
-`rig run TOOL OPERATION [-- ARGUMENT...]` MUST accept a caller argument only when it exactly matches one `allow-argument` value. Rig MUST append accepted caller arguments literally without shell interpretation. An operation with no `allow-argument` fields MUST reject all caller arguments.
+`rig run TOOL OPERATION [-- ARGUMENT...]` MUST accept a caller argument only when it exactly matches one `allowed-arguments` array item. Rig MUST append accepted caller arguments literally without shell interpretation. An operation with no `allowed-arguments` items MUST reject all caller arguments.
 
 _Conformance:_ conforming
 

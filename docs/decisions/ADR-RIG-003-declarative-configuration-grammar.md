@@ -1,7 +1,7 @@
 ---
 id: ADR-RIG-003
 title: 'Declarative Configuration Grammar'
-date: 2026-09-16
+date: 2026-09-19
 status: current
 decision_type: architecture
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/adr
@@ -12,30 +12,33 @@ decision_depends_on: [PDR-RIG-001, ADR-RIG-001, ADR-RIG-002]
 
 ## Context
 
-Rig needs structured categories, tools, profiles, providers, bindings, relationships, publications, and declared operations while its installed core remains compatible with Bash 3.2 and has no required runtime dependency beyond Bash. TOML, YAML, and JSON require either a non-trivial parser in the executable or an external tool. Sourcing shell configuration would be easy to implement but would turn data inspection into arbitrary code execution.
+Rig needs structured categories, tools, profiles, providers, bindings, relationships, publications, and declared operations. People should be able to edit those declarations with familiar tooling, while the installed core remains compatible with Bash 3.2 and has no required runtime dependency beyond Bash.
 
-Personal catalogues can be large and should remain convenient to organise in dotfiles without introducing executable include directives or a second configuration authority.
+Sourcing shell configuration would turn data inspection into arbitrary code execution. A complete TOML implementation inside Rig would add disproportionate parsing complexity, but a private INI-like language would look familiar without being interoperable with standard configuration tooling. Rig's schema needs only named tables, strings, one integer version, and lists of strings.
 
 ## Decision
 
-Rig adopts a versioned, INI-shaped declarative grammar. `${RIG_CONFIG_HOME}/rig.conf` is an optional root file loaded first when present, followed by regular `${RIG_CONFIG_HOME}/conf.d/*.conf` fragments in deterministic bytewise filename order. At least one source must exist, and the merged stream must contain exactly one `[rig]` section.
+Rig uses TOML for schema 1 configuration. It reads the optional root file `${RIG_CONFIG_HOME}/rig.toml` first, then regular `${RIG_CONFIG_HOME}/conf.d/*.toml` fragments in deterministic bytewise filename order. At least one source must exist, and the merged model must contain exactly one `[rig]` table.
 
-The grammar consists of named sections, `key = literal value` records, blank lines, and whole-line comments. Section types and keys are schema-controlled. Known list fields repeat the key; scalar duplication, unknown fields, conflicting identities, and unsupported schema versions fail closed. The parser splits a record at the first equals sign and performs no quoting, escaping, command evaluation, or general environment expansion. Documented path fields alone expand a leading `~/`. Comparison may derive an absolute artifact identity from a leading `~/` or `$HOME/`, but the authored declaration remains unchanged and no other variable syntax is interpreted.
+Rig implements a strict schema-scoped subset of TOML 1.0 directly in Bash. It accepts its declared table names, bare schema keys, decimal integer `schema = 1`, single-line basic strings, single-line arrays of basic strings, blank lines, and `#` comments. Accepted documents are valid TOML. Rig rejects TOML types and syntax its schema does not need, including literal strings, multiline strings, multiline arrays, floats, booleans, date-time values, inline tables, arrays of tables, dotted assignment keys, and Unicode escape sequences.
 
-Initial section types are `rig`, `category`, `tool`, `profile`, `provider`, `binding`, `operation`, and `publication`. Stable identifiers connect sections; declaration order has no semantic effect beyond deterministic fragment loading.
+Scalar schema fields use TOML basic strings. List fields use one array assignment and plural names such as `platforms`, `tools`, `profiles`, `arguments`, `capabilities`, `alternatives`, `artifacts`, and `allowed-arguments`; `requires` and `related` are already plural or collective. Duplicate keys or tables fail closed across the complete source set.
 
-An operation has identity `[operation.TOOL.NAME]`. It binds an existing tool to one declared provider capability, an `observe` or `mutate` mode, literal configured arguments, and an optional exact allow-list for caller-supplied arguments. This keeps machine audits, service actions, and similar host-specific jobs in data without making shell command strings part of the grammar.
+The parser never sources files, evaluates commands, interprets shell syntax, or performs general environment expansion. Documented path fields alone expand a leading `~/`. Artifact comparison may derive absolute identity from a leading `~/` or `$HOME/`, while retaining the authored value. All other dollar signs, command substitutions, glob characters, separators, and embedded variables remain inert data.
+
+Schema-controlled tables are `rig`, `category`, `tool`, `profile`, `provider`, `binding`, `publication`, and `operation`. Profiles, provider ordering, operations, and publication use the same resolved model. Personal declarations can be split into independently valid fragments without executable include directives or a second configuration authority.
 
 ## Consequences
 
-Configuration remains inert, reviewable, and parseable in Bash 3.2. The format is deliberately Rig-specific rather than claiming compatibility with every INI dialect. Schema evolution requires an explicit version change when it would alter the meaning of accepted records.
+Rig configuration works with standard TOML-aware editors, syntax highlighters, formatters, and readers. Arrays express ordered item boundaries without repeated keys or comma-splitting conventions.
 
-Profiles, provider ordering, operations, and publication use the same resolved data model without learning separate file formats. Personal declarations can be split into managed fragments while the XDG application-directory contract remains unchanged.
+The dependency-free core remains small enough to review because it rejects general TOML features outside the product schema. A valid TOML document may therefore still be unsupported by Rig, and diagnostics must distinguish unsupported value syntax from unknown schema fields.
 
-Declared operations provide one generic extension point instead of permanent domain-specific command families. They still cross the executable-provider trust boundary when invoked.
+Configuration remains inert during catalogue queries and validation. Provider, operation, and publisher invocation continue to be explicit executable trust transitions rather than side effects of parsing.
 
 ## References
 
 - [PDR-RIG-001](PDR-RIG-001-catalogue-led-working-setup.md) — establishes the catalogue-led product model.
 - [ADR-RIG-001](ADR-RIG-001-shell-only-runtime.md) — requires a Bash 3.2-compatible dependency-free core.
 - [ADR-RIG-002](ADR-RIG-002-xdg-directory-contract.md) — defines the XDG application-directory contract.
+- [XDR-RIG-001](XDR-RIG-001-executable-provider-boundary.md) — defines executable trust transitions.

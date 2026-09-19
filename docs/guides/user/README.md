@@ -34,7 +34,9 @@ rig diag
 
 Rig prints its version, invoked executable, Bash version, active platform, effective configuration, data, state, and cache directories, and a summary of configuration discovery and validity. It does not invoke providers or inspect installed tools.
 
-Status 0 means the configuration is valid. Status 1 means no configuration source exists or the merged configuration is invalid; the available runtime and path diagnostics are still printed. `rig.conf` is optional when at least one regular `conf.d/*.conf` fragment supplies the complete model, including exactly one `[rig]` section. Status 2 is reserved for invalid command syntax. Set an XDG base variable to relocate its whole category, or set the corresponding `RIG_*_HOME` value to replace Rig's complete application directory.
+Status 0 means the configuration is valid. Status 1 means no configuration source exists or the merged configuration is invalid; the available runtime and path diagnostics are still printed. `rig.toml` is optional when at least one regular `conf.d/*.toml` fragment supplies the complete model, including exactly one `[rig]` table. Status 2 is reserved for invalid command syntax. Set an XDG base variable to relocate its whole category, or set the corresponding `RIG_*_HOME` value to replace Rig's complete application directory.
+
+Schema 1 uses a strict, dependency-free TOML subset: named tables, `schema = 1`, double-quoted basic strings, single-line string arrays, and `#` comments. Standard TOML tooling can read accepted Rig files, but Rig rejects unused TOML features such as literal strings, multiline values, floats, booleans, dates, and inline tables.
 
 Use `rig doctor` for selected-profile and provider health rather than treating diagnostics as a machine audit:
 
@@ -66,15 +68,14 @@ For direct downloads, declare an HTTPS locator, absolute destination, and lowerc
 
 Declare an optional profile dedicated to first materialisation:
 
-```ini
+```toml
 [rig]
 schema = 1
-default-profile = default
-bootstrap-profile = bootstrap
+default-profile = "default"
+bootstrap-profile = "bootstrap"
 
 [profile.bootstrap]
-tool = homebrew
-tool = dotfiles
+tools = ["homebrew", "dotfiles"]
 ```
 
 Then inspect and execute the same dependency-ordered, fully preflighted plan used by `apply`:
@@ -92,18 +93,18 @@ Operations keep host-specific audits and controls in private configuration while
 
 ```toml
 [provider.local]
-adapter = custom
-executable = ~/.local/libexec/rig-local-provider
-capability = service-status
+adapter = "custom"
+executable = "~/.local/libexec/rig-local-provider"
+capabilities = ["service-status"]
 
 [operation.launchd.service-status]
-provider = local
-capability = service-status
-mode = observe
-description = Inspect configured launchd services
-platform = macos
-argument = user
-allow-argument = verbose
+provider = "local"
+capability = "service-status"
+mode = "observe"
+description = "Inspect configured launchd services"
+platforms = ["macos"]
+arguments = ["user"]
+allowed-arguments = ["verbose"]
 ```
 
 Invoke the declaration by tool and operation identity:
@@ -113,26 +114,26 @@ rig run launchd service-status
 rig run launchd service-status -- verbose
 ```
 
-Rig invokes only a custom provider that declares the exact configured capability. `observe` maps to the provider's `observe` verb and `mutate` maps to `apply`. Configured arguments precede caller arguments, and every caller argument must exactly match one repeated `allow-argument` value. Values remain literal; Rig does not evaluate shell text. The command passes provider output through and returns its native status.
+Rig invokes only a custom provider that declares the exact configured capability. `observe` maps to the provider's `observe` verb and `mutate` maps to `apply`. Configured arguments precede caller arguments, and every caller argument must exactly match one `allowed-arguments` array item. Values remain literal; Rig does not evaluate shell text. The command passes provider output through and returns its native status.
 
 ## Export a public rig
 
 Declare a publication that names the one profile intended for disclosure. The publisher remains a provider declaration for the separate deployment boundary; export does not invoke it.
 
-```ini
+```toml
 [profile.public]
-tool = mgit
+tools = ["mgit"]
 
 [provider.site]
-adapter = custom
-executable = ~/.local/libexec/rig-site-publisher
-capability = publish
+adapter = "custom"
+executable = "~/.local/libexec/rig-site-publisher"
+capabilities = ["publish"]
 
 [publication.personal-site]
-profile = public
-title = Kris's Rig
-base-url = https://rig.midnight.ninja/
-publisher = site
+profile = "public"
+title = "Kris's Rig"
+base-url = "https://rig.midnight.ninja/"
+publisher = "site"
 ```
 
 Generate the complete public-data tree and inspect it before making it public:

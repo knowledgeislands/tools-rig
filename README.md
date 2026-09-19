@@ -51,32 +51,32 @@ Re-run `./install.sh --link` after moving the checkout.
 
 ## Configure a catalogue
 
-Rig reads an optional `${RIG_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/rig}/rig.conf` followed by `conf.d/*.conf` fragments in bytewise filename order. At least one source must exist and the merged declaration must contain exactly one `[rig]` section. The grammar is inert data: Rig does not source it as shell code.
+Rig reads the optional `${RIG_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/rig}/rig.toml` followed by `conf.d/*.toml` fragments in bytewise filename order. At least one source must exist, and the merged declaration must contain exactly one `[rig]` table. Schema 1 accepts a strict TOML subset: basic strings, string arrays, the integer schema value, named tables, and `#` comments. Rig does not source shell code or evaluate values.
 
 Queries derive the active platform from Bash's `OSTYPE`. Set `RIG_PLATFORM` to an explicit catalogue platform identifier when testing a different target or when the host value is not recognised.
 
-```ini
+```toml
 [rig]
 schema = 1
-default-profile = default
-bootstrap-profile = bootstrap
+default-profile = "default"
+bootstrap-profile = "bootstrap"
 
 [category.navigation]
-name = Navigation
-purpose = Move through Knowledge Islands
+name = "Navigation"
+purpose = "Move through Knowledge Islands"
 
 [tool.mgit]
-name = MGit
-category = navigation
-purpose = Navigate related repositories
-rationale = Keeps repository context visible
-platform = macos
+name = "MGit"
+category = "navigation"
+purpose = "Navigate related repositories"
+rationale = "Keeps repository context visible"
+platforms = ["macos"]
 
 [profile.default]
-tool = mgit
+tools = ["mgit"]
 
 [profile.bootstrap]
-tool = mgit
+tools = ["mgit"]
 ```
 
 Providers declare exact `observe` and `apply` capabilities. Built-in adapters map selected bindings to native tools:
@@ -89,9 +89,9 @@ Providers declare exact `observe` and `apply` capabilities. Built-in adapters ma
 | `direct-download` | `executable` | `curl` | HTTPS artifact selected by its declared SHA-256 |
 | `custom` | Any declared kind | `${RIG_DATA_HOME}/providers/ID` | Versioned `rig-provider-v1` protocol |
 
-For a custom provider, omit `executable` to use `${RIG_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/rig}/providers/ID`. Set `executable` to use an external command, a non-default path, or an isolated test fake. Rig resolves only the declared provider ID and does not search or execute adjacent files. Provider and binding `argument` fields remain literal argument boundaries. A direct-download binding additionally requires an HTTPS `locator`, an absolute `destination`, and a lowercase `checksum = sha256:...`; Rig verifies a sibling temporary file before replacing a regular destination.
+For a custom provider, omit `executable` to use `${RIG_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/rig}/providers/ID`. Set `executable` to use an external command, a non-default path, or an isolated test fake. Rig resolves only the declared provider ID and does not search or execute adjacent files. Provider and binding `arguments` arrays retain literal argument boundaries. A direct-download binding additionally requires an HTTPS `locator`, an absolute `destination`, and a lowercase `checksum = "sha256:..."`; Rig verifies a sibling temporary file before replacing a regular destination.
 
-`[operation.TOOL.NAME]` declarations bind one tool to a custom provider's exact capability. Their mode is `observe` or `mutate`; repeated `argument` values are fixed configuration, while repeated `allow-argument` values are the only caller arguments accepted after `--`.
+`[operation.TOOL.NAME]` declarations bind one tool to a custom provider's exact capability. Their mode is `observe` or `mutate`; the `arguments` array is fixed configuration, while `allowed-arguments` contains the only caller arguments accepted after `--`.
 
 `[publication.ID]` names one public profile and one publisher. Offline `export` never invokes that provider. Explicit `publish` requires its `custom` adapter to declare the exact `publish` capability and passes one isolated `rig.json` tree through the versioned provider protocol.
 

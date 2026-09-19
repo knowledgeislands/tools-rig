@@ -32,6 +32,7 @@ RIG_INVOKE_ARGUMENTS=()
 RIG_VISIT_NAMES=()
 RIG_VISIT_STATES=()
 RIG_QUERY_ITEMS=()
+RIG_DECLARED_FIELDS=()
 RIG_VALUE=
 RIG_INDEX=
 RIG_COUNT=0
@@ -194,6 +195,7 @@ rig_model_reset() {
   RIG_VISIT_NAMES=()
   RIG_VISIT_STATES=()
   RIG_QUERY_ITEMS=()
+  RIG_DECLARED_FIELDS=()
   RIG_VALUE=
   RIG_INDEX=
   RIG_COUNT=0
@@ -347,6 +349,206 @@ rig_field_kind() {
   return 0
 }
 
+rig_toml_field() {
+  local section_type key
+
+  section_type=$1
+  key=$2
+  RIG_TOML_FIELD_KEY=
+  RIG_TOML_FIELD_TYPE=
+  case "$section_type:$key" in
+    rig:schema)
+      RIG_TOML_FIELD_KEY=schema
+      RIG_TOML_FIELD_TYPE=integer
+      ;;
+    rig:default-profile|rig:bootstrap-profile|\
+    category:name|category:purpose|\
+    tool:name|tool:category|tool:purpose|tool:rationale|\
+    provider:adapter|provider:command|provider:executable|provider:manifest|\
+    binding:kind|binding:locator|binding:destination|binding:checksum|\
+    publication:profile|publication:title|publication:base-url|publication:publisher|\
+    operation:provider|operation:capability|operation:mode|operation:description)
+      RIG_TOML_FIELD_KEY=$key
+      RIG_TOML_FIELD_TYPE=string
+      ;;
+    tool:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
+    tool:requires) RIG_TOML_FIELD_KEY=requires ; RIG_TOML_FIELD_TYPE=array ;;
+    tool:related) RIG_TOML_FIELD_KEY=related ; RIG_TOML_FIELD_TYPE=array ;;
+    tool:alternatives) RIG_TOML_FIELD_KEY=alternative ; RIG_TOML_FIELD_TYPE=array ;;
+    tool:artifacts) RIG_TOML_FIELD_KEY=artifact ; RIG_TOML_FIELD_TYPE=array ;;
+    profile:profiles) RIG_TOML_FIELD_KEY=profile ; RIG_TOML_FIELD_TYPE=array ;;
+    profile:tools) RIG_TOML_FIELD_KEY=tool ; RIG_TOML_FIELD_TYPE=array ;;
+    provider:arguments) RIG_TOML_FIELD_KEY=argument ; RIG_TOML_FIELD_TYPE=array ;;
+    provider:capabilities) RIG_TOML_FIELD_KEY=capability ; RIG_TOML_FIELD_TYPE=array ;;
+    binding:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
+    binding:arguments) RIG_TOML_FIELD_KEY=argument ; RIG_TOML_FIELD_TYPE=array ;;
+    operation:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
+    operation:arguments) RIG_TOML_FIELD_KEY=argument ; RIG_TOML_FIELD_TYPE=array ;;
+    operation:allowed-arguments) RIG_TOML_FIELD_KEY=allow-argument ; RIG_TOML_FIELD_TYPE=array ;;
+    *) return 1 ;;
+  esac
+}
+
+rig_toml_mark_field() {
+  local section_index key file line marker index
+
+  section_index=$1
+  key=$2
+  file=$3
+  line=$4
+  marker=$section_index:$key
+  index=0
+  while [ "$index" -lt "${#RIG_DECLARED_FIELDS[@]}" ]; do
+    [ "${RIG_DECLARED_FIELDS[$index]}" != "$marker" ] ||
+      rig_fail "$file:$line: duplicate field '$key' in [${RIG_SECTION_NAMES[$section_index]}]" || return
+    index=$((index + 1))
+  done
+  RIG_DECLARED_FIELDS[${#RIG_DECLARED_FIELDS[@]}]=$marker
+}
+
+rig_toml_strip_comment() {
+  local input output character index length in_string escaped
+
+  input=$1
+  output=
+  index=0
+  length=${#input}
+  in_string=0
+  escaped=0
+  while [ "$index" -lt "$length" ]; do
+    character=${input:$index:1}
+    if [ "$in_string" -eq 1 ]; then
+      output=$output$character
+      if [ "$escaped" -eq 1 ]; then
+        escaped=0
+      else
+        case "$character" in
+          \\) escaped=1 ;;
+          '"') in_string=0 ;;
+        esac
+      fi
+    else
+      case "$character" in
+        '#') break ;;
+        '"') in_string=1 ; output=$output$character ;;
+        *) output=$output$character ;;
+      esac
+    fi
+    index=$((index + 1))
+  done
+  RIG_VALUE=$output
+}
+
+rig_toml_parse_string() {
+  local input file line body output character escaped index length
+
+  input=$1
+  file=$2
+  line=$3
+  case "$input" in
+    '"'*'"') ;;
+    *) rig_fail "$file:$line: expected TOML basic string" || return ;;
+  esac
+  body=${input#\"}
+  body=${body%\"}
+  output=
+  escaped=0
+  index=0
+  length=${#body}
+  while [ "$index" -lt "$length" ]; do
+    character=${body:$index:1}
+    if [ "$escaped" -eq 1 ]; then
+      case "$character" in
+        '"'|\\) output=$output$character ;;
+        b) output=$output$'\b' ;;
+        t) output=$output$'\t' ;;
+        n) output=$output$'\n' ;;
+        f) output=$output$'\f' ;;
+        r) output=$output$'\r' ;;
+        *) rig_fail "$file:$line: unsupported TOML string escape '\\$character'" || return ;;
+      esac
+      escaped=0
+    else
+      case "$character" in
+        \\) escaped=1 ;;
+        '"') rig_fail "$file:$line: unescaped quote in TOML basic string" || return ;;
+        *) output=$output$character ;;
+      esac
+    fi
+    index=$((index + 1))
+  done
+  [ "$escaped" -eq 0 ] || rig_fail "$file:$line: incomplete TOML string escape" || return
+  RIG_VALUE=$output
+}
+
+rig_toml_take_string() {
+  local input file line character escaped index length token
+
+  input=$1
+  file=$2
+  line=$3
+  case "$input" in
+    '"'*) ;;
+    *) rig_fail "$file:$line: TOML arrays must contain basic strings" || return ;;
+  esac
+  escaped=0
+  index=1
+  length=${#input}
+  while [ "$index" -lt "$length" ]; do
+    character=${input:$index:1}
+    if [ "$escaped" -eq 1 ]; then
+      escaped=0
+    else
+      case "$character" in
+        \\) escaped=1 ;;
+        '"')
+          token=${input:0:$((index + 1))}
+          RIG_TOML_REST=${input:$((index + 1))}
+          rig_toml_parse_string "$token" "$file" "$line" || return
+          return 0
+          ;;
+      esac
+    fi
+    index=$((index + 1))
+  done
+  rig_fail "$file:$line: unterminated TOML basic string" || return
+}
+
+rig_toml_parse_array() {
+  local section_index key input file line body item
+
+  section_index=$1
+  key=$2
+  input=$3
+  file=$4
+  line=$5
+  case "$input" in
+    \[*\]) ;;
+    *) rig_fail "$file:$line: expected single-line TOML string array" || return ;;
+  esac
+  body=${input#\[}
+  body=${body%\]}
+  rig_trim "$body"
+  body=$RIG_VALUE
+  while [ -n "$body" ]; do
+    rig_toml_take_string "$body" "$file" "$line" || return
+    item=$RIG_VALUE
+    [ -n "$item" ] || rig_fail "$file:$line: array values must not be empty" || return
+    rig_add_field "$section_index" "$key" "$item" "$file" "$line" || return
+    rig_trim "$RIG_TOML_REST"
+    body=$RIG_VALUE
+    [ -n "$body" ] || break
+    case "$body" in
+      ,*)
+        body=${body#,}
+        rig_trim "$body"
+        body=$RIG_VALUE
+        ;;
+      *) rig_fail "$file:$line: expected comma between TOML array values" || return ;;
+    esac
+  done
+}
+
 rig_field_count() {
   local section_index key index end count
 
@@ -403,7 +605,7 @@ rig_add_field() {
 }
 
 rig_parse_file() {
-  local file line line_number current_section key value
+  local file line line_number current_section key value section_type internal_key value_type
 
   file=$1
   current_section=
@@ -412,10 +614,12 @@ rig_parse_file() {
 
   while IFS= read -r line || [ -n "$line" ]; do
     line_number=$((line_number + 1))
+    rig_toml_strip_comment "$line"
+    line=$RIG_VALUE
     rig_trim "$line"
     line=$RIG_VALUE
     case "$line" in
-      ''|'#'*|';'*) continue ;;
+      '') continue ;;
     esac
 
     case "$line" in
@@ -437,7 +641,27 @@ rig_parse_file() {
         case "$key" in
           ''|*[!a-z0-9-]*) rig_fail "$file:$line_number: invalid field name '$key'" || return ;;
         esac
-        rig_add_field "$current_section" "$key" "$value" "$file" "$line_number" || return
+        section_type=${RIG_SECTION_TYPES[$current_section]}
+        rig_toml_field "$section_type" "$key" ||
+          rig_fail "$file:$line_number: unknown field '$key' in [${RIG_SECTION_NAMES[$current_section]}]" || return
+        internal_key=$RIG_TOML_FIELD_KEY
+        value_type=$RIG_TOML_FIELD_TYPE
+        rig_toml_mark_field "$current_section" "$internal_key" "$file" "$line_number" || return
+        case "$value_type" in
+          integer)
+            case "$value" in
+              ''|*[!0-9]*) rig_fail "$file:$line_number: field '$key' must be a decimal integer" || return ;;
+            esac
+            rig_add_field "$current_section" "$internal_key" "$value" "$file" "$line_number" || return
+            ;;
+          string)
+            rig_toml_parse_string "$value" "$file" "$line_number" || return
+            rig_add_field "$current_section" "$internal_key" "$RIG_VALUE" "$file" "$line_number" || return
+            ;;
+          array)
+            rig_toml_parse_array "$current_section" "$internal_key" "$value" "$file" "$line_number" || return
+            ;;
+        esac
         ;;
     esac
   done <"$file"
@@ -803,13 +1027,13 @@ rig_load_config() {
     config_home=${XDG_CONFIG_HOME:-$HOME/.config}/rig
   fi
 
-  root_file=$config_home/rig.conf
+  root_file=$config_home/rig.toml
   source_count=0
   if [ -e "$root_file" ]; then
     rig_parse_file "$root_file" || return
     source_count=$((source_count + 1))
   fi
-  for fragment in "$config_home"/conf.d/*.conf; do
+  for fragment in "$config_home"/conf.d/*.toml; do
     [ -f "$fragment" ] || continue
     rig_parse_file "$fragment" || return
     source_count=$((source_count + 1))
@@ -2433,7 +2657,7 @@ rig_count_config_fragments() {
   local fragment count
 
   count=0
-  for fragment in "$RIG_DIAG_CONFIG_HOME"/conf.d/*.conf; do
+  for fragment in "$RIG_DIAG_CONFIG_HOME"/conf.d/*.toml; do
     [ -f "$fragment" ] || continue
     count=$((count + 1))
   done
@@ -2453,7 +2677,7 @@ rig_command_diag() {
   rig_effective_paths || return 1
   rig_diagnostic_platform
   platform=$RIG_VALUE
-  root_file=$RIG_DIAG_CONFIG_HOME/rig.conf
+  root_file=$RIG_DIAG_CONFIG_HOME/rig.toml
   root_display=$root_file
   rig_count_config_fragments
   fragment_count=$RIG_COUNT

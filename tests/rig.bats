@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 
 setup() {
+  unset XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CACHE_HOME
   RIG=$BATS_TEST_DIRNAME/../bin/rig
   CONFIG_HOME=$BATS_TEST_TMPDIR/config-$BATS_TEST_NUMBER
   TEST_HOME=$BATS_TEST_TMPDIR/home-$BATS_TEST_NUMBER
@@ -12,23 +13,23 @@ write_minimal_config() {
   printf '%s\n' \
     '[rig]' \
     'schema = 1' \
-    'default-profile = default' \
+    'default-profile = "default"' \
     '[category.core]' \
-    'name = Core' \
-    'purpose = Essential tools' \
+    'name = "Core"' \
+    'purpose = "Essential tools"' \
     '[tool.alpha]' \
-    'name = Alpha' \
-    'category = core' \
-    'purpose = Test parsing' \
-    'rationale = A dependable test tool' \
-    'platform = any' \
+    'name = "Alpha"' \
+    'category = "core"' \
+    'purpose = "Test parsing"' \
+    'rationale = "A dependable test tool"' \
+    'platforms = ["any"]' \
     '[profile.default]' \
-    'tool = alpha' \
+    'tools = ["alpha"]' \
     '[provider.native]' \
-    'adapter = homebrew' \
+    'adapter = "homebrew"' \
     '[binding.alpha.native]' \
-    'kind = formula' \
-    'locator = alpha' >"$CONFIG_HOME/rig.conf"
+    'kind = "formula"' \
+    'locator = "alpha"' >"$CONFIG_HOME/rig.toml"
 }
 
 write_recording_provider() {
@@ -67,65 +68,62 @@ write_orchestration_config() {
   printf '%s\n' \
     '[rig]' \
     'schema = 1' \
-    'default-profile = default' \
+    'default-profile = "default"' \
     '[category.core]' \
-    'name = Core' \
-    'purpose = Orchestration fixtures' \
+    'name = "Core"' \
+    'purpose = "Orchestration fixtures"' \
     '[tool.app]' \
-    'name = App' \
-    'category = core' \
-    'purpose = Exercise a dependent tool' \
-    'rationale = It verifies dependency ordering' \
-    'platform = any' \
-    'requires = base' \
+    'name = "App"' \
+    'category = "core"' \
+    'purpose = "Exercise a dependent tool"' \
+    'rationale = "It verifies dependency ordering"' \
+    'platforms = ["any"]' \
+    'requires = ["base"]' \
     '[tool.base]' \
-    'name = Base' \
-    'category = core' \
-    'purpose = Exercise a prerequisite' \
-    'rationale = It must run before app' \
-    'platform = any' \
+    'name = "Base"' \
+    'category = "core"' \
+    'purpose = "Exercise a prerequisite"' \
+    'rationale = "It must run before app"' \
+    'platforms = ["any"]' \
     '[tool.independent]' \
-    'name = Independent' \
-    'category = core' \
-    'purpose = Exercise an independent branch' \
-    'rationale = It still runs after another branch fails' \
-    'platform = any' \
+    'name = "Independent"' \
+    'category = "core"' \
+    'purpose = "Exercise an independent branch"' \
+    'rationale = "It still runs after another branch fails"' \
+    'platforms = ["any"]' \
     '[tool.notes]' \
-    'name = Notes' \
-    'category = core' \
-    'purpose = Exercise catalogue-only state' \
-    'rationale = It is descriptive rather than materialised' \
-    'platform = any' \
+    'name = "Notes"' \
+    'category = "core"' \
+    'purpose = "Exercise catalogue-only state"' \
+    'rationale = "It is descriptive rather than materialised"' \
+    'platforms = ["any"]' \
     '[profile.default]' \
-    'tool = app' \
-    'tool = independent' \
-    'tool = notes' \
+    'tools = ["app", "independent", "notes"]' \
     '[provider.runner]' \
-    'adapter = custom' \
-    "executable = $ORCHESTRATION_PROVIDER" \
-    "argument = provider value;\$(touch $ORCHESTRATION_MARKER)" \
-    'capability = observe' \
-    'capability = apply' \
+    'adapter = "custom"' \
+    "executable = \"$ORCHESTRATION_PROVIDER\"" \
+    "arguments = [\"provider value;\$(touch $ORCHESTRATION_MARKER)\"]" \
+    'capabilities = ["observe", "apply"]' \
     '[binding.app.runner]' \
-    'kind = executable' \
-    'locator = present' \
-    'argument = binding * value' \
+    'kind = "executable"' \
+    'locator = "present"' \
+    'arguments = ["binding * value"]' \
     '[binding.base.runner]' \
-    'kind = executable' \
-    'locator = present' \
+    'kind = "executable"' \
+    'locator = "present"' \
     '[binding.independent.runner]' \
-    'kind = executable' \
-    'locator = present' >"$CONFIG_HOME/rig.conf"
+    'kind = "executable"' \
+    'locator = "present"' >"$CONFIG_HOME/rig.toml"
 }
 
 write_bootstrap_config() {
   write_orchestration_config
-  sed '/^default-profile = default$/a\
-bootstrap-profile = bootstrap' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bootstrap.conf"
+  sed '/^default-profile = "default"$/a\
+bootstrap-profile = "bootstrap"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.toml"
   printf '%s\n' \
     '[profile.bootstrap]' \
-    'tool = app' >>"$CONFIG_HOME/bootstrap.conf"
-  mv "$CONFIG_HOME/bootstrap.conf" "$CONFIG_HOME/rig.conf"
+    'tools = ["app"]' >>"$CONFIG_HOME/bootstrap.toml"
+  mv "$CONFIG_HOME/bootstrap.toml" "$CONFIG_HOME/rig.toml"
 }
 
 run_loader() {
@@ -134,7 +132,7 @@ run_loader() {
 }
 
 @test "large catalogue queries preserve deterministic results without provider execution" {
-  write_large_catalogue_fixture "$CONFIG_HOME/rig.conf"
+  write_large_catalogue_fixture "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" diag
   [ "$status" -eq 0 ]
@@ -162,7 +160,7 @@ run_loader() {
 }
 
 @test "sourceable model indexes every large catalogue field within its section span" {
-  write_large_catalogue_fixture "$CONFIG_HOME/rig.conf"
+  write_large_catalogue_fixture "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" bash -c '
     . "$1"
@@ -197,63 +195,62 @@ write_query_config() {
   printf '%s\n' \
     '[rig]' \
     'schema = 1' \
-    'default-profile = default' \
+    'default-profile = "default"' \
     '[category.foundation]' \
-    'name = Foundation' \
-    'purpose = Core command-line foundations' \
+    'name = "Foundation"' \
+    'purpose = "Core command-line foundations"' \
     '[category.navigation]' \
-    'name = Navigation' \
-    'purpose = Move through Knowledge Islands' \
+    'name = "Navigation"' \
+    'purpose = "Move through Knowledge Islands"' \
     '[profile.minimal]' \
-    'tool = git' \
+    'tools = ["git"]' \
     '[profile.knowledge-islands]' \
-    'profile = minimal' \
-    'tool = mgit' \
+    'profiles = ["minimal"]' \
+    'tools = ["mgit"]' \
     '[profile.focused]' \
-    'tool = mgit' \
+    'tools = ["mgit"]' \
     '[profile.default]' \
-    'profile = knowledge-islands' \
-    'tool = fzf' \
+    'profiles = ["knowledge-islands"]' \
+    'tools = ["fzf"]' \
     '[provider.marker]' \
-    'adapter = custom' \
-    "executable = $QUERY_PROVIDER" \
+    'adapter = "custom"' \
+    "executable = \"$QUERY_PROVIDER\"" \
     '[binding.mgit.marker]' \
-    'kind = executable' \
-    'locator = mgit' \
-    'platform = macos' >"$CONFIG_HOME/rig.conf"
+    'kind = "executable"' \
+    'locator = "mgit"' \
+    'platforms = ["macos"]' >"$CONFIG_HOME/rig.toml"
 
   printf '%s\n' \
     '[tool.lazygit]' \
-    'name = LazyGit' \
-    'category = navigation' \
-    'purpose = Browse Git interactively' \
-    'rationale = It is a visual alternative' \
-    'platform = any' >"$CONFIG_HOME/conf.d/10-lazygit.conf"
+    'name = "LazyGit"' \
+    'category = "navigation"' \
+    'purpose = "Browse Git interactively"' \
+    'rationale = "It is a visual alternative"' \
+    'platforms = ["any"]' >"$CONFIG_HOME/conf.d/10-lazygit.toml"
   printf '%s\n' \
     '[tool.git]' \
-    'name = Git' \
-    'category = foundation' \
-    'purpose = Track source history' \
-    'rationale = Other navigation tools depend on it' \
-    'platform = any' >"$CONFIG_HOME/conf.d/20-git.conf"
+    'name = "Git"' \
+    'category = "foundation"' \
+    'purpose = "Track source history"' \
+    'rationale = "Other navigation tools depend on it"' \
+    'platforms = ["any"]' >"$CONFIG_HOME/conf.d/20-git.toml"
   printf '%s\n' \
     '[tool.mgit]' \
-    'name = MGit' \
-    'category = navigation' \
-    'purpose = Navigate many repositories' \
-    'rationale = It presents the Knowledge Islands estate' \
-    'platform = macos' \
-    'platform = linux' \
-    'requires = git' \
-    'related = fzf' \
-    'alternative = lazygit' >"$CONFIG_HOME/conf.d/30-mgit.conf"
+    'name = "MGit"' \
+    'category = "navigation"' \
+    'purpose = "Navigate many repositories"' \
+    'rationale = "It presents the Knowledge Islands estate"' \
+    'platforms = ["macos", "linux"]' \
+    'requires = ["git"]' \
+    'related = ["fzf"]' \
+    'alternatives = ["lazygit"]' >"$CONFIG_HOME/conf.d/30-mgit.toml"
   printf '%s\n' \
     '[tool.fzf]' \
-    'name = fzf' \
-    'category = navigation' \
-    'purpose = Select entries quickly' \
-    'rationale = It makes navigation concise' \
-    'platform = any' >"$CONFIG_HOME/conf.d/40-fzf.conf"
+    'name = "fzf"' \
+    'category = "navigation"' \
+    'purpose = "Select entries quickly"' \
+    'rationale = "It makes navigation concise"' \
+    'platforms = ["any"]' >"$CONFIG_HOME/conf.d/40-fzf.toml"
 }
 
 @test "help describes the current command surface" {
@@ -347,7 +344,7 @@ write_query_config() {
     "$RIG" diag
 
   [ "$status" -eq 1 ]
-  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.2.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s/.config/rig\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/.config/rig/rig.conf (absent)\n  Fragment count: 0\n  Status: missing' "$RIG" "$BASH_VERSION" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME")" ]
+  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.2.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s/.config/rig\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/.config/rig/rig.toml (absent)\n  Fragment count: 0\n  Status: missing' "$RIG" "$BASH_VERSION" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME")" ]
 }
 
 @test "diag follows XDG base directories" {
@@ -364,7 +361,7 @@ write_query_config() {
   [[ "$output" == *"  Data home: /tmp/rig-data/rig"* ]]
   [[ "$output" == *"  State home: /tmp/rig-state/rig"* ]]
   [[ "$output" == *"  Cache home: /tmp/rig-cache/rig"* ]]
-  [[ "$output" == *"  Root config: /tmp/rig-config/rig/rig.conf"* ]]
+  [[ "$output" == *"  Root config: /tmp/rig-config/rig/rig.toml"* ]]
 }
 
 @test "Rig diagnostic path overrides take precedence" {
@@ -381,7 +378,7 @@ write_query_config() {
   [[ "$output" == *"  Data home: /tmp/custom-data"* ]]
   [[ "$output" == *"  State home: /tmp/custom-state"* ]]
   [[ "$output" == *"  Cache home: /tmp/custom-cache"* ]]
-  [[ "$output" == *"  Root config: /tmp/custom-config/rig.conf"* ]]
+  [[ "$output" == *"  Root config: /tmp/custom-config/rig.toml"* ]]
 }
 
 @test "completion emits shell registration" {
@@ -494,31 +491,31 @@ write_query_config() {
 
 @test "diag reports valid configuration metadata and fragment count" {
   write_minimal_config
-  printf '%s\n' '# first fragment' >"$CONFIG_HOME/conf.d/10-first.conf"
-  printf '%s\n' '# second fragment' >"$CONFIG_HOME/conf.d/20-second.conf"
+  printf '%s\n' '# first fragment' >"$CONFIG_HOME/conf.d/10-first.toml"
+  printf '%s\n' '# second fragment' >"$CONFIG_HOME/conf.d/20-second.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
     XDG_DATA_HOME= XDG_STATE_HOME= XDG_CACHE_HOME= RIG_PLATFORM=fixture "$RIG" diag
 
   [ "$status" -eq 0 ]
-  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.2.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.conf\n  Fragment count: 2\n  Status: valid\n  Schema: 1\n  Default profile: default' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]
+  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.2.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.toml\n  Fragment count: 2\n  Status: valid\n  Schema: 1\n  Default profile: default' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]
 }
 
 @test "diag accepts fragment-only configuration and reports the optional root absent" {
   write_minimal_config
-  mv "$CONFIG_HOME/rig.conf" "$CONFIG_HOME/conf.d/20-complete.conf"
+  mv "$CONFIG_HOME/rig.toml" "$CONFIG_HOME/conf.d/20-complete.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=fixture "$RIG" diag
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"  Root config: $CONFIG_HOME/rig.conf (absent)"* ]] || false
+  [[ "$output" == *"  Root config: $CONFIG_HOME/rig.toml (absent)"* ]] || false
   [[ "$output" == *"  Fragment count: 1"* ]] || false
   [[ "$output" == *"  Status: valid"* ]] || false
   [[ "$output" == *"  Schema: 1"* ]] || false
 }
 
 @test "diag summarizes invalid configuration without parser diagnostics" {
-  printf '%s\n' '[rig]' 'schema = 2' 'default-profile = default' >"$CONFIG_HOME/rig.conf"
+  printf '%s\n' '[rig]' 'schema = 2' 'default-profile = "default"' >"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=fixture "$RIG" diag
 
@@ -587,9 +584,9 @@ write_query_config() {
 @test "show bounds wide table rows and marks abbreviated values" {
   write_minimal_config
   long_purpose='Summarise a deliberately long purpose that would otherwise force the profile table beyond its stable terminal width and make the selected rig difficult to scan quickly'
-  sed "s|purpose = Test parsing|purpose = $long_purpose|" \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/wide.conf"
-  mv "$CONFIG_HOME/wide.conf" "$CONFIG_HOME/rig.conf"
+  sed "s|purpose = \"Test parsing\"|purpose = \"$long_purpose\"|" \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/wide.toml"
+  mv "$CONFIG_HOME/wide.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" show
@@ -618,9 +615,9 @@ write_query_config() {
   [ "$status" -eq 0 ]
   [ "$output" = "$expected" ]
 
-  mv "$CONFIG_HOME/conf.d/10-lazygit.conf" "$CONFIG_HOME/conf.d/swap.conf"
-  mv "$CONFIG_HOME/conf.d/40-fzf.conf" "$CONFIG_HOME/conf.d/10-lazygit.conf"
-  mv "$CONFIG_HOME/conf.d/swap.conf" "$CONFIG_HOME/conf.d/40-fzf.conf"
+  mv "$CONFIG_HOME/conf.d/10-lazygit.toml" "$CONFIG_HOME/conf.d/swap.toml"
+  mv "$CONFIG_HOME/conf.d/40-fzf.toml" "$CONFIG_HOME/conf.d/10-lazygit.toml"
+  mv "$CONFIG_HOME/conf.d/swap.toml" "$CONFIG_HOME/conf.d/40-fzf.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" list
   [ "$status" -eq 0 ]
@@ -661,11 +658,11 @@ write_query_config() {
   write_query_config
   printf '%s\n' \
     '[provider.second]' \
-    'adapter = homebrew' \
+    'adapter = "homebrew"' \
     '[binding.mgit.second]' \
-    'kind = formula' \
-    'locator = other-mgit' \
-    'platform = macos' >>"$CONFIG_HOME/rig.conf"
+    'kind = "formula"' \
+    'locator = "other-mgit"' \
+    'platforms = ["macos"]' >>"$CONFIG_HOME/rig.toml"
 
   error_file=$BATS_TEST_TMPDIR/explain-error-$BATS_TEST_NUMBER
   run bash -c 'error_file=$1; shift; "$@" 2>"$error_file"' _ "$error_file" \
@@ -963,40 +960,40 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
 
 @test "configuration loads only the XDG root and bytewise ordered fragments" {
   mkdir -p "$TEST_HOME/.config/rig"
-  printf '%s\n' '[rig]' 'schema = 1' 'default-profile = elsewhere' \
-    >"$TEST_HOME/.config/rig/rig.conf"
+  printf '%s\n' '[rig]' 'schema = 1' 'default-profile = "elsewhere"' \
+    >"$TEST_HOME/.config/rig/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"no configuration sources under: $CONFIG_HOME"* ]]
 
   write_minimal_config
-  mv "$CONFIG_HOME/rig.conf" "$CONFIG_HOME/conf.d/20-complete.conf"
+  mv "$CONFIG_HOME/rig.toml" "$CONFIG_HOME/conf.d/20-complete.toml"
   run_loader
   [ "$status" -eq 0 ]
-  rm "$CONFIG_HOME/conf.d/20-complete.conf"
+  rm "$CONFIG_HOME/conf.d/20-complete.toml"
 
   write_minimal_config
   printf '%s\n' \
     '[category.shared]' \
-    'name = First' \
-    'purpose = First declaration' >"$CONFIG_HOME/conf.d/B.conf"
+    'name = "First"' \
+    'purpose = "First declaration"' >"$CONFIG_HOME/conf.d/B.toml"
   printf '%s\n' \
     '[category.shared]' \
-    'name = Second' \
-    'purpose = Second declaration' >"$CONFIG_HOME/conf.d/a.conf"
+    'name = "Second"' \
+    'purpose = "Second declaration"' >"$CONFIG_HOME/conf.d/a.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" LC_ALL=C \
     bash -c '. "$1"; rig_load_config' _ "$RIG"
 
   [ "$status" -eq 2 ]
-  [[ "$output" == *"a.conf:1: duplicate section [category.shared]"* ]]
+  [[ "$output" == *"a.toml:1: duplicate section [category.shared]"* ]]
 
-  rm "$CONFIG_HOME/conf.d/a.conf"
-  printf '%s\n' '[rig]' 'schema = 1' 'default-profile = default' \
-    >"$CONFIG_HOME/conf.d/root-again.conf"
+  rm "$CONFIG_HOME/conf.d/a.toml"
+  printf '%s\n' '[rig]' 'schema = 1' 'default-profile = "default"' \
+    >"$CONFIG_HOME/conf.d/root-again.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"root-again.conf:1: duplicate section [rig]"* ]]
+  [[ "$output" == *"root-again.toml:1: duplicate section [rig]"* ]]
 }
 
 @test "literal values are inert and only declared path fields expand leading tilde" {
@@ -1004,34 +1001,32 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   printf '%s\n' \
     '[rig]' \
     'schema = 1' \
-    'default-profile = default' \
+    'default-profile = "default"' \
     '[category.core]' \
-    'name = Core' \
-    'purpose = Literals' \
+    'name = "Core"' \
+    'purpose = "Literals"' \
     '[tool.alpha]' \
-    'name = Alpha' \
-    'category = core' \
-    'purpose = Keep = and # literally' \
-    "rationale = \$(touch $marker) # stays literal" \
-    'platform = mac os' \
-    'platform = linux,bsd' \
+    'name = "Alpha"' \
+    'category = "core"' \
+    'purpose = "Keep = and # literally"' \
+    "rationale = \"\$(touch $marker) # stays literal\"" \
+    'platforms = ["mac os", "linux,bsd"]' \
     '[profile.default]' \
-    'tool = alpha' \
+    'tools = ["alpha"]' \
     '[provider.custom]' \
-    'adapter = custom' \
-    'executable = ~/bin/provider' \
-    'manifest = ~/manifests/tools = private' \
-    'command = ~/literal-command' \
-    'argument = two words' \
-    'argument = comma,kept' \
+    'adapter = "custom"' \
+    'executable = "~/bin/provider"' \
+    'manifest = "~/manifests/tools = private"' \
+    'command = "~/literal-command"' \
+    'arguments = ["two words", "comma,kept"]' \
     '[binding.alpha.custom]' \
-    'kind = executable' \
-    'locator = ~/literal # locator = value' \
+    'kind = "executable"' \
+    'locator = "~/literal # locator = value"' \
     '[publication.site]' \
-    'profile = default' \
-    'title = My # Rig' \
-    'base-url = ~/literal-url' \
-    'publisher = custom' >"$CONFIG_HOME/rig.conf"
+    'profile = "default"' \
+    'title = "My # Rig"' \
+    'base-url = "~/literal-url"' \
+    'publisher = "custom"' >"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" bash -c '
     . "$1"
@@ -1066,50 +1061,47 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   printf '%s\n' \
     '[rig]' \
     'schema = 1' \
-    'default-profile = default' \
+    'default-profile = "default"' \
     '[category.core]' \
-    'name = Core' \
-    'purpose = Repeated fields' \
+    'name = "Core"' \
+    'purpose = "Repeated fields"' \
     '[tool.alpha]' \
-    'name = Alpha' \
-    'category = core' \
-    'purpose = Exercise relationships' \
-    'rationale = Keep relationship types distinct' \
-    'platform = any' \
-    'requires = beta' \
-    'related = gamma' \
-    'alternative = beta' \
+    'name = "Alpha"' \
+    'category = "core"' \
+    'purpose = "Exercise relationships"' \
+    'rationale = "Keep relationship types distinct"' \
+    'platforms = ["any"]' \
+    'requires = ["beta"]' \
+    'related = ["gamma"]' \
+    'alternatives = ["beta"]' \
     '[tool.beta]' \
-    'name = Beta' \
-    'category = core' \
-    'purpose = Dependency' \
-    'rationale = Required fixture' \
-    'platform = any' \
+    'name = "Beta"' \
+    'category = "core"' \
+    'purpose = "Dependency"' \
+    'rationale = "Required fixture"' \
+    'platforms = ["any"]' \
     '[tool.gamma]' \
-    'name = Gamma' \
-    'category = core' \
-    'purpose = Related tool' \
-    'rationale = Related fixture' \
-    'platform = any' \
+    'name = "Gamma"' \
+    'category = "core"' \
+    'purpose = "Related tool"' \
+    'rationale = "Related fixture"' \
+    'platforms = ["any"]' \
     '[profile.base]' \
-    'tool = gamma' \
+    'tools = ["gamma"]' \
     '[profile.default]' \
-    'profile = base' \
-    'profile = base' \
-    'tool = alpha' \
-    'tool = beta' \
+    'profiles = ["base", "base"]' \
+    'tools = ["alpha", "beta"]' \
     '[provider.native]' \
-    'adapter = homebrew' \
-    'command = brew' \
-    'manifest = ~/Brewfile' \
-    'argument = --file with spaces' \
-    'capability = observe' \
-    'capability = install,update' \
+    'adapter = "homebrew"' \
+    'command = "brew"' \
+    'manifest = "~/Brewfile"' \
+    'arguments = ["--file with spaces"]' \
+    'capabilities = ["observe", "install,update"]' \
     '[binding.alpha.native]' \
-    'kind = formula' \
-    'locator = alpha' \
-    'platform = any' \
-    'argument = --binding value' >"$CONFIG_HOME/rig.conf"
+    'kind = "formula"' \
+    'locator = "alpha"' \
+    'platforms = ["any"]' \
+    'arguments = ["--binding value"]' >"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" bash -c '
     . "$1"
@@ -1145,17 +1137,91 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   [[ "$output" == *"binding.alpha.native.argument.1=--binding value"* ]]
 }
 
+@test "configuration sources are interoperable TOML with inert inline comments" {
+  write_minimal_config
+  sed 's/name = "Alpha"/name = "Alpha # One" # retained hash, discarded comment/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/inline.toml"
+  mv "$CONFIG_HOME/inline.toml" "$CONFIG_HOME/rig.toml"
+
+  run python3 -c \
+    'import pathlib, sys, tomllib; tomllib.loads(pathlib.Path(sys.argv[1]).read_text())' \
+    "$CONFIG_HOME/rig.toml"
+  [ "$status" -eq 0 ]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" explain alpha
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'Name: Alpha # One'* ]] || false
+}
+
+@test "bounded TOML rejects valid constructs outside the Rig schema subset" {
+  write_minimal_config
+  sed "s/name = \"Core\"/name = 'Core'/" \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/unsupported.toml"
+  mv "$CONFIG_HOME/unsupported.toml" "$CONFIG_HOME/rig.toml"
+  run_loader
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'expected TOML basic string'* ]] || false
+
+  write_minimal_config
+  sed 's/schema = 1/schema = 1.0/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/unsupported.toml"
+  mv "$CONFIG_HOME/unsupported.toml" "$CONFIG_HOME/rig.toml"
+  run_loader
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"field 'schema' must be a decimal integer"* ]] || false
+
+  write_minimal_config
+  sed 's/platforms = \["any"\]/platforms = [1]/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/unsupported.toml"
+  mv "$CONFIG_HOME/unsupported.toml" "$CONFIG_HOME/rig.toml"
+  run_loader
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'TOML arrays must contain basic strings'* ]] || false
+
+  write_minimal_config
+  sed 's/name = "Core"/name = "\\u0043ore"/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/unsupported.toml"
+  mv "$CONFIG_HOME/unsupported.toml" "$CONFIG_HOME/rig.toml"
+  run python3 -c \
+    'import pathlib, sys, tomllib; tomllib.loads(pathlib.Path(sys.argv[1]).read_text())' \
+    "$CONFIG_HOME/rig.toml"
+  [ "$status" -eq 0 ]
+  run_loader
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"unsupported TOML string escape '\\u'"* ]] || false
+
+  write_minimal_config
+  awk '{
+    if ($0 == "tools = [\"alpha\"]") {
+      print "tools = ["
+      print "  \"alpha\","
+      print "]"
+    } else {
+      print
+    }
+  }' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/unsupported.toml"
+  mv "$CONFIG_HOME/unsupported.toml" "$CONFIG_HOME/rig.toml"
+  run python3 -c \
+    'import pathlib, sys, tomllib; tomllib.loads(pathlib.Path(sys.argv[1]).read_text())' \
+    "$CONFIG_HOME/rig.toml"
+  [ "$status" -eq 0 ]
+  run_loader
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'expected single-line TOML string array'* ]] || false
+}
+
 @test "schema version and root scalar cardinality fail closed" {
   write_minimal_config
-  sed 's/schema = 1/schema = 2/' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/unsupported.conf"
-  mv "$CONFIG_HOME/unsupported.conf" "$CONFIG_HOME/rig.conf"
+  sed 's/schema = 1/schema = 2/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/unsupported.toml"
+  mv "$CONFIG_HOME/unsupported.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"unsupported schema version '2'"* ]]
 
   write_minimal_config
-  sed '/schema = 1/d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/missing.conf"
-  mv "$CONFIG_HOME/missing.conf" "$CONFIG_HOME/rig.conf"
+  sed '/schema = 1/d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/missing.toml"
+  mv "$CONFIG_HOME/missing.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"[rig] requires field 'schema'"* ]]
@@ -1164,31 +1230,31 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
     '[rig]' \
     'schema = 1' \
     'schema = 1' \
-    'default-profile = default' >"$CONFIG_HOME/rig.conf"
+    'default-profile = "default"' >"$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"duplicate scalar field 'schema'"* ]]
+  [[ "$output" == *"duplicate field 'schema'"* ]]
 }
 
 @test "unknown grammar and malformed records fail closed" {
   write_minimal_config
-  printf '%s\n' '[mystery.nope]' 'name = No' >>"$CONFIG_HOME/rig.conf"
+  printf '%s\n' '[mystery.nope]' 'name = "No"' >>"$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"invalid section identity [mystery.nope]"* ]]
 
   write_minimal_config
-  printf '%s\n' 'unknown = field' >>"$CONFIG_HOME/rig.conf"
+  printf '%s\n' 'unknown = field' >>"$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"unknown field 'unknown'"* ]]
 
-  printf '%s\n' 'schema = 1' >"$CONFIG_HOME/rig.conf"
+  printf '%s\n' 'schema = 1' >"$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"field appears before a section"* ]]
 
-  printf '%s\n' '[rig]' 'not a record' >"$CONFIG_HOME/rig.conf"
+  printf '%s\n' '[rig]' 'not a record' >"$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"malformed record"* ]]
@@ -1207,14 +1273,14 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
 
   for section in "${invalid_sections[@]}"; do
     write_minimal_config
-    printf '[%s]\n' "$section" >>"$CONFIG_HOME/rig.conf"
+    printf '[%s]\n' "$section" >>"$CONFIG_HOME/rig.toml"
     run_loader
     [ "$status" -eq 2 ]
     [[ "$output" == *"invalid section identity [$section]"* ]]
   done
 
   write_minimal_config
-  printf '%s\n' '[category.core]' 'name = Again' 'purpose = Duplicate' >>"$CONFIG_HOME/rig.conf"
+  printf '%s\n' '[category.core]' 'name = "Again"' 'purpose = "Duplicate"' >>"$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"duplicate section [category.core]"* ]]
@@ -1222,21 +1288,21 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
 
 @test "required catalogue and provider adapter fields are validated" {
   write_minimal_config
-  sed '/rationale =/d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/missing.conf"
-  mv "$CONFIG_HOME/missing.conf" "$CONFIG_HOME/rig.conf"
+  sed '/rationale =/d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/missing.toml"
+  mv "$CONFIG_HOME/missing.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"[tool.alpha] requires field 'rationale'"* ]]
 
   write_minimal_config
-  sed '/platform =/d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/missing.conf"
-  mv "$CONFIG_HOME/missing.conf" "$CONFIG_HOME/rig.conf"
+  sed '/platforms =/d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/missing.toml"
+  mv "$CONFIG_HOME/missing.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"[tool.alpha] requires field 'platform'"* ]]
 
   write_minimal_config
-  printf '%s\n' '[provider.runner]' >>"$CONFIG_HOME/rig.conf"
+  printf '%s\n' '[provider.runner]' >>"$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"[provider.runner] requires field 'adapter'"* ]]
@@ -1244,23 +1310,23 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
 
 @test "catalogue profile binding and publication references are validated" {
   write_minimal_config
-  sed 's/category = core/category = absent/' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bad.conf"
-  mv "$CONFIG_HOME/bad.conf" "$CONFIG_HOME/rig.conf"
+  sed 's/category = "core"/category = "absent"/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bad.toml"
+  mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"references unknown category 'absent'"* ]]
 
   write_minimal_config
-  awk '{ print; if ($0 ~ /^rationale =/) print "requires = absent" }' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bad.conf"
-  mv "$CONFIG_HOME/bad.conf" "$CONFIG_HOME/rig.conf"
+  awk '{ print; if ($0 ~ /^rationale =/) print "requires = [\"absent\"]" }' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bad.toml"
+  mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"references unknown tool 'absent'"* ]]
 
   write_minimal_config
-  sed 's/tool = alpha/tool = absent/' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bad.conf"
-  mv "$CONFIG_HOME/bad.conf" "$CONFIG_HOME/rig.conf"
+  sed 's/tools = \["alpha"\]/tools = ["absent"]/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bad.toml"
+  mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"references unknown tool 'absent'"* ]]
@@ -1268,10 +1334,10 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   write_minimal_config
   printf '%s\n' \
     '[publication.site]' \
-    'profile = absent' \
-    'title = Site' \
-    'base-url = https://example.test/' \
-    'publisher = native' >>"$CONFIG_HOME/rig.conf"
+    'profile = "absent"' \
+    'title = "Site"' \
+    'base-url = "https://example.test/"' \
+    'publisher = "native"' >>"$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"references unknown profile 'absent'"* ]]
@@ -1279,24 +1345,24 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   write_minimal_config
   printf '%s\n' \
     '[publication.site]' \
-    'profile = default' \
-    'title = Site' \
-    'base-url = https://example.test/' \
-    'publisher = absent' >>"$CONFIG_HOME/rig.conf"
+    'profile = "default"' \
+    'title = "Site"' \
+    'base-url = "https://example.test/"' \
+    'publisher = "absent"' >>"$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"references unknown provider 'absent'"* ]]
 
   write_minimal_config
-  sed 's/binding.alpha.native/binding.alpha.absent/' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bad.conf"
-  mv "$CONFIG_HOME/bad.conf" "$CONFIG_HOME/rig.conf"
+  sed 's/binding.alpha.native/binding.alpha.absent/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bad.toml"
+  mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"references unknown provider 'absent'"* ]]
 
   write_minimal_config
-  sed 's/binding.alpha.native/binding.absent.native/' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bad.conf"
-  mv "$CONFIG_HOME/bad.conf" "$CONFIG_HOME/rig.conf"
+  sed 's/binding.alpha.native/binding.absent.native/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bad.toml"
+  mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"references unknown tool 'absent'"* ]]
@@ -1304,17 +1370,17 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
 
 @test "profile and required-tool cycles fail before resolution" {
   write_minimal_config
-  awk '{ print; if ($0 ~ /^\[profile.default\]$/) print "profile = default" }' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/cycle.conf"
-  mv "$CONFIG_HOME/cycle.conf" "$CONFIG_HOME/rig.conf"
+  awk '{ print; if ($0 ~ /^\[profile.default\]$/) print "profiles = [\"default\"]" }' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/cycle.toml"
+  mv "$CONFIG_HOME/cycle.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"profile cycle includes 'default'"* ]]
 
   write_minimal_config
-  awk '{ print; if ($0 ~ /^rationale =/) print "requires = alpha" }' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/cycle.conf"
-  mv "$CONFIG_HOME/cycle.conf" "$CONFIG_HOME/rig.conf"
+  awk '{ print; if ($0 ~ /^rationale =/) print "requires = [\"alpha\"]" }' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/cycle.toml"
+  mv "$CONFIG_HOME/cycle.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"required-tool cycle includes 'alpha'"* ]]
@@ -1324,35 +1390,34 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   printf '%s\n' \
     '[rig]' \
     'schema = 1' \
-    'default-profile = developer' \
+    'default-profile = "developer"' \
     '[category.core]' \
-    'name = Core' \
-    'purpose = Test tools' \
+    'name = "Core"' \
+    'purpose = "Test tools"' \
     '[tool.zulu]' \
-    'name = Zulu' \
-    'category = core' \
-    'purpose = Linux only' \
-    'rationale = A platform fixture' \
-    'platform = linux' \
+    'name = "Zulu"' \
+    'category = "core"' \
+    'purpose = "Linux only"' \
+    'rationale = "A platform fixture"' \
+    'platforms = ["linux"]' \
     '[tool.beta]' \
-    'name = Beta' \
-    'category = core' \
-    'purpose = Required anywhere' \
-    'rationale = A dependency fixture' \
-    'platform = any' \
+    'name = "Beta"' \
+    'category = "core"' \
+    'purpose = "Required anywhere"' \
+    'rationale = "A dependency fixture"' \
+    'platforms = ["any"]' \
     '[tool.alpha]' \
-    'name = Alpha' \
-    'category = core' \
-    'purpose = macOS tool' \
-    'rationale = A selected fixture' \
-    'platform = macos' \
-    'requires = beta' \
+    'name = "Alpha"' \
+    'category = "core"' \
+    'purpose = "macOS tool"' \
+    'rationale = "A selected fixture"' \
+    'platforms = ["macos"]' \
+    'requires = ["beta"]' \
     '[profile.base]' \
-    'tool = zulu' \
-    'tool = alpha' \
+    'tools = ["zulu", "alpha"]' \
     '[profile.developer]' \
-    'tool = alpha' \
-    'profile = base' >"$CONFIG_HOME/rig.conf"
+    'tools = ["alpha"]' \
+    'profiles = ["base"]' >"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" bash -c '
     . "$1"
@@ -1379,27 +1444,26 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   printf '%s\n' \
     '[rig]' \
     'schema = 1' \
-    'default-profile = default' \
+    'default-profile = "default"' \
     '[profile.default]' \
-    'tool = zulu' \
-    'tool = alpha' >"$CONFIG_HOME/rig.conf"
+    'tools = ["zulu", "alpha"]' >"$CONFIG_HOME/rig.toml"
   printf '%s\n' \
     '[tool.zulu]' \
-    'rationale = Z' \
-    'platform = any' \
-    'purpose = Z' \
-    'category = core' \
-    'name = Zulu' >"$CONFIG_HOME/conf.d/20-zulu.conf"
+    'rationale = "Z"' \
+    'platforms = ["any"]' \
+    'purpose = "Z"' \
+    'category = "core"' \
+    'name = "Zulu"' >"$CONFIG_HOME/conf.d/20-zulu.toml"
   printf '%s\n' \
     '[tool.alpha]' \
-    'platform = any' \
-    'name = Alpha' \
-    'category = core' \
-    'rationale = A' \
-    'purpose = A' \
+    'platforms = ["any"]' \
+    'name = "Alpha"' \
+    'category = "core"' \
+    'rationale = "A"' \
+    'purpose = "A"' \
     '[category.core]' \
-    'purpose = Stable output' \
-    'name = Core' >"$CONFIG_HOME/conf.d/10-alpha.conf"
+    'purpose = "Stable output"' \
+    'name = "Core"' >"$CONFIG_HOME/conf.d/10-alpha.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" bash -c '
     . "$1"; rig_load_config && rig_resolve_profile default test-platform && rig_dump_resolution
@@ -1413,32 +1477,31 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   printf '%s\n' \
     '[rig]' \
     'schema = 1' \
-    'default-profile = default' \
+    'default-profile = "default"' \
     '[category.core]' \
-    'name = Core' \
-    'purpose = Bindings' \
+    'name = "Core"' \
+    'purpose = "Bindings"' \
     '[tool.alpha]' \
-    'name = Alpha' \
-    'category = core' \
-    'purpose = Select a binding' \
-    'rationale = Binding fixture' \
-    'platform = macos' \
-    'platform = linux' \
+    'name = "Alpha"' \
+    'category = "core"' \
+    'purpose = "Select a binding"' \
+    'rationale = "Binding fixture"' \
+    'platforms = ["macos", "linux"]' \
     '[profile.default]' \
-    'tool = alpha' \
+    'tools = ["alpha"]' \
     '[provider.brew]' \
-    'adapter = homebrew' \
+    'adapter = "homebrew"' \
     '[provider.apt]' \
-    'adapter = executable-adapter' \
-    'executable = /optional/field/is/accepted' \
+    'adapter = "executable-adapter"' \
+    'executable = "/optional/field/is/accepted"' \
     '[binding.alpha.brew]' \
-    'kind = formula' \
-    'locator = alpha' \
-    'platform = macos' \
+    'kind = "formula"' \
+    'locator = "alpha"' \
+    'platforms = ["macos"]' \
     '[binding.alpha.apt]' \
-    'kind = package' \
-    'locator = alpha' \
-    'platform = linux' >"$CONFIG_HOME/rig.conf"
+    'kind = "package"' \
+    'locator = "alpha"' \
+    'platforms = ["linux"]' >"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" bash -c '
     . "$1"
@@ -1453,19 +1516,19 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
 
   printf '%s\n' \
     '[provider.other]' \
-    'adapter = anything' \
+    'adapter = "anything"' \
     '[binding.alpha.other]' \
-    'kind = package' \
-    'locator = other-alpha' >>"$CONFIG_HOME/rig.conf"
+    'kind = "package"' \
+    'locator = "other-alpha"' >>"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" bash -c '
     . "$1"; rig_load_config && rig_resolve_profile default macos && rig_resolve_bindings
   ' _ "$RIG"
   [ "$status" -eq 2 ]
   [[ "$output" == *"ambiguous bindings"* ]]
 
-  sed '/\[binding.alpha.brew\]/,/platform = macos/d' "$CONFIG_HOME/rig.conf" \
-    | sed '/\[provider.other\]/,$d' >"$CONFIG_HOME/no-macos.conf"
-  mv "$CONFIG_HOME/no-macos.conf" "$CONFIG_HOME/rig.conf"
+  sed '/\[binding.alpha.brew\]/,/platforms = \["macos"\]/d' "$CONFIG_HOME/rig.toml" \
+    | sed '/\[provider.other\]/,$d' >"$CONFIG_HOME/no-macos.toml"
+  mv "$CONFIG_HOME/no-macos.toml" "$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" bash -c '
     . "$1"; rig_load_config && rig_resolve_profile default macos && rig_resolve_bindings
   ' _ "$RIG"
@@ -1475,8 +1538,8 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
 
 @test "descriptive tools resolve without selecting materialisation bindings" {
   write_minimal_config
-  sed '/\[binding.alpha.native\]/,$d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/descriptive.conf"
-  mv "$CONFIG_HOME/descriptive.conf" "$CONFIG_HOME/rig.conf"
+  sed '/\[binding.alpha.native\]/,$d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/descriptive.toml"
+  mv "$CONFIG_HOME/descriptive.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" bash -c '
     . "$1"; rig_load_config && rig_resolve_profile default macos && rig_dump_resolution
@@ -1488,16 +1551,16 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
 
 @test "binding resolution skips catalogue-only tools in a mixed profile" {
   write_minimal_config
-  awk '{ print; if ($0 == "tool = alpha") print "tool = notes" }' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/mixed.conf"
-  mv "$CONFIG_HOME/mixed.conf" "$CONFIG_HOME/rig.conf"
+  sed 's/tools = \["alpha"\]/tools = ["alpha", "notes"]/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/mixed.toml"
+  mv "$CONFIG_HOME/mixed.toml" "$CONFIG_HOME/rig.toml"
   printf '%s\n' \
     '[tool.notes]' \
-    'name = Notes' \
-    'category = core' \
-    'purpose = Descriptive catalogue entry' \
-    'rationale = It documents an unmaterialised choice' \
-    'platform = any' >>"$CONFIG_HOME/rig.conf"
+    'name = "Notes"' \
+    'category = "core"' \
+    'purpose = "Descriptive catalogue entry"' \
+    'rationale = "It documents an unmaterialised choice"' \
+    'platforms = ["any"]' >>"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" bash -c '
     . "$1"; rig_load_config && rig_resolve_profile default macos && rig_resolve_bindings && rig_dump_resolution
@@ -1509,16 +1572,16 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
 
 @test "supported tools reject unavailable required tools" {
   write_minimal_config
-  awk '{ print; if ($0 == "rationale = A dependable test tool") print "requires = linux-only" }' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/required.conf"
-  mv "$CONFIG_HOME/required.conf" "$CONFIG_HOME/rig.conf"
+  awk '{ print; if ($0 == "rationale = \"A dependable test tool\"") print "requires = [\"linux-only\"]" }' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/required.toml"
+  mv "$CONFIG_HOME/required.toml" "$CONFIG_HOME/rig.toml"
   printf '%s\n' \
     '[tool.linux-only]' \
-    'name = Linux only' \
-    'category = core' \
-    'purpose = Incompatible required tool' \
-    'rationale = It exercises the platform failure boundary' \
-    'platform = linux' >>"$CONFIG_HOME/rig.conf"
+    'name = "Linux only"' \
+    'category = "core"' \
+    'purpose = "Incompatible required tool"' \
+    'rationale = "It exercises the platform failure boundary"' \
+    'platforms = ["linux"]' >>"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" bash -c '
     . "$1"; rig_load_config && rig_resolve_profile default macos
@@ -1545,7 +1608,7 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
 
 @test "binding platform any is universally compatible" {
   write_minimal_config
-  printf '%s\n' 'platform = any' >>"$CONFIG_HOME/rig.conf"
+  printf '%s\n' 'platforms = ["any"]' >>"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" bash -c '
     . "$1"; rig_load_config && rig_resolve_profile default macos && rig_resolve_bindings && rig_dump_resolution
@@ -1581,11 +1644,11 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
 @test "doctor groups actionable findings while preserving shared state treatment" {
   write_orchestration_config
   sed \
-    -e '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = present/locator = missing/' \
-    -e '/\[binding.app.runner\]/,/\[binding.base.runner\]/ s/locator = present/locator = drifted/' \
-    -e '/\[binding.independent.runner\]/,/^$/ s/locator = present/locator = invalid-response/' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/doctor-findings.conf"
-  mv "$CONFIG_HOME/doctor-findings.conf" "$CONFIG_HOME/rig.conf"
+    -e '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = "present"/locator = "missing"/' \
+    -e '/\[binding.app.runner\]/,/\[binding.base.runner\]/ s/locator = "present"/locator = "drifted"/' \
+    -e '/\[binding.independent.runner\]/,/^$/ s/locator = "present"/locator = "invalid-response"/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/doctor-findings.toml"
+  mv "$CONFIG_HOME/doctor-findings.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" doctor
@@ -1597,9 +1660,9 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
 
 @test "doctor reports unavailable providers without invoking mutation" {
   write_orchestration_config
-  sed "s#executable = .*#executable = $BATS_TEST_TMPDIR/missing-doctor-provider#" \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/doctor-unavailable.conf"
-  mv "$CONFIG_HOME/doctor-unavailable.conf" "$CONFIG_HOME/rig.conf"
+  sed "s#executable = .*#executable = \"$BATS_TEST_TMPDIR/missing-doctor-provider\"#" \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/doctor-unavailable.toml"
+  mv "$CONFIG_HOME/doctor-unavailable.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" doctor --profile default
@@ -1628,14 +1691,14 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   write_orchestration_config
   printf '%s\n' \
     '[tool.linux-only]' \
-    'name = Linux only' \
-    'category = core' \
-    'purpose = Exercise incompatible doctor information' \
-    'rationale = It is intentionally absent on macOS' \
-    'platform = linux' >>"$CONFIG_HOME/rig.conf"
-  awk '{ print; if ($0 == "tool = notes") print "tool = linux-only" }' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/doctor-platform.conf"
-  mv "$CONFIG_HOME/doctor-platform.conf" "$CONFIG_HOME/rig.conf"
+    'name = "Linux only"' \
+    'category = "core"' \
+    'purpose = "Exercise incompatible doctor information"' \
+    'rationale = "It is intentionally absent on macOS"' \
+    'platforms = ["linux"]' >>"$CONFIG_HOME/rig.toml"
+  sed 's/tools = \["app", "independent", "notes"\]/tools = ["app", "independent", "notes", "linux-only"]/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/doctor-platform.toml"
+  mv "$CONFIG_HOME/doctor-platform.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" doctor
@@ -1653,7 +1716,7 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   [[ "$output" == *"no configuration sources under: $missing_config"* ]] || false
 
   write_orchestration_config
-  printf '%s\n' '[profile.broken]' 'tool = absent' >>"$CONFIG_HOME/rig.conf"
+  printf '%s\n' '[profile.broken]' 'tools = ["absent"]' >>"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" doctor
   [ "$status" -eq 2 ]
@@ -1719,12 +1782,11 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   write_orchestration_config
   printf '%s\n' \
     '[profile.focused]' \
-    'tool = base' \
+    'tools = ["base"]' \
     '[provider.unselected]' \
-    'adapter = custom' \
-    "executable = $BATS_TEST_TMPDIR/missing-unselected-provider" \
-    'capability = observe' \
-    'capability = apply' >>"$CONFIG_HOME/rig.conf"
+    'adapter = "custom"' \
+    "executable = \"$BATS_TEST_TMPDIR/missing-unselected-provider\"" \
+    'capabilities = ["observe", "apply"]' >>"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status --profile focused
@@ -1742,11 +1804,11 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
 @test "status accepts provider states and treats non-present bound tools as findings" {
   write_orchestration_config
   sed \
-    -e '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = present/locator = missing/' \
-    -e '/\[binding.app.runner\]/,/\[binding.base.runner\]/ s/locator = present/locator = drifted/' \
-    -e '/\[binding.independent.runner\]/,/^$/ s/locator = present/locator = unknown/' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/states.conf"
-  mv "$CONFIG_HOME/states.conf" "$CONFIG_HOME/rig.conf"
+    -e '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = "present"/locator = "missing"/' \
+    -e '/\[binding.app.runner\]/,/\[binding.base.runner\]/ s/locator = "present"/locator = "drifted"/' \
+    -e '/\[binding.independent.runner\]/,/^$/ s/locator = "present"/locator = "unknown"/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/states.toml"
+  mv "$CONFIG_HOME/states.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
@@ -1760,9 +1822,9 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
 
 @test "status converts protocol failure to unknown suppresses dependants and continues independent work" {
   write_orchestration_config
-  sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = present/locator = invalid-response/' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/protocol.conf"
-  mv "$CONFIG_HOME/protocol.conf" "$CONFIG_HOME/rig.conf"
+  sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = "present"/locator = "invalid-response"/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/protocol.toml"
+  mv "$CONFIG_HOME/protocol.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
@@ -1776,9 +1838,9 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
 
 @test "status reports native observation failure without exposing provider exit as command status" {
   write_orchestration_config
-  sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = present/locator = exit-7/' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/native-failure.conf"
-  mv "$CONFIG_HOME/native-failure.conf" "$CONFIG_HOME/rig.conf"
+  sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = "present"/locator = "exit-7"/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/native-failure.toml"
+  mv "$CONFIG_HOME/native-failure.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
@@ -1794,9 +1856,9 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
 
   for response in empty multiline; do
     write_orchestration_config
-    sed "/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = present/locator = $response/" \
-      "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/protocol-$response.conf"
-    mv "$CONFIG_HOME/protocol-$response.conf" "$CONFIG_HOME/rig.conf"
+    sed "/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = \"present\"/locator = \"$response\"/" \
+      "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/protocol-$response.toml"
+    mv "$CONFIG_HOME/protocol-$response.toml" "$CONFIG_HOME/rig.toml"
     rm -f "$ORCHESTRATION_LOG"
 
     run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
@@ -1809,8 +1871,8 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
 
 @test "status reports unavailable operational provider boundaries without invocation" {
   write_orchestration_config
-  sed 's/adapter = custom/adapter = future/' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/unavailable.conf"
-  mv "$CONFIG_HOME/unavailable.conf" "$CONFIG_HOME/rig.conf"
+  sed 's/adapter = "custom"/adapter = "future"/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/unavailable.toml"
+  mv "$CONFIG_HOME/unavailable.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
@@ -1819,8 +1881,9 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   [ ! -e "$ORCHESTRATION_LOG" ]
 
   write_orchestration_config
-  sed '/capability = observe/d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/unavailable.conf"
-  mv "$CONFIG_HOME/unavailable.conf" "$CONFIG_HOME/rig.conf"
+  sed 's/capabilities = \["observe", "apply"\]/capabilities = ["apply"]/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/unavailable.toml"
+  mv "$CONFIG_HOME/unavailable.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
@@ -1829,9 +1892,9 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   [ ! -e "$ORCHESTRATION_LOG" ]
 
   write_orchestration_config
-  sed "s#executable = .*#executable = $BATS_TEST_TMPDIR/missing-provider#" \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/unavailable.conf"
-  mv "$CONFIG_HOME/unavailable.conf" "$CONFIG_HOME/rig.conf"
+  sed "s#executable = .*#executable = \"$BATS_TEST_TMPDIR/missing-provider\"#" \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/unavailable.toml"
+  mv "$CONFIG_HOME/unavailable.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
@@ -1846,9 +1909,9 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   write_orchestration_config
   stdout_file=$BATS_TEST_TMPDIR/orchestration-stdout-$BATS_TEST_NUMBER
   stderr_file=$BATS_TEST_TMPDIR/orchestration-stderr-$BATS_TEST_NUMBER
-  sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = present/locator = diagnostics/' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/diagnostics.conf"
-  mv "$CONFIG_HOME/diagnostics.conf" "$CONFIG_HOME/rig.conf"
+  sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = "present"/locator = "diagnostics"/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/diagnostics.toml"
+  mv "$CONFIG_HOME/diagnostics.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" bash -c '"$1" status >"$2" 2>"$3"' \
@@ -1863,9 +1926,9 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   [ "$output" = observation-diagnostic ]
 
   write_orchestration_config
-  sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = present/locator = diagnostics/' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/diagnostics.conf"
-  mv "$CONFIG_HOME/diagnostics.conf" "$CONFIG_HOME/rig.conf"
+  sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = "present"/locator = "diagnostics"/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/diagnostics.toml"
+  mv "$CONFIG_HOME/diagnostics.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" bash -c '"$1" apply >"$2" 2>"$3"' \
@@ -1884,9 +1947,9 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
 
 @test "apply preserves native exit detail while returning aggregate failure" {
   write_orchestration_config
-  sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = present/locator = exit-126/' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/native-exit.conf"
-  mv "$CONFIG_HOME/native-exit.conf" "$CONFIG_HOME/rig.conf"
+  sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = "present"/locator = "exit-126"/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/native-exit.toml"
+  mv "$CONFIG_HOME/native-exit.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply
@@ -1963,9 +2026,9 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
 
 @test "bootstrap preserves apply preflight and dependency failure boundaries" {
   write_bootstrap_config
-  sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = present/locator = fail/' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/failure.conf"
-  mv "$CONFIG_HOME/failure.conf" "$CONFIG_HOME/rig.conf"
+  sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = "present"/locator = "fail"/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/failure.toml"
+  mv "$CONFIG_HOME/failure.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" bootstrap
@@ -1975,8 +2038,9 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   [ "$(grep '^CALL=' "$ORCHESTRATION_LOG")" = 'CALL=apply:base:fail' ]
 
   write_bootstrap_config
-  sed '/capability = apply/d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/capability.conf"
-  mv "$CONFIG_HOME/capability.conf" "$CONFIG_HOME/rig.conf"
+  sed 's/capabilities = \["observe", "apply"\]/capabilities = ["observe"]/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/capability.toml"
+  mv "$CONFIG_HOME/capability.toml" "$CONFIG_HOME/rig.toml"
   rm -f "$ORCHESTRATION_LOG"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" bootstrap
@@ -1987,17 +2051,17 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
 
 @test "bootstrap profile is an optional unique validated profile reference" {
   write_bootstrap_config
-  sed '/^bootstrap-profile = bootstrap$/a\
-bootstrap-profile = bootstrap' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bootstrap.conf"
-  mv "$CONFIG_HOME/bootstrap.conf" "$CONFIG_HOME/rig.conf"
+  sed '/^bootstrap-profile = "bootstrap"$/a\
+bootstrap-profile = "bootstrap"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.toml"
+  mv "$CONFIG_HOME/bootstrap.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"duplicate scalar field 'bootstrap-profile'"* ]] || false
+  [[ "$output" == *"duplicate field 'bootstrap-profile'"* ]] || false
 
   write_orchestration_config
-  sed '/^default-profile = default$/a\
-bootstrap-profile = absent' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bootstrap.conf"
-  mv "$CONFIG_HOME/bootstrap.conf" "$CONFIG_HOME/rig.conf"
+  sed '/^default-profile = "default"$/a\
+bootstrap-profile = "absent"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.toml"
+  mv "$CONFIG_HOME/bootstrap.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"references unknown bootstrap profile 'absent'"* ]] || false
@@ -2005,9 +2069,9 @@ bootstrap-profile = absent' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bootstrap.con
 
 @test "apply suppresses failed dependants while continuing independent work" {
   write_orchestration_config
-  sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = present/locator = fail/' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/failure.conf"
-  mv "$CONFIG_HOME/failure.conf" "$CONFIG_HOME/rig.conf"
+  sed '/\[binding.base.runner\]/,/\[binding.independent.runner\]/ s/locator = "present"/locator = "fail"/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/failure.toml"
+  mv "$CONFIG_HOME/failure.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply
@@ -2023,13 +2087,13 @@ bootstrap-profile = absent' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bootstrap.con
 @test "apply preflights every selected provider before mutation" {
   write_orchestration_config
   sed 's/\[binding.independent.runner\]/[binding.independent.bad]/' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/preflight.conf"
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/preflight.toml"
   printf '%s\n' \
     '[provider.bad]' \
-    'adapter = custom' \
-    "executable = $BATS_TEST_TMPDIR/missing-provider" \
-    'capability = apply' >>"$CONFIG_HOME/preflight.conf"
-  mv "$CONFIG_HOME/preflight.conf" "$CONFIG_HOME/rig.conf"
+    'adapter = "custom"' \
+    "executable = \"$BATS_TEST_TMPDIR/missing-provider\"" \
+    'capabilities = ["apply"]' >>"$CONFIG_HOME/preflight.toml"
+  mv "$CONFIG_HOME/preflight.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply
@@ -2041,11 +2105,9 @@ bootstrap-profile = absent' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bootstrap.con
 
 @test "apply capabilities are exact atomic literals" {
   write_orchestration_config
-  sed \
-    -e 's/capability = observe/capability = observe,apply/' \
-    -e '/capability = apply/d' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/capability.conf"
-  mv "$CONFIG_HOME/capability.conf" "$CONFIG_HOME/rig.conf"
+  sed 's/capabilities = \["observe", "apply"\]/capabilities = ["observe,apply"]/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/capability.toml"
+  mv "$CONFIG_HOME/capability.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply
@@ -2101,38 +2163,37 @@ bootstrap-profile = absent' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bootstrap.con
   done
 
   printf '%s\n' \
-    '[rig]' 'schema = 1' 'default-profile = default' \
-    '[category.core]' 'name = Core' 'purpose = Core tools' \
-    '[tool.formula]' 'name = Formula' 'category = core' 'purpose = Formula test' \
-    'rationale = Formula rationale' 'platform = any' \
-    '[tool.cask]' 'name = Cask' 'category = core' 'purpose = Cask test' \
-    'rationale = Cask rationale' 'platform = any' \
-    '[tool.store]' 'name = Store' 'category = core' 'purpose = Store test' \
-    'rationale = Store rationale' 'platform = any' \
-    '[tool.python]' 'name = Python' 'category = core' 'purpose = Python test' \
-    'rationale = Python rationale' 'platform = any' \
-    '[tool.dotfile]' 'name = Dotfile' 'category = core' 'purpose = Dotfile test' \
-    'rationale = Dotfile rationale' 'platform = any' \
-    '[profile.default]' 'tool = formula' 'tool = cask' 'tool = store' \
-    'tool = python' 'tool = dotfile' \
-    '[provider.brew]' 'adapter = homebrew' "executable = $native_bin/brew" \
-    'argument = --global value' 'capability = observe' 'capability = apply' \
-    '[provider.store]' 'adapter = homebrew' \
-    'capability = observe' 'capability = apply' \
-    '[provider.python]' 'adapter = uv' \
-    'capability = observe' 'capability = apply' \
-    '[provider.dotfiles]' 'adapter = chezmoi' \
-    'capability = observe' 'capability = apply' \
-    '[provider.unselected]' 'adapter = uv' \
-    "executable = $BATS_TEST_TMPDIR/missing-unselected" 'capability = observe' \
-    '[binding.formula.brew]' 'kind = formula' 'locator = homebrew/core/jq' \
-    'argument = --formula value' \
-    '[binding.cask.brew]' 'kind = cask' \
-    'locator = homebrew/cask/visual-studio-code' \
-    '[binding.store.store]' 'kind = mas' 'locator = 12345' \
-    '[binding.python.python]' 'kind = tool' 'locator = ruff' \
-    '[binding.dotfile.dotfiles]' 'kind = target' 'locator = /tmp/example target' \
-    >"$CONFIG_HOME/rig.conf"
+    '[rig]' 'schema = 1' 'default-profile = "default"' \
+    '[category.core]' 'name = "Core"' 'purpose = "Core tools"' \
+    '[tool.formula]' 'name = "Formula"' 'category = "core"' 'purpose = "Formula test"' \
+    'rationale = "Formula rationale"' 'platforms = ["any"]' \
+    '[tool.cask]' 'name = "Cask"' 'category = "core"' 'purpose = "Cask test"' \
+    'rationale = "Cask rationale"' 'platforms = ["any"]' \
+    '[tool.store]' 'name = "Store"' 'category = "core"' 'purpose = "Store test"' \
+    'rationale = "Store rationale"' 'platforms = ["any"]' \
+    '[tool.python]' 'name = "Python"' 'category = "core"' 'purpose = "Python test"' \
+    'rationale = "Python rationale"' 'platforms = ["any"]' \
+    '[tool.dotfile]' 'name = "Dotfile"' 'category = "core"' 'purpose = "Dotfile test"' \
+    'rationale = "Dotfile rationale"' 'platforms = ["any"]' \
+    '[profile.default]' 'tools = ["formula", "cask", "store", "python", "dotfile"]' \
+    '[provider.brew]' 'adapter = "homebrew"' "executable = \"$native_bin/brew\"" \
+    'arguments = ["--global value"]' 'capabilities = ["observe", "apply"]' \
+    '[provider.store]' 'adapter = "homebrew"' \
+    'capabilities = ["observe", "apply"]' \
+    '[provider.python]' 'adapter = "uv"' \
+    'capabilities = ["observe", "apply"]' \
+    '[provider.dotfiles]' 'adapter = "chezmoi"' \
+    'capabilities = ["observe", "apply"]' \
+    '[provider.unselected]' 'adapter = "uv"' \
+    "executable = \"$BATS_TEST_TMPDIR/missing-unselected\"" 'capabilities = ["observe"]' \
+    '[binding.formula.brew]' 'kind = "formula"' 'locator = "homebrew/core/jq"' \
+    'arguments = ["--formula value"]' \
+    '[binding.cask.brew]' 'kind = "cask"' \
+    'locator = "homebrew/cask/visual-studio-code"' \
+    '[binding.store.store]' 'kind = "mas"' 'locator = "12345"' \
+    '[binding.python.python]' 'kind = "tool"' 'locator = "ruff"' \
+    '[binding.dotfile.dotfiles]' 'kind = "target"' 'locator = "/tmp/example target"' \
+    >"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     PATH="$native_bin:$PATH" RIG_NATIVE_LOG="$native_log" "$RIG" status
@@ -2173,18 +2234,18 @@ bootstrap-profile = absent' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bootstrap.con
     'exit 0' >"$native"
   chmod +x "$native"
   printf '%s\n' \
-    '[rig]' 'schema = 1' 'default-profile = default' \
-    '[category.core]' 'name = Core' 'purpose = Core tools' \
-    '[tool.formula]' 'name = Formula' 'category = core' 'purpose = Formula test' \
-    'rationale = Formula rationale' 'platform = any' \
-    '[tool.cask]' 'name = Cask' 'category = core' 'purpose = Cask test' \
-    'rationale = Cask rationale' 'platform = any' \
-    '[profile.default]' 'tool = formula' 'tool = cask' \
-    '[provider.brew]' 'adapter = homebrew' "executable = $native" \
-    'capability = observe' \
-    '[binding.formula.brew]' 'kind = formula' 'locator = jq' \
-    '[binding.cask.brew]' 'kind = cask' 'locator = visual-studio-code' \
-    >"$CONFIG_HOME/rig.conf"
+    '[rig]' 'schema = 1' 'default-profile = "default"' \
+    '[category.core]' 'name = "Core"' 'purpose = "Core tools"' \
+    '[tool.formula]' 'name = "Formula"' 'category = "core"' 'purpose = "Formula test"' \
+    'rationale = "Formula rationale"' 'platforms = ["any"]' \
+    '[tool.cask]' 'name = "Cask"' 'category = "core"' 'purpose = "Cask test"' \
+    'rationale = "Cask rationale"' 'platforms = ["any"]' \
+    '[profile.default]' 'tools = ["formula", "cask"]' \
+    '[provider.brew]' 'adapter = "homebrew"' "executable = \"$native\"" \
+    'capabilities = ["observe"]' \
+    '[binding.formula.brew]' 'kind = "formula"' 'locator = "jq"' \
+    '[binding.cask.brew]' 'kind = "cask"' 'locator = "visual-studio-code"' \
+    >"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_NATIVE_LOG="$native_log" "$RIG" status
@@ -2204,19 +2265,19 @@ bootstrap-profile = absent' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bootstrap.con
     'case "$*" in *broken*) exit 7 ;; esac' >"$native"
   chmod +x "$native"
   printf '%s\n' \
-    '[rig]' 'schema = 1' 'default-profile = default' \
-    '[category.core]' 'name = Core' 'purpose = Core tools' \
-    '[tool.base]' 'name = Base' 'category = core' 'purpose = Base' \
-    'rationale = Base' 'platform = any' \
-    '[tool.app]' 'name = App' 'category = core' 'purpose = App' \
-    'rationale = App' 'platform = any' 'requires = base' \
-    '[tool.other]' 'name = Other' 'category = core' 'purpose = Other' \
-    'rationale = Other' 'platform = any' \
-    '[profile.default]' 'tool = app' 'tool = other' \
-    '[provider.brew]' 'adapter = homebrew' "executable = $native" 'capability = apply' \
-    '[binding.base.brew]' 'kind = formula' 'locator = broken' \
-    '[binding.app.brew]' 'kind = formula' 'locator = app' \
-    '[binding.other.brew]' 'kind = formula' 'locator = other' >"$CONFIG_HOME/rig.conf"
+    '[rig]' 'schema = 1' 'default-profile = "default"' \
+    '[category.core]' 'name = "Core"' 'purpose = "Core tools"' \
+    '[tool.base]' 'name = "Base"' 'category = "core"' 'purpose = "Base"' \
+    'rationale = "Base"' 'platforms = ["any"]' \
+    '[tool.app]' 'name = "App"' 'category = "core"' 'purpose = "App"' \
+    'rationale = "App"' 'platforms = ["any"]' 'requires = ["base"]' \
+    '[tool.other]' 'name = "Other"' 'category = "core"' 'purpose = "Other"' \
+    'rationale = "Other"' 'platforms = ["any"]' \
+    '[profile.default]' 'tools = ["app", "other"]' \
+    '[provider.brew]' 'adapter = "homebrew"' "executable = \"$native\"" 'capabilities = ["apply"]' \
+    '[binding.base.brew]' 'kind = "formula"' 'locator = "broken"' \
+    '[binding.app.brew]' 'kind = "formula"' 'locator = "app"' \
+    '[binding.other.brew]' 'kind = "formula"' 'locator = "other"' >"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_NATIVE_LOG="$native_log" "$RIG" apply
@@ -2231,11 +2292,10 @@ bootstrap-profile = absent' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bootstrap.con
   local missing
   missing=$BATS_TEST_TMPDIR/missing-brew-$BATS_TEST_NUMBER
   write_minimal_config
-  sed "/adapter = homebrew/a\\
-executable = $missing\\
-capability = observe\\
-capability = apply" "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/native.conf"
-  mv "$CONFIG_HOME/native.conf" "$CONFIG_HOME/rig.conf"
+  sed "/adapter = \"homebrew\"/a\\
+executable = \"$missing\"\\
+capabilities = [\"observe\", \"apply\"]" "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/native.toml"
+  mv "$CONFIG_HOME/native.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" status
   [ "$status" -eq 1 ]
@@ -2272,16 +2332,16 @@ capability = apply" "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/native.conf"
   chmod +x "$downloader"
 
   printf '%s\n' \
-    '[rig]' 'schema = 1' 'default-profile = default' \
-    '[category.core]' 'name = Core' 'purpose = Core tools' \
-    '[tool.download]' 'name = Download' 'category = core' 'purpose = Download test' \
-    'rationale = Download rationale' 'platform = any' \
-    '[profile.default]' 'tool = download' \
-    '[provider.download]' 'adapter = direct-download' "executable = $downloader" \
-    'capability = observe' 'capability = apply' \
-    '[binding.download.download]' 'kind = executable' \
-    'locator = https://example.invalid/downloaded-tool' \
-    'destination = ~/bin/downloaded-tool' "checksum = sha256:$digest" >"$CONFIG_HOME/rig.conf"
+    '[rig]' 'schema = 1' 'default-profile = "default"' \
+    '[category.core]' 'name = "Core"' 'purpose = "Core tools"' \
+    '[tool.download]' 'name = "Download"' 'category = "core"' 'purpose = "Download test"' \
+    'rationale = "Download rationale"' 'platforms = ["any"]' \
+    '[profile.default]' 'tools = ["download"]' \
+    '[provider.download]' 'adapter = "direct-download"' "executable = \"$downloader\"" \
+    'capabilities = ["observe", "apply"]' \
+    '[binding.download.download]' 'kind = "executable"' \
+    'locator = "https://example.invalid/downloaded-tool"' \
+    'destination = "~/bin/downloaded-tool"' "checksum = \"sha256:$digest\"" >"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_NATIVE_LOG="$native_log" RIG_DOWNLOAD_SOURCE="$source_file" "$RIG" status
@@ -2314,8 +2374,8 @@ capability = apply" "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/native.conf"
 
   printf '%s\n' 'existing destination' >"$destination"
   chmod 0755 "$destination"
-  sed "s/sha256:$digest/sha256:$bad_digest/" "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/bad.conf"
-  mv "$CONFIG_HOME/bad.conf" "$CONFIG_HOME/rig.conf"
+  sed "s/sha256:$digest/sha256:$bad_digest/" "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bad.toml"
+  mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_NATIVE_LOG="$native_log" RIG_DOWNLOAD_SOURCE="$source_file" "$RIG" apply
   [ "$status" -eq 1 ]
@@ -2324,8 +2384,8 @@ capability = apply" "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/native.conf"
   [ "$status" -ne 0 ]
 
   sed "s/sha256:$bad_digest/sha256:$digest/" \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/race.conf"
-  mv "$CONFIG_HOME/race.conf" "$CONFIG_HOME/rig.conf"
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/race.toml"
+  mv "$CONFIG_HOME/race.toml" "$CONFIG_HOME/rig.toml"
   printf '%s\n' 'existing destination' >"$destination"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_NATIVE_LOG="$native_log" RIG_DOWNLOAD_SOURCE="$source_file" \
@@ -2337,9 +2397,9 @@ capability = apply" "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/native.conf"
 
 @test "Homebrew mas bindings require numeric application identities" {
   write_minimal_config
-  sed -e 's/kind = formula/kind = mas/' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/mas.conf"
-  mv "$CONFIG_HOME/mas.conf" "$CONFIG_HOME/rig.conf"
+  sed -e 's/kind = "formula"/kind = "mas"/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/mas.toml"
+  mv "$CONFIG_HOME/mas.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" status
 
@@ -2355,39 +2415,39 @@ capability = apply" "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/native.conf"
   chmod +x "$downloader"
   ln -s "$TEST_HOME/target" "$destination"
   printf '%s\n' \
-    '[rig]' 'schema = 1' 'default-profile = default' \
-    '[category.core]' 'name = Core' 'purpose = Core tools' \
-    '[tool.download]' 'name = Download' 'category = core' 'purpose = Download test' \
-    'rationale = Download rationale' 'platform = any' \
-    '[profile.default]' 'tool = download' \
-    '[provider.download]' 'adapter = direct-download' "executable = $downloader" \
-    'capability = apply' \
-    '[binding.download.download]' 'kind = executable' \
-    'locator = https://example.invalid/downloaded-tool' \
-    "destination = $destination" \
-    'checksum = sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' \
-    >"$CONFIG_HOME/rig.conf"
+    '[rig]' 'schema = 1' 'default-profile = "default"' \
+    '[category.core]' 'name = "Core"' 'purpose = "Core tools"' \
+    '[tool.download]' 'name = "Download"' 'category = "core"' 'purpose = "Download test"' \
+    'rationale = "Download rationale"' 'platforms = ["any"]' \
+    '[profile.default]' 'tools = ["download"]' \
+    '[provider.download]' 'adapter = "direct-download"' "executable = \"$downloader\"" \
+    'capabilities = ["apply"]' \
+    '[binding.download.download]' 'kind = "executable"' \
+    'locator = "https://example.invalid/downloaded-tool"' \
+    "destination = \"$destination\"" \
+    'checksum = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' \
+    >"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" apply
   [ "$status" -eq 2 ]
   [[ "$output" == *'refuses unsafe destination'* ]] || false
 
-  sed 's#https://#http://#' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/http.conf"
-  mv "$CONFIG_HOME/http.conf" "$CONFIG_HOME/rig.conf"
+  sed 's#https://#http://#' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/http.toml"
+  mv "$CONFIG_HOME/http.toml" "$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" apply
   [ "$status" -eq 2 ]
   [[ "$output" == *'direct-download locator must use HTTPS'* ]] || false
 
   sed -e 's#http://#https://#' -e '/^checksum = /d' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/incomplete.conf"
-  mv "$CONFIG_HOME/incomplete.conf" "$CONFIG_HOME/rig.conf"
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/incomplete.toml"
+  mv "$CONFIG_HOME/incomplete.toml" "$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" apply
   [ "$status" -eq 2 ]
   [[ "$output" == *"requires field 'checksum'"* ]] || false
 
   printf '%s\n' \
-    'checksum = sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' \
-    >>"$CONFIG_HOME/rig.conf"
+    'checksum = "sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"' \
+    >>"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" apply
   [ "$status" -eq 2 ]
   [[ "$output" == *'checksum must contain 64 lowercase hexadecimal characters'* ]] || false
@@ -2403,54 +2463,53 @@ write_publication_config() {
   printf '%s\n' \
     '[rig]' \
     'schema = 1' \
-    'default-profile = private' \
+    'default-profile = "private"' \
     '[category.navigation]' \
-    'name = Navigation & Search' \
-    'purpose = Find <things> safely' \
+    'name = "Navigation & Search"' \
+    'purpose = "Find <things> safely"' \
     '[category.private]' \
-    'name = Private category' \
-    'purpose = Never disclose this category' \
+    'name = "Private category"' \
+    'purpose = "Never disclose this category"' \
     '[tool.alpha]' \
-    'name = Alpha <One>' \
-    'category = navigation' \
-    'purpose = Find & select' \
-    'rationale = Safer "choice" for public work' \
-    'platform = any' \
-    'related = beta' \
-    'alternative = secret' \
+    'name = "Alpha <One>"' \
+    'category = "navigation"' \
+    'purpose = "Find & select"' \
+    'rationale = "Safer \"choice\" for public work"' \
+    'platforms = ["any"]' \
+    'related = ["beta"]' \
+    'alternatives = ["secret"]' \
     '[tool.beta]' \
-    'name = Beta' \
-    'category = navigation' \
-    'purpose = Browse public material' \
-    'rationale = Complements Alpha' \
-    'platform = linux' \
+    'name = "Beta"' \
+    'category = "navigation"' \
+    'purpose = "Browse public material"' \
+    'rationale = "Complements Alpha"' \
+    'platforms = ["linux"]' \
     '[tool.secret]' \
-    'name = Secret Tool' \
-    'category = private' \
-    'purpose = private-purpose-token' \
-    'rationale = private-rationale-token' \
-    'platform = any' \
+    'name = "Secret Tool"' \
+    'category = "private"' \
+    'purpose = "private-purpose-token"' \
+    'rationale = "private-rationale-token"' \
+    'platforms = ["any"]' \
     '[profile.public]' \
-    'tool = alpha' \
-    'tool = beta' \
+    'tools = ["alpha", "beta"]' \
     '[profile.private]' \
-    'profile = public' \
-    'tool = secret' \
+    'profiles = ["public"]' \
+    'tools = ["secret"]' \
     '[provider.publisher]' \
-    'adapter = custom' \
-    "executable = $PUBLICATION_PROVIDER" \
-    'capability = publish' \
-    'manifest = /private/provider-manifest-token' \
-    'argument = provider-argument-token' \
+    'adapter = "custom"' \
+    "executable = \"$PUBLICATION_PROVIDER\"" \
+    'capabilities = ["publish"]' \
+    'manifest = "/private/provider-manifest-token"' \
+    'arguments = ["provider-argument-token"]' \
     '[binding.alpha.publisher]' \
-    'kind = executable' \
-    'locator = private-locator-token' \
-    'argument = binding-argument-token' \
+    'kind = "executable"' \
+    'locator = "private-locator-token"' \
+    'arguments = ["binding-argument-token"]' \
     '[publication.site]' \
-    'profile = public' \
-    'title = Kris & Rig' \
-    'base-url = https://example.test/rig/' \
-    'publisher = publisher' >"$CONFIG_HOME/rig.conf"
+    'profile = "public"' \
+    'title = "Kris & Rig"' \
+    'base-url = "https://example.test/rig/"' \
+    'publisher = "publisher"' >"$CONFIG_HOME/rig.toml"
 }
 
 @test "export writes valid allow-listed versioned public data as complete tree" {
@@ -2530,7 +2589,7 @@ assert tools["beta"]["relationships"] == {
   sed -e 's/tool = alpha/tool = temporary/' \
     -e 's/tool = beta/tool = alpha/' \
     -e 's/tool = temporary/tool = beta/' \
-    "$CONFIG_HOME/rig.conf" >"$second_config/rig.conf"
+    "$CONFIG_HOME/rig.toml" >"$second_config/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" export site --output "$first_output"
@@ -2546,8 +2605,8 @@ assert tools["beta"]["relationships"] == {
   destination=$BATS_TEST_TMPDIR/url-site-$BATS_TEST_NUMBER
   write_publication_config
   sed 's#https://example.test/rig/#https://rig.example.test#' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/root.conf"
-  mv "$CONFIG_HOME/root.conf" "$CONFIG_HOME/rig.conf"
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/root.toml"
+  mv "$CONFIG_HOME/root.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" export site --output "$destination"
@@ -2584,8 +2643,8 @@ assert tools["beta"]["relationships"] == {
   for invalid_url in 'https://:/' 'https://:bad/' 'https://user@example.test/' 'https://example.test:bad/'; do
     write_publication_config
     sed "s#https://example.test/rig/#$invalid_url#" \
-      "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/invalid.conf"
-    mv "$CONFIG_HOME/invalid.conf" "$CONFIG_HOME/rig.conf"
+      "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/invalid.toml"
+    mv "$CONFIG_HOME/invalid.toml" "$CONFIG_HOME/rig.toml"
 
     run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
       "$RIG" export site --output "$destination"
@@ -2667,9 +2726,9 @@ write_publish_config() {
   chmod +x "$OTHER_PUBLISHER"
   printf '%s\n' \
     '[provider.other-publisher]' \
-    'adapter = custom' \
-    "executable = $OTHER_PUBLISHER" \
-    'capability = publish' >>"$CONFIG_HOME/rig.conf"
+    'adapter = "custom"' \
+    "executable = \"$OTHER_PUBLISHER\"" \
+    'capabilities = ["publish"]' >>"$CONFIG_HOME/rig.toml"
 }
 
 @test "publish renders one isolated export and invokes only the selected publisher" {
@@ -2829,9 +2888,9 @@ write_publish_config() {
   cache=$BATS_TEST_TMPDIR/publish-reject-cache-$BATS_TEST_NUMBER
   write_publish_config
   original=$BATS_TEST_TMPDIR/publish-original-$BATS_TEST_NUMBER
-  cp "$CONFIG_HOME/rig.conf" "$original"
+  cp "$CONFIG_HOME/rig.toml" "$original"
 
-  sed '/^capability = publish$/d' "$original" >"$CONFIG_HOME/rig.conf"
+  sed 's/capabilities = \["publish"\]/capabilities = []/' "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
     RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" "$RIG" publish site
   [ "$status" -eq 2 ]
@@ -2839,32 +2898,32 @@ write_publish_config() {
   [ ! -e "$PUBLISH_LOG" ]
   [ ! -e "$cache/publish" ]
 
-  sed -e 's/adapter = custom/adapter = homebrew/' \
-    -e 's/kind = executable/kind = formula/' \
-    "$original" >"$CONFIG_HOME/rig.conf"
+  sed -e 's/adapter = "custom"/adapter = "homebrew"/' \
+    -e 's/kind = "executable"/kind = "formula"/' \
+    "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
     RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" "$RIG" publish site
   [ "$status" -eq 2 ]
   [[ "$output" == *"requires a custom publisher"* ]] || false
   [ ! -e "$PUBLISH_LOG" ]
 
-  sed "s#executable = $PUBLICATION_PROVIDER#executable = $BATS_TEST_TMPDIR/missing-publisher#" \
-    "$original" >"$CONFIG_HOME/rig.conf"
+  sed "s#executable = \"$PUBLICATION_PROVIDER\"#executable = \"$BATS_TEST_TMPDIR/missing-publisher\"#" \
+    "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
     RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" "$RIG" publish site
   [ "$status" -eq 2 ]
   [[ "$output" == *"publisher 'publisher' executable unavailable"* ]] || false
   [ ! -e "$PUBLISH_LOG" ]
 
-  sed 's#base-url = https://example.test/rig/#base-url = https://user@example.test/#' \
-    "$original" >"$CONFIG_HOME/rig.conf"
+  sed 's#base-url = "https://example.test/rig/"#base-url = "https://user@example.test/"#' \
+    "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
     RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" "$RIG" publish site
   [ "$status" -eq 2 ]
   [[ "$output" == *'must not contain user information'* ]] || false
   [ ! -e "$PUBLISH_LOG" ]
 
-  cp "$original" "$CONFIG_HOME/rig.conf"
+  cp "$original" "$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
     RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" "$RIG" publish absent
   [ "$status" -eq 2 ]
@@ -2897,42 +2956,37 @@ write_operation_config() {
   printf '%s\n' \
     '[rig]' \
     'schema = 1' \
-    'default-profile = default' \
+    'default-profile = "default"' \
     '[category.core]' \
-    'name = Core' \
-    'purpose = Core tools' \
+    'name = "Core"' \
+    'purpose = "Core tools"' \
     '[tool.alpha]' \
-    'name = Alpha' \
-    'category = core' \
-    'purpose = Exercise declared operations' \
-    'rationale = Keeps host actions configuration-led' \
-    'platform = macos' \
-    'platform = linux' \
+    'name = "Alpha"' \
+    'category = "core"' \
+    'purpose = "Exercise declared operations"' \
+    'rationale = "Keeps host actions configuration-led"' \
+    'platforms = ["macos", "linux"]' \
     '[profile.default]' \
-    'tool = alpha' \
+    'tools = ["alpha"]' \
     '[provider.runner]' \
-    'adapter = custom' \
-    "executable = $OPERATION_PROVIDER" \
-    'argument = provider value;$(touch provider-marker)' \
-    'capability = audit' \
-    'capability = restart' \
+    'adapter = "custom"' \
+    "executable = \"$OPERATION_PROVIDER\"" \
+    'arguments = ["provider value;$(touch provider-marker)"]' \
+    'capabilities = ["audit", "restart"]' \
     '[operation.alpha.audit]' \
-    'provider = runner' \
-    'capability = audit' \
-    'mode = observe' \
-    'description = Inspect Alpha' \
-    'platform = macos' \
-    'argument = configured value' \
-    'argument = configured * literal' \
-    'allow-argument = --verbose' \
-    'allow-argument = value with spaces' \
-    'allow-argument = semi;$(touch caller-marker)' \
+    'provider = "runner"' \
+    'capability = "audit"' \
+    'mode = "observe"' \
+    'description = "Inspect Alpha"' \
+    'platforms = ["macos"]' \
+    'arguments = ["configured value", "configured * literal"]' \
+    'allowed-arguments = ["--verbose", "value with spaces", "semi;$(touch caller-marker)"]' \
     '[operation.alpha.restart]' \
-    'provider = runner' \
-    'capability = restart' \
-    'mode = mutate' \
-    'description = Restart Alpha' \
-    'argument = restart now' >"$CONFIG_HOME/rig.conf"
+    'provider = "runner"' \
+    'capability = "restart"' \
+    'mode = "mutate"' \
+    'description = "Restart Alpha"' \
+    'arguments = ["restart now"]' >"$CONFIG_HOME/rig.toml"
 }
 
 @test "run dispatches declared observe and mutate operations with literal arguments" {
@@ -3011,52 +3065,52 @@ write_operation_config() {
   local original
   write_operation_config
   original=$BATS_TEST_TMPDIR/operation-original-$BATS_TEST_NUMBER
-  cp "$CONFIG_HOME/rig.conf" "$original"
+  cp "$CONFIG_HOME/rig.toml" "$original"
 
-  sed 's/mode = observe/mode = execute/' "$original" >"$CONFIG_HOME/rig.conf"
+  sed 's/mode = "observe"/mode = "execute"/' "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
   [ "$status" -eq 2 ]
   [[ "$output" == *"mode must be 'observe' or 'mutate'"* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 
-  sed '/\[operation.alpha.audit\]/,$ s/capability = audit/capability = undeclared/' \
-    "$original" >"$CONFIG_HOME/rig.conf"
+  sed '/\[operation.alpha.audit\]/,$ s/capability = "audit"/capability = "undeclared"/' \
+    "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
   [ "$status" -eq 2 ]
   [[ "$output" == *"does not declare capability 'undeclared'"* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 
-  sed 's/provider = runner/provider = absent/' "$original" >"$CONFIG_HOME/rig.conf"
+  sed 's/provider = "runner"/provider = "absent"/' "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
   [ "$status" -eq 2 ]
   [[ "$output" == *"references unknown provider 'absent'"* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 
-  sed 's/adapter = custom/adapter = homebrew/' "$original" >"$CONFIG_HOME/rig.conf"
+  sed 's/adapter = "custom"/adapter = "homebrew"/' "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
   [ "$status" -eq 2 ]
   [[ "$output" == *'operations require a custom provider'* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 
-  sed '/description = Inspect Alpha/d' "$original" >"$CONFIG_HOME/rig.conf"
+  sed '/description = "Inspect Alpha"/d' "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
   [ "$status" -eq 2 ]
   [[ "$output" == *"requires field 'description'"* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 
-  sed 's/\[operation.alpha.audit\]/[operation.ghost.audit]/' "$original" >"$CONFIG_HOME/rig.conf"
+  sed 's/\[operation.alpha.audit\]/[operation.ghost.audit]/' "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
   [ "$status" -eq 2 ]
   [[ "$output" == *"references unknown tool 'ghost'"* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 
-  sed 's/\[operation.alpha.audit\]/[operation.alpha.audit.extra]/' "$original" >"$CONFIG_HOME/rig.conf"
+  sed 's/\[operation.alpha.audit\]/[operation.alpha.audit.extra]/' "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
   [ "$status" -eq 2 ]
@@ -3066,9 +3120,9 @@ write_operation_config() {
 
 @test "run rejects unavailable provider and exposes local help" {
   write_operation_config
-  sed "s#executable = $OPERATION_PROVIDER#executable = $BATS_TEST_TMPDIR/missing-operation-provider#" \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/unavailable.conf"
-  mv "$CONFIG_HOME/unavailable.conf" "$CONFIG_HOME/rig.conf"
+  sed "s#executable = \"$OPERATION_PROVIDER\"#executable = \"$BATS_TEST_TMPDIR/missing-operation-provider\"#" \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/unavailable.toml"
+  mv "$CONFIG_HOME/unavailable.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
@@ -3107,26 +3161,25 @@ write_inventory_config() {
   printf '%s\n' \
     '[rig]' \
     'schema = 1' \
-    'default-profile = default' \
+    'default-profile = "default"' \
     '[category.core]' \
-    'name = Core' \
-    'purpose = Essential tools' \
+    'name = "Core"' \
+    'purpose = "Essential tools"' \
     '[tool.alpha]' \
-    'name = Alpha' \
-    'category = core' \
-    'purpose = Test inventory' \
-    'rationale = A dependable test tool' \
-    'platform = any' \
+    'name = "Alpha"' \
+    'category = "core"' \
+    'purpose = "Test inventory"' \
+    'rationale = "A dependable test tool"' \
+    'platforms = ["any"]' \
     '[profile.default]' \
-    'tool = alpha' \
+    'tools = ["alpha"]' \
     "[provider.surveyor]" \
-    'adapter = custom' \
-    "executable = $INVENTORY_PROVIDER" \
-    'capability = observe' \
-    'capability = inventory' \
+    'adapter = "custom"' \
+    "executable = \"$INVENTORY_PROVIDER\"" \
+    'capabilities = ["observe", "inventory"]' \
     '[binding.alpha.surveyor]' \
-    'kind = app' \
-    'locator = declared' >"$CONFIG_HOME/rig.conf"
+    'kind = "app"' \
+    'locator = "declared"' >"$CONFIG_HOME/rig.toml"
 }
 
 @test "custom provider default executable covers every trust-boundary invocation" {
@@ -3137,8 +3190,8 @@ write_inventory_config() {
   write_orchestration_config
   cp "$ORCHESTRATION_PROVIDER" "$data_home/providers/runner"
   chmod +x "$data_home/providers/runner"
-  sed '/^executable = /d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/default-provider.conf"
-  mv "$CONFIG_HOME/default-provider.conf" "$CONFIG_HOME/rig.conf"
+  sed '/^executable = /d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/default-provider.toml"
+  mv "$CONFIG_HOME/default-provider.toml" "$CONFIG_HOME/rig.toml"
   run env -u HOME RIG_CONFIG_HOME="$CONFIG_HOME" RIG_DATA_HOME="$data_home" \
     RIG_PLATFORM=macos RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
   [ "$status" -eq 0 ]
@@ -3149,8 +3202,8 @@ write_inventory_config() {
   write_operation_config
   cp "$OPERATION_PROVIDER" "$data_home/providers/runner"
   chmod +x "$data_home/providers/runner"
-  sed '/^executable = /d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/default-provider.conf"
-  mv "$CONFIG_HOME/default-provider.conf" "$CONFIG_HOME/rig.conf"
+  sed '/^executable = /d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/default-provider.toml"
+  mv "$CONFIG_HOME/default-provider.toml" "$CONFIG_HOME/rig.toml"
   run env -u HOME RIG_CONFIG_HOME="$CONFIG_HOME" RIG_DATA_HOME="$data_home" \
     RIG_PLATFORM=macos RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
   [ "$status" -eq 0 ]
@@ -3158,8 +3211,8 @@ write_inventory_config() {
   write_inventory_config
   cp "$INVENTORY_PROVIDER" "$data_home/providers/surveyor"
   chmod +x "$data_home/providers/surveyor"
-  sed '/^executable = /d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/default-provider.conf"
-  mv "$CONFIG_HOME/default-provider.conf" "$CONFIG_HOME/rig.conf"
+  sed '/^executable = /d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/default-provider.toml"
+  mv "$CONFIG_HOME/default-provider.toml" "$CONFIG_HOME/rig.toml"
   run env -u HOME RIG_CONFIG_HOME="$CONFIG_HOME" RIG_DATA_HOME="$data_home" \
     RIG_PLATFORM=macos "$RIG" status --unmanaged
   [ "$status" -eq 0 ]
@@ -3168,8 +3221,8 @@ write_inventory_config() {
   write_publication_config
   cp "$PUBLICATION_PROVIDER" "$data_home/providers/publisher"
   chmod +x "$data_home/providers/publisher"
-  sed '/^executable = /d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/default-provider.conf"
-  mv "$CONFIG_HOME/default-provider.conf" "$CONFIG_HOME/rig.conf"
+  sed '/^executable = /d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/default-provider.toml"
+  mv "$CONFIG_HOME/default-provider.toml" "$CONFIG_HOME/rig.toml"
   run env -u HOME RIG_CONFIG_HOME="$CONFIG_HOME" RIG_DATA_HOME="$data_home" \
     RIG_CACHE_HOME="$BATS_TEST_TMPDIR/publish-cache-$BATS_TEST_NUMBER" \
     RIG_STATE_HOME="$BATS_TEST_TMPDIR/publish-state-$BATS_TEST_NUMBER" \
@@ -3187,8 +3240,8 @@ write_inventory_config() {
   write_orchestration_config
   cp "$ORCHESTRATION_PROVIDER" "$xdg_data/rig/providers/runner"
   chmod +x "$xdg_data/rig/providers/runner"
-  sed '/^executable = /d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/default-provider.conf"
-  mv "$CONFIG_HOME/default-provider.conf" "$CONFIG_HOME/rig.conf"
+  sed '/^executable = /d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/default-provider.toml"
+  mv "$CONFIG_HOME/default-provider.toml" "$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_DATA_HOME= \
     XDG_DATA_HOME="$xdg_data" RIG_PLATFORM=macos RIG_TEST_LOG="$ORCHESTRATION_LOG" \
     "$RIG" status
@@ -3206,8 +3259,8 @@ write_inventory_config() {
   data_home=$BATS_TEST_TMPDIR/empty-rig-data-$BATS_TEST_NUMBER
   expected=$data_home/providers/runner
   write_orchestration_config
-  sed '/^executable = /d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/default-provider.conf"
-  mv "$CONFIG_HOME/default-provider.conf" "$CONFIG_HOME/rig.conf"
+  sed '/^executable = /d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/default-provider.toml"
+  mv "$CONFIG_HOME/default-provider.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_DATA_HOME="$data_home" \
     RIG_PLATFORM=macos RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
@@ -3244,9 +3297,9 @@ write_inventory_config() {
   write_inventory_config
   printf '%s\n' \
     '[provider.other]' \
-    'adapter = custom' \
-    "executable = $INVENTORY_PROVIDER" \
-    'capability = inventory' >>"$CONFIG_HOME/rig.conf"
+    'adapter = "custom"' \
+    "executable = \"$INVENTORY_PROVIDER\"" \
+    'capabilities = ["inventory"]' >>"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" status --unmanaged
@@ -3310,8 +3363,8 @@ write_inventory_config() {
 
 @test "providers that declare no inventory capability are never asked to enumerate" {
   write_inventory_config
-  sed '/capability = inventory/d' "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/no-inventory.conf"
-  mv "$CONFIG_HOME/no-inventory.conf" "$CONFIG_HOME/rig.conf"
+  sed 's/capabilities = \["observe", "inventory"\]/capabilities = ["observe"]/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/no-inventory.toml"
+  mv "$CONFIG_HOME/no-inventory.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" status --unmanaged
@@ -3331,9 +3384,9 @@ write_inventory_config() {
 
 @test "an artifact declared on a tool is not unmanaged whichever provider observed it" {
   write_inventory_config
-  sed 's|^platform = any$|platform = any\nartifact = undeclared-one|' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/artifact.conf"
-  mv "$CONFIG_HOME/artifact.conf" "$CONFIG_HOME/rig.conf"
+  sed 's|^platforms = \["any"\]$|platforms = ["any"]\nartifacts = ["undeclared-one"]|' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/artifact.toml"
+  mv "$CONFIG_HOME/artifact.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" status --unmanaged
@@ -3346,9 +3399,9 @@ write_inventory_config() {
 
 @test "a tool may declare several artifacts" {
   write_inventory_config
-  sed 's|^platform = any$|platform = any\nartifact = undeclared-one\nartifact = undeclared two|' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/artifacts.conf"
-  mv "$CONFIG_HOME/artifacts.conf" "$CONFIG_HOME/rig.conf"
+  sed 's|^platforms = \["any"\]$|platforms = ["any"]\nartifacts = ["undeclared-one", "undeclared two"]|' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/artifacts.toml"
+  mv "$CONFIG_HOME/artifacts.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" status --unmanaged
@@ -3372,14 +3425,10 @@ write_inventory_config() {
     '  *) exit 65 ;;' \
     'esac' >"$INVENTORY_PROVIDER"
   chmod +x "$INVENTORY_PROVIDER"
-  sed 's|^platform = any$|platform = any\
-artifact = $HOME/bin/home-tool\
-artifact = ~/bin/tilde-tool\
-artifact = /opt/rig/absolute-tool\
-artifact = prefix-$HOME/bin/embedded\
-artifact = $TOOLS_HOME/bin/other|' \
-    "$CONFIG_HOME/rig.conf" >"$CONFIG_HOME/artifacts.conf"
-  mv "$CONFIG_HOME/artifacts.conf" "$CONFIG_HOME/rig.conf"
+  sed 's|^platforms = \["any"\]$|platforms = ["any"]\
+artifacts = ["$HOME/bin/home-tool", "~/bin/tilde-tool", "/opt/rig/absolute-tool", "prefix-$HOME/bin/embedded", "$TOOLS_HOME/bin/other"]|' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/artifacts.toml"
+  mv "$CONFIG_HOME/artifacts.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" status --unmanaged

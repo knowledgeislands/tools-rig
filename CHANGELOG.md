@@ -27,8 +27,8 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 
 - A standalone Bash 3.2-compatible executable with no required runtime dependency beyond Bash.
 - Non-mutating runtime, platform, XDG-path, and configuration diagnostics with explicit Rig overrides.
-- An inert schema 1 loader with deterministic fragment order, validation, composed-profile resolution, transitive requirements, platform selection, and provider-binding resolution.
-- Direct fragment-only configuration when `rig.conf` is absent, retaining root-first bytewise ordering and model-wide fail-closed validation.
+- An inert TOML schema 1 loader with deterministic fragment order, validation, composed-profile resolution, transitive requirements, platform selection, and provider-binding resolution.
+- Standard TOML-compatible `rig.toml` and `conf.d/*.toml` sources, with a dependency-free schema subset, quoted strings, string arrays, inline comments, and model-wide fail-closed validation.
 - Read-only catalogue queries that do not invoke providers.
 - Human-readable `rig show` profile metadata and bounded-width, aligned selected-tool tables.
 - Versioned `rig-provider-v1` custom-provider invocation that preserves every configured literal argument boundary.
@@ -37,12 +37,12 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - Bounded reconciliation identities for tap-qualified Homebrew formula and cask locators and leading `~/` or `$HOME/` tool artifacts, while provider application retains the authored locator.
 - HTTPS direct-download executable adapter with declared SHA-256 verification, sibling temporary files, safe destination checks, atomic replacement, and failure cleanup.
 - Five-state observation with deterministic provider, state, and detail reporting without a competing state database.
-- A repeatable tool `artifact` field naming a machine-observable path a tool materialises, so one provider can inventory what another installed and catalogue-only tools remain reconcilable.
+- A tool `artifacts` array naming machine-observable paths a tool materialises, so one provider can inventory what another installed and catalogue-only tools remain reconcilable.
 - Reverse reconciliation through the `rig-provider-v1 inventory` protocol: providers declaring the `inventory` capability enumerate their domain, and `rig status --unmanaged` reports every observed identity that no binding declares as an informational row.
 - A concise read-only doctor synthesis for configuration, XDG accessibility, provider availability, selected-tool health, and informational catalogue-only or incompatible tools.
 - Complete application preflight, a non-mutating dry-run, and dependency-first execution.
 - Bootstrap-profile selection with explicit-profile precedence and default-profile fallback, delegated to the exact application plan and safety boundaries.
-- Configuration-defined observe and mutate operations with custom-provider capability checks, literal argument allow-lists, and native outcome propagation.
+- Configuration-defined observe and mutate operations with custom-provider capability checks, literal `arguments` and `allowed-arguments` arrays, and native outcome propagation.
 - Failure handling that suppresses only transitive dependants while independent work continues.
 - Deterministic offline `rig-publication` version 1 JSON export of an explicitly selected, platform-neutral public profile with relationship closure, canonical URL metadata, disclosure allow-listing, and safe complete-tree replacement.
 - Explicit trusted publication dispatch through one selected custom provider, with isolated one-file cache staging, fixed literal handoff, native outcome propagation, phase-aware interruption handling, exact-file fail-closed cleanup, and retained complete failure artifacts.

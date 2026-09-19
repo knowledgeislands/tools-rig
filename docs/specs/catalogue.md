@@ -38,13 +38,13 @@ _Evidence:_ `tests/rig.bats` resolves exact-platform and `any` tools, filters un
 
 ### RIG-CAT-004 — Typed relationships
 
-Rig MUST support `requires`, `related`, and `alternative` relationships between declared tool identifiers and reject unknown relationship endpoints.
+Rig MUST support `requires`, `related`, and `alternatives` relationships between declared tool identifiers and reject unknown relationship endpoints.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats tests resolve each relationship type and reject a relationship to an undeclared tool.
 
-_Evidence:_ `tests/rig.bats` preserves `requires`, `related`, and `alternative` values and rejects unknown endpoints before resolution.
+_Evidence:_ `tests/rig.bats` preserves `requires`, `related`, and `alternatives` values and rejects unknown endpoints before resolution.
 
 ### RIG-CAT-005 — Provider bindings
 
