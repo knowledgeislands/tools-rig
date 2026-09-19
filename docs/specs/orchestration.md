@@ -175,11 +175,11 @@ _Verify:_ Bats redirects command channels separately and asserts provider diagno
 
 _Evidence:_ `rig_command_apply` redirects provider stdout to stderr while leaving provider stderr on the same diagnostic channel.
 
-## Declared operations
+## Declared provider actions
 
-### RIG-ORCH-012 — Explicit operation dispatch
+### RIG-ORCH-012 — Explicit action dispatch
 
-`rig run TOOL OPERATION` MUST resolve one declared operation, verify that it supports the active platform, verify that its provider declares the configured capability, and invoke that capability with the configured arguments. It MUST preserve the provider's native outcome and MUST reject invalid input before provider invocation.
+`rig run PROVIDER ACTION` MUST resolve one declared provider action, verify that it supports the active platform, map `observe` mode to the provider `observe` verb and `mutate` mode to `apply`, and invoke the action with configured arguments. It MUST preserve the provider's native outcome and MUST reject invalid input before provider invocation.
 
 _Conformance:_ conforming
 
@@ -189,7 +189,7 @@ _Evidence:_ `rig_command_run` maps declared modes to the versioned custom-provid
 
 ### RIG-ORCH-013 — Bounded caller arguments
 
-`rig run TOOL OPERATION [-- ARGUMENT...]` MUST accept a caller argument only when it exactly matches one `allowed-arguments` array item. Rig MUST append accepted caller arguments literally without shell interpretation. An operation with no `allowed-arguments` items MUST reject all caller arguments.
+`rig run PROVIDER ACTION [-- ARGUMENT...]` MUST accept a caller argument only when it exactly matches one `allowed-arguments` array item, unless the action explicitly declares `argument-policy = "provider"`. Under provider policy Rig MUST pass literal caller arguments to that one declared custom provider, which owns domain validation. Rig MUST append accepted caller arguments literally without shell interpretation. An action with neither policy nor `allowed-arguments` MUST reject all caller arguments.
 
 _Conformance:_ conforming
 

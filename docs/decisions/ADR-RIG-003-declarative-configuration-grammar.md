@@ -12,7 +12,7 @@ decision_depends_on: [PDR-RIG-001, ADR-RIG-001, ADR-RIG-002]
 
 ## Context
 
-Rig needs structured categories, tools, profiles, providers, bindings, relationships, publications, and declared operations. People should be able to edit those declarations with familiar tooling, while the installed core remains compatible with Bash 3.2 and has no required runtime dependency beyond Bash.
+Rig needs structured categories, tools, profiles, providers, relationships, publications, and declared provider actions. People should be able to edit those declarations with familiar tooling, while the installed core remains compatible with Bash 3.2 and has no required runtime dependency beyond Bash. Installation metadata is part of explaining a tool and should not require a second public table.
 
 Sourcing shell configuration would turn data inspection into arbitrary code execution. A complete TOML implementation inside Rig would add disproportionate parsing complexity, but a private INI-like language would look familiar without being interoperable with standard configuration tooling. Rig's schema needs only named tables, strings, one integer version, and lists of strings.
 
@@ -26,7 +26,7 @@ Scalar schema fields use TOML basic strings. List fields use one array assignmen
 
 The parser never sources files, evaluates commands, interprets shell syntax, or performs general environment expansion. Documented path fields alone expand a leading `~/`. Artifact comparison may derive absolute identity from a leading `~/` or `$HOME/`, while retaining the authored value. All other dollar signs, command substitutions, glob characters, separators, and embedded variables remain inert data.
 
-Schema-controlled tables are `rig`, `category`, `tool`, `profile`, `provider`, `binding`, `publication`, and `operation`. Profiles, provider ordering, operations, and publication use the same resolved model. Personal declarations can be split into independently valid fragments without executable include directives or a second configuration authority.
+Schema-controlled tables are `rig`, `category`, `tool`, `profile`, `provider`, `publication`, and `action`. Fixed dotted `install.*` keys keep one human-readable table per tool while Rig may normalise them internally for planning. Provider-owned action identities avoid repeating provider and capability fields. Profiles, provider ordering, actions, and publication use the same resolved model. Personal declarations can be split into independently valid fragments without executable include directives or a second configuration authority.
 
 ## Consequences
 
@@ -34,7 +34,7 @@ Rig configuration works with standard TOML-aware editors, syntax highlighters, f
 
 The dependency-free core remains small enough to review because it rejects general TOML features outside the product schema. A valid TOML document may therefore still be unsupported by Rig, and diagnostics must distinguish unsupported value syntax from unknown schema fields.
 
-Configuration remains inert during catalogue queries and validation. Provider, operation, and publisher invocation continue to be explicit executable trust transitions rather than side effects of parsing.
+Configuration remains inert during catalogue queries and validation. Provider, action, and publisher invocation continue to be explicit executable trust transitions rather than side effects of parsing.
 
 ## References
 

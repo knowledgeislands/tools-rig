@@ -78,7 +78,7 @@ _Evidence:_ `rig_add_field` performs the loading expansion allow-list; artifact 
 
 ### RIG-CONF-008 — Canonical table identities
 
-Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[profile.ID]`, `[provider.ID]`, `[binding.TOOL.PROVIDER]`, `[publication.ID]`, and `[operation.TOOL.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`.
+Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[profile.ID]`, `[provider.ID]`, `[publication.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`.
 
 _Conformance:_ conforming
 
@@ -98,7 +98,7 @@ _Evidence:_ `rig_validate_model` validates root fields and references; bootstrap
 
 ### RIG-CONF-010 — Catalogue fields
 
-Schema 1 category tables MUST require string `name` and `purpose`. Tool tables MUST require string `name`, `category`, `purpose`, and `rationale`, MUST require a non-empty `platforms` string array, and MAY contain `requires`, `related`, `alternatives`, and `artifacts` string arrays.
+Schema 1 category tables MUST require string `name` and `purpose`. Tool tables MUST require string `name`, `category`, `purpose`, and `rationale`, MUST require a non-empty `platforms` string array, and MAY contain `requires`, `related`, `alternatives`, and `artifacts` string arrays. A materialised tool MUST co-locate string `install.provider`, `install.kind`, and `install.locator`; it MAY contain string `install.destination` and `install.checksum` and string arrays `install.platforms` and `install.arguments`. A tool without `install.provider` is catalogue-only and MUST NOT contain any other `install.*` field.
 
 _Conformance:_ conforming
 
@@ -126,13 +126,13 @@ _Verify:_ Bats tests parse provider fields, require the adapter, preserve argume
 
 _Evidence:_ `rig_validate_model` and `rig_custom_provider_executable` enforce the provider contract; `tests/rig.bats` exercises every executable trust-boundary invocation.
 
-### RIG-CONF-013 — Binding fields
+### RIG-CONF-013 — Installation fields
 
-Schema 1 binding tables MUST require string `kind` and `locator`, MAY contain string `destination` and `checksum`, and MAY contain `platforms` and `arguments` string arrays. `destination` and `checksum` MUST be valid only for `direct-download` bindings. Homebrew `mas` locators MUST be numeric application identities. Direct-download bindings MUST use kind `executable`, an HTTPS locator, an absolute expanded destination, and a checksum containing `sha256:` followed by exactly 64 lowercase hexadecimal characters.
+Tool installation metadata MUST reference one declared provider and MUST obey that provider adapter's native kind contract. `install.destination` and `install.checksum` MUST be valid only for `direct-download` installations. Homebrew `mas` locators MUST be numeric application identities. Direct-download installations MUST use kind `executable`, an HTTPS locator, an absolute expanded destination, and a checksum containing `sha256:` followed by exactly 64 lowercase hexadecimal characters.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests resolve binding ownership and reject unknown tools or providers, incompatible adapter kinds, unsafe downloads, malformed checksums, and invalid Mac App Store identities.
+_Verify:_ Bats tests resolve co-located installation ownership and reject unknown providers, partial installation declarations, incompatible adapter kinds, unsafe downloads, malformed checksums, and invalid Mac App Store identities.
 
 _Evidence:_ `rig_validate_binding_adapter` enforces adapter-specific binding integrity; `tests/rig.bats` covers valid and invalid declarations.
 
@@ -146,12 +146,12 @@ _Verify:_ Bats tests resolve one publication and reject missing or unknown profi
 
 _Evidence:_ `rig_validate_model` validates publication fields and references; `tests/rig.bats` covers the contract.
 
-### RIG-CONF-015 — Operation fields
+### RIG-CONF-015 — Action fields
 
-Schema 1 operation tables MUST require string `provider`, `capability`, `mode`, and `description` and MAY contain `platforms`, `arguments`, and `allowed-arguments` string arrays. The provider MUST exist, use the `custom` adapter, and declare the referenced capability. Mode MUST be `observe` or `mutate`. Configured and caller-allowed arguments MUST retain their literal array boundaries.
+Schema 1 action tables MUST require string `mode` and `description` and MAY contain `platforms`, `arguments`, and `allowed-arguments` string arrays and string `argument-policy`. The provider named by the table identity MUST exist and use the `custom` adapter. Mode MUST be `observe` or `mutate`. `argument-policy` defaults to `rig`, MAY be `provider`, and MUST NOT be combined with `allowed-arguments` when set to `provider`. Configured and caller arguments MUST retain their literal array boundaries.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats table tests accept valid operation records; reject malformed identities, missing fields, invalid modes, unknown tools or providers, and undeclared capabilities; and preserve configured allow-listed argument boundaries.
+_Verify:_ Bats table tests accept valid action records; reject malformed identities, missing fields, invalid modes, unknown providers, non-custom providers, and invalid argument policies; and preserve configured allow-listed argument boundaries.
 
-_Evidence:_ `rig_validate_operation` validates bounded operation records; `tests/rig.bats` covers declarations and rejection before invocation.
+_Evidence:_ `rig_validate_action` validates bounded action records; `tests/rig.bats` covers declarations and rejection before invocation.

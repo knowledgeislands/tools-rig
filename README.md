@@ -17,9 +17,9 @@ Profiles select catalogue subsets for machines, roles, or contexts. Rig can comp
 
 ## Product model
 
-The catalogue is Rig's source of meaning. Profiles resolve the catalogue for a context. Providers are the manager-of-managers mechanism that observes or materialises selected tools. State compares resolved intent with provider evidence. Declared operations attach host-specific actions to tools without turning them into permanent command families. Publication projects only an explicitly selected public profile into reviewable, versioned data before a trusted publisher deploys it.
+The catalogue is Rig's source of meaning. Profiles resolve the catalogue for a context. Providers are the manager-of-managers mechanism that observes or materialises selected tools. State compares resolved intent with provider evidence. Declared provider actions expose bounded host-specific maintenance without turning it into permanent command families. Publication projects only an explicitly selected public profile into reviewable, versioned data before a trusted publisher deploys it.
 
-Personal catalogue contents, operations, and machine-specific paths belong in private Rig configuration, not in this executable. Provider-native manifests such as a Brewfile remain authoritative for their own systems.
+Personal catalogue contents, actions, and machine-specific paths belong in private Rig configuration, not in this executable. Provider-native manifests such as a Brewfile remain authoritative for their own systems.
 
 ## Install
 
@@ -71,6 +71,14 @@ category = "navigation"
 purpose = "Navigate related repositories"
 rationale = "Keeps repository context visible"
 platforms = ["macos"]
+install.provider = "homebrew"
+install.kind = "formula"
+install.locator = "mgit"
+install.platforms = ["macos"]
+
+[provider.homebrew]
+adapter = "homebrew"
+capabilities = ["observe", "apply"]
 
 [profile.default]
 tools = ["mgit"]
@@ -89,9 +97,9 @@ Providers declare exact `observe` and `apply` capabilities. Built-in adapters ma
 | `direct-download` | `executable` | `curl` | HTTPS artifact selected by its declared SHA-256 |
 | `custom` | Any declared kind | `${RIG_DATA_HOME}/providers/ID` | Versioned `rig-provider-v1` protocol |
 
-For a custom provider, omit `executable` to use `${RIG_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/rig}/providers/ID`. Set `executable` to use an external command, a non-default path, or an isolated test fake. Rig resolves only the declared provider ID and does not search or execute adjacent files. Provider and binding `arguments` arrays retain literal argument boundaries. A direct-download binding additionally requires an HTTPS `locator`, an absolute `destination`, and a lowercase `checksum = "sha256:..."`; Rig verifies a sibling temporary file before replacing a regular destination.
+For a custom provider, omit `executable` to use `${RIG_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/rig}/providers/ID`. Set `executable` to use an external command, a non-default path, or an isolated test fake. Rig resolves only the declared provider ID and does not search or execute adjacent files. Provider and tool `install.arguments` arrays retain literal argument boundaries. A direct-download installation additionally requires an HTTPS `install.locator`, an absolute `install.destination`, and a lowercase `install.checksum = "sha256:..."`; Rig verifies a sibling temporary file before replacing a regular destination.
 
-`[operation.TOOL.NAME]` declarations bind one tool to a custom provider's exact capability. Their mode is `observe` or `mutate`; the `arguments` array is fixed configuration, while `allowed-arguments` contains the only caller arguments accepted after `--`.
+`[action.PROVIDER.NAME]` declarations expose one trusted custom-provider action. Their mode is `observe` or `mutate`; `arguments` supplies fixed literal values. By default, `allowed-arguments` is the exact caller allowlist. `argument-policy = "provider"` delegates argument validation to the declared provider when its native configuration is authoritative.
 
 `[publication.ID]` names one public profile and one publisher. Offline `export` never invokes that provider. Explicit `publish` requires its `custom` adapter to declare the exact `publish` capability and passes one isolated `rig.json` tree through the versioned provider protocol.
 
@@ -108,20 +116,20 @@ See `man rig` for the exact native command matrix and custom-provider protocol.
 - `rig doctor [--profile NAME]` gives a compact health answer for configuration, XDG paths, providers, and selected tools.
 - `rig apply [--profile NAME] [--dry-run]` materialises a resolved profile; dry-run preflights and prints planned work without invoking providers.
 - `rig bootstrap [--profile NAME] [--dry-run]` materialises the configured bootstrap profile through the same apply plan; an explicit profile wins, and older configurations fall back to `default-profile`.
-- `rig run TOOL OPERATION [-- ARGUMENT...]` invokes one declared custom-provider operation with bounded literal arguments.
+- `rig run PROVIDER ACTION [-- ARGUMENT...]` invokes one declared custom-provider action with bounded literal arguments.
 - `rig export PUBLICATION --output DIRECTORY` generates deterministic, versioned `rig.json` from the publication's explicitly selected public profile.
 - `rig publish PUBLICATION` renders an isolated public-data export and hands it to the publication's one trusted custom publisher.
 - `rig diag` reports the effective Rig runtime, active platform, XDG paths, and configuration discovery and validity.
 - `rig completion bash|zsh` prints shell completion source; `-h` or `--help` prints command usage.
 - `rig help [-h|--help]`, `rig --help`, and `rig --version` provide command and version information.
 
-Catalogue queries, `diag`, and `export` never invoke providers. `status` and `doctor` invoke only declared `observe` capabilities. `apply` and `bootstrap` invoke exact `apply` capabilities only after complete plan preflight. `run` is an explicit trust transition to one configured operation. `publish` is the separate network-capable transition to one selected publisher after export validation. See `man rig` for the complete command contract.
+Catalogue queries, `diag`, and `export` never invoke providers. `status` and `doctor` invoke only declared `observe` capabilities. `apply` and `bootstrap` invoke exact `apply` capabilities only after complete plan preflight. `run` is an explicit trust transition to one configured provider action. `publish` is the separate network-capable transition to one selected publisher after export validation. See `man rig` for the complete command contract.
 
 Use `diag` to inspect Rig's runtime, paths, and configuration discovery without provider execution. Use `doctor` for a concise operational health answer and `status` for the complete expected-versus-observed table. Doctor returns 0 when healthy, 1 when completed checks find issues, and 2 when syntax, configuration, or profile resolution is invalid.
 
 ## Status
 
-Rig is a pre-v1 tool under active development. Catalogue parsing, validation, profile resolution, provider-binding resolution, read-only queries, operational health checks, built-in and custom-provider observation, dependency-ordered application and bootstrap, declared operations, integrity-checked direct downloads, deterministic versioned public-data export, and trusted publication dispatch are implemented. Private cutover and the Homebrew formula remain tracked work in the [roadmap](ROADMAP.md).
+Rig is a pre-v1 tool under active development. Catalogue parsing, validation, profile resolution, provider resolution, read-only queries, operational health checks, built-in and custom-provider observation, dependency-ordered application and bootstrap, declared provider actions, integrity-checked direct downloads, deterministic versioned public-data export, and trusted publication dispatch are implemented.
 
 ## Documentation
 

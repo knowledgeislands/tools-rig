@@ -22,7 +22,7 @@ Rig never sources or evaluates configuration. Built-in adapters are trusted code
 
 `show`, `list`, and `explain` resolve declarations without invoking provider code. `status` and `doctor` may invoke only declared observation capabilities and remain non-mutating by contract, although a custom observer must still be trusted by its owner.
 
-Machine mutation occurs only through an explicit `apply` command or an explicitly selected `mutate` operation invoked as `rig run TOOL OPERATION`. `rig run` accepts only a declared tool and operation. Configured arguments and any caller arguments that exactly match the operation's allow-list cross the provider boundary as literal argument values. Rig rejects undeclared operations, capability mismatches, and non-allow-listed caller arguments before provider invocation. Network publication occurs only through an explicit `publish` command.
+Machine mutation occurs only through an explicit `apply` command or an explicitly selected `mutate` action invoked as `rig run PROVIDER ACTION`. `rig run` accepts only a declared provider action. Configured arguments and caller arguments accepted by Rig's exact allowlist—or explicitly delegated through `argument-policy = "provider"`—cross the provider boundary as literal values. Rig rejects undeclared actions, invalid policies, and non-allow-listed caller arguments before provider invocation. Network publication occurs only through an explicit `publish` command.
 
 Static export accepts only an explicitly selected public profile. It excludes provider configuration, command arguments, native manifest paths, host and account identifiers, private profiles, credentials, and observed machine state. Relationships whose other endpoint is not public are omitted.
 

@@ -16,7 +16,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - `rig doctor [--profile NAME]`
 - `rig apply [--profile NAME] [--dry-run]`
 - `rig bootstrap [--profile NAME] [--dry-run]`
-- `rig run TOOL OPERATION [-- ARGUMENT...]`
+- `rig run PROVIDER ACTION [-- ARGUMENT...]`
 - `rig export PUBLICATION --output DIRECTORY`
 - `rig publish PUBLICATION`
 - `rig diag`
@@ -27,7 +27,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 
 - A standalone Bash 3.2-compatible executable with no required runtime dependency beyond Bash.
 - Non-mutating runtime, platform, XDG-path, and configuration diagnostics with explicit Rig overrides.
-- An inert TOML schema 1 loader with deterministic fragment order, validation, composed-profile resolution, transitive requirements, platform selection, and provider-binding resolution.
+- An inert TOML schema 1 loader with deterministic fragment order, validation, composed-profile resolution, transitive requirements, platform selection, and tool-centred `install.*` metadata.
 - Standard TOML-compatible `rig.toml` and `conf.d/*.toml` sources, with a dependency-free schema subset, quoted strings, string arrays, inline comments, and model-wide fail-closed validation.
 - Read-only catalogue queries that do not invoke providers.
 - Human-readable `rig show` profile metadata and bounded-width, aligned selected-tool tables.
@@ -42,7 +42,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - A concise read-only doctor synthesis for configuration, XDG accessibility, provider availability, selected-tool health, and informational catalogue-only or incompatible tools.
 - Complete application preflight, a non-mutating dry-run, and dependency-first execution.
 - Bootstrap-profile selection with explicit-profile precedence and default-profile fallback, delegated to the exact application plan and safety boundaries.
-- Configuration-defined observe and mutate operations with custom-provider capability checks, literal `arguments` and `allowed-arguments` arrays, and native outcome propagation.
+- Configuration-defined observe and mutate provider actions with literal `arguments`, exact `allowed-arguments`, optional provider-owned validation, and native outcome propagation.
 - Failure handling that suppresses only transitive dependants while independent work continues.
 - Deterministic offline `rig-publication` version 1 JSON export of an explicitly selected, platform-neutral public profile with relationship closure, canonical URL metadata, disclosure allow-listing, and safe complete-tree replacement.
 - Explicit trusted publication dispatch through one selected custom provider, with isolated one-file cache staging, fixed literal handoff, native outcome propagation, phase-aware interruption handling, exact-file fail-closed cleanup, and retained complete failure artifacts.
@@ -82,7 +82,7 @@ First public preview of the catalogue-first Rig baseline. The `1.0.0 — in prog
 ### Added
 
 - Declarative categories, tool metadata, rationale, relationships, profiles, providers, publications, and expected-versus-observed state.
-- Catalogue queries, operational status and doctor checks, provider-backed apply and bootstrap, bounded declared operations, static export, and trusted publisher handoff.
+- Catalogue queries, operational status and doctor checks, provider-backed apply and bootstrap, bounded declared provider actions, static export, and trusted publisher handoff.
 - Bash and Zsh completion, the `rig(1)` manual, XDG-aware installation, local development linking, and macOS Bash 3.2 plus Ubuntu CI coverage.
 - Built-in Homebrew, uv, chezmoi, and integrity-checked direct-download adapters alongside the versioned custom-provider protocol.
 

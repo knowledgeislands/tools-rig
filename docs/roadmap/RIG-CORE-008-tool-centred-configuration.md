@@ -4,12 +4,12 @@ area: CORE
 title: Tool-centred configuration
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: 4de0e184b83b607107794a3739d8b2e0710b7147
+baseline_ref: db8d44e32a6c9ffa1ddc0e8052f7431e326d70c2
 created_at: 2026-09-19T11:24:39Z
-updated_at: 2026-09-19T11:24:39Z
+updated_at: 2026-09-19T16:17:51Z
 ---
 
 # RIG-CORE-008: Tool-centred configuration
@@ -32,11 +32,11 @@ Tools and bindings are separate public tables. Operations repeat their provider 
 
 ## Steps
 
-- [ ] Specify one-table tool installation metadata and provider-owned actions, including the trust boundary for provider-validated arguments.
-- [ ] Parse and validate `install.*` fields and `[action.PROVIDER.NAME]` tables while retaining an efficient internal resolved model.
-- [ ] Make `rig run PROVIDER ACTION [-- ARGUMENT...]` dispatch declared actions and preserve safe literal argument passing.
-- [ ] Align help, completions, manual, README, guide, changelog, fixtures, and conformance tests.
-- [ ] Run the complete repository gate and inspect the resulting public contract.
+- [x] Specify one-table tool installation metadata and provider-owned actions, including the trust boundary for provider-validated arguments.
+- [x] Parse and validate `install.*` fields and `[action.PROVIDER.NAME]` tables while retaining an efficient internal resolved model.
+- [x] Make `rig run PROVIDER ACTION [-- ARGUMENT...]` dispatch declared actions and preserve safe literal argument passing.
+- [x] Align help, completions, manual, README, guide, changelog, fixtures, and conformance tests.
+- [x] Run the complete repository gate and inspect the resulting public contract.
 
 ## Files touched
 
@@ -88,7 +88,29 @@ This record owns the public contract change; the private declaration and provide
 
 ## Review
 
-Complete after implementation.
+### Delivered
+
+Delivered the approved schema-1 correction from immutable baseline `db8d44e32a6c9ffa1ddc0e8052f7431e326d70c2`: co-located tool installation metadata and provider-owned actions. The Bash 3.2, XDG, native-manifest, and private-data boundaries remain intact; no release or personal catalogue was added.
+
+### Summary of changes
+
+`bin/rig` now parses and validates `install.*` fields, normalises them into the existing resolver, dispatches `[action.PROVIDER.NAME]` through `rig run PROVIDER ACTION`, and supports provider-side argument policy. Decisions, specifications, README, guide, changelog, manual, help, completions, and Bats coverage describe the same contract.
+
+### Verification
+
+`ki repo audit --repo .`, `shellcheck bin/rig install.sh`, all 123 `bats tests/` cases, and `mandoc -T lint man/rig.1` passed.
+
+### Outstanding concerns
+
+The resolver still uses internal binding terminology and accepts the former binding section shape in test fixtures; it is not documented or used by the live configuration. Review should decide whether rejecting that residual parser surface is required in this item.
+
+### Post-change review
+
+The delivered public configuration meets the one-entry-per-tool goal and retains provider isolation. Regression risk is concentrated in configuration parsing and provider dispatch, both covered by the full shell suite. The item is ready for acceptance subject to the residual-parser decision above.
+
+### Mini recap
+
+Rig now presents tools and actions in the intended public model, with synchronized user surfaces and a clean verification gate. A useful learning route is whether internal normalisation vocabulary should also be renamed after the public contract is accepted.
 
 ## Discussion
 

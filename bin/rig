@@ -63,7 +63,7 @@ print_help() {
     '  apply [--profile NAME] [--dry-run]     Materialise a resolved profile.' \
     '  bootstrap [--profile NAME] [--dry-run]' \
     '                                         Materialise the bootstrap profile.' \
-    '  run TOOL OPERATION [-- ARGUMENT...]    Invoke a declared operation.' \
+    '  run PROVIDER ACTION [-- ARGUMENT...]   Invoke a declared provider action.' \
     '  export PUBLICATION --output DIRECTORY' \
     '                                     Generate public rig data.' \
     '  publish PUBLICATION                 Publish public rig data.' \
@@ -157,7 +157,7 @@ print_zsh_completion() {
     "        doctor) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' ;;" \
     "        apply) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \
     "        bootstrap) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \
-    "        run) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:tool name:' '2:operation name:' '3:separator:(--)' '*::operation argument:' ;;" \
+    "        run) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:provider name:' '2:action name:' '3:separator:(--)' '*::action argument:' ;;" \
     "        export) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' '--output[write complete public data tree]:directory:_directories' ;;" \
     "        publish) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' ;;" \
     "        diag) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
@@ -282,7 +282,7 @@ rig_parse_section_identity() {
       rig_valid_id "$rest" || return 1
       RIG_SECTION_ID=$rest
       ;;
-    binding.*|operation.*)
+    binding.*|action.*)
       RIG_SECTION_TYPE=${name%%.*}
       rest=${name#*.}
       [ "$rest" != "${rest#*.}" ] || return 1
@@ -331,17 +331,20 @@ rig_field_kind() {
     rig:schema|rig:default-profile|rig:bootstrap-profile|\
     category:name|category:purpose|\
     tool:name|tool:category|tool:purpose|tool:rationale|\
+    tool:install-provider|tool:install-kind|tool:install-locator|\
+    tool:install-destination|tool:install-checksum|\
     provider:adapter|provider:command|provider:executable|provider:manifest|\
     binding:kind|binding:locator|binding:destination|binding:checksum|\
     publication:profile|publication:title|publication:base-url|publication:publisher|\
-    operation:provider|operation:capability|operation:mode|operation:description)
+    action:mode|action:description|action:argument-policy)
       RIG_FIELD_KIND=scalar
       ;;
     tool:platform|tool:requires|tool:related|tool:alternative|tool:artifact|\
+    tool:install-platform|tool:install-argument|\
     profile:profile|profile:tool|\
     provider:argument|provider:capability|\
     binding:platform|binding:argument|\
-    operation:platform|operation:argument|operation:allow-argument)
+    action:platform|action:argument|action:allow-argument)
       RIG_FIELD_KIND=repeatable
       ;;
     *) return 1 ;;
@@ -367,24 +370,31 @@ rig_toml_field() {
     provider:adapter|provider:command|provider:executable|provider:manifest|\
     binding:kind|binding:locator|binding:destination|binding:checksum|\
     publication:profile|publication:title|publication:base-url|publication:publisher|\
-    operation:provider|operation:capability|operation:mode|operation:description)
+    action:mode|action:description|action:argument-policy)
       RIG_TOML_FIELD_KEY=$key
       RIG_TOML_FIELD_TYPE=string
       ;;
+    tool:install.provider) RIG_TOML_FIELD_KEY=install-provider; RIG_TOML_FIELD_TYPE=string ;;
+    tool:install.kind) RIG_TOML_FIELD_KEY=install-kind; RIG_TOML_FIELD_TYPE=string ;;
+    tool:install.locator) RIG_TOML_FIELD_KEY=install-locator; RIG_TOML_FIELD_TYPE=string ;;
+    tool:install.destination) RIG_TOML_FIELD_KEY=install-destination; RIG_TOML_FIELD_TYPE=string ;;
+    tool:install.checksum) RIG_TOML_FIELD_KEY=install-checksum; RIG_TOML_FIELD_TYPE=string ;;
     tool:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
     tool:requires) RIG_TOML_FIELD_KEY=requires ; RIG_TOML_FIELD_TYPE=array ;;
     tool:related) RIG_TOML_FIELD_KEY=related ; RIG_TOML_FIELD_TYPE=array ;;
     tool:alternatives) RIG_TOML_FIELD_KEY=alternative ; RIG_TOML_FIELD_TYPE=array ;;
     tool:artifacts) RIG_TOML_FIELD_KEY=artifact ; RIG_TOML_FIELD_TYPE=array ;;
+    tool:install.platforms) RIG_TOML_FIELD_KEY=install-platform ; RIG_TOML_FIELD_TYPE=array ;;
+    tool:install.arguments) RIG_TOML_FIELD_KEY=install-argument ; RIG_TOML_FIELD_TYPE=array ;;
     profile:profiles) RIG_TOML_FIELD_KEY=profile ; RIG_TOML_FIELD_TYPE=array ;;
     profile:tools) RIG_TOML_FIELD_KEY=tool ; RIG_TOML_FIELD_TYPE=array ;;
     provider:arguments) RIG_TOML_FIELD_KEY=argument ; RIG_TOML_FIELD_TYPE=array ;;
     provider:capabilities) RIG_TOML_FIELD_KEY=capability ; RIG_TOML_FIELD_TYPE=array ;;
     binding:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
     binding:arguments) RIG_TOML_FIELD_KEY=argument ; RIG_TOML_FIELD_TYPE=array ;;
-    operation:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
-    operation:arguments) RIG_TOML_FIELD_KEY=argument ; RIG_TOML_FIELD_TYPE=array ;;
-    operation:allowed-arguments) RIG_TOML_FIELD_KEY=allow-argument ; RIG_TOML_FIELD_TYPE=array ;;
+    action:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
+    action:arguments) RIG_TOML_FIELD_KEY=argument ; RIG_TOML_FIELD_TYPE=array ;;
+    action:allowed-arguments) RIG_TOML_FIELD_KEY=allow-argument ; RIG_TOML_FIELD_TYPE=array ;;
     *) return 1 ;;
   esac
 }
@@ -639,7 +649,7 @@ rig_parse_file() {
         rig_trim "$value"
         value=$RIG_VALUE
         case "$key" in
-          ''|*[!a-z0-9-]*) rig_fail "$file:$line_number: invalid field name '$key'" || return ;;
+          ''|*[!a-z0-9.-]*) rig_fail "$file:$line_number: invalid field name '$key'" || return ;;
         esac
         section_type=${RIG_SECTION_TYPES[$current_section]}
         rig_toml_field "$section_type" "$key" ||
@@ -690,6 +700,51 @@ rig_get_value() {
     index=$((index + 1))
   done
   return 1
+}
+
+rig_synthesise_bindings() {
+  local original_count index tool_id tool_section provider binding_index field_index field_end key value
+
+  original_count=${#RIG_SECTION_NAMES[@]}
+  index=0
+  while [ "$index" -lt "$original_count" ]; do
+    if [ "${RIG_SECTION_TYPES[$index]}" = tool ]; then
+      tool_id=${RIG_SECTION_IDS[$index]}
+      tool_section=tool.$tool_id
+      if rig_get_value "$tool_section" install-provider; then
+        provider=$RIG_VALUE
+        rig_valid_id "$provider" || rig_fail "[$tool_section] has invalid install.provider '$provider'" || return
+        rig_add_section "binding.$tool_id.$provider" '<derived install>' 0 || return
+        binding_index=$RIG_INDEX
+
+        if rig_get_value "$tool_section" install-kind; then
+          rig_add_field "$binding_index" kind "$RIG_VALUE" '<derived install>' 0 || return
+        fi
+        if rig_get_value "$tool_section" install-locator; then
+          rig_add_field "$binding_index" locator "$RIG_VALUE" '<derived install>' 0 || return
+        fi
+        if rig_get_value "$tool_section" install-destination; then
+          rig_add_field "$binding_index" destination "$RIG_VALUE" '<derived install>' 0 || return
+        fi
+        if rig_get_value "$tool_section" install-checksum; then
+          rig_add_field "$binding_index" checksum "$RIG_VALUE" '<derived install>' 0 || return
+        fi
+
+        field_index=${RIG_SECTION_FIELD_STARTS[$index]}
+        field_end=${RIG_SECTION_FIELD_ENDS[$index]}
+        while [ "$field_index" -lt "$field_end" ]; do
+          key=${RIG_FIELD_KEYS[$field_index]}
+          value=${RIG_FIELD_VALUES[$field_index]}
+          case "$key" in
+            install-platform) rig_add_field "$binding_index" platform "$value" '<derived install>' 0 || return ;;
+            install-argument) rig_add_field "$binding_index" argument "$value" '<derived install>' 0 || return ;;
+          esac
+          field_index=$((field_index + 1))
+        done
+      fi
+    fi
+    index=$((index + 1))
+  done
 }
 
 rig_require_field() {
@@ -904,29 +959,18 @@ rig_validate_binding_adapter() {
   fi
 }
 
-rig_validate_operation() {
-  local section_name tool provider adapter capability mode
+rig_validate_action() {
+  local section_name provider adapter mode argument_policy section_index
 
   section_name=$1
-  tool=$2
+  provider=$2
 
-  rig_reference_exists tool "$tool" ||
-    rig_fail "[$section_name] references unknown tool '$tool'" || return
-
-  rig_require_field "$section_name" provider || return
-  provider=$RIG_VALUE
-  rig_valid_id "$provider" && rig_reference_exists provider "$provider" ||
+  rig_reference_exists provider "$provider" ||
     rig_fail "[$section_name] references unknown provider '$provider'" || return
-
   rig_get_value "provider.$provider" adapter || return 2
   adapter=$RIG_VALUE
   [ "$adapter" = custom ] ||
-    rig_fail "[$section_name] operations require a custom provider" || return
-
-  rig_require_field "$section_name" capability || return
-  capability=$RIG_VALUE
-  rig_provider_has_capability "$provider" "$capability" ||
-    rig_fail "[$section_name] provider '$provider' does not declare capability '$capability'" || return
+    rig_fail "[$section_name] actions require custom provider" || return
 
   rig_require_field "$section_name" mode || return
   mode=$RIG_VALUE
@@ -934,8 +978,23 @@ rig_validate_operation() {
     observe|mutate) ;;
     *) rig_fail "[$section_name] mode must be 'observe' or 'mutate'" || return ;;
   esac
-
   rig_require_field "$section_name" description || return
+
+  argument_policy=rig
+  if rig_get_value "$section_name" argument-policy; then
+    argument_policy=$RIG_VALUE
+  fi
+  case "$argument_policy" in
+    rig|provider) ;;
+    *) rig_fail "[$section_name] argument-policy must be 'rig' or 'provider'" || return ;;
+  esac
+  if [ "$argument_policy" = provider ]; then
+    rig_section_index "$section_name" || return 2
+    section_index=$RIG_INDEX
+    rig_field_count "$section_index" allow-argument
+    [ "$RIG_COUNT" -eq 0 ] ||
+      rig_fail "[$section_name] cannot combine argument-policy 'provider' with allowed-arguments" || return
+  fi
 }
 
 rig_validate_model() {
@@ -973,9 +1032,19 @@ rig_validate_model() {
         rig_reference_exists category "$RIG_VALUE" || rig_fail "[$section_name] references unknown category '$RIG_VALUE'" || return
         rig_require_field "$section_name" purpose || return
         rig_require_field "$section_name" rationale || return
-        rig_field_count "$index" platform
-        [ "$RIG_COUNT" -gt 0 ] || rig_fail "[$section_name] requires field 'platform'" || return
-        rig_validate_references_for_field "$index" requires tool || return
+      rig_field_count "$index" platform
+      [ "$RIG_COUNT" -gt 0 ] || rig_fail "[$section_name] requires field 'platform'" || return
+      if ! rig_get_value "$section_name" install-provider; then
+        if rig_get_value "$section_name" install-kind ||
+          rig_get_value "$section_name" install-locator ||
+          rig_get_value "$section_name" install-destination ||
+          rig_get_value "$section_name" install-checksum ||
+          rig_get_value "$section_name" install-platform ||
+          rig_get_value "$section_name" install-argument; then
+          rig_fail "[$section_name] install metadata requires install.provider" || return
+        fi
+      fi
+      rig_validate_references_for_field "$index" requires tool || return
         rig_validate_references_for_field "$index" related tool || return
         rig_validate_references_for_field "$index" alternative tool || return
         ;;
@@ -1005,9 +1074,9 @@ rig_validate_model() {
         rig_valid_id "$RIG_VALUE" && rig_reference_exists provider "$RIG_VALUE" ||
           rig_fail "[$section_name] references unknown provider '$RIG_VALUE'" || return
         ;;
-      operation)
-        rig_validate_operation "$section_name" "$section_id" || return
-        ;;
+    action)
+      rig_validate_action "$section_name" "$section_id" || return
+      ;;
     esac
     index=$((index + 1))
   done
@@ -1040,6 +1109,7 @@ rig_load_config() {
   done
   [ "$source_count" -gt 0 ] ||
     rig_fail "no configuration sources under: $config_home" || return
+  rig_synthesise_bindings || return
   rig_validate_model
 }
 
@@ -2521,64 +2591,57 @@ rig_operation_allows_argument() {
 }
 
 rig_prepare_operation_invocation() {
-  local section_name tool provider capability verb executable
+  local section_name provider action verb executable
 
   section_name=$1
-  tool=$2
-  provider=$3
-  capability=$4
-  verb=$5
+  provider=$2
+  action=$3
+  verb=$4
 
-  rig_prepare_custom_invocation "$verb" "$provider" "$tool" operation "$capability" || return
+  rig_prepare_custom_invocation "$verb" "$provider" "$provider" action "$action" || return
   executable=$RIG_VALUE
   rig_append_arguments "$section_name" || return 2
   RIG_VALUE=$executable
 }
 
-rig_command_run() {
-  local tool operation section_name platform provider capability mode verb executable argument
+rig_command_run_action() {
+  local provider action section_name platform mode verb executable argument argument_policy
   local -a caller_arguments
 
   if [ "$#" -eq 1 ]; then
     case "$1" in
       -h|--help)
-        printf '%s\n' 'Usage: rig run TOOL OPERATION [-- ARGUMENT...]'
+        printf '%s\n' 'Usage: rig run PROVIDER ACTION [-- ARGUMENT...]'
         return
         ;;
     esac
   fi
 
   [ "$#" -ge 2 ] ||
-    syntax_error 'usage: rig run TOOL OPERATION [-- ARGUMENT...]' || return
-  tool=$1
-  operation=$2
+    syntax_error 'usage: rig run PROVIDER ACTION [-- ARGUMENT...]' || return
+  provider=$1
+  action=$2
   shift 2
   caller_arguments=()
   if [ "$#" -gt 0 ]; then
     [ "$1" = -- ] ||
-      syntax_error 'usage: rig run TOOL OPERATION [-- ARGUMENT...]' || return
+      syntax_error 'usage: rig run PROVIDER ACTION [-- ARGUMENT...]' || return
     shift
     caller_arguments=("$@")
   fi
 
-  rig_valid_id "$tool" || rig_fail "invalid tool identity '$tool'" || return
-  rig_valid_id "$operation" || rig_fail "invalid operation identity '$operation'" || return
+  rig_valid_id "$provider" || rig_fail "invalid provider identity '$provider'" || return
+  rig_valid_id "$action" || rig_fail "invalid action identity '$action'" || return
   rig_load_config || return
-  section_name=operation.$tool.$operation
+  section_name=action.$provider.$action
   rig_section_index "$section_name" ||
-    rig_fail "unknown operation '$tool $operation'" || return
+    rig_fail "unknown action '$provider $action'" || return
 
   rig_current_platform || return
   platform=$RIG_VALUE
-  rig_tool_supports_platform "$tool" "$platform" ||
-    rig_fail "tool '$tool' is not supported on platform '$platform'" || return
   rig_operation_supports_platform "$section_name" "$platform" ||
-    rig_fail "operation '$tool $operation' is not supported on platform '$platform'" || return
+    rig_fail "action '$provider $action' not supported on platform '$platform'" || return
 
-  rig_get_value "$section_name" provider || return 2
-  provider=$RIG_VALUE
-  rig_get_value "$section_name" capability || return 2
-  capability=$RIG_VALUE
   rig_get_value "$section_name" mode || return 2
   mode=$RIG_VALUE
   case "$mode" in
@@ -2587,18 +2650,22 @@ rig_command_run() {
     *) return 2 ;;
   esac
 
-  if [ "${#caller_arguments[@]}" -gt 0 ]; then
+  argument_policy=rig
+  if rig_get_value "$section_name" argument-policy; then
+    argument_policy=$RIG_VALUE
+  fi
+  if [ "$argument_policy" = rig ] && [ "${#caller_arguments[@]}" -gt 0 ]; then
     for argument in "${caller_arguments[@]}"; do
       rig_operation_allows_argument "$section_name" "$argument" ||
-        rig_fail "argument is not allowed for operation '$tool $operation': $argument" || return
+        rig_fail "argument is not allowed for action '$provider $action': $argument" || return
     done
   fi
 
   rig_custom_provider_executable "$provider" || return 2
   executable=$RIG_VALUE
-  rig_executable_available "$executable" ||
+  [ -x "$executable" ] ||
     rig_fail "provider '$provider' executable unavailable: $executable" || return
-  rig_prepare_operation_invocation "$section_name" "$tool" "$provider" "$capability" "$verb" || return
+  rig_prepare_operation_invocation "$section_name" "$provider" "$action" "$verb" || return
   executable=$RIG_VALUE
   if [ "${#caller_arguments[@]}" -gt 0 ]; then
     for argument in "${caller_arguments[@]}"; do
@@ -3793,7 +3860,7 @@ main() {
       ;;
     run)
       shift
-      rig_command_run "$@"
+      rig_command_run_action "$@"
       ;;
     export)
       shift

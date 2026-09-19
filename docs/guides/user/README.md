@@ -87,19 +87,16 @@ rig bootstrap
 
 An explicit `--profile NAME` takes precedence over `bootstrap-profile`. If the field is absent, bootstrap falls back to `default-profile`, so existing configurations remain valid. Dry-run invokes no provider. Missing capabilities or executables fail before mutation; provider failures suppress only dependent work and independent work continues. Provider-native manifests remain authoritative, including any stale-state guard implemented by the selected provider.
 
-## Run a declared operation
+## Run a declared provider action
 
-Operations keep host-specific audits and controls in private configuration while giving them one bounded command surface:
+Actions keep host-specific audits and controls in private configuration while giving them one bounded command surface:
 
 ```toml
 [provider.local]
 adapter = "custom"
 executable = "~/.local/libexec/rig-local-provider"
-capabilities = ["service-status"]
 
-[operation.launchd.service-status]
-provider = "local"
-capability = "service-status"
+[action.local.service-status]
 mode = "observe"
 description = "Inspect configured launchd services"
 platforms = ["macos"]
@@ -107,14 +104,14 @@ arguments = ["user"]
 allowed-arguments = ["verbose"]
 ```
 
-Invoke the declaration by tool and operation identity:
+Invoke the declaration by provider and action identity:
 
 ```bash
-rig run launchd service-status
-rig run launchd service-status -- verbose
+rig run local service-status
+rig run local service-status -- verbose
 ```
 
-Rig invokes only a custom provider that declares the exact configured capability. `observe` maps to the provider's `observe` verb and `mutate` maps to `apply`. Configured arguments precede caller arguments, and every caller argument must exactly match one `allowed-arguments` array item. Values remain literal; Rig does not evaluate shell text. The command passes provider output through and returns its native status.
+Rig invokes only the custom provider named by the action. `observe` maps to the provider's `observe` verb and `mutate` maps to `apply`. Configured arguments precede caller arguments, and every caller argument must exactly match one `allowed-arguments` array item unless `argument-policy = "provider"` explicitly delegates native-domain validation. Values remain literal; Rig does not evaluate shell text. The command passes provider output through and returns its native status.
 
 ## Export a public rig
 

@@ -23,13 +23,14 @@ write_minimal_config() {
     'purpose = "Test parsing"' \
     'rationale = "A dependable test tool"' \
     'platforms = ["any"]' \
+    'install.provider = "native"' \
+    'install.kind = "formula"' \
+    'install.locator = "alpha"' \
+    'install.platforms = ["any"]' \
     '[profile.default]' \
     'tools = ["alpha"]' \
     '[provider.native]' \
-    'adapter = "homebrew"' \
-    '[binding.alpha.native]' \
-    'kind = "formula"' \
-    'locator = "alpha"' >"$CONFIG_HOME/rig.toml"
+    'adapter = "homebrew"' >"$CONFIG_HOME/rig.toml"
 }
 
 write_recording_provider() {
@@ -266,7 +267,7 @@ write_query_config() {
   [[ "$output" == *"doctor [--profile NAME]"* ]] || false
   [[ "$output" == *"apply [--profile NAME] [--dry-run]"* ]] || false
   [[ "$output" == *"bootstrap [--profile NAME] [--dry-run]"* ]] || false
-  [[ "$output" == *"run TOOL OPERATION [-- ARGUMENT...]"* ]] || false
+  [[ "$output" == *"run PROVIDER ACTION [-- ARGUMENT...]"* ]] || false
   [[ "$output" == *"export PUBLICATION --output DIRECTORY"* ]] || false
   [[ "$output" == *"publish PUBLICATION"* ]] || false
   [[ "$output" == *"diag"* ]]
@@ -297,7 +298,7 @@ write_query_config() {
     'doctor [--profile NAME]' \
     'apply [--profile NAME] [--dry-run]' \
     'bootstrap [--profile NAME] [--dry-run]' \
-    'run TOOL OPERATION [-- ARGUMENT...]' \
+    'run PROVIDER ACTION [-- ARGUMENT...]' \
     'export PUBLICATION --output DIRECTORY' \
     'publish PUBLICATION' \
     'diag' \
@@ -1354,18 +1355,18 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   [[ "$output" == *"references unknown provider 'absent'"* ]]
 
   write_minimal_config
-  sed 's/binding.alpha.native/binding.alpha.absent/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bad.toml"
+  sed 's/install.provider = "native"/install.provider = "absent"/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bad.toml"
   mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
   [[ "$output" == *"references unknown provider 'absent'"* ]]
 
   write_minimal_config
-  sed 's/binding.alpha.native/binding.absent.native/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bad.toml"
+  sed '/install.provider =/d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bad.toml"
   mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"references unknown tool 'absent'"* ]]
+  [[ "$output" == *"install metadata requires install.provider"* ]]
 }
 
 @test "profile and required-tool cycles fail before resolution" {
@@ -1608,7 +1609,6 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
 
 @test "binding platform any is universally compatible" {
   write_minimal_config
-  printf '%s\n' 'platforms = ["any"]' >>"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" bash -c '
     . "$1"; rig_load_config && rig_resolve_profile default macos && rig_resolve_bindings && rig_dump_resolution
@@ -2973,17 +2973,13 @@ write_operation_config() {
     "executable = \"$OPERATION_PROVIDER\"" \
     'arguments = ["provider value;$(touch provider-marker)"]' \
     'capabilities = ["audit", "restart"]' \
-    '[operation.alpha.audit]' \
-    'provider = "runner"' \
-    'capability = "audit"' \
+    '[action.runner.audit]' \
     'mode = "observe"' \
     'description = "Inspect Alpha"' \
     'platforms = ["macos"]' \
     'arguments = ["configured value", "configured * literal"]' \
     'allowed-arguments = ["--verbose", "value with spaces", "semi;$(touch caller-marker)"]' \
-    '[operation.alpha.restart]' \
-    'provider = "runner"' \
-    'capability = "restart"' \
+    '[action.runner.restart]' \
     'mode = "mutate"' \
     'description = "Restart Alpha"' \
     'arguments = ["restart now"]' >"$CONFIG_HOME/rig.toml"
@@ -2996,7 +2992,7 @@ write_operation_config() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_OPERATION_LOG="$OPERATION_LOG" RIG_OPERATION_STDOUT='operation stdout' \
     RIG_OPERATION_STDERR='operation stderr' RIG_OPERATION_EXIT=7 \
-    "$RIG" run alpha audit -- --verbose 'value with spaces' --verbose 'semi;$(touch caller-marker)'
+    "$RIG" run runner audit -- --verbose 'value with spaces' --verbose 'semi;$(touch caller-marker)'
 
   [ "$status" -eq 7 ]
   [[ "$output" == *'operation stdout'* ]] || false
@@ -3007,8 +3003,8 @@ write_operation_config() {
     'ARG=<rig-provider-v1>' \
     'ARG=<observe>' \
     'ARG=<runner>' \
-    'ARG=<alpha>' \
-    'ARG=<operation>' \
+    'ARG=<runner>' \
+    'ARG=<action>' \
     'ARG=<audit>' \
     'ARG=<configured value>' \
     'ARG=<configured * literal>' \
@@ -3020,7 +3016,7 @@ write_operation_config() {
 
   rm -f "$OPERATION_LOG"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=linux \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha restart
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner restart
 
   [ "$status" -eq 0 ]
   expected=$(printf '%s\n' \
@@ -3029,8 +3025,8 @@ write_operation_config() {
     'ARG=<rig-provider-v1>' \
     'ARG=<apply>' \
     'ARG=<runner>' \
-    'ARG=<alpha>' \
-    'ARG=<operation>' \
+    'ARG=<runner>' \
+    'ARG=<action>' \
     'ARG=<restart>' \
     'ARG=<restart now>')
   [ "$(cat "$OPERATION_LOG")" = "$expected" ]
@@ -3043,25 +3039,25 @@ write_operation_config() {
   for argument in '' verbose '--verbose=yes' 'VALUE WITH SPACES'; do
     rm -f "$OPERATION_LOG"
     run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-      RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit -- "$argument"
+      RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit -- "$argument"
     [ "$status" -eq 2 ]
     [[ "$output" == *'argument is not allowed'* ]] || false
     [ ! -e "$OPERATION_LOG" ]
   done
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=linux \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit
   [ "$status" -eq 2 ]
-  [[ "$output" == *"operation 'alpha audit' is not supported on platform 'linux'"* ]] || false
+  [[ "$output" == *"action 'runner audit' not supported on platform 'linux'"* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha restart -- --verbose
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner restart -- --verbose
   [ "$status" -eq 2 ]
   [ ! -e "$OPERATION_LOG" ]
 }
 
-@test "operation schema rejects invalid trust declarations before invocation" {
+@test "action schema rejects invalid trust declarations before invocation" {
   local original
   write_operation_config
   original=$BATS_TEST_TMPDIR/operation-original-$BATS_TEST_NUMBER
@@ -3069,52 +3065,52 @@ write_operation_config() {
 
   sed 's/mode = "observe"/mode = "execute"/' "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit
   [ "$status" -eq 2 ]
   [[ "$output" == *"mode must be 'observe' or 'mutate'"* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 
-  sed '/\[operation.alpha.audit\]/,$ s/capability = "audit"/capability = "undeclared"/' \
+  sed 's/allowed-arguments = \[/argument-policy = "shell" # /' \
     "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit
   [ "$status" -eq 2 ]
-  [[ "$output" == *"does not declare capability 'undeclared'"* ]] || false
+  [[ "$output" == *"argument-policy must be 'rig' or 'provider'"* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 
-  sed 's/provider = "runner"/provider = "absent"/' "$original" >"$CONFIG_HOME/rig.toml"
+  sed 's/\[action.runner.audit\]/[action.absent.audit]/' "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit
   [ "$status" -eq 2 ]
   [[ "$output" == *"references unknown provider 'absent'"* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 
   sed 's/adapter = "custom"/adapter = "homebrew"/' "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit
   [ "$status" -eq 2 ]
-  [[ "$output" == *'operations require a custom provider'* ]] || false
+  [[ "$output" == *'actions require custom provider'* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 
   sed '/description = "Inspect Alpha"/d' "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit
   [ "$status" -eq 2 ]
   [[ "$output" == *"requires field 'description'"* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 
-  sed 's/\[operation.alpha.audit\]/[operation.ghost.audit]/' "$original" >"$CONFIG_HOME/rig.toml"
+  sed 's/\[action.runner.audit\]/[action.ghost.audit]/' "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit
   [ "$status" -eq 2 ]
-  [[ "$output" == *"references unknown tool 'ghost'"* ]] || false
+  [[ "$output" == *"references unknown provider 'ghost'"* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 
-  sed 's/\[operation.alpha.audit\]/[operation.alpha.audit.extra]/' "$original" >"$CONFIG_HOME/rig.toml"
+  sed 's/\[action.runner.audit\]/[action.runner.audit.extra]/' "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit
   [ "$status" -eq 2 ]
-  [[ "$output" == *'invalid section identity [operation.alpha.audit.extra]'* ]] || false
+  [[ "$output" == *'invalid section identity [action.runner.audit.extra]'* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 }
 
@@ -3125,18 +3121,18 @@ write_operation_config() {
   mv "$CONFIG_HOME/unavailable.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
+    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit
   [ "$status" -eq 2 ]
   [[ "$output" == *"provider 'runner' executable unavailable"* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 
   run "$RIG" run --help
   [ "$status" -eq 0 ]
-  [ "$output" = 'Usage: rig run TOOL OPERATION [-- ARGUMENT...]' ]
+  [ "$output" = 'Usage: rig run PROVIDER ACTION [-- ARGUMENT...]' ]
 
-  run "$RIG" run alpha
+  run "$RIG" run runner
   [ "$status" -eq 2 ]
-  [[ "$output" == *'usage: rig run TOOL OPERATION [-- ARGUMENT...]'* ]] || false
+  [[ "$output" == *'usage: rig run PROVIDER ACTION [-- ARGUMENT...]'* ]] || false
 }
 
 write_inventory_config() {
@@ -3205,7 +3201,7 @@ write_inventory_config() {
   sed '/^executable = /d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/default-provider.toml"
   mv "$CONFIG_HOME/default-provider.toml" "$CONFIG_HOME/rig.toml"
   run env -u HOME RIG_CONFIG_HOME="$CONFIG_HOME" RIG_DATA_HOME="$data_home" \
-    RIG_PLATFORM=macos RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run alpha audit
+    RIG_PLATFORM=macos RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit
   [ "$status" -eq 0 ]
 
   write_inventory_config

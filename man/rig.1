@@ -1,4 +1,4 @@
-.TH RIG 1 "2026-09-18" "Knowledge Islands" "User Commands"
+.TH RIG 1 "2026-09-19" "Knowledge Islands" "User Commands"
 .SH NAME
 \&
 .PP
@@ -31,7 +31,7 @@ rig \- describe and manage a personal working setup
 .RI [ \-\-profile " NAME" ]
 .RI [ \-\-dry-run ]
 .br
-.BI "rig run " TOOL " " OPERATION
+.BI "rig run " PROVIDER " " ACTION
 .RI [ \-\- " ARGUMENT..." ]
 .br
 .BI "rig export " PUBLICATION
@@ -59,8 +59,8 @@ Catalogue queries and diagnostics parse inert configuration and do not invoke
 provider code. Status and doctor invoke observation capabilities.
 Apply and bootstrap cross the explicit mutation boundary only after complete
 plan preflight.
-Run crosses an
-explicit operation trust boundary after validating its declaration. Publish
+Run crosses an explicit provider-action trust boundary after validating its
+declaration. Publish
 crosses a network-capable trust boundary only after export validation.
 Package and
 configuration systems retain authority over their native manifests,
@@ -176,13 +176,13 @@ when that field is absent, bootstrap uses
 .B \-\-dry-run
 prints the shared plan without invoking a provider.
 .TP
-.BI "rig run " TOOL " " OPERATION " [\-\- " ARGUMENT... "]"
-Invoke one configuration-defined operation through its selected custom provider.
+.BI "rig run " PROVIDER " " ACTION " [\-\- " ARGUMENT... "]"
+Invoke one configuration-defined action through its named custom provider.
 An
 .B observe
-operation uses the provider's observation verb; a
+action uses the provider's observation verb; a
 .B mutate
-operation uses its application verb. Configured arguments precede accepted
+action uses its application verb. Configured arguments precede accepted
 caller arguments. Rig passes provider output through and preserves its native
 exit status.
 .TP
@@ -399,21 +399,23 @@ adapter. Every action requires the exact declared
 or
 .B apply
 capability.
-.B [binding.TOOL.PROVIDER]
+.B [tool.ID]
 requires
-.B kind
+.B install.provider
+when materialised, together with
+.B install.kind
 and
-.B locator
+.B install.locator
 and accepts optional scalar
-.B destination
+.B install.destination
 and
-.B checksum
+.B install.checksum
 fields plus
-.B platforms
+.B install.platforms
 and
-.B arguments
-string arrays. Destination and checksum are restricted to direct-download
-bindings.
+.B install.arguments
+string arrays. A tool with no install provider is catalogue-only. Destination
+and checksum are restricted to direct-download installations.
 .B [publication.ID]
 requires
 .BR profile ,
@@ -427,10 +429,8 @@ that provider to use the
 adapter and declare the exact
 .B publish
 capability.
-.B [operation.TOOL.NAME]
+.B [action.PROVIDER.NAME]
 requires
-.BR provider ,
-.BR capability ,
 .BR mode ,
 and
 .BR description .
@@ -438,14 +438,19 @@ It accepts
 .BR platforms ,
 .BR arguments ,
 and
-.B allowed-arguments
-string arrays. The mode is exactly
+.BR allowed-arguments ,
+and optional
+.B argument-policy
+fields. The mode is exactly
 .B observe
 or
 .BR mutate .
 Only the executable
 .B custom
-adapter dispatches operations in schema 1.
+adapter dispatches actions in schema 1. Argument policy defaults to Rig's exact
+allowlist; value
+.B provider
+delegates validation to that custom provider.
 .PP
 The
 .B base-url
@@ -472,6 +477,15 @@ category = "navigation"
 purpose = "Navigate related repositories"
 rationale = "Keeps repository context visible"
 platforms = ["macos"]
+install.provider = "homebrew"
+install.kind = "formula"
+install.locator = "mgit"
+install.platforms = ["macos"]
+
+[provider.homebrew]
+
+adapter = "homebrew"
+capabilities = ["observe", "apply"]
 
 [profile.default]
 tools = ["mgit"]
@@ -626,24 +640,29 @@ or
 Rig preserves every configured value as one argument and performs no
 evaluation, shell expansion, or implicit word splitting.
 .PP
-For a declared operation, Rig fixes
+For a declared provider action, Rig fixes
 .I KIND
 to
-.B operation
+.B action
 and
 .I LOCATOR
-to the declared capability:
+to the declared action identity:
 .PP
 .nf
-EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 VERB PROVIDER TOOL operation CAPABILITY
-    [OPERATION_ARGUMENT ...] [CALLER_ARGUMENT ...]
+EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 VERB PROVIDER PROVIDER action ACTION
+    [ACTION_ARGUMENT ...] [CALLER_ARGUMENT ...]
 .fi
 .PP
-The provider must declare that exact capability. Each caller argument must
+The action declaration authorises that exact provider/action pair. Each caller
+argument must
 exactly match one
 .B allowed-arguments
-array item before invocation. Provider stdout and stderr pass through and the
-native exit status is preserved.
+array item before invocation unless
+.B argument-policy
+is
+.BR provider .
+In that case the provider validates its native domain. Provider stdout and
+stderr pass through and the native exit status is preserved.
 .PP
 Publication uses the separate fixed protocol:
 .PP
@@ -725,7 +744,7 @@ to inspect the checked-out artifacts without changing installed paths.
 .SH EXIT STATUS
 \&
 .B rig run
-returns the selected operation provider's native status, including values
+returns the selected action provider's native status, including values
 outside the Rig-owned statuses below.
 .B rig publish
 likewise returns the publisher's native non-zero status. Interrupted publication

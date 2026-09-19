@@ -27,6 +27,14 @@ The initial execution engine supports only `adapter = custom`. It invokes a cust
 EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 VERB PROVIDER TOOL KIND LOCATOR [BINDING_ARGUMENT ...]
 ```
 
+Declared provider actions use the same trust boundary without pretending the action is a catalogue tool:
+
+```text
+EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 VERB PROVIDER PROVIDER action ACTION [ACTION_ARGUMENT ...]
+```
+
+The action table is the authority to invoke that provider/action pair. Rig validates caller arguments exactly by default. `argument-policy = "provider"` is an explicit delegation to the already selected trusted custom provider when its native manifest owns the valid domain; arguments still cross as literal values and the provider must reject unknown or malformed values.
+
 `VERB` is exactly `observe` or `apply` in the per-tool protocol. Every configured value occupies one literal argument boundary. Rig performs no shell evaluation, implicit word splitting, environment-variable protocol, or automatic interpretation of provider `command` and `manifest`. Capability values are atomic literals: a provider must declare exact `observe` or `apply` values.
 
 An `observe` invocation reserves stdout for exactly one state token: `present`, `missing`, `drifted`, `unavailable`, or `unknown`. Provider stderr remains diagnostic output. Invalid output or a non-zero native exit produces public state `unknown`; Rig records `invalid-response` or `exit:N` as detail. An `apply` invocation's stdout and stderr are provider diagnostics routed to Rig's stderr. Rig records `completed` for exit zero and `failed` with `exit:N` otherwise.
