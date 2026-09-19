@@ -60,7 +60,7 @@ rig apply
 
 Built-in adapters use `brew` or `mas` for Homebrew installations, `uv` for uv tools, `chezmoi` for managed targets, and `curl` plus an available SHA-256 utility for direct downloads. A custom provider without `executable` resolves exactly `${RIG_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/rig}/providers/PROVIDER`; Rig does not search the directory or execute adjacent files. Declare `executable` when an external command, non-default path, or test fake is required. Rig checks executables only for selected tool installations.
 
-Provider-backed checks and changes show progress on stderr in an interactive terminal while preserving report stdout. Use `RIG_PROGRESS=always` for redirected logs or `RIG_PROGRESS=never` to suppress progress.
+Configuration loading and provider-backed checks and changes show progress on stderr in an interactive terminal while preserving report stdout. Use `RIG_PROGRESS=always` for redirected logs or `RIG_PROGRESS=never` to suppress progress.
 
 Keep Homebrew manifests, uv state, and chezmoi source state in their native systems. Rig selects and orders catalogue work; it does not replace those authorities. In particular, `rig status` never runs `chezmoi apply`, and `rig apply --dry-run` invokes no provider.
 

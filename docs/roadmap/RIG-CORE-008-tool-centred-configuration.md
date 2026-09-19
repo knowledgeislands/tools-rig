@@ -38,7 +38,7 @@ Tools and bindings are separate public tables. Operations repeat their provider 
 - [x] Align help, completions, manual, README, guide, changelog, fixtures, and conformance tests.
 - [x] Run the complete repository gate and inspect the resulting public contract.
 - [x] Reject source-authored `[binding.*]` tables and migrate remaining fixtures and public terminology to tool installation metadata.
-- [x] Report terminal-aware progress on stderr for provider-backed observation and mutation without changing stable stdout.
+- [x] Report terminal-aware progress on stderr for configuration loading and provider-backed work without changing stable stdout.
 - [x] Re-run the complete repository verification gate.
 
 ## Files touched
@@ -97,7 +97,7 @@ Delivered the approved schema-1 correction from immutable baseline `db8d44e32a6c
 
 ### Summary of changes
 
-`bin/rig` now parses and validates only the tool-centred source shape, constructs private normalised installation records without parsing `[binding.*]`, dispatches `[action.PROVIDER.NAME]` through `rig run PROVIDER ACTION`, and reports observation, inventory, application, action, and publication progress on stderr. Decisions, specifications, README, guide, changelog, manual, help, completions, and Bats coverage describe the same contract.
+`bin/rig` now parses and validates only the tool-centred source shape, constructs private normalised installation records without parsing `[binding.*]`, dispatches `[action.PROVIDER.NAME]` through `rig run PROVIDER ACTION`, and reports configuration loading, observation, inventory, application, action, and publication progress on stderr. Decisions, specifications, README, guide, changelog, manual, help, completions, and Bats coverage describe the same contract.
 
 ### Verification
 

@@ -45,7 +45,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - Bootstrap-profile selection with explicit-profile precedence and default-profile fallback, delegated to the exact application plan and safety boundaries.
 - Configuration-defined observe and mutate provider actions with literal `arguments`, exact `allowed-arguments`, optional provider-owned validation, and native outcome propagation.
 - Failure handling that suppresses only transitive dependants while independent work continues.
-- Terminal-aware, line-oriented stderr progress for provider observation, inventory, application, actions, and publication, with stable stdout and explicit `RIG_PROGRESS=always|never` control.
+- Terminal-aware, line-oriented stderr progress for configuration loading, provider observation, inventory, application, actions, and publication, with stable stdout and explicit `RIG_PROGRESS=always|never` control.
 - Deterministic offline `rig-publication` version 1 JSON export of an explicitly selected, platform-neutral public profile with relationship closure, canonical URL metadata, disclosure allow-listing, and safe complete-tree replacement.
 - Explicit trusted publication dispatch through one selected custom provider, with isolated one-file cache staging, fixed literal handoff, native outcome propagation, phase-aware interruption handling, exact-file fail-closed cleanup, and retained complete failure artifacts.
 

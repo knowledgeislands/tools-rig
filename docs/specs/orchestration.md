@@ -177,7 +177,7 @@ _Evidence:_ `rig_command_apply` redirects provider stdout to stderr while leavin
 
 ### RIG-ORCH-019 — Provider progress channel
 
-Provider-backed observation, inventory, application, declared actions, and publication MUST report line-oriented progress on stderr when stderr is a terminal. Rig MUST keep deterministic reports and exported data on stdout. `RIG_PROGRESS=always` MUST retain progress when stderr is redirected, and `RIG_PROGRESS=never` MUST suppress it.
+Configuration loading and provider-backed observation, inventory, application, declared actions, and publication MUST report line-oriented progress on stderr when stderr is a terminal. Rig MUST keep deterministic reports and exported data on stdout. `RIG_PROGRESS=always` MUST retain progress when stderr is redirected, and `RIG_PROGRESS=never` MUST suppress it.
 
 _Conformance:_ conforming
 

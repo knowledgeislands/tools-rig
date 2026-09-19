@@ -1624,6 +1624,9 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   [[ "$output" == Profile:* ]]
   [[ "$output" != *'rig: observing'* ]]
   progress_output=$(<"$progress_file")
+  [[ "$progress_output" == *'rig: loading configuration 0/1'* ]]
+  [[ "$progress_output" == *'rig: loading configuration 1/1: 1 sources'* ]]
+  [[ "$progress_output" == *'rig: loading configuration complete (1)'* ]]
   [[ "$progress_output" == *'rig: observing 0/4'* ]]
   [[ "$progress_output" == *'rig: observing 1/4: base via runner'* ]]
   [[ "$progress_output" == *'rig: observing 4/4: notes'* ]]

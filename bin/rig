@@ -75,7 +75,7 @@ print_help() {
     '  completion bash|zsh   Print shell completion source.' \
     '  help                  Show this help.' \
     '' \
-    'Provider-backed work reports progress on stderr when interactive.'
+    'Configuration loading and provider work report progress on stderr when interactive.'
 }
 
 syntax_error() {
@@ -1156,6 +1156,7 @@ rig_load_config() {
     config_home=${XDG_CONFIG_HOME:-$HOME/.config}/rig
   fi
 
+  rig_progress_start 'loading configuration' 1
   root_file=$config_home/rig.toml
   source_count=0
   if [ -e "$root_file" ]; then
@@ -1170,7 +1171,9 @@ rig_load_config() {
   [ "$source_count" -gt 0 ] ||
     rig_fail "no configuration sources under: $config_home" || return
   rig_synthesise_bindings || return
-  rig_validate_model
+  rig_validate_model || return
+  rig_progress_step "$source_count sources"
+  rig_progress_finish
 }
 
 rig_tool_supports_platform() {

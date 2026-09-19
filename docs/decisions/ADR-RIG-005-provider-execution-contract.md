@@ -59,7 +59,7 @@ Built-in Homebrew, uv, chezmoi, and direct-download adapters may group native wo
 
 Catalogue-led description is therefore bidirectional: `status` answers whether declared tools are present, and `status --unmanaged` answers whether present software was declared. Neither direction makes Rig a package database, because Rig persists no observed state in either.
 
-Provider-backed work may take long enough that silence is misleading. Rig therefore emits line-oriented progress on stderr for observation, inventory, application, declared actions, and publication when stderr is interactive. `RIG_PROGRESS=always` retains those records in redirected logs and `RIG_PROGRESS=never` suppresses them. Stable command reports and exported data remain on stdout.
+Configuration loading and provider-backed work may take long enough that silence is misleading. Rig therefore emits line-oriented progress on stderr for loading, observation, inventory, application, declared actions, and publication when stderr is interactive. `RIG_PROGRESS=always` retains those records in redirected logs and `RIG_PROGRESS=never` suppresses them. Stable command reports and exported data remain on stdout.
 
 ## Consequences
 

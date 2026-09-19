@@ -125,7 +125,7 @@ See `man rig` for the exact native command matrix and custom-provider protocol.
 
 Catalogue queries, `diag`, and `export` never invoke providers. `status` and `doctor` invoke only declared `observe` capabilities. `apply` and `bootstrap` invoke exact `apply` capabilities only after complete plan preflight. `run` is an explicit trust transition to one configured provider action. `publish` is the separate network-capable transition to one selected publisher after export validation. See `man rig` for the complete command contract.
 
-Provider-backed work reports line-oriented progress on stderr when stderr is a terminal, leaving command reports and exported data on stable stdout. Set `RIG_PROGRESS=always` to retain progress in redirected logs or `RIG_PROGRESS=never` to suppress it.
+Configuration loading and provider-backed work report line-oriented progress on stderr when stderr is a terminal, leaving command reports and exported data on stable stdout. Set `RIG_PROGRESS=always` to retain progress in redirected logs or `RIG_PROGRESS=never` to suppress it.
 
 Use `diag` to inspect Rig's runtime, paths, and configuration discovery without provider execution. Use `doctor` for a concise operational health answer and `status` for the complete expected-versus-observed table. Doctor returns 0 when healthy, 1 when completed checks find issues, and 2 when syntax, configuration, or profile resolution is invalid.
 
