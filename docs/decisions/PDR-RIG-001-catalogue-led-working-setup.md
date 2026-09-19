@@ -18,7 +18,7 @@ The same description can help its owner inspect and maintain a machine, explain 
 
 ## Decision
 
-Rig is the declarative description and manager of a person's working setup. Its primary product concept is a catalogue of categorised tools with stable identities, purposes, personal rationale, relationships, supported platforms, and provider bindings.
+Rig is the declarative description and manager of a person's working setup. Its primary product concept is a catalogue of categorised tools with stable identities, purposes, personal rationale, relationships, supported platforms, and provider-backed installations.
 
 Profiles select catalogue subsets for machines, roles, or contexts. Providers such as Homebrew, uv, chezmoi, direct downloads, and configured executables materialise selected tools while retaining authority over their native manifests and state. Rig compares a resolved profile with provider observations and coordinates only explicitly supported actions.
 

@@ -43,6 +43,10 @@ RIG_PUBLISH_STAGE=
 RIG_PUBLISH_ROOT=
 RIG_PUBLISH_COMPLETE=0
 RIG_PUBLICATION_PLATFORM_NEUTRAL=0
+RIG_PROGRESS_ACTIVE=0
+RIG_PROGRESS_CURRENT=0
+RIG_PROGRESS_LABEL=
+RIG_PROGRESS_TOTAL=0
 
 print_help() {
   printf '%s\n' \
@@ -69,7 +73,9 @@ print_help() {
     '  publish PUBLICATION                 Publish public rig data.' \
     '  diag                  Print runtime and configuration diagnostics.' \
     '  completion bash|zsh   Print shell completion source.' \
-    '  help                  Show this help.'
+    '  help                  Show this help.' \
+    '' \
+    'Provider-backed work reports progress on stderr when interactive.'
 }
 
 syntax_error() {
@@ -81,6 +87,39 @@ syntax_error() {
 rig_fail() {
   printf 'rig: error: %s\n' "$1" >&2
   return 2
+}
+
+rig_progress_enabled() {
+  case "${RIG_PROGRESS:-auto}" in
+    always) return 0 ;;
+    never) return 1 ;;
+    auto|'') [ -t 2 ] ;;
+    *) [ -t 2 ] ;;
+  esac
+}
+
+rig_progress_start() {
+  RIG_PROGRESS_ACTIVE=0
+  RIG_PROGRESS_CURRENT=0
+  RIG_PROGRESS_LABEL=$1
+  RIG_PROGRESS_TOTAL=$2
+  [ "$RIG_PROGRESS_TOTAL" -gt 0 ] || return 0
+  rig_progress_enabled || return 0
+  RIG_PROGRESS_ACTIVE=1
+  printf 'rig: %s 0/%s\n' "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_TOTAL" >&2
+}
+
+rig_progress_step() {
+  [ "$RIG_PROGRESS_ACTIVE" -eq 1 ] || return 0
+  RIG_PROGRESS_CURRENT=$((RIG_PROGRESS_CURRENT + 1))
+  printf 'rig: %s %s/%s: %s\n' \
+    "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" "$1" >&2
+}
+
+rig_progress_finish() {
+  [ "$RIG_PROGRESS_ACTIVE" -eq 1 ] || return 0
+  printf 'rig: %s complete (%s)\n' "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" >&2
+  RIG_PROGRESS_ACTIVE=0
 }
 
 require_home() {
@@ -153,7 +192,7 @@ print_zsh_completion() {
     "        show) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select a profile]:profile name:' ;;" \
     "        list) _arguments '(-h --help)'{-h,--help}'[show command help]' '--category[select a category]:category id:' '--profile[select a profile]:profile name:' ;;" \
     "        explain) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
-    "        status) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--unmanaged[report observed items no binding declares]' ;;" \
+    "        status) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--unmanaged[report observed items no tool installation declares]' ;;" \
     "        doctor) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' ;;" \
     "        apply) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \
     "        bootstrap) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \
@@ -282,7 +321,7 @@ rig_parse_section_identity() {
       rig_valid_id "$rest" || return 1
       RIG_SECTION_ID=$rest
       ;;
-    binding.*|action.*)
+    action.*)
       RIG_SECTION_TYPE=${name%%.*}
       rest=${name#*.}
       [ "$rest" != "${rest#*.}" ] || return 1
@@ -315,6 +354,27 @@ rig_add_section() {
   RIG_SECTION_TYPES[$index]=$RIG_SECTION_TYPE
   RIG_SECTION_IDS[$index]=$RIG_SECTION_ID
   RIG_SECTION_SECONDARY_IDS[$index]=$RIG_SECTION_SECONDARY_ID
+  RIG_SECTION_FIELD_STARTS[$index]=${#RIG_FIELD_KEYS[@]}
+  RIG_SECTION_FIELD_ENDS[$index]=${#RIG_FIELD_KEYS[@]}
+  rig_index_section_name "$name" "$index"
+  RIG_INDEX=$index
+}
+
+rig_add_derived_binding_section() {
+  local tool_id provider name index
+
+  tool_id=$1
+  provider=$2
+  name=binding.$tool_id.$provider
+  if rig_section_index "$name"; then
+    rig_fail "duplicate internal installation [$name]" || return
+  fi
+
+  index=${#RIG_SECTION_NAMES[@]}
+  RIG_SECTION_NAMES[$index]=$name
+  RIG_SECTION_TYPES[$index]=binding
+  RIG_SECTION_IDS[$index]=$tool_id
+  RIG_SECTION_SECONDARY_IDS[$index]=$provider
   RIG_SECTION_FIELD_STARTS[$index]=${#RIG_FIELD_KEYS[@]}
   RIG_SECTION_FIELD_ENDS[$index]=${#RIG_FIELD_KEYS[@]}
   rig_index_section_name "$name" "$index"
@@ -714,7 +774,7 @@ rig_synthesise_bindings() {
       if rig_get_value "$tool_section" install-provider; then
         provider=$RIG_VALUE
         rig_valid_id "$provider" || rig_fail "[$tool_section] has invalid install.provider '$provider'" || return
-        rig_add_section "binding.$tool_id.$provider" '<derived install>' 0 || return
+      rig_add_derived_binding_section "$tool_id" "$provider" || return
         binding_index=$RIG_INDEX
 
         if rig_get_value "$tool_section" install-kind; then
@@ -954,7 +1014,7 @@ rig_validate_binding_adapter() {
     esac
   else
     if rig_get_value "$section_name" destination || rig_get_value "$section_name" checksum; then
-      rig_fail "[$section_name] destination and checksum are only valid for direct-download bindings" || return
+      rig_fail "[$section_name] destination and checksum are only valid for direct-download installations" || return
     fi
   fi
 }
@@ -1267,8 +1327,8 @@ rig_select_bindings() {
       tool_index=$((tool_index + 1))
       continue
     fi
-    [ "$matches" -ne 0 ] || rig_fail "tool '$tool' has no compatible binding for platform '$platform'" || return
-    [ "$matches" -eq 1 ] || rig_fail "tool '$tool' has ambiguous bindings for platform '$platform'" || return
+    [ "$matches" -ne 0 ] || rig_fail "tool '$tool' has no compatible installation for platform '$platform'" || return
+    [ "$matches" -eq 1 ] || rig_fail "tool '$tool' has ambiguous installations for platform '$platform'" || return
     RIG_SELECTED_BINDINGS[$tool_index]=$binding_name
     tool_index=$((tool_index + 1))
   done
@@ -1312,7 +1372,7 @@ rig_resolve_publication_profile() {
 }
 
 rig_resolve_bindings() {
-  [ -n "$RIG_RESOLVED_PLATFORM" ] || rig_fail 'a profile must be resolved before bindings' || return
+  [ -n "$RIG_RESOLVED_PLATFORM" ] || rig_fail 'a profile must be resolved before installations' || return
   rig_select_bindings "$RIG_RESOLVED_PLATFORM"
 }
 
@@ -1910,7 +1970,7 @@ rig_binding_declares_locator() {
     fi
     # An artifact is a machine-observable path rather than a provider identity,
     # so it matches whichever provider observed it. It is declared on the tool
-    # because a catalogue-only tool has no binding to carry it.
+    # because a catalogue-only tool has no installation metadata to carry it.
     if [ "${RIG_SECTION_TYPES[$index]}" = tool ] &&
       rig_collect_field_values "${RIG_SECTION_NAMES[$index]}" artifact; then
       artifact_index=0
@@ -1968,23 +2028,35 @@ rig_inventory_provider() {
 }
 
 rig_collect_unmanaged() {
-  local index provider
+  local index provider total
 
   RIG_UNMANAGED_IDENTITIES=()
   RIG_UNMANAGED_PROVIDERS=()
   RIG_UNMANAGED_DETAILS=()
   RIG_UNMANAGED_PROBLEMS=()
   rig_collect_section_ids provider || return 0
+  total=0
+  index=0
+  while [ "$index" -lt "${#RIG_QUERY_ITEMS[@]}" ]; do
+    provider=${RIG_QUERY_ITEMS[$index]}
+    if rig_provider_has_capability "$provider" inventory; then
+      total=$((total + 1))
+    fi
+    index=$((index + 1))
+  done
+  rig_progress_start inventory "$total"
   index=0
   while [ "$index" -lt "${#RIG_QUERY_ITEMS[@]}" ]; do
     provider=${RIG_QUERY_ITEMS[$index]}
     index=$((index + 1))
     rig_provider_has_capability "$provider" inventory || continue
+    rig_progress_step "$provider"
     rig_inventory_provider "$provider" || return
     if [ "$RIG_INVENTORY_STATE" != observed ]; then
       RIG_UNMANAGED_PROBLEMS[${#RIG_UNMANAGED_PROBLEMS[@]}]="$provider	$RIG_INVENTORY_STATE	$RIG_INVENTORY_DETAIL"
     fi
   done
+  rig_progress_finish
 }
 
 rig_preflight_provider() {
@@ -2252,11 +2324,13 @@ rig_observe_plan() {
   RIG_PLAN_RESULTS=()
   RIG_PLAN_DETAILS=()
   RIG_PLAN_STATES=()
+  rig_progress_start observing "${#RIG_PLAN_TOOLS[@]}"
   index=0
   while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
     tool=${RIG_PLAN_TOOLS[$index]}
     binding=${RIG_PLAN_BINDINGS[$index]}
     provider=${RIG_PLAN_PROVIDERS[$index]}
+    rig_progress_step "$tool${provider:+ via $provider}"
     detail=-
     if [ -z "$binding" ]; then
       state=unavailable
@@ -2310,6 +2384,7 @@ rig_observe_plan() {
     fi
     index=$((index + 1))
   done
+  rig_progress_finish
   RIG_VALUE=${findings_output%$'\n'}
   RIG_DOCTOR_FINDINGS=$findings
   RIG_DOCTOR_PRESENT=$present
@@ -2432,12 +2507,18 @@ rig_command_apply() {
     [ -z "${RIG_PLAN_BINDINGS[$index]}" ] || planned=$((planned + 1))
     index=$((index + 1))
   done
+  if [ "$dry_run" -eq 0 ]; then
+    rig_progress_start applying "$planned"
+  fi
 
   index=0
   while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
     tool=${RIG_PLAN_TOOLS[$index]}
     binding=${RIG_PLAN_BINDINGS[$index]}
     provider=${RIG_PLAN_PROVIDERS[$index]}
+    if [ "$dry_run" -eq 0 ] && [ -n "$binding" ]; then
+      rig_progress_step "$tool via $provider"
+    fi
     if [ -z "$binding" ]; then
       RIG_PLAN_RESULTS[$index]=skipped
       RIG_PLAN_DETAILS[$index]=catalogue-only
@@ -2469,6 +2550,7 @@ rig_command_apply() {
       "${RIG_PLAN_RESULTS[$index]}" "${RIG_PLAN_DETAILS[$index]}"
     index=$((index + 1))
   done
+  rig_progress_finish
   printf 'Summary: planned=%s completed=%s failed=%s skipped=%s\n' \
     "$planned" "$completed" "$failed" "$skipped"
   [ "$operational_failure" -eq 0 ]
@@ -2605,7 +2687,7 @@ rig_prepare_operation_invocation() {
 }
 
 rig_command_run_action() {
-  local provider action section_name platform mode verb executable argument argument_policy
+  local provider action section_name platform mode verb executable argument argument_policy native_status
   local -a caller_arguments
 
   if [ "$#" -eq 1 ]; then
@@ -2672,7 +2754,12 @@ rig_command_run_action() {
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$argument
     done
   fi
+  rig_progress_start running 1
+  rig_progress_step "$provider $action"
   "$executable" "${RIG_INVOKE_ARGUMENTS[@]}"
+  native_status=$?
+  rig_progress_finish
+  return "$native_status"
 }
 
 rig_effective_paths() {
@@ -3102,7 +3189,7 @@ rig_describe_compatible_binding() {
   done
 
   if [ "$matches" -gt 1 ]; then
-    rig_fail "tool '$tool' has ambiguous bindings for platform '$platform'" || return
+    rig_fail "tool '$tool' has ambiguous installations for platform '$platform'" || return
   fi
   if [ "$matches" -eq 0 ]; then
     if [ "$total" -eq 0 ]; then
@@ -3274,7 +3361,7 @@ rig_command_explain() {
     "$tool" "$name" "$category" "$category_name" "$purpose" "$rationale"
   printf 'Platforms: %s\nRequires: %s\nRelated: %s\nAlternatives: %s\nProfiles: %s\n' \
     "$platforms" "$requires" "$related" "$alternatives" "$profiles"
-  printf 'Binding: %s\n' "$binding"
+  printf 'Installation: %s\n' "$binding"
 }
 
 rig_json_escape() {
@@ -3781,14 +3868,17 @@ rig_command_publish() {
     if ! rig_prepare_custom_invocation publish "$publisher" "$publication" directory "$stage"; then
       rig_cleanup_publish_stage || true
       return 2
-    fi
-    executable=$RIG_VALUE
+  fi
+  executable=$RIG_VALUE
 
-    if "$executable" "${RIG_INVOKE_ARGUMENTS[@]}"; then
-      exit_code=0
-    else
-      exit_code=$?
-    fi
+  rig_progress_start publishing 1
+  rig_progress_step "$publication via $publisher"
+  if "$executable" "${RIG_INVOKE_ARGUMENTS[@]}"; then
+    exit_code=0
+  else
+    exit_code=$?
+  fi
+  rig_progress_finish
 
     if [ "$exit_code" -ne 0 ]; then
       printf 'rig: publish failed; retained export: %s\n' "$RIG_PUBLISH_STAGE" >&2

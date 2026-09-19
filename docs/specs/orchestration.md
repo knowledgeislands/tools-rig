@@ -98,7 +98,7 @@ _Evidence:_ `rig_provider_executable` and `rig_custom_provider_executable` resol
 
 ### RIG-ORCH-017 — Built-in native command matrix
 
-Built-in adapters MUST preserve each provider and binding `argument` as one literal native argument and MUST use the following command matrix, where configured provider arguments precede the native command and binding arguments precede the locator:
+Built-in adapters MUST preserve each provider argument and tool `install.argument` as one literal native argument and MUST use the following command matrix, where configured provider arguments precede the native command and installation arguments precede the locator:
 
 - Homebrew `formula`: `brew list --formula --versions OBSERVED_IDENTITY` to observe and `brew install --formula LOCATOR` to apply.
 - Homebrew `cask`: `brew list --cask --versions OBSERVED_IDENTITY` to observe and `brew install --cask LOCATOR` to apply.
@@ -111,23 +111,23 @@ For a Homebrew formula or cask, `OBSERVED_IDENTITY` MUST be the terminal token o
 
 _Conformance:_ conforming
 
-_Verify:_ Bats fake executables record exact native argument boundaries for every built-in kind, including provider and binding arguments containing spaces.
+_Verify:_ Bats fake executables record exact native argument boundaries for every built-in kind, including provider and installation arguments containing spaces.
 
 _Evidence:_ `rig_prepare_builtin_invocation`, `rig_observe_provider`, and `rig_apply_provider` implement the matrix; focused Bats coverage compares exact call logs.
 
-### RIG-ORCH-009 — Platform binding selection
+### RIG-ORCH-009 — Platform installation selection
 
-Rig MUST select exactly one compatible provider binding when materialisation is requested for a tool on the active platform and MUST reject zero or ambiguous compatible bindings. A binding with no platform or platform `any` is compatible with every platform; other platform values match exactly.
+Rig MUST select the tool's single declared installation when materialisation is requested on a compatible active platform and MUST reject an incompatible installation. Installation metadata with no `install.platforms` value or value `any` is compatible with every platform; other platform values match exactly.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests resolve disjoint macOS and Linux bindings, then assert missing or overlapping bindings fail before provider invocation.
+_Verify:_ Bats tests resolve compatible and `any` tool installations, then assert incompatible installation metadata fails before provider invocation.
 
-_Evidence:_ `tests/rig.bats` covers exact, `any`, platform-independent, ambiguous, incompatible, and catalogue-only bindings without invoking providers unexpectedly.
+_Evidence:_ `tests/rig.bats` covers exact, `any`, incompatible, and catalogue-only installation declarations without invoking providers unexpectedly.
 
 ### RIG-ORCH-010 — Literal executable arguments
 
-Rig MUST invoke a custom provider as one resolved executable with each configured provider and binding argument preserved as a literal argument boundary. Resolution MUST use only the explicit field or exact conventional data-home path and MUST NOT search, copy, generate, or recursively discover executables.
+Rig MUST invoke a custom provider as one resolved executable with each configured provider and tool installation argument preserved as a literal argument boundary. Resolution MUST use only the explicit field or exact conventional data-home path and MUST NOT search, copy, generate, or recursively discover executables.
 
 _Conformance:_ conforming
 
@@ -147,13 +147,13 @@ _Evidence:_ `rig_plan_blocker` and apply result arrays retain native failure det
 
 ### RIG-ORCH-014 — Versioned custom-provider protocol
 
-For binding observation and application, Rig MUST invoke a custom provider as `EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 VERB PROVIDER TOOL KIND LOCATOR [BINDING_ARGUMENT ...]`, with `VERB` exactly `observe` or `apply`. Publication uses the separate fixed `publish` variant specified by RIG-PUB-007.
+For tool observation and application, Rig MUST invoke a custom provider as `EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 VERB PROVIDER TOOL KIND LOCATOR [INSTALL_ARGUMENT ...]`, with `VERB` exactly `observe` or `apply`. Publication uses the separate fixed `publish` variant specified by RIG-PUB-007.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats records every argument for observation and application and compares the version marker, verb, identities, binding data, and argument order.
+_Verify:_ Bats records every argument for observation and application and compares the version marker, verb, identities, installation data, and argument order.
 
-_Evidence:_ `rig_prepare_custom_invocation` and `rig_prepare_provider_invocation` implement the ADR-RIG-005 binding protocol, while recording-provider tests compare its argument boundaries.
+_Evidence:_ `rig_prepare_custom_invocation` and `rig_prepare_provider_invocation` implement the ADR-RIG-005 installation protocol, while recording-provider tests compare its argument boundaries.
 
 ### RIG-ORCH-015 — Observation response boundary
 
@@ -174,6 +174,16 @@ _Conformance:_ conforming
 _Verify:_ Bats redirects command channels separately and asserts provider diagnostics never contaminate Rig's stdout table and summary.
 
 _Evidence:_ `rig_command_apply` redirects provider stdout to stderr while leaving provider stderr on the same diagnostic channel.
+
+### RIG-ORCH-019 — Provider progress channel
+
+Provider-backed observation, inventory, application, declared actions, and publication MUST report line-oriented progress on stderr when stderr is a terminal. Rig MUST keep deterministic reports and exported data on stdout. `RIG_PROGRESS=always` MUST retain progress when stderr is redirected, and `RIG_PROGRESS=never` MUST suppress it.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats redirects stdout and stderr separately, forces and suppresses progress, and proves the command report is unchanged.
+
+_Evidence:_ `rig_progress_start`, `rig_progress_step`, and `rig_progress_finish` gate progress independently of provider diagnostics; `tests/rig.bats` covers the forced and suppressed modes.
 
 ## Declared provider actions
 

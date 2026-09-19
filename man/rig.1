@@ -53,7 +53,7 @@ rig \- describe and manage a personal working setup
 .PP
 Rig is the declarative description and manager of a person's working setup.
 Its catalogue records tools, categories, purposes, rationale, relationships,
-supported platforms, profiles, and provider bindings.
+supported platforms, profiles, and provider-backed installations.
 .PP
 Catalogue queries and diagnostics parse inert configuration and do not invoke
 provider code. Status and doctor invoke observation capabilities.
@@ -118,7 +118,7 @@ The category and profile filters may be combined.
 .TP
 .BI "rig explain " TOOL
 Show the tool's identity, category, purpose, rationale, supported platforms,
-relationships, profile membership, and compatible provider binding.
+relationships, profile membership, and compatible installation metadata.
 .TP
 .B rig status
 Compare every tool in the resolved default profile with its selected built-in
@@ -132,11 +132,11 @@ Compare a named resolved profile without changing the configured default.
 Additionally ask every provider declaring the
 .B inventory
 capability to enumerate its domain, and report each observed identity that no
-binding declares. Unmanaged rows are informational and do not make the result
-unhealthy; a provider that cannot inventory reports its own state and detail
-instead. Reverse reconciliation answers the opposite question to the tool
-table: not whether declared software is installed, but whether installed
-software was ever declared.
+tool installation declares. Unmanaged rows are informational and do not make
+the result unhealthy; a provider that cannot inventory reports its own state
+and detail instead. Reverse reconciliation answers the opposite question to
+the tool table: not whether declared software is installed, but whether
+installed software was ever declared.
 .TP
 .B rig doctor
 Check the resolved default profile and print one compact operational health
@@ -292,7 +292,8 @@ Override the Rig state directory.
 Override the Rig cache directory.
 .TP
 .B RIG_PLATFORM
-Override the active catalogue platform used by profile and binding resolution.
+Override the active catalogue platform used by profile and installation
+resolution.
 By default Rig maps Bash
 .B OSTYPE
 values beginning with
@@ -303,6 +304,16 @@ and values beginning with
 .B linux
 to
 .BR linux .
+.TP
+.B RIG_PROGRESS
+Set to
+.B always
+to retain line-oriented provider progress when stderr is redirected, or
+.B never
+to suppress it. The default is
+.BR auto ,
+which reports progress only when stderr is a terminal. Progress never changes
+the deterministic report on stdout.
 .TP
 .B XDG_CONFIG_HOME
 Set the base configuration directory when
@@ -364,8 +375,12 @@ with
 .B profiles
 and
 .B tools
-string arrays. Provider and binding sections retain their native locator and
-argument data without executing it while configuration is loaded.
+string arrays. Provider tables and tool
+.B install.*
+fields retain their native locator and argument data without executing it while
+configuration is loaded. Source-authored
+.B [binding.*]
+tables are invalid.
 .B [provider.ID]
 requires
 .B adapter
@@ -529,8 +544,9 @@ deterministic bytewise ordering.
 .PP
 The public profile is resolved independently of the active host platform while
 each tool retains its declared platforms. Relationships are included only when
-both endpoints are selected. Provider and binding configuration, private
-profiles, observed state, credentials, and machine paths are not rendered.
+both endpoints are selected. Provider configuration and tool installation
+metadata, private profiles, observed state, credentials, and machine paths are
+not rendered.
 Consumers should check both
 .B format
 and
@@ -569,24 +585,25 @@ unexpected file, or other unsafe shape fails closed without recursive traversal.
 .SH PROVIDER EXECUTION
 \&
 .PP
-Built-in adapters map selected bindings to native commands. Homebrew
+Built-in adapters map selected tool installations to native commands. Homebrew
 .B formula
 and
 .B cask
-bindings use
+installations use
 .BR brew (1);
 .B mas
-bindings use
+installations use
 .BR mas (1).
 The
 .B uv
 adapter supports
 .B tool
-bindings, and the
+installations, and the
 .B chezmoi
 adapter supports
 .B target
-bindings. Their native observation and application commands are respectively:
+installations. Their native observation and application commands are
+respectively:
 .PP
 .nf
 brew list --formula|--cask --versions LOCATOR
@@ -599,15 +616,17 @@ chezmoi status --path-style=absolute -- LOCATOR
 chezmoi apply -- LOCATOR
 .fi
 .PP
-Provider arguments precede the native command. Binding arguments precede the
-locator. Each configured value remains one literal argument. An explicit
+Provider arguments precede the native command. Tool
+.B install.arguments
+precede the locator. Each configured value remains one literal argument. An
+explicit
 .B executable
 replaces the adapter default.
 .PP
 A
 .B direct-download
 .B executable
-binding requires an HTTPS locator, absolute destination, and lowercase
+installation requires an HTTPS locator, absolute destination, and lowercase
 .B sha256:
 checksum. Observation reads only the destination. Application uses
 .BR curl (1)
@@ -629,7 +648,7 @@ array. Capability values are atomic and are not split on commas.
 Rig invokes a custom provider using this versioned literal-argument protocol:
 .PP
 .nf
-EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 VERB PROVIDER TOOL KIND LOCATOR [BINDING_ARGUMENT ...]
+EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 VERB PROVIDER TOOL KIND LOCATOR [INSTALL_ARGUMENT ...]
 .fi
 .PP
 .I VERB
@@ -686,14 +705,14 @@ EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 inventory PROVIDER
 The provider must declare the exact
 .B inventory
 capability. Inventory stdout contains zero or more lines, each beginning with
-an identity comparable to a binding
+an identity comparable to a tool installation
 .BR locator ,
 optionally followed by a tab and provider detail that Rig treats as opaque.
 The separator is a tab because an identity may be a path containing spaces.
-Rig reports every identity that no binding declares. A binding declares an
-identity either through its
+Rig reports every identity that no tool installation declares. Installation
+metadata declares an identity either through its
 .B locator
-, matched only within that binding's own provider namespace because a
+, matched only within that installation's own provider namespace because a
 Mac App
 Store numeric identity and a cask name may coincide, or through a
 repeatable tool

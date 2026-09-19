@@ -26,13 +26,13 @@ _Evidence:_ `tests/rig.bats` compares exact tabular output before and after frag
 
 ### RIG-QUERY-003 — Explain a tool
 
-`rig explain TOOL` MUST report the tool's name, category, purpose, rationale, platforms, relationships, profile membership, and compatible provider binding.
+`rig explain TOOL` MUST report the tool's name, category, purpose, rationale, platforms, relationships, profile membership, and compatible installation metadata.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats tests explain one fixture tool and assert every declared and derived field is attributed correctly.
 
-_Evidence:_ `tests/rig.bats` checks exact identity and meaning fields plus sorted platforms, required, related, alternative, direct, inherited, and required profile membership and the active-platform binding.
+_Evidence:_ `tests/rig.bats` checks exact identity and meaning fields plus sorted platforms, required, related, alternative, direct, inherited, and required profile membership and the active-platform installation.
 
 ## Query safety
 

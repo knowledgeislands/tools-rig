@@ -56,10 +56,10 @@ write_large_catalogue_fixture() {
       else
         provider=homebrew
       fi
-      printf '\n[binding.%s.%s]\n' "$tool" "$provider"
-      printf '%s\n' 'kind = "formula"'
-      printf 'locator = "fixture/%s"\n' "$tool"
-      printf '%s\n' 'platforms = ["macos"]'
+    printf 'install.provider = "%s"\n' "$provider"
+    printf '%s\n' 'install.kind = "formula"'
+    printf 'install.locator = "fixture/%s"\n' "$tool"
+    printf '%s\n' 'install.platforms = ["macos"]'
       index=$((index + 1))
     done
 

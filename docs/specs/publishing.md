@@ -16,11 +16,11 @@ _Evidence:_ `tests/rig.bats` proves private tools are absent and output is byte-
 
 ### RIG-PUB-002 — Disclosure allow-list
 
-Rig MUST limit the projection to publication identity, title, canonical URL, public profile identity, and selected category and tool catalogue fields: identity, name, purpose, rationale, declared platforms, and relationships. It MUST exclude providers, bindings, executables, arguments, manifests, credentials, local paths, other profiles, observed state, health findings, unmanaged inventory, and host publication state.
+Rig MUST limit the projection to publication identity, title, canonical URL, public profile identity, and selected category and tool catalogue fields: identity, name, purpose, rationale, declared platforms, and relationships. It MUST exclude providers, installation metadata, executables, arguments, manifests, credentials, local paths, other profiles, observed state, health findings, unmanaged inventory, and host publication state.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests scan the complete artifact for private tools and provider, binding, path, and argument markers.
+_Verify:_ Bats tests scan the complete artifact for private tools and provider, installation, path, and argument markers.
 
 _Evidence:_ `tests/rig.bats` exercises the allow-list against configured private markers.
 

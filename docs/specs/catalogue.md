@@ -46,15 +46,15 @@ _Verify:_ Bats tests resolve each relationship type and reject a relationship to
 
 _Evidence:_ `tests/rig.bats` preserves `requires`, `related`, and `alternatives` values and rejects unknown endpoints before resolution.
 
-### RIG-CAT-005 — Provider bindings
+### RIG-CAT-005 — Tool installations
 
-Rig MUST treat a tool with at least one binding as materialisable and connect it to providers through separately identified bindings that retain provider-native kind and locator values. A catalogue-only tool may have no binding.
+Rig MUST treat a tool with complete `install.*` metadata as materialisable and connect it to exactly one declared provider while retaining provider-native kind and locator values. A catalogue-only tool has no installation metadata. Source configuration MUST NOT define a separate binding table.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests resolve tool-to-provider bindings for native manifests and package locators without interpreting either as a Rig package database.
+_Verify:_ Bats tests resolve co-located tool installation metadata for native manifests and package locators without interpreting either as a Rig package database, and reject source-authored `[binding.*]` tables.
 
-_Evidence:_ `rig_select_bindings` resolves declared tool-provider sections while preserving kind and locator fields; `tests/rig.bats` covers bound and catalogue-only tools together.
+_Evidence:_ `rig_synthesise_bindings` normalises public `install.*` fields only after parsing; `tests/rig.bats` covers materialisable and catalogue-only tools together and isolates the former table syntax to a rejection test.
 
 ### RIG-CAT-006 — Stable validation result
 
@@ -62,6 +62,6 @@ Rig MUST return the same validated catalogue for equivalent declarations regardl
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests permute equivalent category, tool, provider, and binding sections across fragments and compare bytewise-sorted internal resolver output.
+_Verify:_ Bats tests permute equivalent category, tool, provider, and installation declarations across fragments and compare bytewise-sorted internal resolver output.
 
 _Evidence:_ `rig_sort_selected_tools` applies bytewise ordering and `tests/rig.bats` resolves declarations split and reordered across fragments to stable output.

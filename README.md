@@ -87,9 +87,9 @@ tools = ["mgit"]
 tools = ["mgit"]
 ```
 
-Providers declare exact `observe` and `apply` capabilities. Built-in adapters map selected bindings to native tools:
+Providers declare exact `observe` and `apply` capabilities. Built-in adapters map selected tool installations to native tools:
 
-| Adapter | Binding kinds | Default executable | Native authority |
+| Adapter | Installation kinds | Default executable | Native authority |
 | --- | --- | --- | --- |
 | `homebrew` | `formula`, `cask`, `mas` | `brew`; `mas` for `mas` | Homebrew and Mac App Store state |
 | `uv` | `tool` | `uv` | uv-managed tools |
@@ -110,9 +110,9 @@ See `man rig` for the exact native command matrix and custom-provider protocol.
 - `rig` shows top-level help.
 - `rig show [--profile NAME]` summarises the default or named resolved profile in a bounded-width, aligned tool table; `rig explain TOOL` provides complete metadata.
 - `rig list [--category ID] [--profile NAME]` lists catalogue tools, optionally narrowed by category and profile.
-- `rig explain TOOL` explains a tool's declared meaning, relationships, profile membership, and compatible provider binding.
+- `rig explain TOOL` explains a tool's declared meaning, relationships, profile membership, and compatible installation metadata.
 - `rig status [--profile NAME] [--unmanaged]` compares expected tools with selected built-in or custom-provider observations.
-- `rig status --unmanaged` asks every provider declaring the `inventory` capability to enumerate its domain, then reports observed identities that no binding declares. It answers the opposite question to the tool table: not whether declared software is installed, but whether installed software was ever declared. Unmanaged rows are informational and never make the result unhealthy.
+- `rig status --unmanaged` asks every provider declaring the `inventory` capability to enumerate its domain, then reports observed identities that no tool installation declares. It answers the opposite question to the tool table: not whether declared software is installed, but whether installed software was ever declared. Unmanaged rows are informational and never make the result unhealthy.
 - `rig doctor [--profile NAME]` gives a compact health answer for configuration, XDG paths, providers, and selected tools.
 - `rig apply [--profile NAME] [--dry-run]` materialises a resolved profile; dry-run preflights and prints planned work without invoking providers.
 - `rig bootstrap [--profile NAME] [--dry-run]` materialises the configured bootstrap profile through the same apply plan; an explicit profile wins, and older configurations fall back to `default-profile`.
@@ -124,6 +124,8 @@ See `man rig` for the exact native command matrix and custom-provider protocol.
 - `rig help [-h|--help]`, `rig --help`, and `rig --version` provide command and version information.
 
 Catalogue queries, `diag`, and `export` never invoke providers. `status` and `doctor` invoke only declared `observe` capabilities. `apply` and `bootstrap` invoke exact `apply` capabilities only after complete plan preflight. `run` is an explicit trust transition to one configured provider action. `publish` is the separate network-capable transition to one selected publisher after export validation. See `man rig` for the complete command contract.
+
+Provider-backed work reports line-oriented progress on stderr when stderr is a terminal, leaving command reports and exported data on stable stdout. Set `RIG_PROGRESS=always` to retain progress in redirected logs or `RIG_PROGRESS=never` to suppress it.
 
 Use `diag` to inspect Rig's runtime, paths, and configuration discovery without provider execution. Use `doctor` for a concise operational health answer and `status` for the complete expected-versus-observed table. Doctor returns 0 when healthy, 1 when completed checks find issues, and 2 when syntax, configuration, or profile resolution is invalid.
 

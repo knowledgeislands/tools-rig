@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: db8d44e32a6c9ffa1ddc0e8052f7431e326d70c2
 created_at: 2026-09-19T11:24:39Z
-updated_at: 2026-09-19T16:17:51Z
+updated_at: 2026-09-19T17:45:04Z
 ---
 
 # RIG-CORE-008: Tool-centred configuration
@@ -37,6 +37,9 @@ Tools and bindings are separate public tables. Operations repeat their provider 
 - [x] Make `rig run PROVIDER ACTION [-- ARGUMENT...]` dispatch declared actions and preserve safe literal argument passing.
 - [x] Align help, completions, manual, README, guide, changelog, fixtures, and conformance tests.
 - [x] Run the complete repository gate and inspect the resulting public contract.
+- [x] Reject source-authored `[binding.*]` tables and migrate remaining fixtures and public terminology to tool installation metadata.
+- [x] Report terminal-aware progress on stderr for provider-backed observation and mutation without changing stable stdout.
+- [x] Re-run the complete repository verification gate.
 
 ## Files touched
 
@@ -90,27 +93,27 @@ This record owns the public contract change; the private declaration and provide
 
 ### Delivered
 
-Delivered the approved schema-1 correction from immutable baseline `db8d44e32a6c9ffa1ddc0e8052f7431e326d70c2`: co-located tool installation metadata and provider-owned actions. The Bash 3.2, XDG, native-manifest, and private-data boundaries remain intact; no release or personal catalogue was added.
+Delivered the approved schema-1 correction from immutable baseline `db8d44e32a6c9ffa1ddc0e8052f7431e326d70c2`: co-located tool installation metadata and provider-owned actions. Review changes remove the former binding-table parser, migrate fixtures and public terminology, and add provider-backed stderr progress. The Bash 3.2, XDG, native-manifest, and private-data boundaries remain intact; no release or personal catalogue was added.
 
 ### Summary of changes
 
-`bin/rig` now parses and validates `install.*` fields, normalises them into the existing resolver, dispatches `[action.PROVIDER.NAME]` through `rig run PROVIDER ACTION`, and supports provider-side argument policy. Decisions, specifications, README, guide, changelog, manual, help, completions, and Bats coverage describe the same contract.
+`bin/rig` now parses and validates only the tool-centred source shape, constructs private normalised installation records without parsing `[binding.*]`, dispatches `[action.PROVIDER.NAME]` through `rig run PROVIDER ACTION`, and reports observation, inventory, application, action, and publication progress on stderr. Decisions, specifications, README, guide, changelog, manual, help, completions, and Bats coverage describe the same contract.
 
 ### Verification
 
-`ki repo audit --repo .`, `shellcheck bin/rig install.sh`, all 123 `bats tests/` cases, and `mandoc -T lint man/rig.1` passed.
+`ki repo audit --repo .`, `shellcheck bin/rig install.sh`, all 124 `bats tests/` cases, and `mandoc -T lint man/rig.1` passed.
 
 ### Outstanding concerns
 
-The resolver still uses internal binding terminology and accepts the former binding section shape in test fixtures; it is not documented or used by the live configuration. Review should decide whether rejecting that residual parser surface is required in this item.
+No outstanding correctness concern is known. Provider calls remain deliberately sequential to preserve dependency order and native-manager diagnostics; terminal-aware progress now makes that potentially long-running work visible without destabilising stdout.
 
 ### Post-change review
 
-The delivered public configuration meets the one-entry-per-tool goal and retains provider isolation. Regression risk is concentrated in configuration parsing and provider dispatch, both covered by the full shell suite. The item is ready for acceptance subject to the residual-parser decision above.
+The delivered public configuration meets the one-entry-per-tool goal and retains provider isolation. The former source parser path is absent, legacy syntax fails closed, and progress is independently controllable for terminals and redirected logs. Regression risk remains concentrated in configuration parsing and provider dispatch, both covered by the full shell suite.
 
 ### Mini recap
 
-Rig now presents tools and actions in the intended public model, with synchronized user surfaces and a clean verification gate. A useful learning route is whether internal normalisation vocabulary should also be renamed after the public contract is accepted.
+Rig now presents tools and actions in the intended public model, rejects the superseded source shape, and stays communicative during slow provider work while preserving stable reports. Internal resolver vocabulary remains an implementation detail rather than accepted configuration syntax.
 
 ## Discussion
 

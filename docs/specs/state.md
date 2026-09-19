@@ -106,7 +106,7 @@ _Conformance:_ conforming
 
 _Verify:_ Bats configures selected and unselected recording providers and asserts only selected work receives an apply invocation.
 
-_Evidence:_ `rig_command_apply` executes only work produced from the resolved profile and selected bindings.
+_Evidence:_ `rig_command_apply` executes only work produced from the resolved profile and selected installations.
 
 ### RIG-STATE-006 — Dry-run plan
 

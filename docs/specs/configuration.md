@@ -66,7 +66,7 @@ _Evidence:_ `rig_toml_parse_array` decodes one basic string at a time into the e
 
 ### RIG-CONF-007 — Bounded path expansion
 
-Rig MUST expand a leading `~/` only while loading provider `executable` and `manifest` fields and direct-download binding `destination` fields. When comparing tool artifacts, Rig MUST derive absolute comparison identity from a leading `~/` or `$HOME/` without changing the stored declaration. Rig MUST preserve embedded variables, other variable names, relative paths, and all other value text literally.
+Rig MUST expand a leading `~/` only while loading provider `executable` and `manifest` fields and direct-download `install.destination` fields. When comparing tool artifacts, Rig MUST derive absolute comparison identity from a leading `~/` or `$HOME/` without changing the stored declaration. Rig MUST preserve embedded variables, other variable names, relative paths, and all other value text literally.
 
 _Conformance:_ conforming
 
@@ -78,11 +78,11 @@ _Evidence:_ `rig_add_field` performs the loading expansion allow-list; artifact 
 
 ### RIG-CONF-008 — Canonical table identities
 
-Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[profile.ID]`, `[provider.ID]`, `[publication.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`.
+Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[profile.ID]`, `[provider.ID]`, `[publication.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`. The superseded `[binding.TOOL.PROVIDER]` shape MUST be rejected as a source table; installation metadata belongs only in its tool table.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats table tests accept every table form and reject uppercase, empty, extra, whitespace-containing, and digit-leading segments.
+_Verify:_ Bats table tests accept every current table form and reject uppercase, empty, extra, whitespace-containing, digit-leading, and former binding identities.
 
 _Evidence:_ `rig_parse_section_identity` validates table arity and identity segments; `tests/rig.bats` covers canonical and malformed identities.
 
@@ -134,7 +134,7 @@ _Conformance:_ conforming
 
 _Verify:_ Bats tests resolve co-located installation ownership and reject unknown providers, partial installation declarations, incompatible adapter kinds, unsafe downloads, malformed checksums, and invalid Mac App Store identities.
 
-_Evidence:_ `rig_validate_binding_adapter` enforces adapter-specific binding integrity; `tests/rig.bats` covers valid and invalid declarations.
+_Evidence:_ `rig_validate_binding_adapter` enforces adapter-specific installation integrity after internal normalisation; `tests/rig.bats` covers valid and invalid declarations.
 
 ### RIG-CONF-014 — Publication fields
 
