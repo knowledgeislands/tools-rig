@@ -4,12 +4,12 @@ area: CORE
 title: Cache cleanup lifecycle
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 8c4880c7c252bb4d93849d3e91bc9de13759a954
 created_at: 2026-09-20T10:40:01Z
-updated_at: 2026-09-20T12:19:37Z
+updated_at: 2026-09-20T14:23:53Z
 ---
 
 # RIG-CORE-009: Cache cleanup lifecycle
@@ -120,6 +120,10 @@ The delivered command meets the stated ownership, preview, retention, concurrenc
 ### Mini recap
 
 Rig-owned retained publication data now has an explicit, inspectable cleanup path with no automatic expiry and no authority over provider caches. The durable behavior lives in `RIG-CACHE`; no additional Decision Record or follow-on roadmap work is required by this item.
+
+## Done
+
+Accepted 2026-09-20 by the repository owner on the review packet above.
 
 ## Discussion
 

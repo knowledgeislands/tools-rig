@@ -4,7 +4,7 @@ area: CORE
 title: Declarative operational resources
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 77801a21ff508aff7de1c345afe975ec55620260
@@ -111,6 +111,10 @@ The implementation preserves the manager-of-managers boundary: Rig owns declarat
 ### Mini recap
 
 Services and scheduled jobs now have one authoritative declaration under Rig, with provider-native macOS projection and equivalent tests, while live application remains an explicit later operation.
+
+## Done
+
+Accepted 2026-09-20 by the repository owner on the review packet above.
 
 ## Discussion
 
