@@ -44,6 +44,14 @@ This is an advanced trust transition. The configuration fixes the provider, mode
 
 Export is the review boundary; publish is the network-capable transition. See [publish a rig](publishing.md).
 
+## Maintain Rig-owned cache data
+
+- `rig clean [--dry-run]` — remove complete retained publication exports and resumable cleanup claims that Rig can prove it owns.
+
+Use `rig clean --dry-run` first to see the exact paths and reasons. Retained publication exports remain indefinitely until this explicit command removes them. Unsafe shapes and cache entries from the earlier flat layout are reported and skipped; active publication staging, provider-native caches, configuration, data, and state are never cleanup targets.
+
+Cleanup is maintenance, not a step in the everyday Rig lifecycle. It does not load configuration or invoke providers.
+
 ## Get help and completion
 
 - `rig completion bash|zsh` — print completion source for the selected shell.

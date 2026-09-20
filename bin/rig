@@ -33,6 +33,8 @@ RIG_VISIT_NAMES=()
 RIG_VISIT_STATES=()
 RIG_QUERY_ITEMS=()
 RIG_DECLARED_FIELDS=()
+RIG_CLEAN_PATHS=()
+RIG_CLEAN_STATES=()
 RIG_VALUE=
 RIG_INDEX=
 RIG_COUNT=0
@@ -41,7 +43,11 @@ RIG_RESOLVED_PLATFORM=
 RIG_INVOKED_PATH=
 RIG_PUBLISH_STAGE=
 RIG_PUBLISH_ROOT=
+RIG_PUBLISH_STAGING_ROOT=
+RIG_PUBLISH_RETAINED_ROOT=
 RIG_PUBLISH_COMPLETE=0
+RIG_CLEAN_CLAIM=
+RIG_CLEAN_ROOT=
 RIG_PUBLICATION_PLATFORM_NEUTRAL=0
 RIG_PROGRESS_ACTIVE=0
 RIG_PROGRESS_CURRENT=0
@@ -71,6 +77,7 @@ print_help() {
     '  export PUBLICATION --output DIRECTORY' \
     '                                     Generate public rig data.' \
     '  publish PUBLICATION                 Publish public rig data.' \
+    '  clean [--dry-run]                   Remove eligible Rig-owned cache data.' \
     '  diag                  Print runtime and configuration diagnostics.' \
     '  completion bash|zsh   Print shell completion source.' \
     '  help                  Show this help.' \
@@ -138,7 +145,7 @@ print_bash_completion() {
     '  current=${COMP_WORDS[COMP_CWORD]}' \
     '  command=${COMP_WORDS[1]:-}' \
     '  if [ "$COMP_CWORD" -eq 1 ]; then' \
-    '    COMPREPLY=($(compgen -W "-h --help -V --version show list explain status doctor apply bootstrap run export publish diag completion help" -- "$current"))' \
+    '    COMPREPLY=($(compgen -W "-h --help -V --version show list explain status doctor apply bootstrap run export publish clean diag completion help" -- "$current"))' \
     '    return' \
     '  fi' \
     '  case "$command" in' \
@@ -152,6 +159,7 @@ print_bash_completion() {
     '    run) COMPREPLY=($(compgen -W "-h --help --" -- "$current")) ;;' \
     '    export) COMPREPLY=($(compgen -W "-h --help --output" -- "$current")) ;;' \
     '    publish) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
+    '    clean) COMPREPLY=($(compgen -W "-h --help --dry-run" -- "$current")) ;;' \
     '    diag) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
     '    completion) COMPREPLY=($(compgen -W "-h --help bash zsh" -- "$current")) ;;' \
     '    help) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
@@ -180,6 +188,7 @@ print_zsh_completion() {
     "    'run:invoke a declared operation'" \
     "    'export:generate public rig data'" \
     "    'publish:publish public rig data'" \
+    "    'clean:remove eligible Rig-owned cache data'" \
     "    'diag:print runtime and configuration diagnostics'" \
     "    'completion:print shell completion source'" \
     "    'help:show help'" \
@@ -199,6 +208,7 @@ print_zsh_completion() {
     "        run) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:provider name:' '2:action name:' '3:separator:(--)' '*::action argument:' ;;" \
     "        export) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' '--output[write complete public data tree]:directory:_directories' ;;" \
     "        publish) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' ;;" \
+    "        clean) _arguments '(-h --help)'{-h,--help}'[show command help]' '--dry-run[report eligible cache data without removing it]' ;;" \
     "        diag) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
     "        completion) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:shell:(bash zsh)' ;;" \
     "        help) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
@@ -3704,14 +3714,14 @@ rig_cleanup_publish_stage() {
     return 0
   fi
   case "$RIG_PUBLISH_STAGE" in
-    "$RIG_PUBLISH_ROOT"/*.rig-publish.*) ;;
+    "$RIG_PUBLISH_STAGING_ROOT"/*.rig-publish.*) ;;
     *) rig_fail "refusing unsafe publication staging cleanup: $RIG_PUBLISH_STAGE" || return ;;
   esac
 
   stage_name=${RIG_PUBLISH_STAGE##*/}
   if ! (
-    cd "$RIG_PUBLISH_ROOT" || exit 2
-    [ "$(pwd -P)" = "$RIG_PUBLISH_ROOT" ] || exit 2
+    cd "$RIG_PUBLISH_STAGING_ROOT" || exit 2
+    [ "$(pwd -P)" = "$RIG_PUBLISH_STAGING_ROOT" ] || exit 2
     [ ! -L "$stage_name" ] || exit 2
     if [ ! -e "$stage_name" ]; then
       exit 0
@@ -3738,12 +3748,41 @@ rig_cleanup_publish_stage() {
   RIG_PUBLISH_COMPLETE=0
 }
 
+rig_retain_publish_stage() {
+  local stage_name retained
+
+  [ -n "${RIG_PUBLISH_STAGE:-}" ] || return 0
+  case "$RIG_PUBLISH_STAGE" in
+    "$RIG_PUBLISH_STAGING_ROOT"/*.rig-publish.*) ;;
+    "$RIG_PUBLISH_RETAINED_ROOT"/*.rig-publish.*) return 0 ;;
+    *) rig_fail "refusing unsafe publication retention: $RIG_PUBLISH_STAGE" || return ;;
+  esac
+  stage_name=${RIG_PUBLISH_STAGE##*/}
+  retained=$RIG_PUBLISH_RETAINED_ROOT/$stage_name
+  [ ! -e "$retained" ] && [ ! -L "$retained" ] ||
+    rig_fail "publication retention target already exists: $retained" || return
+  if ! (
+    cd "$RIG_PUBLISH_ROOT" || exit 2
+    [ "$(pwd -P)" = "$RIG_PUBLISH_ROOT" ] || exit 2
+    [ -d staging ] && [ ! -L staging ] || exit 2
+    [ -d retained ] && [ ! -L retained ] || exit 2
+    [ "$(cd staging && pwd -P)" = "$RIG_PUBLISH_STAGING_ROOT" ] || exit 2
+    [ "$(cd retained && pwd -P)" = "$RIG_PUBLISH_RETAINED_ROOT" ] || exit 2
+    [ -d "staging/$stage_name" ] && [ ! -L "staging/$stage_name" ] || exit 2
+    mv -- "staging/$stage_name" "retained/$stage_name" || exit 2
+  ); then
+    rig_fail "cannot safely retain publication staging directory: $RIG_PUBLISH_STAGE" || return
+  fi
+  RIG_PUBLISH_STAGE=$retained
+}
+
 rig_publish_interrupted() {
   local exit_code
 
   exit_code=$1
   trap - HUP INT TERM
   if [ "${RIG_PUBLISH_COMPLETE:-0}" -eq 1 ]; then
+    rig_retain_publish_stage || true
     printf 'rig: publish interrupted; retained export: %s\n' "$RIG_PUBLISH_STAGE" >&2
   else
     if rig_cleanup_publish_stage; then
@@ -3756,23 +3795,49 @@ rig_publish_interrupted() {
 }
 
 rig_prepare_publish_stage() {
-  local publication publish_root stage suffix absolute_stage
+  local publication publish_root staging_root retained_root stage suffix absolute_stage
 
   publication=$1
   rig_effective_paths || return 2
   publish_root=$RIG_DIAG_CACHE_HOME/publish
-  mkdir -p -- "$publish_root" ||
-    rig_fail "cannot create publication cache directory: $publish_root" || return
+  if [ -e "$publish_root" ] || [ -L "$publish_root" ]; then
+    [ -d "$publish_root" ] && [ ! -L "$publish_root" ] ||
+      rig_fail "publication cache path must be a directory, not a symlink: $publish_root" || return
+  else
+    mkdir -p -- "$publish_root" ||
+      rig_fail "cannot create publication cache directory: $publish_root" || return
+  fi
   [ -d "$publish_root" ] && [ ! -L "$publish_root" ] ||
     rig_fail "publication cache path must be a directory, not a symlink: $publish_root" || return
   RIG_PUBLISH_ROOT=$(cd "$publish_root" && pwd -P) ||
     rig_fail "cannot resolve publication cache directory: $publish_root" || return
 
+  staging_root=$RIG_PUBLISH_ROOT/staging
+  retained_root=$RIG_PUBLISH_ROOT/retained
+  if [ ! -e "$staging_root" ] && [ ! -L "$staging_root" ]; then
+    mkdir -- "$staging_root" ||
+      rig_fail "cannot create publication staging cache directory: $staging_root" || return
+  fi
+  if [ ! -e "$retained_root" ] && [ ! -L "$retained_root" ]; then
+    mkdir -- "$retained_root" ||
+      rig_fail "cannot create publication retained cache directory: $retained_root" || return
+  fi
+  [ -d "$staging_root" ] && [ ! -L "$staging_root" ] ||
+    rig_fail "publication staging cache path must be a directory, not a symlink: $staging_root" || return
+  [ -d "$retained_root" ] && [ ! -L "$retained_root" ] ||
+    rig_fail "publication retained cache path must be a directory, not a symlink: $retained_root" || return
+  RIG_PUBLISH_STAGING_ROOT=$(cd "$staging_root" && pwd -P) ||
+    rig_fail "cannot resolve publication staging cache directory: $staging_root" || return
+  RIG_PUBLISH_RETAINED_ROOT=$(cd "$retained_root" && pwd -P) ||
+    rig_fail "cannot resolve publication retained cache directory: $retained_root" || return
+
   suffix=$$
-  stage=$RIG_PUBLISH_ROOT/$publication.rig-publish.$suffix
-  while [ -e "$stage" ] || [ -L "$stage" ]; do
+  stage=$RIG_PUBLISH_STAGING_ROOT/$publication.rig-publish.$suffix
+  while [ -e "$stage" ] || [ -L "$stage" ] ||
+    [ -e "$RIG_PUBLISH_RETAINED_ROOT/${stage##*/}" ] ||
+    [ -L "$RIG_PUBLISH_RETAINED_ROOT/${stage##*/}" ]; do
     suffix=$((suffix + 1))
-    stage=$RIG_PUBLISH_ROOT/$publication.rig-publish.$suffix
+    stage=$RIG_PUBLISH_STAGING_ROOT/$publication.rig-publish.$suffix
   done
   RIG_PUBLISH_STAGE=$stage
   if ! mkdir -- "$stage"; then
@@ -3800,7 +3865,7 @@ rig_prepare_publish_stage() {
     rig_fail "cannot resolve publication staging directory: $stage" || return
   fi
   case "$absolute_stage" in
-    "$RIG_PUBLISH_ROOT"/*.rig-publish.*) ;;
+    "$RIG_PUBLISH_STAGING_ROOT"/*.rig-publish.*) ;;
     *)
       rig_cleanup_publish_stage || true
       rig_fail "publication staging directory escaped the cache: $absolute_stage" || return
@@ -3818,6 +3883,8 @@ rig_command_publish() {
 
     RIG_PUBLISH_STAGE=
     RIG_PUBLISH_ROOT=
+    RIG_PUBLISH_STAGING_ROOT=
+    RIG_PUBLISH_RETAINED_ROOT=
     RIG_PUBLISH_COMPLETE=0
     trap 'rig_publish_interrupted 129' HUP
     trap 'rig_publish_interrupted 130' INT
@@ -3884,6 +3951,7 @@ rig_command_publish() {
   rig_progress_finish
 
     if [ "$exit_code" -ne 0 ]; then
+      rig_retain_publish_stage || true
       printf 'rig: publish failed; retained export: %s\n' "$RIG_PUBLISH_STAGE" >&2
       return "$exit_code"
     fi
@@ -3892,6 +3960,260 @@ rig_command_publish() {
       return 2
     fi
     printf 'Published %s via %s\n' "$publication" "$publisher"
+  )
+}
+
+rig_clean_add() {
+  RIG_CLEAN_PATHS[${#RIG_CLEAN_PATHS[@]}]=$1
+  RIG_CLEAN_STATES[${#RIG_CLEAN_STATES[@]}]=$2
+}
+
+rig_clean_artifact_shape() {
+  local root path name basename publication suffix entry absolute
+
+  root=$1
+  path=$2
+  case "$path" in
+    "$root"/*.rig-publish.*) ;;
+    *) return 1 ;;
+  esac
+  basename=${path##*/}
+  publication=${basename%%.rig-publish.*}
+  suffix=${basename#*.rig-publish.}
+  rig_valid_id "$publication" || return 1
+  case "$suffix" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+  [ -d "$path" ] && [ ! -L "$path" ] || return 1
+  absolute=$(cd "$path" 2>/dev/null && pwd -P) || return 1
+  [ "$absolute" = "$path" ] || return 1
+  [ -f "$path/rig.json" ] && [ ! -L "$path/rig.json" ] || return 1
+  for entry in "$path"/* "$path"/.[!.]* "$path"/..?*; do
+    [ -e "$entry" ] || [ -L "$entry" ] || continue
+    name=${entry##*/}
+    [ "$name" = rig.json ] || return 1
+  done
+  return 0
+}
+
+rig_clean_collect_namespace() {
+  local root state path
+
+  root=$1
+  state=$2
+  [ -e "$root" ] || [ -L "$root" ] || return 0
+  [ -d "$root" ] && [ ! -L "$root" ] ||
+    rig_fail "cache namespace must be a directory, not a symlink: $root" || return 2
+  [ "$(cd "$root" && pwd -P)" = "$root" ] ||
+    rig_fail "cache namespace escaped its canonical parent: $root" || return 2
+  for path in "$root"/* "$root"/.[!.]* "$root"/..?*; do
+    [ -e "$path" ] || [ -L "$path" ] || continue
+    if rig_clean_artifact_shape "$root" "$path"; then
+      rig_clean_add "$path" "$state"
+    else
+      rig_clean_add "$path" unsafe
+    fi
+  done
+}
+
+rig_clean_collect_legacy() {
+  local path basename
+
+  for path in "$RIG_CLEAN_ROOT"/* "$RIG_CLEAN_ROOT"/.[!.]* "$RIG_CLEAN_ROOT"/..?*; do
+    [ -e "$path" ] || [ -L "$path" ] || continue
+    basename=${path##*/}
+    case "$basename" in
+      staging|retained|cleanup) continue ;;
+      *.rig-publish.*) rig_clean_add "$path" legacy-unclassified ;;
+      *) rig_clean_add "$path" unsafe ;;
+    esac
+  done
+}
+
+rig_clean_claim() {
+  local path basename target
+
+  path=$1
+  basename=${path##*/}
+  target=$RIG_CLEAN_ROOT/cleanup/$basename
+  [ -d "$RIG_CLEAN_ROOT/retained" ] && [ ! -L "$RIG_CLEAN_ROOT/retained" ] || return 1
+  if [ ! -e "$RIG_CLEAN_ROOT/cleanup" ] && [ ! -L "$RIG_CLEAN_ROOT/cleanup" ]; then
+    mkdir -- "$RIG_CLEAN_ROOT/cleanup" || return 1
+  fi
+  [ -d "$RIG_CLEAN_ROOT/cleanup" ] && [ ! -L "$RIG_CLEAN_ROOT/cleanup" ] || return 1
+  [ "$(cd "$RIG_CLEAN_ROOT/cleanup" && pwd -P)" = "$RIG_CLEAN_ROOT/cleanup" ] || return 1
+  [ ! -e "$target" ] && [ ! -L "$target" ] || return 1
+  if ! (
+    cd "$RIG_CLEAN_ROOT" || exit 1
+    [ "$(pwd -P)" = "$RIG_CLEAN_ROOT" ] || exit 1
+    mv -- "retained/$basename" "cleanup/$basename"
+  ); then
+    return 1
+  fi
+  RIG_CLEAN_CLAIM=$target
+  return 0
+}
+
+rig_clean_remove_claim() {
+  local path basename entry
+
+  path=$1
+  basename=${path##*/}
+  rig_clean_artifact_shape "$RIG_CLEAN_ROOT/cleanup" "$path" || return 1
+  RIG_CLEAN_CLAIM=$path
+  if ! (
+    cd "$RIG_CLEAN_ROOT/cleanup" || exit 1
+    [ "$(pwd -P)" = "$RIG_CLEAN_ROOT/cleanup" ] || exit 1
+    [ -d "$basename" ] && [ ! -L "$basename" ] || exit 1
+    cd "$basename" || exit 1
+    [ "$(pwd -P)" = "$path" ] || exit 1
+    [ -f rig.json ] && [ ! -L rig.json ] || exit 1
+    for entry in ./* ./.[!.]* ./..?*; do
+      [ -e "$entry" ] || [ -L "$entry" ] || continue
+      [ "$entry" = ./rig.json ] || exit 1
+    done
+    rm -f -- rig.json || exit 1
+    cd .. || exit 1
+    rmdir -- "$basename" || exit 1
+  ); then
+    return 1
+  fi
+  RIG_CLEAN_CLAIM=
+  return 0
+}
+
+rig_clean_interrupted() {
+  local exit_code
+
+  exit_code=$1
+  trap - HUP INT TERM
+  if [ -n "${RIG_CLEAN_CLAIM:-}" ]; then
+    printf 'rig: clean interrupted; resumable claim: %s\n' "$RIG_CLEAN_CLAIM" >&2
+  else
+    printf 'rig: clean interrupted\n' >&2
+  fi
+  exit "$exit_code"
+}
+
+rig_command_clean() {
+  (
+    local dry_run cache_root publish_root path state action index eligible removed skipped
+    local exit_code
+    local LC_ALL=C
+
+    dry_run=no
+    if [ "$#" -eq 1 ]; then
+      case "$1" in
+        -h|--help)
+          printf '%s\n' 'Usage: rig clean [--dry-run]'
+          return
+          ;;
+        --dry-run) dry_run=yes ;;
+        *) syntax_error 'usage: rig clean [--dry-run]' || return ;;
+      esac
+    elif [ "$#" -ne 0 ]; then
+      syntax_error 'usage: rig clean [--dry-run]' || return
+    fi
+
+    rig_effective_paths || return 2
+    cache_root=$RIG_DIAG_CACHE_HOME
+    printf '%s\n' $'CLASS\tSTATE\tACTION\tPATH'
+    if [ ! -e "$cache_root" ] && [ ! -L "$cache_root" ]; then
+      printf 'Summary: eligible=0 removed=0 skipped=0\n'
+      return 0
+    fi
+    [ -d "$cache_root" ] && [ ! -L "$cache_root" ] ||
+      rig_fail "cache root must be a directory, not a symlink: $cache_root" || return 2
+    cache_root=$(cd "$cache_root" && pwd -P) ||
+      rig_fail "cannot resolve cache root: $cache_root" || return 2
+    publish_root=$cache_root/publish
+    if [ ! -e "$publish_root" ] && [ ! -L "$publish_root" ]; then
+      printf 'Summary: eligible=0 removed=0 skipped=0\n'
+      return 0
+    fi
+    [ -d "$publish_root" ] && [ ! -L "$publish_root" ] ||
+      rig_fail "publication cache path must be a directory, not a symlink: $publish_root" || return 2
+    RIG_CLEAN_ROOT=$(cd "$publish_root" && pwd -P) ||
+      rig_fail "cannot resolve publication cache directory: $publish_root" || return 2
+    [ "$RIG_CLEAN_ROOT" = "$publish_root" ] ||
+      rig_fail "publication cache escaped the effective Rig cache root: $publish_root" || return 2
+
+    RIG_CLEAN_PATHS=()
+    RIG_CLEAN_STATES=()
+    rig_clean_collect_namespace "$RIG_CLEAN_ROOT/cleanup" cleanup-claim || return 2
+    rig_clean_collect_namespace "$RIG_CLEAN_ROOT/retained" retained || return 2
+    rig_clean_collect_legacy
+
+    eligible=0
+    removed=0
+    skipped=0
+    index=0
+    while [ "$index" -lt "${#RIG_CLEAN_PATHS[@]}" ]; do
+      state=${RIG_CLEAN_STATES[$index]}
+      case "$state" in
+        retained|cleanup-claim) eligible=$((eligible + 1)) ;;
+        *) skipped=$((skipped + 1)) ;;
+      esac
+      index=$((index + 1))
+    done
+
+    if [ "$dry_run" = yes ]; then
+      index=0
+      while [ "$index" -lt "${#RIG_CLEAN_PATHS[@]}" ]; do
+        path=${RIG_CLEAN_PATHS[$index]}
+        state=${RIG_CLEAN_STATES[$index]}
+        case "$state" in
+          retained|cleanup-claim) action=would-remove ;;
+          *) action=skipped ;;
+        esac
+        printf 'publication\t%s\t%s\t%s\n' "$state" "$action" "$path"
+        index=$((index + 1))
+      done
+      printf 'Summary: eligible=%s removed=0 skipped=%s\n' "$eligible" "$skipped"
+      [ "$skipped" -eq 0 ] && return 0
+      return 1
+    fi
+
+    trap 'rig_clean_interrupted 129' HUP
+    trap 'rig_clean_interrupted 130' INT
+    trap 'rig_clean_interrupted 143' TERM
+    rig_progress_start cleaning "$eligible"
+    index=0
+    exit_code=0
+    while [ "$index" -lt "${#RIG_CLEAN_PATHS[@]}" ]; do
+      path=${RIG_CLEAN_PATHS[$index]}
+      state=${RIG_CLEAN_STATES[$index]}
+      action=skipped
+      case "$state" in
+        cleanup-claim)
+          rig_progress_step "${path##*/}"
+          if rig_clean_remove_claim "$path"; then
+            action=removed
+            removed=$((removed + 1))
+          else
+            skipped=$((skipped + 1))
+            exit_code=1
+          fi
+          ;;
+        retained)
+          rig_progress_step "${path##*/}"
+          if rig_clean_claim "$path" && rig_clean_remove_claim "$RIG_CLEAN_CLAIM"; then
+            action=removed
+            removed=$((removed + 1))
+          else
+            skipped=$((skipped + 1))
+            exit_code=1
+          fi
+          ;;
+        *) exit_code=1 ;;
+      esac
+      printf 'publication\t%s\t%s\t%s\n' "$state" "$action" "$path"
+      index=$((index + 1))
+    done
+    rig_progress_finish
+    trap - HUP INT TERM
+    printf 'Summary: eligible=%s removed=%s skipped=%s\n' "$eligible" "$removed" "$skipped"
+    return "$exit_code"
   )
 }
 
@@ -3962,6 +4284,10 @@ main() {
     publish)
       shift
       rig_command_publish "$@"
+      ;;
+    clean)
+      shift
+      rig_command_clean "$@"
       ;;
     diag)
       shift

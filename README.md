@@ -107,11 +107,14 @@ Catalogue queries and diagnostics do not invoke providers. Doctor and status use
 - `rig run PROVIDER ACTION [-- ARGUMENT...]` invokes one explicitly declared custom-provider action.
 - `rig export PUBLICATION --output DIRECTORY` writes deterministic public Rig data without deploying it.
 - `rig publish PUBLICATION` exports and hands public Rig data to one trusted publisher.
+- `rig clean [--dry-run]` removes only safely classified Rig-owned cache artifacts; preview it first.
 - `rig diag` reports runtime, platform, XDG paths, and configuration discovery.
 - `rig completion bash|zsh` prints shell completion source.
 - `rig help [-h|--help]`, `rig --help`, and `rig --version` provide command and version information.
 
 The [command guide](docs/guides/user/commands.md) groups these commands by user lifecycle and explains their trust boundaries. `man rig` is the complete command and configuration reference.
+
+Cache maintenance is deliberately outside the normal lifecycle. Retained publication diagnostics remain available until you explicitly inspect them with `rig clean --dry-run` and remove eligible artifacts with `rig clean`; provider-native caches remain provider-owned.
 
 ## Safety and ownership
 

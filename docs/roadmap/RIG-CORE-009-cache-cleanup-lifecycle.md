@@ -4,12 +4,12 @@ area: CORE
 title: Cache cleanup lifecycle
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 8c4880c7c252bb4d93849d3e91bc9de13759a954
 created_at: 2026-09-20T10:40:01Z
-updated_at: 2026-09-20T11:56:34Z
+updated_at: 2026-09-20T12:19:37Z
 ---
 
 # RIG-CORE-009: Cache cleanup lifecycle
@@ -34,13 +34,13 @@ There is no public cleanup command. Rig cannot distinguish an inactive retained 
 
 ## Steps
 
-- [ ] Accept a cache specification covering explicit staging, retained, and cleanup-claim namespaces; indefinite retention; classification; reporting; exit status; interruption; and concurrency.
-- [ ] Move publication staging into an active-only namespace and atomically transfer complete failed or interrupted exports into a retained-only namespace without changing publisher handoff or exported data.
-- [ ] Implement `rig clean [--dry-run]` as an explicit command that does not load configuration or invoke providers.
-- [ ] Validate every retained candidate beneath a pinned canonical parent, atomically claim it, unlink only its regular non-symlink `rig.json`, and remove only the now-empty directory without recursive traversal.
-- [ ] Report legacy flat entries and unsafe or unknown shapes as skipped; continue independent candidates and return a finding status without inferring ownership.
-- [ ] Cover no-op, preview, deletion, multiple candidates, claim recovery, concurrent cleaners, interruption, legacy entries, symlinks, unexpected content, parent substitution, and publication compatibility in Bats.
-- [ ] Align help, completions, README, consumer command guide, manual, changelog, Specifications, and the public-surface alignment test.
+- [x] Accept a cache specification covering explicit staging, retained, and cleanup-claim namespaces; indefinite retention; classification; reporting; exit status; interruption; and concurrency.
+- [x] Move publication staging into an active-only namespace and atomically transfer complete failed or interrupted exports into a retained-only namespace without changing publisher handoff or exported data.
+- [x] Implement `rig clean [--dry-run]` as an explicit command that does not load configuration or invoke providers.
+- [x] Validate every retained candidate beneath a pinned canonical parent, atomically claim it, unlink only its regular non-symlink `rig.json`, and remove only the now-empty directory without recursive traversal.
+- [x] Report legacy flat entries and unsafe or unknown shapes as skipped; continue independent candidates and return a finding status without inferring ownership.
+- [x] Cover no-op, preview, deletion, multiple candidates, claim recovery, concurrent cleaners, interruption, legacy entries, symlinks, unexpected content, parent substitution, and publication compatibility in Bats.
+- [x] Align help, completions, README, consumer command guide, manual, changelog, Specifications, and the public-surface alignment test.
 
 ## Files touched
 
@@ -83,6 +83,43 @@ Document `rig clean` as explicit maintenance rather than a normal Rig lifecycle 
 ### Roadmap
 
 Keep this record as the canonical delivery and review account; do not create a parallel cleanup plan.
+
+## Review
+
+### Delivered
+
+Delivered the approved cache-cleanup boundary from immutable baseline `8c4880c7c252bb4d93849d3e91bc9de13759a954`. Rig now distinguishes active publication staging, retained diagnostic exports, and resumable cleanup claims, and exposes explicit bounded cleanup without making it part of the normal Rig lifecycle. Provider-native caches, configuration, data, state, explicit exports, and active staging remain excluded.
+
+### Summary of changes
+
+- `bin/rig` adds `rig clean [--dry-run]`, exact-shape classification, atomic claims, bounded non-recursive deletion, interruption recovery, deterministic reporting, progress, completion definitions, and explicit publication cache namespaces.
+- `tests/rig.bats` covers no-op, preview, multiple deletion, unsafe and legacy entries, claim recovery, concurrent cleaners, interruption, parent substitution, publication retention, help, completions, and public-surface alignment.
+- `docs/specs/cache.md` defines the accepted cleanup contract; publishing and specification indexes now connect that contract to retained publication exports.
+- README, command guide, manual, and changelog describe the maintenance command outside the everyday lifecycle.
+
+No approved-plan deviation was required.
+
+### Verification
+
+- `bash -n bin/rig install.sh` — passed.
+- `shellcheck bin/rig install.sh` — passed.
+- `bats tests/` — passed, 131 tests.
+- `mandoc -T lint man/rig.1` — passed; rendered synopsis and cache-maintenance sections inspected.
+- Targeted cleanup, publication, completion, public-inventory, concurrency, interruption, and parent-substitution Bats cases — passed.
+- `ki repo audit --repo .` — passed, 15 skills.
+- Focused `ki-repo-tools`, `ki-specs`, `ki-guides`, `ki-authoring`, and `ki-work-roadmap` audits — passed.
+
+### Outstanding concerns
+
+None. Flat publication entries that predate the explicit namespace remain intentionally visible as `legacy-unclassified` and are skipped because Rig cannot prove they are inactive.
+
+### Post-change review
+
+The delivered command meets the stated ownership, preview, retention, concurrency, interruption, and fail-closed deletion boundaries. Existing publication handoff and native exit behavior remain covered, active staging is unreachable from cleanup, and public command surfaces agree. The item is ready for human acceptance review.
+
+### Mini recap
+
+Rig-owned retained publication data now has an explicit, inspectable cleanup path with no automatic expiry and no authority over provider caches. The durable behavior lives in `RIG-CACHE`; no additional Decision Record or follow-on roadmap work is required by this item.
 
 ## Discussion
 

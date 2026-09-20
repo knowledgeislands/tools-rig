@@ -271,6 +271,7 @@ write_query_config() {
   [[ "$output" == *"run PROVIDER ACTION [-- ARGUMENT...]"* ]] || false
   [[ "$output" == *"export PUBLICATION --output DIRECTORY"* ]] || false
   [[ "$output" == *"publish PUBLICATION"* ]] || false
+  [[ "$output" == *"clean [--dry-run]"* ]] || false
   [[ "$output" == *"diag"* ]]
   [[ "$output" != *"paths"* ]]
   [[ "$output" == *"completion bash|zsh"* ]]
@@ -283,7 +284,7 @@ write_query_config() {
   zsh_completion=$("$RIG" completion zsh)
   man_synopsis=$(sed -n '/^.SH SYNOPSIS/,/^.SH DESCRIPTION/p' "$repo_root/man/rig.1")
 
-  for command in show list explain status doctor apply bootstrap run export publish diag completion help; do
+  for command in show list explain status doctor apply bootstrap run export publish clean diag completion help; do
     grep -Fq "\`rig $command" "$repo_root/README.md"
     grep -Fq "\`rig $command" "$repo_root/CHANGELOG.md"
     grep -Fq "\`rig $command" "$repo_root/docs/guides/user/commands.md"
@@ -303,6 +304,7 @@ write_query_config() {
     'run PROVIDER ACTION [-- ARGUMENT...]' \
     'export PUBLICATION --output DIRECTORY' \
     'publish PUBLICATION' \
+    'clean [--dry-run]' \
     'diag' \
     'completion bash|zsh' \
     'help [-h|--help]'; do
@@ -391,7 +393,7 @@ write_query_config() {
   run "$RIG" completion bash
   [ "$status" -eq 0 ]
   [[ "$output" == *"complete -F _rig rig"* ]]
-  [[ "$output" == *"-h --help -V --version show list explain status doctor apply bootstrap run export publish diag completion help"* ]] || false
+  [[ "$output" == *"-h --help -V --version show list explain status doctor apply bootstrap run export publish clean diag completion help"* ]] || false
   [[ "$output" == *'show) COMPREPLY=($(compgen -W "-h --help --profile"'* ]]
   [[ "$output" == *'explain) COMPREPLY=($(compgen -W "-h --help"'* ]]
   [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile --unmanaged"'* ]] || false
@@ -401,9 +403,10 @@ write_query_config() {
   [[ "$output" == *'run) COMPREPLY=($(compgen -W "-h --help --"'* ]] || false
   [[ "$output" == *'export) COMPREPLY=($(compgen -W "-h --help --output"'* ]] || false
   [[ "$output" == *'publish) COMPREPLY=($(compgen -W "-h --help"'* ]] || false
+  [[ "$output" == *'clean) COMPREPLY=($(compgen -W "-h --help --dry-run"'* ]] || false
   [[ "$output" == *'completion) COMPREPLY=($(compgen -W "-h --help bash zsh"'* ]] || false
   [[ "$output" == *'help) COMPREPLY=($(compgen -W "-h --help"'* ]] || false
-  [[ "$output" == *"show list explain status doctor apply bootstrap run export publish diag completion help"* ]] || false
+  [[ "$output" == *"show list explain status doctor apply bootstrap run export publish clean diag completion help"* ]] || false
   [[ "$output" != *" paths "* ]]
 
   run "$RIG" completion zsh
@@ -459,10 +462,14 @@ write_query_config() {
       COMP_CWORD=2
       _rig
       printf "run:%s\n" "${COMPREPLY[*]}"
- COMP_WORDS=(rig publish --)
- COMP_CWORD=2
- _rig
- printf "publish:%s\n" "${COMPREPLY[*]}"
+    COMP_WORDS=(rig publish --)
+    COMP_CWORD=2
+    _rig
+    printf "publish:%s\n" "${COMPREPLY[*]}"
+    COMP_WORDS=(rig clean --)
+    COMP_CWORD=2
+    _rig
+    printf "clean:%s\n" "${COMPREPLY[*]}"
  COMP_WORDS=(rig completion --)
  COMP_CWORD=2
  _rig
@@ -483,6 +490,7 @@ write_query_config() {
   [[ "$output" == *"bootstrap:--help --profile --dry-run"* ]] || false
  [[ "$output" == *"run:--help --"* ]] || false
  [[ "$output" == *"publish:--help"* ]] || false
+ [[ "$output" == *"clean:--help --dry-run"* ]] || false
  [[ "$output" == *"completion:--help"* ]] || false
  [[ "$output" == *"help:--help"* ]] || false
 
@@ -2769,7 +2777,7 @@ write_publish_config() {
   stage=$(sed -n '8p' "$PUBLISH_LOG")
   stage=${stage#ARG=<}
   stage=${stage%>}
-  cache_real=$(cd "$cache/publish" && pwd -P)
+  cache_real=$(cd "$cache/publish/staging" && pwd -P)
   case "$stage" in
     "$cache_real"/site.rig-publish.*) ;;
     *) false ;;
@@ -2787,7 +2795,8 @@ write_publish_config() {
     'ARG=<directory>' \
     "ARG=<$stage>")
   [ "$(cat "$PUBLISH_LOG")" = "$expected" ]
-  [ -z "$(find "$cache/publish" -mindepth 1 -maxdepth 1 -print -quit)" ]
+  [ -z "$(find "$cache/publish/staging" -mindepth 1 -maxdepth 1 -print -quit)" ]
+  [ -z "$(find "$cache/publish/retained" -mindepth 1 -maxdepth 1 -print -quit)" ]
 }
 
 @test "publish preserves native failure and complete staging tree for diagnosis" {
@@ -2806,6 +2815,10 @@ write_publish_config() {
     [ "$status" -eq "$native_exit" ]
     [[ "$output" == *'publisher stderr'* ]] || false
     stage=$(printf '%s\n' "$output" | sed -n 's/^rig: publish failed; retained export: //p')
+    case "$stage" in
+      */publish/retained/site.rig-publish.*) ;;
+      *) false ;;
+    esac
     [ -d "$stage" ]
     [ -f "$stage/rig.json" ]
     file_count=$(find "$stage" -type f | wc -l | tr -d ' ')
@@ -2827,6 +2840,10 @@ write_publish_config() {
 
   [ "$status" -eq 143 ]
   stage=$(printf '%s\n' "$output" | sed -n 's/^rig: publish interrupted; retained export: //p')
+  case "$stage" in
+    */publish/retained/site.rig-publish.*) ;;
+    *) false ;;
+  esac
   [ -f "$stage/rig.json" ]
   [ ! -e "$OTHER_PUBLISH_LOG" ]
   rm -rf -- "$stage"
@@ -2836,15 +2853,17 @@ write_publish_config() {
   local cache root stage
 
   cache=$BATS_TEST_TMPDIR/publish-pre-dispatch-interrupt-$BATS_TEST_NUMBER
-  mkdir -p "$cache/publish"
+  mkdir -p "$cache/publish/staging" "$cache/publish/retained"
   root=$(cd "$cache/publish" && pwd -P)
-  stage=$root/site.rig-publish.partial
+  stage=$root/staging/site.rig-publish.partial
   mkdir -p "$stage"
   printf partial >"$stage/rig.json"
 
   run env RIG_TEST_ROOT="$root" RIG_TEST_STAGE="$stage" /bin/bash -c '
     . "$1"
     RIG_PUBLISH_ROOT=$RIG_TEST_ROOT
+    RIG_PUBLISH_STAGING_ROOT=$RIG_TEST_ROOT/staging
+    RIG_PUBLISH_RETAINED_ROOT=$RIG_TEST_ROOT/retained
     RIG_PUBLISH_STAGE=$RIG_TEST_STAGE
     RIG_PUBLISH_COMPLETE=0
     rig_publish_interrupted 143
@@ -2869,7 +2888,7 @@ write_publish_config() {
     "$RIG" publish site
 
   [ "$status" -eq 2 ]
-  [[ "$output" == *'cannot create publication cache directory'* ]] || false
+  [[ "$output" == *'publication cache path must be a directory'* ]] || false
   [ ! -e "$PUBLISH_LOG" ]
   [ "$(cat "$cache/publish")" = blocked ]
 }
@@ -2897,11 +2916,11 @@ write_publish_config() {
   stage=${stage#ARG=<}
   stage=${stage%>}
   stage_name=${stage##*/}
-  [ -L "$cache_real/publish" ]
+  [ -L "$cache_real/publish/staging" ]
   [ "$(cat "$victim/$stage_name/rig.json")" = victim ]
   [ -f "$moved/$stage_name/rig.json" ]
 
-  rm -- "$cache_real/publish"
+  rm -- "$cache_real/publish/staging"
   rm -rf -- "$moved" "$victim"
 }
 
@@ -2951,6 +2970,178 @@ write_publish_config() {
   [ "$status" -eq 2 ]
   [[ "$output" == *"unknown publication 'absent'"* ]] || false
   [ ! -e "$PUBLISH_LOG" ]
+}
+
+@test "clean no-op help and syntax do not require configuration" {
+  local cache
+  cache=$BATS_TEST_TMPDIR/clean-empty-$BATS_TEST_NUMBER
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
+    "$RIG" clean --dry-run
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'CLASS\tSTATE\tACTION\tPATH'* ]] || false
+  [[ "$output" == *'Summary: eligible=0 removed=0 skipped=0'* ]] || false
+  [ ! -e "$cache" ]
+
+  run "$RIG" clean --help
+  [ "$status" -eq 0 ]
+  [ "$output" = 'Usage: rig clean [--dry-run]' ]
+
+  run "$RIG" clean --unknown
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'usage: rig clean [--dry-run]'* ]] || false
+}
+
+@test "clean previews then removes retained exports and resumes cleanup claims" {
+  local cache retained claim
+  cache=$BATS_TEST_TMPDIR/clean-cache-$BATS_TEST_NUMBER
+  retained=$cache/publish/retained
+  claim=$cache/publish/cleanup
+  mkdir -p "$retained/site.rig-publish.101" \
+    "$retained/docs.rig-publish.102" "$claim/site.rig-publish.99"
+  printf '{}\n' >"$retained/site.rig-publish.101/rig.json"
+  printf '{}\n' >"$retained/docs.rig-publish.102/rig.json"
+  printf '{}\n' >"$claim/site.rig-publish.99/rig.json"
+
+  run env HOME="$TEST_HOME" RIG_CACHE_HOME="$cache" "$RIG" clean --dry-run
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'publication\tcleanup-claim\twould-remove'* ]] || false
+  [[ "$output" == *$'publication\tretained\twould-remove'* ]] || false
+  [[ "$output" == *'Summary: eligible=3 removed=0 skipped=0'* ]] || false
+  [ -f "$retained/site.rig-publish.101/rig.json" ]
+  [ -f "$claim/site.rig-publish.99/rig.json" ]
+
+  run env HOME="$TEST_HOME" RIG_CACHE_HOME="$cache" RIG_PROGRESS=always "$RIG" clean
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'rig: cleaning 0/3'* ]] || false
+  [[ "$output" == *'Summary: eligible=3 removed=3 skipped=0'* ]] || false
+  [ -z "$(find "$retained" "$claim" -mindepth 1 -print -quit)" ]
+}
+
+@test "clean skips legacy and unsafe cache entries while removing independent candidates" {
+  local cache retained legacy target
+  cache=$BATS_TEST_TMPDIR/clean-unsafe-$BATS_TEST_NUMBER
+  retained=$cache/publish/retained
+  legacy=$cache/publish/site.rig-publish.7
+  target=$cache/target
+  mkdir -p "$retained/good.rig-publish.1" "$retained/extra.rig-publish.2" \
+    "$legacy" "$target"
+  printf '{}\n' >"$retained/good.rig-publish.1/rig.json"
+  printf '{}\n' >"$retained/extra.rig-publish.2/rig.json"
+  printf keep >"$retained/extra.rig-publish.2/unexpected"
+  printf '{}\n' >"$legacy/rig.json"
+  ln -s "$target" "$retained/link.rig-publish.3"
+
+  run env HOME="$TEST_HOME" RIG_CACHE_HOME="$cache" "$RIG" clean
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'publication\tlegacy-unclassified\tskipped'* ]] || false
+  [[ "$output" == *$'publication\tunsafe\tskipped'* ]] || false
+  [[ "$output" == *'Summary: eligible=1 removed=1 skipped=3'* ]] || false
+  [ ! -e "$retained/good.rig-publish.1" ]
+  [ -f "$retained/extra.rig-publish.2/unexpected" ]
+  [ -L "$retained/link.rig-publish.3" ]
+  [ -f "$legacy/rig.json" ]
+  [ -d "$target" ]
+}
+
+@test "clean rejects a symlinked publication cache boundary" {
+  local cache outside
+  cache=$BATS_TEST_TMPDIR/clean-boundary-$BATS_TEST_NUMBER
+  outside=$BATS_TEST_TMPDIR/clean-outside-$BATS_TEST_NUMBER
+  mkdir -p "$cache" "$outside"
+  printf keep >"$outside/keep"
+  ln -s "$outside" "$cache/publish"
+
+  run env HOME="$TEST_HOME" RIG_CACHE_HOME="$cache" "$RIG" clean
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'publication cache path must be a directory, not a symlink'* ]] || false
+  [ "$(cat "$outside/keep")" = keep ]
+}
+
+@test "clean claim refuses a substituted retained parent" {
+  local cache root retained moved victim candidate
+  cache=$BATS_TEST_TMPDIR/clean-parent-swap-$BATS_TEST_NUMBER
+  mkdir -p "$cache/publish/retained/site.rig-publish.8" "$cache/victim/site.rig-publish.8"
+  printf original >"$cache/publish/retained/site.rig-publish.8/rig.json"
+  printf victim >"$cache/victim/site.rig-publish.8/rig.json"
+  root=$(cd "$cache/publish" && pwd -P)
+  retained=$root/retained
+  candidate=$retained/site.rig-publish.8
+  moved=$root/retained-moved
+  victim=$(cd "$cache/victim" && pwd -P)
+
+  run env HOME="$TEST_HOME" RIG_CACHE_HOME="$cache" "$RIG" clean --dry-run
+  [ "$status" -eq 0 ]
+  [ ! -e "$root/cleanup" ]
+
+  mv -- "$retained" "$moved"
+  ln -s -- "$victim" "$retained"
+  run env RIG_TEST_ROOT="$root" RIG_TEST_CANDIDATE="$candidate" /bin/bash -c '
+    . "$1"
+    RIG_CLEAN_ROOT=$RIG_TEST_ROOT
+    rig_clean_claim "$RIG_TEST_CANDIDATE"
+  ' bash "$RIG"
+
+  [ "$status" -eq 1 ]
+  [ "$(cat "$victim/site.rig-publish.8/rig.json")" = victim ]
+  [ "$(cat "$moved/site.rig-publish.8/rig.json")" = original ]
+}
+
+@test "clean interruption reports a resumable exact-shape claim" {
+  local cache claim
+  cache=$BATS_TEST_TMPDIR/clean-interrupt-$BATS_TEST_NUMBER
+  claim=$cache/publish/cleanup/site.rig-publish.55
+  mkdir -p "$claim"
+  printf '{}\n' >"$claim/rig.json"
+
+  run env RIG_TEST_CLAIM="$claim" /bin/bash -c '
+    . "$1"
+    RIG_CLEAN_CLAIM=$RIG_TEST_CLAIM
+    rig_clean_interrupted 143
+  ' bash "$RIG"
+
+  [ "$status" -eq 143 ]
+  [[ "$output" == *"resumable claim: $claim"* ]] || false
+  [ -f "$claim/rig.json" ]
+
+  run env HOME="$TEST_HOME" RIG_CACHE_HOME="$cache" "$RIG" clean
+  [ "$status" -eq 0 ]
+  [ ! -e "$claim" ]
+}
+
+@test "concurrent cleaners never traverse active staging and leave no eligible exports" {
+  local cache index statuses
+  cache=$BATS_TEST_TMPDIR/clean-concurrent-$BATS_TEST_NUMBER
+  mkdir -p "$cache/publish/staging/active.rig-publish.1" "$cache/publish/retained"
+  printf active >"$cache/publish/staging/active.rig-publish.1/rig.json"
+  index=1
+  while [ "$index" -le 20 ]; do
+    mkdir "$cache/publish/retained/site.rig-publish.$index"
+    printf '{}\n' >"$cache/publish/retained/site.rig-publish.$index/rig.json"
+    index=$((index + 1))
+  done
+
+  run env RIG_TEST_HOME="$TEST_HOME" RIG_TEST_CACHE="$cache" RIG_TEST_RIG="$RIG" \
+    /bin/bash -c '
+      HOME=$RIG_TEST_HOME RIG_CACHE_HOME=$RIG_TEST_CACHE "$RIG_TEST_RIG" clean >"$RIG_TEST_CACHE/one.log" 2>&1 &
+      first=$!
+      HOME=$RIG_TEST_HOME RIG_CACHE_HOME=$RIG_TEST_CACHE "$RIG_TEST_RIG" clean >"$RIG_TEST_CACHE/two.log" 2>&1 &
+      second=$!
+      first_status=0
+      second_status=0
+      wait "$first" || first_status=$?
+      wait "$second" || second_status=$?
+      printf "%s %s\n" "$first_status" "$second_status"
+    '
+
+  [ "$status" -eq 0 ]
+  statuses=${lines[0]}
+  case "$statuses" in
+    '0 0'|'0 1'|'1 0'|'1 1') ;;
+    *) false ;;
+  esac
+  [ -f "$cache/publish/staging/active.rig-publish.1/rig.json" ]
+  [ -z "$(find "$cache/publish/retained" "$cache/publish/cleanup" -mindepth 1 -print -quit)" ]
 }
 
 @test "publish help and syntax are local and explicit" {

@@ -39,6 +39,9 @@ rig \- describe and manage a personal working setup
 .br
 .BI "rig publish " PUBLICATION
 .br
+.B rig clean
+.RI [ \-\-dry-run ]
+.br
 .B rig diag
 .br
 .BI "rig completion " bash|zsh
@@ -231,6 +234,16 @@ cache, then invoke the publication's selected trusted custom publisher exactly
 once.
 The publisher and receiving website own presentation, credentials, destination,
 deployment, and rollback.
+.TP
+.B rig clean
+.RI [ \-\-dry-run ]
+Remove complete retained publication exports and resumable cleanup claims that
+Rig can prove it owns. With
+.BR \-\-dry-run ,
+perform the same discovery and validation but report
+.B would-remove
+without changing the filesystem. This command does not load configuration,
+invoke providers, or inspect provider-native caches.
 .TP
 .B rig diag
 Print a non-mutating diagnostic snapshot containing Rig and Bash versions,
@@ -599,7 +612,7 @@ separate hosting or publisher system.
 \&
 .B rig publish
 performs the same validated public projection in an isolated directory beneath
-.IR ${RIG_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/rig}/publish ,
+.IR ${RIG_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/rig}/publish/staging ,
 then crosses one explicit network-capable trust boundary. It invokes no fallback
 publisher and passes the selected provider one absolute complete-tree path.
 .PP
@@ -616,6 +629,31 @@ pinned directory. It unlinks only
 .I rig.json
 before removing the empty directory. A substituted parent, symlink,
 unexpected file, or other unsafe shape fails closed without recursive traversal.
+.SH CACHE MAINTENANCE
+\&
+.B rig clean
+maintains only cache data owned by Rig. Active publication work remains beneath
+.IR publish/staging .
+Complete exports preserved after publisher failure or interruption remain
+beneath
+.IR publish/retained
+until explicit cleanup. Cleanup claims an eligible tree beneath
+.IR publish/cleanup ,
+revalidates its exact one-file shape, unlinks only
+.IR rig.json ,
+and removes only the now-empty directory.
+.PP
+Retained artifacts have no automatic age or count expiry. A dry run prints the
+same tab-separated
+.BR CLASS ,
+.BR STATE ,
+.BR ACTION ,
+and
+.B PATH
+report without creating, moving, or removing paths. Legacy flat entries,
+symlinks, unexpected content, invalid names, and substituted parents are
+reported and skipped. Active staging, provider-native caches, configuration,
+data, state, and explicit export destinations are outside cleanup authority.
 .SH PROVIDER EXECUTION
 \&
 .PP
@@ -803,6 +841,9 @@ outside the Rig-owned statuses below.
 likewise returns the publisher's native non-zero status. Interrupted publication
 returns 129, 130, or 143 for HUP, INT, or TERM. Rig-owned publication
 validation, export, and cleanup failures return 2.
+.B rig clean
+returns 1 after completing independent safe work when an artifact is skipped
+or cannot be removed; invalid syntax or an unsafe cache boundary returns 2.
 .TP
 .B 0
 Healthy status or doctor result, or successful apply or bootstrap, including

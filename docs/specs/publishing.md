@@ -103,6 +103,8 @@ _Evidence:_ `tests/rig.bats` covers offline export.
 
 ### RIG-PUB-007 — Explicit trusted publisher
 
+Publication staging MUST use the effective Rig cache's `publish/staging` namespace. After a publisher failure or post-export interruption, Rig MUST atomically move the complete export into `publish/retained` before reporting its retained path. Explicit retained-artifact cleanup is governed by [RIG-CACHE](cache.md).
+
 A selected publisher whose custom provider omits `executable` MUST resolve exactly `${RIG_DATA_HOME}/providers/PROVIDER-ID`; an explicit executable MUST take precedence. Resolution MUST use the same no-search trust boundary as observation, application, inventory, and declared provider actions.
 
 `rig publish PUBLICATION` MUST validate and render one complete isolated export beneath the effective Rig cache before invoking only the publication's configured publisher. The publisher MUST use the `custom` adapter and declare the exact `publish` capability. Rig MUST invoke it once as `EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 publish PROVIDER PUBLICATION directory ABS_EXPORT_DIR`, preserving literal argument boundaries and the publisher's native deployment result. Validation, staging, or render failure MUST invoke no publisher.

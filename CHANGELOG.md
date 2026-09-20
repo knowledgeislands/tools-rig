@@ -19,6 +19,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - `rig run PROVIDER ACTION [-- ARGUMENT...]`
 - `rig export PUBLICATION --output DIRECTORY`
 - `rig publish PUBLICATION`
+- `rig clean [--dry-run]`
 - `rig diag`
 - `rig completion bash|zsh`
 - `rig help [-h|--help]`, `rig --help`, and `rig --version`
@@ -48,6 +49,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - Terminal-aware, line-oriented stderr progress for configuration loading, provider observation, inventory, application, actions, and publication, with stable stdout and explicit `RIG_PROGRESS=always|never` control.
 - Deterministic offline `rig-publication` version 1 JSON export of an explicitly selected, platform-neutral public profile with relationship closure, canonical URL metadata, disclosure allow-listing, and safe complete-tree replacement.
 - Explicit trusted publication dispatch through one selected custom provider, with isolated one-file cache staging, fixed literal handoff, native outcome propagation, phase-aware interruption handling, exact-file fail-closed cleanup, and retained complete failure artifacts.
+- Explicit `rig clean` maintenance safely classifies Rig-owned retained publication exports, supports non-mutating preview, preserves them until requested, atomically claims deletion work, resumes interrupted claims, and skips unsafe legacy entries.
 
 ### Distribution baseline
 
