@@ -12,29 +12,29 @@ decision_depends_on: [GDR-RIG-001]
 
 ## Context
 
-A person's working setup is more than a package list or bootstrap sequence. It includes preferred tools, the purposes they serve, why they were chosen, how they relate, the contexts in which they are useful, and whether the declared choices are present on a particular machine. Existing package and configuration systems already own mature native manifests, resolution, execution semantics, and state.
+A person's working setup is more than a package list or bootstrap sequence. It includes preferred tools, the purposes they serve, why they were chosen, how they relate, the contexts in which they are useful, which machine settings and operational resources belong with them, and whether the declared choices are present on a particular machine.
 
-The same description can help its owner inspect and maintain a machine, explain how they work, and publish a deliberate public view at a personal address such as `rig.midnight.ninja`. Treating orchestration as the product would hide the catalogue that gives those operations meaning.
+Package managers, configuration managers, service managers, and platform facilities already own native resolution, execution, and state. Rig must coordinate those authorities without requiring a person to describe Rig's adapter implementation or provider protocol in ordinary configuration.
 
 ## Decision
 
-Rig is the declarative description and manager of a person's working setup. Its primary product concept is a catalogue of categorised tools with stable identities, purposes, personal rationale, relationships, supported platforms, and provider-backed installations.
+Rig is the declarative description and manager of a person's working setup. Its primary product concept is a catalogue of categorised tools with stable identities, purposes, personal rationale, relationships, supported platforms, and optional provider-backed installation metadata.
 
-Profiles select catalogue subsets for machines, roles, or contexts. Providers such as Homebrew, uv, chezmoi, direct downloads, and configured executables materialise selected tools while retaining authority over their native manifests and state. Rig compares a resolved profile with provider observations and coordinates only explicitly supported actions.
+Profiles select tools and managed resources for machines, roles, or contexts. Services, scheduled jobs, typed machine settings, and semantic layouts are first-class declarations rather than hidden provider policy. A workstation is therefore a profile assembled from those declarations, not a provider or synthetic catalogue tool.
 
-Named operations attach to catalogue tools. This allows audits, maintenance jobs, and service actions to remain configuration-led without adding permanent domain-specific commands such as `rig machine` or `rig services`. Rig exposes the generic operation through `rig run` and leaves its implementation to a declared provider capability.
+Providers are independently existing native authorities such as Homebrew, uv, chezmoi, launchd, macOS defaults, and direct downloads. Rig recognises its built-in providers and their supported operations without requiring adapter or capability declarations. A provider table is needed only to configure an optional built-in detail or explicitly trust an external extension.
+
+Bootstrap is a native Rig lifecycle. Rig resolves the selected profile, identifies and verifies its required managers, preflights the complete plan, and reconciles tools and managed resources with progress and deterministic outcomes. Bootstrap is not represented by setup tools or a bootstrap provider.
 
 Rig may derive an explicitly selected public profile into a static personal-site projection. The private catalogue remains canonical; publication never makes the website an authority for local configuration or machine state.
 
 ## Consequences
 
-Catalogue queries are valuable before any installation mutation exists. Manager-of-managers remains the underlying orchestration model rather than the product's organising idea.
+Ordinary configuration describes desired state and native ownership rather than Rig's internal dispatch. Catalogue queries remain valuable before any mutation exists, while manager-of-managers remains the underlying orchestration model.
 
-Personal choices and host-specific operations belong in configuration outside the executable, while portable schema, resolution, provider, state, query, operation, and publication behaviour belongs in tools-rig. The catalogue can contain sensitive operational context, so publication requires an explicit disclosure boundary.
+Portable lifecycle, schema, built-in adapters, state comparison, queries, and publication behaviour belong in tools-rig. Personal choices, host-specific values, provider-native manifests, and credentials remain in private configuration or their native systems.
 
-Provider capabilities differ, and Rig must report those differences rather than force every system into one universal lifecycle.
-
-Operational resources extend the catalogue-led model: services and scheduled jobs are first-class profile-selected declarations. Their identity, purpose, deferred program, and desired state belong to Rig configuration; providers translate that intent into native state without becoming a second catalogue.
+External extensions remain possible through an explicit executable trust boundary, but their versioned invocation protocol is an extension-author concern rather than part of the everyday configuration model.
 
 ## References
 

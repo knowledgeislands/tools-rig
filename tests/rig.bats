@@ -23,14 +23,12 @@ write_minimal_config() {
     'purpose = "Test parsing"' \
     'rationale = "A dependable test tool"' \
     'platforms = ["any"]' \
-    'install.provider = "native"' \
+    'install.provider = "homebrew"' \
     'install.kind = "formula"' \
     'install.locator = "alpha"' \
     'install.platforms = ["any"]' \
     '[profile.default]' \
-    'tools = ["alpha"]' \
-    '[provider.native]' \
-    'adapter = "homebrew"' >"$CONFIG_HOME/rig.toml"
+    'tools = ["alpha"]' >"$CONFIG_HOME/rig.toml"
 }
 
 write_recording_provider() {
@@ -185,7 +183,7 @@ run_loader() {
   ' _ "$RIG"
 
   [ "$status" -eq 0 ]
-  [ "$output" = "sections=211 fields=1616 lookup=tool.tool-100" ]
+  [ "$output" = "sections=210 fields=1615 lookup=tool.tool-100" ]
 }
 
 write_query_config() {
@@ -216,6 +214,7 @@ write_query_config() {
     'tools = ["fzf"]' \
     '[provider.marker]' \
     'adapter = "custom"' \
+    'capabilities = ["observe"]' \
     "executable = \"$QUERY_PROVIDER\"" >"$CONFIG_HOME/rig.toml"
 
   printf '%s\n' \
@@ -266,8 +265,8 @@ write_query_config() {
   [[ "$output" == *"explain TOOL"* ]]
   [[ "$output" == *"status [--profile NAME] [--unmanaged]"* ]] || false
   [[ "$output" == *"doctor [--profile NAME]"* ]] || false
-  [[ "$output" == *"apply [--profile NAME] [--dry-run]"* ]] || false
-  [[ "$output" == *"bootstrap [--profile NAME] [--dry-run]"* ]] || false
+  [[ "$output" == *"apply [--profile NAME] [--scope SCOPE] [--dry-run]"* ]] || false
+  [[ "$output" == *"bootstrap [--profile NAME] [--scope SCOPE] [--dry-run]"* ]] || false
   [[ "$output" == *"run PROVIDER ACTION [-- ARGUMENT...]"* ]] || false
   [[ "$output" == *"export PUBLICATION --output DIRECTORY"* ]] || false
   [[ "$output" == *"publish PUBLICATION"* ]] || false
@@ -296,11 +295,11 @@ write_query_config() {
   for synopsis in \
     'show [--profile NAME]' \
     'list [--category ID] [--profile NAME]' \
-    'explain TOOL|service:ID|scheduled-job:ID' \
+    'explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID' \
     'status [--profile NAME] [--unmanaged]' \
     'doctor [--profile NAME]' \
-    'apply [--profile NAME] [--dry-run]' \
-    'bootstrap [--profile NAME] [--dry-run]' \
+    'apply [--profile NAME] [--scope tools|resources|all] [--dry-run]' \
+    'bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]' \
     'run PROVIDER ACTION [-- ARGUMENT...]' \
     'export PUBLICATION --output DIRECTORY' \
     'publish PUBLICATION' \
@@ -398,8 +397,8 @@ write_query_config() {
   [[ "$output" == *'explain) COMPREPLY=($(compgen -W "-h --help"'* ]]
   [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile --unmanaged"'* ]] || false
   [[ "$output" == *'doctor) COMPREPLY=($(compgen -W "-h --help --profile"'* ]] || false
-  [[ "$output" == *'apply) COMPREPLY=($(compgen -W "-h --help --profile --dry-run"'* ]] || false
-  [[ "$output" == *'bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --dry-run"'* ]] || false
+  [[ "$output" == *'apply) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools resources all"'* ]] || false
+  [[ "$output" == *'bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools resources all"'* ]] || false
   [[ "$output" == *'run) COMPREPLY=($(compgen -W "-h --help --"'* ]] || false
   [[ "$output" == *'export) COMPREPLY=($(compgen -W "-h --help --output"'* ]] || false
   [[ "$output" == *'publish) COMPREPLY=($(compgen -W "-h --help"'* ]] || false
@@ -486,8 +485,8 @@ write_query_config() {
   [[ "$output" == *"explain:--help"* ]]
   [[ "$output" == *"status:--help --profile"* ]] || false
   [[ "$output" == *"doctor:--help --profile"* ]] || false
-  [[ "$output" == *"apply:--help --profile --dry-run"* ]] || false
-  [[ "$output" == *"bootstrap:--help --profile --dry-run"* ]] || false
+  [[ "$output" == *"apply:--help --profile --scope --dry-run"* ]] || false
+  [[ "$output" == *"bootstrap:--help --profile --scope --dry-run"* ]] || false
  [[ "$output" == *"run:--help --"* ]] || false
  [[ "$output" == *"publish:--help"* ]] || false
  [[ "$output" == *"clean:--help --dry-run"* ]] || false
@@ -764,7 +763,7 @@ write_query_config() {
 
     run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" explain "$flag"
     [ "$status" -eq 0 ]
-    [ "$output" = "Usage: rig explain TOOL|service:ID|scheduled-job:ID" ]
+  [ "$output" = "Usage: rig explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID" ]
   done
 }
 
@@ -1033,9 +1032,10 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
     '[provider.custom]' \
     'adapter = "custom"' \
     'executable = "~/bin/provider"' \
-    'manifest = "~/manifests/tools = private"' \
-    'command = "~/literal-command"' \
+    'capabilities = ["observe", "apply", "publish"]' \
     'arguments = ["two words", "comma,kept"]' \
+    '[provider.homebrew]' \
+    'manifest = "~/manifests/tools = private"' \
     '[publication.site]' \
     'profile = "default"' \
     'title = "My # Rig"' \
@@ -1049,8 +1049,7 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
     rig_get_value tool.alpha platform 1; printf "platform-1=%s\n" "$RIG_VALUE"
     rig_get_value tool.alpha platform 2; printf "platform-2=%s\n" "$RIG_VALUE"
     rig_get_value provider.custom executable; printf "executable=%s\n" "$RIG_VALUE"
-    rig_get_value provider.custom manifest; printf "manifest=%s\n" "$RIG_VALUE"
-    rig_get_value provider.custom command; printf "command=%s\n" "$RIG_VALUE"
+    rig_get_value provider.homebrew manifest; printf "manifest=%s\n" "$RIG_VALUE"
     rig_get_value provider.custom argument 1; printf "argument-1=%s\n" "$RIG_VALUE"
     rig_get_value provider.custom argument 2; printf "argument-2=%s\n" "$RIG_VALUE"
     rig_get_value binding.alpha.custom locator; printf "locator=%s\n" "$RIG_VALUE"
@@ -1064,7 +1063,6 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   [[ "$output" == *"platform-2=linux,bsd"* ]]
   [[ "$output" == *"executable=$TEST_HOME/bin/provider"* ]]
   [[ "$output" == *"manifest=$TEST_HOME/manifests/tools = private"* ]]
-  [[ "$output" == *"command=~/literal-command"* ]]
   [[ "$output" == *"argument-1=two words"* ]]
   [[ "$output" == *"argument-2=comma,kept"* ]]
   [[ "$output" == *"locator=~/literal # locator = value"* ]]
@@ -1111,9 +1109,7 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
     'profiles = ["base", "base"]' \
     'tools = ["alpha", "beta"]' \
     '[provider.native]' \
-    'adapter = "homebrew"' \
-    'command = "brew"' \
-    'manifest = "~/Brewfile"' \
+    'adapter = "custom"' \
     'arguments = ["--file with spaces"]' \
     'capabilities = ["observe", "install,update"]' >"$CONFIG_HOME/rig.toml"
 
@@ -1322,6 +1318,74 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   [[ "$output" == *"[provider.runner] requires field 'adapter'"* ]]
 }
 
+@test "canonical built-in providers are implicit and infer their capabilities" {
+  local native_bin native_log
+
+  write_minimal_config
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" bash -c '
+    . "$1"
+    rig_load_config || exit
+    rig_provider_has_capability homebrew observe || exit
+    rig_provider_has_capability homebrew apply || exit
+    rig_provider_has_capability launchd resource-observe || exit
+    rig_provider_has_capability launchd resource-apply || exit
+    rig_provider_has_capability launchd resource-retire || exit
+    printf "%s\n" inferred
+  ' _ "$RIG"
+  [ "$status" -eq 0 ]
+  [ "$output" = inferred ]
+
+  native_bin=$BATS_TEST_TMPDIR/implicit-native-bin-$BATS_TEST_NUMBER
+  native_log=$BATS_TEST_TMPDIR/implicit-native-log-$BATS_TEST_NUMBER
+  mkdir -p "$native_bin"
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'printf "%s\n" "$*" >>"$RIG_NATIVE_LOG"' \
+    'case "$1" in list) exit 1 ;; esac' >"$native_bin/brew"
+  chmod +x "$native_bin/brew"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_NATIVE_LOG="$native_log" PATH="$native_bin:$PATH" "$RIG" status
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'alpha\thomebrew\tmissing\t-'* ]]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_NATIVE_LOG="$native_log" PATH="$native_bin:$PATH" "$RIG" apply
+  [ "$status" -eq 0 ]
+  grep -F 'install --formula alpha' "$native_log"
+
+  printf '%s\n' '[provider.homebrew]' 'arguments = ["--literal"]' >>"$CONFIG_HOME/rig.toml"
+  run_loader
+  [ "$status" -eq 0 ]
+
+  sed '/^tools = \["alpha"\]$/a\
+services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
+  printf '%s\n' \
+    '[service.daemon]' \
+    'name = "Daemon"' \
+    'purpose = "Exercise implicit launchd resolution."' \
+    'rationale = "Launchd is a canonical built-in identity."' \
+    'provider = "launchd"' \
+    'locator = "example.test.daemon"' \
+    'platforms = ["macos"]' \
+    'desired-state = "running"' \
+    'program = ["/usr/bin/true"]' >>"$CONFIG_HOME/launchd.toml"
+  mv "$CONFIG_HOME/launchd.toml" "$CONFIG_HOME/rig.toml"
+  run_loader
+  [ "$status" -eq 0 ]
+}
+
+@test "unknown provider adapters fail during configuration validation" {
+  write_minimal_config
+  printf '%s\n' '[provider.alias]' 'adapter = "invented"' \
+    'capabilities = ["observe"]' >>"$CONFIG_HOME/rig.toml"
+
+  run_loader
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"[provider.alias] external provider adapter must be 'custom'"* ]]
+}
+
 @test "catalogue, profile, installation, and publication references are validated" {
   write_minimal_config
   sed 's/category = "core"/category = "absent"/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bad.toml"
@@ -1368,7 +1432,7 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   [[ "$output" == *"references unknown provider 'absent'"* ]]
 
   write_minimal_config
-  sed 's/install.provider = "native"/install.provider = "absent"/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bad.toml"
+  sed 's/install.provider = "homebrew"/install.provider = "absent"/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bad.toml"
   mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
@@ -1501,14 +1565,12 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
     'purpose = "Select an installation"' \
     'rationale = "Installation fixture"' \
  'platforms = ["macos", "linux"]' \
- 'install.provider = "brew"' \
+    'install.provider = "homebrew"' \
  'install.kind = "formula"' \
  'install.locator = "alpha"' \
  'install.platforms = ["macos"]' \
     '[profile.default]' \
-    'tools = ["alpha"]' \
- '[provider.brew]' \
- 'adapter = "homebrew"' >"$CONFIG_HOME/rig.toml"
+    'tools = ["alpha"]' >"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" bash -c '
     . "$1"
@@ -1519,7 +1581,7 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   ' _ "$RIG"
 
   [ "$status" -eq 0 ]
-  [ "$output" = $'profile=default\nplatform=macos\ntool=alpha\nbinding=alpha:brew' ]
+  [ "$output" = $'profile=default\nplatform=macos\ntool=alpha\nbinding=alpha:homebrew' ]
 
   sed 's/install.platforms = \["macos"\]/install.platforms = ["linux"]/' \
     "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/no-macos.toml"
@@ -1562,7 +1624,7 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   ' _ "$RIG"
 
   [ "$status" -eq 0 ]
-  [ "$output" = $'profile=default\nplatform=macos\ntool=alpha\nbinding=alpha:native\ntool=notes' ]
+  [ "$output" = $'profile=default\nplatform=macos\ntool=alpha\nbinding=alpha:homebrew\ntool=notes' ]
 }
 
 @test "supported tools reject unavailable required tools" {
@@ -1609,7 +1671,7 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   ' _ "$RIG"
 
   [ "$status" -eq 0 ]
-  [ "$output" = $'profile=default\nplatform=macos\ntool=alpha\nbinding=alpha:native' ]
+  [ "$output" = $'profile=default\nplatform=macos\ntool=alpha\nbinding=alpha:homebrew' ]
 }
 
 @test "status observes custom providers in stable dependency order with neutral catalogue-only tools" {
@@ -1893,15 +1955,15 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   done
 }
 
-@test "status reports unavailable operational provider boundaries without invocation" {
+@test "configuration rejects unknown adapters and status reports unavailable custom boundaries" {
   write_orchestration_config
   sed 's/adapter = "custom"/adapter = "future"/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/unavailable.toml"
   mv "$CONFIG_HOME/unavailable.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
-  [ "$status" -eq 1 ]
-  [[ "$output" == *$'base\trunner\tunavailable\tunsupported-adapter:future'* ]] || false
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"[provider.runner] external provider adapter must be 'custom'"* ]] || false
   [ ! -e "$ORCHESTRATION_LOG" ]
 
   write_orchestration_config
@@ -2150,19 +2212,19 @@ bootstrap-profile = "absent"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.t
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --help
   [ "$status" -eq 0 ]
-  [ "$output" = 'Usage: rig apply [--profile NAME] [--dry-run]' ]
+  [ "$output" = 'Usage: rig apply [--profile NAME] [--scope tools|resources|all] [--dry-run]' ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" bootstrap --help
   [ "$status" -eq 0 ]
-  [ "$output" = 'Usage: rig bootstrap [--profile NAME] [--dry-run]' ]
+  [ "$output" = 'Usage: rig bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]' ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --dry-run --dry-run
   [ "$status" -eq 2 ]
-  [[ "$output" == *'usage: rig apply [--profile NAME] [--dry-run]'* ]] || false
+  [[ "$output" == *'usage: rig apply [--profile NAME] [--scope tools|resources|all] [--dry-run]'* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" bootstrap --profile
   [ "$status" -eq 2 ]
-  [[ "$output" == *'usage: rig bootstrap [--profile NAME] [--dry-run]'* ]] || false
+  [[ "$output" == *'usage: rig bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]'* ]] || false
 }
 
 @test "built-in adapters observe dry-run and apply with exact native commands" {
@@ -2191,43 +2253,36 @@ bootstrap-profile = "absent"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.t
     '[category.core]' 'name = "Core"' 'purpose = "Core tools"' \
  '[tool.formula]' 'name = "Formula"' 'category = "core"' 'purpose = "Formula test"' \
  'rationale = "Formula rationale"' 'platforms = ["any"]' \
- 'install.provider = "brew"' 'install.kind = "formula"' \
+    'install.provider = "homebrew"' 'install.kind = "formula"' \
  'install.locator = "homebrew/core/jq"' 'install.arguments = ["--formula value"]' \
  '[tool.cask]' 'name = "Cask"' 'category = "core"' 'purpose = "Cask test"' \
  'rationale = "Cask rationale"' 'platforms = ["any"]' \
- 'install.provider = "brew"' 'install.kind = "cask"' \
+    'install.provider = "homebrew"' 'install.kind = "cask"' \
  'install.locator = "homebrew/cask/visual-studio-code"' \
  '[tool.store]' 'name = "Store"' 'category = "core"' 'purpose = "Store test"' \
  'rationale = "Store rationale"' 'platforms = ["any"]' \
- 'install.provider = "store"' 'install.kind = "mas"' 'install.locator = "12345"' \
+    'install.provider = "homebrew"' 'install.kind = "mas"' 'install.locator = "12345"' \
  '[tool.python]' 'name = "Python"' 'category = "core"' 'purpose = "Python test"' \
  'rationale = "Python rationale"' 'platforms = ["any"]' \
- 'install.provider = "python"' 'install.kind = "tool"' 'install.locator = "ruff"' \
+    'install.provider = "uv"' 'install.kind = "tool"' 'install.locator = "ruff"' \
  '[tool.dotfile]' 'name = "Dotfile"' 'category = "core"' 'purpose = "Dotfile test"' \
  'rationale = "Dotfile rationale"' 'platforms = ["any"]' \
- 'install.provider = "dotfiles"' 'install.kind = "target"' \
+    'install.provider = "chezmoi"' 'install.kind = "target"' \
  'install.locator = "/tmp/example target"' \
     '[profile.default]' 'tools = ["formula", "cask", "store", "python", "dotfile"]' \
-    '[provider.brew]' 'adapter = "homebrew"' "executable = \"$native_bin/brew\"" \
-    'arguments = ["--global value"]' 'capabilities = ["observe", "apply"]' \
-    '[provider.store]' 'adapter = "homebrew"' \
-    'capabilities = ["observe", "apply"]' \
-    '[provider.python]' 'adapter = "uv"' \
-    'capabilities = ["observe", "apply"]' \
-    '[provider.dotfiles]' 'adapter = "chezmoi"' \
-    'capabilities = ["observe", "apply"]' \
-    '[provider.unselected]' 'adapter = "uv"' \
+    '[provider.homebrew]' 'arguments = ["--global value"]' \
+    '[provider.unselected]' 'adapter = "custom"' \
     "executable = \"$BATS_TEST_TMPDIR/missing-unselected\"" 'capabilities = ["observe"]' \
  >"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     PATH="$native_bin:$PATH" RIG_NATIVE_LOG="$native_log" "$RIG" status
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'formula\tbrew\tpresent\t-'* ]] || false
-  [[ "$output" == *$'cask\tbrew\tpresent\t-'* ]] || false
-  [[ "$output" == *$'store\tstore\tpresent\t-'* ]] || false
-  [[ "$output" == *$'python\tpython\tpresent\t-'* ]] || false
-  [[ "$output" == *$'dotfile\tdotfiles\tpresent\t-'* ]] || false
+  [[ "$output" == *$'formula\thomebrew\tpresent\t-'* ]] || false
+  [[ "$output" == *$'cask\thomebrew\tpresent\t-'* ]] || false
+  [[ "$output" == *$'store\thomebrew\tpresent\t-'* ]] || false
+  [[ "$output" == *$'python\tuv\tpresent\t-'* ]] || false
+  [[ "$output" == *$'dotfile\tchezmoi\tpresent\t-'* ]] || false
   [ "$(wc -l <"$native_log" | tr -d ' ')" -eq 5 ]
   [[ "$(cat "$native_log")" == *$'brew|--global value|list|--formula|--versions|--formula value|jq\n'* ]] || false
   [[ "$(cat "$native_log")" == *$'brew|--global value|list|--cask|--versions|visual-studio-code\n'* ]] || false
@@ -2246,7 +2301,7 @@ bootstrap-profile = "absent"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.t
     'chezmoi|apply|--|/tmp/example target' \
     'brew|--global value|install|--formula|--formula value|homebrew/core/jq' \
     'uv|tool|install|ruff' \
-    'mas|install|12345')" ]
+    'mas|--global value|install|12345')" ]
 }
 
 @test "Homebrew observation preserves unqualified formula and cask identities" {
@@ -2263,14 +2318,13 @@ bootstrap-profile = "absent"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.t
     '[category.core]' 'name = "Core"' 'purpose = "Core tools"' \
  '[tool.formula]' 'name = "Formula"' 'category = "core"' 'purpose = "Formula test"' \
  'rationale = "Formula rationale"' 'platforms = ["any"]' \
- 'install.provider = "brew"' 'install.kind = "formula"' 'install.locator = "jq"' \
+    'install.provider = "homebrew"' 'install.kind = "formula"' 'install.locator = "jq"' \
  '[tool.cask]' 'name = "Cask"' 'category = "core"' 'purpose = "Cask test"' \
  'rationale = "Cask rationale"' 'platforms = ["any"]' \
- 'install.provider = "brew"' 'install.kind = "cask"' \
+    'install.provider = "homebrew"' 'install.kind = "cask"' \
  'install.locator = "visual-studio-code"' \
     '[profile.default]' 'tools = ["formula", "cask"]' \
-    '[provider.brew]' 'adapter = "homebrew"' "executable = \"$native\"" \
-    'capabilities = ["observe"]' \
+    '[provider.homebrew]' "executable = \"$native\"" \
  >"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
@@ -2295,23 +2349,23 @@ bootstrap-profile = "absent"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.t
     '[category.core]' 'name = "Core"' 'purpose = "Core tools"' \
  '[tool.base]' 'name = "Base"' 'category = "core"' 'purpose = "Base"' \
  'rationale = "Base"' 'platforms = ["any"]' \
- 'install.provider = "brew"' 'install.kind = "formula"' 'install.locator = "broken"' \
+    'install.provider = "homebrew"' 'install.kind = "formula"' 'install.locator = "broken"' \
  '[tool.app]' 'name = "App"' 'category = "core"' 'purpose = "App"' \
  'rationale = "App"' 'platforms = ["any"]' 'requires = ["base"]' \
- 'install.provider = "brew"' 'install.kind = "formula"' 'install.locator = "app"' \
+    'install.provider = "homebrew"' 'install.kind = "formula"' 'install.locator = "app"' \
  '[tool.other]' 'name = "Other"' 'category = "core"' 'purpose = "Other"' \
  'rationale = "Other"' 'platforms = ["any"]' \
- 'install.provider = "brew"' 'install.kind = "formula"' 'install.locator = "other"' \
+    'install.provider = "homebrew"' 'install.kind = "formula"' 'install.locator = "other"' \
     '[profile.default]' 'tools = ["app", "other"]' \
-    '[provider.brew]' 'adapter = "homebrew"' "executable = \"$native\"" 'capabilities = ["apply"]' \
+    '[provider.homebrew]' "executable = \"$native\"" \
  >"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_NATIVE_LOG="$native_log" "$RIG" apply
   [ "$status" -eq 1 ]
-  [[ "$output" == *$'base\tbrew\tfailed\texit:7'* ]] || false
-  [[ "$output" == *$'app\tbrew\tskipped\tblocked-by:base'* ]] || false
-  [[ "$output" == *$'other\tbrew\tcompleted\t-'* ]] || false
+  [[ "$output" == *$'base\thomebrew\tfailed\texit:7'* ]] || false
+  [[ "$output" == *$'app\thomebrew\tskipped\tblocked-by:base'* ]] || false
+  [[ "$output" == *$'other\thomebrew\tcompleted\t-'* ]] || false
   [ "$(cat "$native_log")" = "$(printf '%s\n' 'install --formula broken' 'install --formula other')" ]
 }
 
@@ -2319,18 +2373,15 @@ bootstrap-profile = "absent"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.t
   local missing
   missing=$BATS_TEST_TMPDIR/missing-brew-$BATS_TEST_NUMBER
   write_minimal_config
-  sed "/adapter = \"homebrew\"/a\\
-executable = \"$missing\"\\
-capabilities = [\"observe\", \"apply\"]" "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/native.toml"
-  mv "$CONFIG_HOME/native.toml" "$CONFIG_HOME/rig.toml"
+  printf '%s\n' '[provider.homebrew]' "executable = \"$missing\"" >>"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" status
   [ "$status" -eq 1 ]
-  [[ "$output" == *$'alpha\tnative\tunavailable\texecutable-unavailable'* ]] || false
+  [[ "$output" == *$'alpha\thomebrew\tunavailable\texecutable-unavailable'* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" apply
   [ "$status" -eq 2 ]
-  [[ "$output" == *"provider 'native' executable is unavailable: $missing"* ]] || false
+  [[ "$output" == *"provider 'homebrew' executable is unavailable: $missing"* ]] || false
 }
 
 @test "direct-download verifies before atomic executable replacement and cleans failures" {
@@ -2363,19 +2414,18 @@ capabilities = [\"observe\", \"apply\"]" "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/
     '[category.core]' 'name = "Core"' 'purpose = "Core tools"' \
  '[tool.download]' 'name = "Download"' 'category = "core"' 'purpose = "Download test"' \
  'rationale = "Download rationale"' 'platforms = ["any"]' \
- 'install.provider = "download"' 'install.kind = "executable"' \
+    'install.provider = "direct-download"' 'install.kind = "executable"' \
  'install.locator = "https://example.invalid/downloaded-tool"' \
  'install.destination = "~/bin/downloaded-tool"' \
  "install.checksum = \"sha256:$digest\"" \
     '[profile.default]' 'tools = ["download"]' \
-    '[provider.download]' 'adapter = "direct-download"' "executable = \"$downloader\"" \
-    'capabilities = ["observe", "apply"]' \
+    '[provider.direct-download]' "executable = \"$downloader\"" \
  >"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_NATIVE_LOG="$native_log" RIG_DOWNLOAD_SOURCE="$source_file" "$RIG" status
   [ "$status" -eq 1 ]
-  [[ "$output" == *$'download\tdownload\tmissing\t-'* ]] || false
+  [[ "$output" == *$'download\tdirect-download\tmissing\t-'* ]] || false
   [ ! -e "$native_log" ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
@@ -2399,7 +2449,7 @@ capabilities = [\"observe\", \"apply\"]" "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_NATIVE_LOG="$native_log" RIG_DOWNLOAD_SOURCE="$source_file" "$RIG" status
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'download\tdownload\tpresent\t-'* ]] || false
+  [[ "$output" == *$'download\tdirect-download\tpresent\t-'* ]] || false
 
   printf '%s\n' 'existing destination' >"$destination"
   chmod 0755 "$destination"
@@ -2448,13 +2498,12 @@ capabilities = [\"observe\", \"apply\"]" "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/
     '[category.core]' 'name = "Core"' 'purpose = "Core tools"' \
  '[tool.download]' 'name = "Download"' 'category = "core"' 'purpose = "Download test"' \
  'rationale = "Download rationale"' 'platforms = ["any"]' \
- 'install.provider = "download"' 'install.kind = "executable"' \
+    'install.provider = "direct-download"' 'install.kind = "executable"' \
  'install.locator = "https://example.invalid/downloaded-tool"' \
  "install.destination = \"$destination\"" \
  'install.checksum = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' \
     '[profile.default]' 'tools = ["download"]' \
-    '[provider.download]' 'adapter = "direct-download"' "executable = \"$downloader\"" \
-    'capabilities = ["apply"]' \
+    '[provider.direct-download]' "executable = \"$downloader\"" \
  >"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" apply
@@ -2533,7 +2582,6 @@ write_publication_config() {
     'adapter = "custom"' \
     "executable = \"$PUBLICATION_PROVIDER\"" \
     'capabilities = ["publish"]' \
-    'manifest = "/private/provider-manifest-token"' \
     'arguments = ["provider-argument-token"]' \
  '[publication.site]' \
     'profile = "public"' \
@@ -2931,11 +2979,11 @@ write_publish_config() {
   original=$BATS_TEST_TMPDIR/publish-original-$BATS_TEST_NUMBER
   cp "$CONFIG_HOME/rig.toml" "$original"
 
-  sed 's/capabilities = \["publish"\]/capabilities = []/' "$original" >"$CONFIG_HOME/rig.toml"
+  sed 's/capabilities = \["publish"\]/capabilities = ["observe"]/' "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
     RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" "$RIG" publish site
   [ "$status" -eq 2 ]
-  [[ "$output" == *"does not declare capability 'publish'"* ]] || false
+  [[ "$output" == *"publisher 'publisher' requires capability 'publish'"* ]] || false
   [ ! -e "$PUBLISH_LOG" ]
   [ ! -e "$cache/publish" ]
 
@@ -2945,7 +2993,7 @@ write_publish_config() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
     RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" "$RIG" publish site
   [ "$status" -eq 2 ]
-  [[ "$output" == *"requires a custom publisher"* ]] || false
+  [[ "$output" == *"external provider adapter must be 'custom'"* ]] || false
   [ ! -e "$PUBLISH_LOG" ]
 
   sed "s#executable = \"$PUBLICATION_PROVIDER\"#executable = \"$BATS_TEST_TMPDIR/missing-publisher\"#" \
@@ -3302,7 +3350,7 @@ write_operation_config() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit
   [ "$status" -eq 2 ]
-  [[ "$output" == *'actions require custom provider'* ]] || false
+  [[ "$output" == *"external provider adapter must be 'custom'"* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 
   sed '/description = "Inspect Alpha"/d' "$original" >"$CONFIG_HOME/rig.toml"
@@ -3570,6 +3618,239 @@ write_resource_fixture() {
     'resource-kinds = ["service", "scheduled-job"]' >"$CONFIG_HOME/rig.toml"
 }
 
+write_launchd_fixture() {
+  LAUNCHD_LOG=$BATS_TEST_TMPDIR/launchd-log-$BATS_TEST_NUMBER
+  LAUNCHD_STATE=$BATS_TEST_TMPDIR/launchd-state-$BATS_TEST_NUMBER
+  LAUNCHD_COMMAND=$BATS_TEST_TMPDIR/launchctl-$BATS_TEST_NUMBER
+  : >"$LAUNCHD_LOG"
+  : >"$LAUNCHD_STATE"
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'printf "%s\n" "$*" >>"$RIG_LAUNCHD_LOG"' \
+    'verb=$1' \
+    'shift' \
+    'case "$verb" in' \
+    '  print)' \
+    '    grep -Fxq "$1" "$RIG_LAUNCHD_STATE" && { printf "loaded = true\n"; exit 0; }' \
+    '    printf "Could not find service\n" >&2' \
+    '    exit 3' \
+    '    ;;' \
+    '  bootstrap)' \
+    '    label=${2##*/}' \
+    '    label=${label%.plist}' \
+    '    grep -Fxq "$1/$label" "$RIG_LAUNCHD_STATE" || printf "%s/%s\n" "$1" "$label" >>"$RIG_LAUNCHD_STATE"' \
+    '    ;;' \
+    '  bootout)' \
+    '    grep -Fxv "$1" "$RIG_LAUNCHD_STATE" >"$RIG_LAUNCHD_STATE.next" || :' \
+    '    mv "$RIG_LAUNCHD_STATE.next" "$RIG_LAUNCHD_STATE"' \
+    '    ;;' \
+    '  kickstart) exit 0 ;;' \
+    '  *) exit 64 ;;' \
+    'esac' >"$LAUNCHD_COMMAND"
+  chmod +x "$LAUNCHD_COMMAND"
+
+  printf '%s\n' \
+    '[rig]' \
+    'schema = 1' \
+    'default-profile = "default"' \
+    'bootstrap-profile = "default"' \
+    '' \
+    '[service.daemon]' \
+    'name = "Test daemon"' \
+    'purpose = "Keep A & B running."' \
+    'rationale = "Exercise native launchd services."' \
+    'provider = "launchd"' \
+    'locator = "example.test.daemon"' \
+    'platforms = ["macos"]' \
+    'desired-state = "running"' \
+    'program = ["~/bin/example", "--literal <value>", "$(not-executed)"]' \
+    'environment = ["HOME=~", "PATH=~/bin:/usr/bin"]' \
+    'restart-policy = "always"' \
+    'start-policy = "load"' \
+    'standard-output = "~/Library/Logs/example.out"' \
+    'standard-error = "~/Library/Logs/example.err"' \
+    '' \
+    '[scheduled-job.morning]' \
+    'name = "Morning"' \
+    'purpose = "Exercise native launchd calendars."' \
+    'rationale = "Keep schedules in Rig configuration."' \
+    'provider = "launchd"' \
+    'locator = "example.test.morning"' \
+    'platforms = ["macos"]' \
+    'desired-state = "enabled"' \
+    'program = ["/usr/bin/true"]' \
+    'schedule.calendar = ["hour=8,minute=0", "weekday=1,hour=9"]' \
+    'run-policy = "scheduled-only"' \
+    'priority = "background"' \
+    '' \
+    '[profile.default]' \
+    'services = ["daemon"]' \
+    'scheduled-jobs = ["morning"]' >"$CONFIG_HOME/rig.toml"
+}
+
+@test "built-in launchd observes applies and retires declared resources" {
+  local daemon_plist morning_plist
+
+  write_launchd_fixture
+  daemon_plist=$TEST_HOME/Library/LaunchAgents/example.test.daemon.plist
+  morning_plist=$TEST_HOME/Library/LaunchAgents/example.test.morning.plist
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
+    RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RIG_PLATFORM=macos \
+    RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
+    RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
+    "$RIG" apply --scope resources --dry-run
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'daemon\tservice\tlaunchd\tplanned\treconcile:example.test.daemon'* ]]
+  [[ "$output" == *'program=~/bin/example'* ]]
+  [ ! -e "$daemon_plist" ]
+  [ ! -s "$LAUNCHD_LOG" ]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
+    RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RIG_PLATFORM=macos \
+    RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
+    RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
+    "$RIG" status
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'daemon\tservice\tlaunchd\tmissing\t-'* ]]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
+    RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RIG_PLATFORM=macos \
+    RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
+    RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
+    "$RIG" apply --scope resources
+  [ "$status" -eq 0 ]
+  [ -f "$daemon_plist" ]
+  [ -f "$morning_plist" ]
+  grep -F '<string>Keep A &amp; B running.</string>' "$daemon_plist"
+  grep -F "<string>$TEST_HOME/bin/example</string>" "$daemon_plist"
+  grep -F '<string>--literal &lt;value&gt;</string>' "$daemon_plist"
+  grep -F '<string>$(not-executed)</string>' "$daemon_plist"
+  grep -F "<string>$TEST_HOME/bin:/usr/bin</string>" "$daemon_plist"
+  grep -F '<key>KeepAlive</key>' "$daemon_plist"
+  grep -F '<key>StartCalendarInterval</key>' "$morning_plist"
+  grep -F '<key>Weekday</key>' "$morning_plist"
+  [ "$(grep -c '^bootstrap ' "$LAUNCHD_LOG")" -eq 2 ]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
+    RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RIG_PLATFORM=macos \
+    RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
+    RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
+    "$RIG" status
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'daemon\tservice\tlaunchd\tpresent\t-'* ]]
+  [[ "$output" == *$'morning\tscheduled-job\tlaunchd\tpresent\t-'* ]]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
+    RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
+    "$RIG" run launchd status -- service:daemon
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'loaded = true'* ]]
+
+  mkdir -p "$TEST_HOME/Library/Logs"
+  printf '%s\n' stdout-line >"$TEST_HOME/Library/Logs/example.out"
+  printf '%s\n' stderr-line >"$TEST_HOME/Library/Logs/example.err"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
+    RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
+    "$RIG" run launchd logs -- service:daemon
+  [ "$status" -eq 0 ]
+  [[ "$output" == *stdout-line* ]]
+  [[ "$output" == *stderr-line* ]]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
+    RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
+    "$RIG" run launchd run -- scheduled-job:morning
+  [ "$status" -eq 0 ]
+  grep -F 'kickstart -p gui/test/example.test.morning' "$LAUNCHD_LOG"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
+    RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
+    "$RIG" run launchd restart -- service:daemon
+  [ "$status" -eq 0 ]
+  grep -F 'kickstart -k -p gui/test/example.test.daemon' "$LAUNCHD_LOG"
+
+  printf '\n<!-- drift -->\n' >>"$daemon_plist"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
+    RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RIG_PLATFORM=macos \
+    RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
+    RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
+    "$RIG" status
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'daemon\tservice\tlaunchd\tdrifted\tplist'* ]]
+
+  sed -e 's/services = \["daemon"\]/services = []/' \
+    -e 's/scheduled-jobs = \["morning"\]/scheduled-jobs = []/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/retire.toml"
+  mv "$CONFIG_HOME/retire.toml" "$CONFIG_HOME/rig.toml"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
+    RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RIG_PLATFORM=macos \
+    RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
+    RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
+    "$RIG" apply --scope resources
+  [ "$status" -eq 0 ]
+  [ ! -e "$daemon_plist" ]
+  [ ! -e "$morning_plist" ]
+  [ ! -s "$LAUNCHD_STATE" ]
+}
+
+@test "built-in launchd rejects unsafe plist targets before invocation" {
+  write_launchd_fixture
+  mkdir -p "$TEST_HOME/Library" "$TEST_HOME/unsafe-launch-agents"
+  ln -s "$TEST_HOME/unsafe-launch-agents" "$TEST_HOME/Library/LaunchAgents"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
+    RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RIG_PLATFORM=macos \
+    RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
+    RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
+    "$RIG" apply --scope resources
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"provider 'launchd' plist directory is unsafe"* ]]
+  [ ! -s "$LAUNCHD_LOG" ]
+  [ ! -e "$BATS_TEST_TMPDIR/state/resources/macos.tsv" ]
+}
+
+@test "apply and bootstrap scopes stage tools and resources independently" {
+  write_resource_fixture
+  sed -e '/^\[tool.base\]/,/^\[provider.runner\]/ {
+    /platforms = \["macos"\]/a\
+install.provider = "runner"\
+install.kind = "executable"\
+install.locator = "base"
+  }' -e 's/capabilities = \["resource-observe", "resource-apply", "resource-retire"\]/capabilities = ["observe", "apply", "resource-observe", "resource-apply", "resource-retire"]/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/scoped.toml"
+  mv "$CONFIG_HOME/scoped.toml" "$CONFIG_HOME/rig.toml"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
+    RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RESOURCE_LOG="$RESOURCE_LOG" \
+    RIG_PLATFORM=macos "$RIG" apply --scope tools
+  [ "$status" -eq 0 ]
+  grep -F 'rig-provider-v1 apply runner base executable base' "$RESOURCE_LOG"
+  ! grep -F 'apply-resource' "$RESOURCE_LOG"
+  [ ! -e "$BATS_TEST_TMPDIR/state/resources/macos.tsv" ]
+
+  : >"$RESOURCE_LOG"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
+    RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RESOURCE_LOG="$RESOURCE_LOG" \
+    RIG_PLATFORM=macos "$RIG" apply --scope resources
+  [ "$status" -eq 0 ]
+  ! grep -F 'rig-provider-v1 apply runner base executable base' "$RESOURCE_LOG"
+  grep -F 'rig-provider-v1 apply-resource runner daemon service example.test.daemon' "$RESOURCE_LOG"
+  grep -F 'rig-provider-v1 apply-resource runner morning scheduled-job example.test.morning' "$RESOURCE_LOG"
+  [ -f "$BATS_TEST_TMPDIR/state/resources/macos.tsv" ]
+
+  : >"$RESOURCE_LOG"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
+    RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RESOURCE_LOG="$RESOURCE_LOG" \
+    RIG_PLATFORM=macos "$RIG" bootstrap --scope tools
+  [ "$status" -eq 0 ]
+  grep -F 'rig-provider-v1 apply runner base executable base' "$RESOURCE_LOG"
+  ! grep -F 'apply-resource' "$RESOURCE_LOG"
+}
+
 @test "operational resources resolve through profiles and remain inert in queries" {
   write_resource_fixture
 
@@ -3829,7 +4110,7 @@ write_resource_fixture() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" status --unmanaged
 
-  [ "$status" -eq 0 ]
+  [ "$status" -eq 1 ]
   [[ "$output" != *$'undeclared-one\tsurveyor\tunmanaged'* ]] || false
   [[ "$output" == *$'undeclared two\tsurveyor\tunmanaged\t-'* ]] || false
   [[ "$output" == *'Unmanaged: 1'* ]] || false
@@ -3844,7 +4125,7 @@ write_resource_fixture() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" status --unmanaged
 
-  [ "$status" -eq 0 ]
+  [ "$status" -eq 1 ]
   [[ "$output" == *'Unmanaged: 0'* ]] || false
 }
 
@@ -3871,7 +4152,7 @@ artifacts = ["$HOME/bin/home-tool", "~/bin/tilde-tool", "/opt/rig/absolute-tool"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" status --unmanaged
 
-  [ "$status" -eq 0 ]
+  [ "$status" -eq 1 ]
   [[ "$output" != *$'home-tool\tsurveyor\tunmanaged'* ]] || false
   [[ "$output" != *$'tilde-tool\tsurveyor\tunmanaged'* ]] || false
   [[ "$output" != *$'absolute-tool\tsurveyor\tunmanaged'* ]] || false

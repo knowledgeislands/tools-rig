@@ -1,14 +1,16 @@
-# Declare operational resources
+# Manage services, jobs, settings, and layouts
 
-Rig treats a long-running service or scheduled job as part of the selected working setup. Put the declaration in private Rig configuration, select it from a profile, inspect it without execution, and review the complete provider plan before applying it.
+Rig treats operational resources and stable machine policy as part of the selected working setup. Put the desired state in private Rig configuration, select it from a profile, inspect it without execution, and review the complete plan before applying it.
+
+Built-in providers such as `launchd`, `macos-defaults`, and `macos-dock` need no provider table, adapter name, capability list, or executable protocol configuration.
 
 ## Declare a service
 
 ```toml
 [service.example-daemon]
 name = "Example daemon"
-purpose = "Keep the local example endpoint available."
-rationale = "The selected development profile depends on the endpoint."
+purpose = "Keep the local example endpoint available"
+rationale = "The selected development profile depends on the endpoint"
 provider = "launchd"
 locator = "example.daemon"
 platforms = ["macos"]
@@ -22,15 +24,15 @@ standard-output = "~/Library/Logs/example-daemon.log"
 standard-error = "~/Library/Logs/example-daemon.log"
 ```
 
-Each `program` and `environment` item remains one literal provider argument. Rig does not run a shell, expand embedded variables, or discover missing details from a provider registry.
+The provider field identifies the native authority. Rig already knows how launchd resources are observed, rendered, loaded, stopped, and retired.
 
 ## Declare a scheduled job
 
 ```toml
 [scheduled-job.good-morning]
 name = "Good morning"
-purpose = "Show a daily workstation notification."
-rationale = "A small visible job proves the personal scheduler path."
+purpose = "Show a daily workstation notification"
+rationale = "A visible job makes scheduler failures easy to notice"
 provider = "launchd"
 locator = "example.good-morning"
 platforms = ["macos"]
@@ -45,47 +47,92 @@ standard-error = "~/Library/Logs/example.good-morning.log"
 
 Use `schedule.interval = "3600"` instead of `schedule.calendar` for a positive interval in seconds. Calendar entries accept comma-separated `minute`, `hour`, `day`, `weekday`, and `month` decimal pairs. Declare exactly one schedule form.
 
-## Select and inspect
+## Declare a typed macOS setting
 
 ```toml
-[profile.default]
+[setting.show-file-extensions]
+name = "Show file extensions"
+purpose = "Keep file identities visible in Finder"
+rationale = "Visible extensions reduce ambiguity when working with source files"
+provider = "macos-defaults"
+platforms = ["macos"]
+domain = "NSGlobalDomain"
+key = "AppleShowAllExtensions"
+value-type = "bool"
+value = "true"
+```
+
+The explicit value type lets Rig validate, compare, and apply the setting without a provider-owned YAML file or an arbitrary workstation script.
+
+## Declare a semantic Dock layout
+
+A Dock layout names ordered items. Applications and folders retain their own semantic options:
+
+```toml
+[dock-item.system-settings]
+kind = "application"
+path = "/System/Applications/System Settings.app"
+
+[dock-item.downloads]
+kind = "folder"
+path = "~/Downloads"
+view = "grid"
+display = "folder"
+
+[dock.primary]
+name = "Primary Dock"
+purpose = "Keep frequent workstation destinations in a stable order"
+rationale = "A semantic layout is portable across equivalent Macs"
+provider = "macos-dock"
+platforms = ["macos"]
+items = ["system-settings", "downloads"]
+```
+
+Rig validates every item and required path before replacing the selected Dock layout.
+
+## Select a workstation
+
+A workstation is a profile composed from the declarations it needs:
+
+```toml
+[profile.workstation]
 tools = ["example"]
 services = ["example-daemon"]
 scheduled-jobs = ["good-morning"]
+settings = ["show-file-extensions"]
+docks = ["primary"]
 ```
+
+Inspect the complete profile before mutation:
 
 ```sh
-rig show
+rig show --profile workstation
 rig explain service:example-daemon
 rig explain scheduled-job:good-morning
-rig status
-rig doctor
-rig apply --dry-run
+rig explain setting:show-file-extensions
+rig explain dock:primary
+rig status --profile workstation
+rig doctor --profile workstation
+rig apply --profile workstation --dry-run
 ```
 
-The catalogue queries are inert. Status and doctor invoke only resource observation. Dry-run preflights providers and prints deferred program, environment, schedule, paths, policies, and pending retirements without invoking or recording changes.
+Declaration queries are inert. Status and doctor perform observation only. Dry-run preflights the complete plan and discloses deferred programs, schedules, settings, ordered Dock items, paths, policies, and pending retirements without invoking providers or writing state.
 
 ## Apply and retire
 
-`rig apply` and `rig bootstrap` reconcile the exact selected resource set after their tool plan. Rig records only the provider, kind, identity, and locator that a successful application managed. Removing a resource from the selected profile makes its receipt entry retirement work on the next apply. Renaming an identity while retaining the same provider, kind, and locator transfers receipt ownership without stopping the native resource.
+`rig apply` reconciles the exact selected profile after complete preflight. `rig bootstrap` first identifies and verifies required managers and then performs the same declared reconciliation; it does not install missing manager systems, and neither command requires a bootstrap provider or setup tools.
 
-Review profile changes and `rig apply --dry-run` before applying them. A provider owns native manifests and service-manager mechanics, but it must receive the resolved declaration from Rig rather than parse Rig TOML or call another manager to discover an authority.
+Rig records only minimal successful-application evidence needed to retire a deselected long-lived resource safely. A receipt is not observed state or configuration authority. Removing a service or scheduled job from the selected profile makes its former native locator retirement work on the next apply.
 
-## Bind an exceptional action
+Review profile changes and `rig apply --dry-run` before applying them. Native providers own their manifests and operating mechanics, but the selected desired state comes from Rig configuration.
 
-Generic provider actions remain available for operations such as reading logs or triggering one selected job immediately:
+## Use provider operations only for exceptions
 
-```toml
-[action.launchd.run-now]
-mode = "mutate"
-description = "Run one selected scheduled job immediately."
-platforms = ["macos"]
-argument-policy = "provider"
-resource-kinds = ["scheduled-job"]
-```
+Built-in launchd operations can expose exceptional tasks such as reading logs, restarting a selected service, or triggering one scheduled job immediately:
 
 ```sh
-rig run launchd run-now -- scheduled-job:good-morning
+rig run launchd logs -- service:example-daemon
+rig run launchd run -- scheduled-job:good-morning
 ```
 
-Rig validates that the qualified resource belongs to the default profile and provider, then sends its full declaration before any remaining caller arguments. The action is an escape hatch, not the desired-state model.
+These explicit operations do not replace the desired-state model. Use an [external provider action](provider-actions.md) only when the operation cannot be expressed through a built-in provider or managed declaration.

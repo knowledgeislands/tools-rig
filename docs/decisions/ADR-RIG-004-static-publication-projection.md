@@ -14,7 +14,7 @@ decision_depends_on: [PDR-RIG-001, ADR-RIG-003, XDR-RIG-001]
 
 A public rig should be usable at a personal subdomain such as `rig.midnight.ninja` or beneath a site path such as `midnight.ninja/rig`. Hosting systems already own domain configuration, credentials, builds, presentation, caching, deployment, and rollback. Making a remote site the catalogue authority would couple local machine management to network availability and deployment state.
 
-Rig originally generated an HTML and CSS tree. That proved the public-profile privacy boundary and trusted publisher handoff, but made one presentation part of Rig's durable contract. A receiving website can make better use of reviewed catalogue data while retaining its own navigation, accessibility, and visual conventions.
+Generating an HTML and CSS tree would make one presentation part of Rig's durable contract. A receiving website can make better use of reviewed catalogue data while retaining its own navigation, accessibility, and visual conventions.
 
 ## Decision
 

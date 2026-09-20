@@ -6,15 +6,13 @@ This area of the [Rig Specifications](index.md) defines the installed runtime an
 
 ### RIG-PORT-001 — Shell-only core
 
-The installed Rig executable MUST require only Bash 3.2 or later for its own command parsing, path resolution, catalogue and profile resolution, provider dispatch, and public-data export.
+The installed Rig executable MUST require only Bash 3.2 or later for its command parsing, configuration loading, catalogue and profile resolution, built-in provider adapters, extension dispatch, state comparison, and public-data export. Built-in launchd and macOS workstation behaviour MUST NOT introduce a Bun, Node.js, Python, or other runtime dependency.
 
 _Conformance:_ conforming
 
-_Verify:_ ShellCheck validates the Bash executable and Bats runs its core commands without a language runtime or package manager on `PATH`.
+_Verify:_ ShellCheck validates the Bash executable and Bats runs core, launchd, settings, Dock, and inventory commands without another language runtime on `PATH`.
 
-_Evidence:_ `bin/rig` contains the Bash-only scaffold and `.github/workflows/ci.yml` runs ShellCheck and Bats.
-
-## Persistent paths
+_Evidence:_ `bin/rig` implements parsing, resolution, built-in adapters, state, and export in Bash; ShellCheck plus `built-in launchd observes applies and retires declared resources` and the four `tests/rig-macos.bats` tests exercise those native surfaces without another language runtime.
 
 ### RIG-PORT-002 — XDG application directories
 
@@ -46,11 +44,11 @@ _Conformance:_ conforming
 
 _Verify:_ Bats tests compare stable diagnostics for default and overridden paths, linked invocation, valid, missing, and invalid configuration; assert provider non-execution; and cover command help and exit statuses.
 
-_Evidence:_ `tests/rig.bats` covers exact labelled output, XDG and Rig-specific precedence, invoked symlink paths, fragment counting, valid, missing, and invalid configuration, provider non-execution, local help, and removal of `paths`.
+_Evidence:_ `tests/rig.bats` covers the exact labelled output, path precedence, invoked symlink paths, fragment counting, validity states, provider non-execution, local help, and removal of `paths`.
 
 ### RIG-PORT-005 — Doctor XDG accessibility
 
-`rig doctor` MUST inspect effective configuration, data, state, and cache application paths without creating or changing them. An existing non-directory or inaccessible path and an absent path without an accessible writable ancestor MUST be a configuration-owned health finding.
+`rig doctor` MUST inspect the effective configuration, data, state, and cache application paths without creating or changing them. An existing non-directory or inaccessible path, or an absent path without an accessible writable ancestor, MUST be a configuration-owned health finding.
 
 _Conformance:_ conforming
 
@@ -60,22 +58,20 @@ _Evidence:_ `rig_doctor_path_finding` performs read-only path checks and the doc
 
 ### RIG-PORT-006 — Exact release selection
 
-The release installer MUST accept an optional positional version in exact `vX.Y.Z` form. The positional version MUST take precedence over the `RIG_VERSION` compatibility environment variable, which MUST accept the same exact form. With neither input, the installer MUST discover the latest GitHub release and MUST NOT fall back to a mutable branch.
-
-Invalid positional or environment versions MUST return status 2 before network access or destination mutation. A discovered tag that is absent or not an exact version MUST fail before artifact download. Valid release installation MUST continue to stage and validate both the executable and manual before replacing either destination.
+The release installer MUST accept an optional positional version in exact `vX.Y.Z` form. The positional version MUST take precedence over the `RIG_VERSION` compatibility environment variable, which MUST accept the same exact form. With neither input, the installer MUST discover the latest GitHub release and MUST NOT fall back to a mutable branch. Invalid positional or environment versions MUST return status 2 before network access or destination mutation. A discovered tag that is absent or not an exact version MUST fail before artifact download. A valid release installation MUST continue to stage and validate both executable and manual before replacing either destination.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats installer fixtures cover positional precedence, environment compatibility, latest-release discovery, invalid-input non-execution, immutable artifact URLs, and staged validation.
 
-_Evidence:_ `install.sh` implements the exact-version contract and `tests/rig.bats` exercises it with isolated network fixtures and destinations.
+_Evidence:_ `install.sh` implements the exact-version contract and `tests/rig.bats` exercises isolated network fixtures and destinations.
 
 ### RIG-PORT-007 — Public interface alignment
 
-The shipped command inventory and command synopsis MUST agree across top-level and command-local help, the README, consumer command guide, `rig(1)`, Bash and Zsh completion output, and the current changelog baseline. User and developer guides, Specifications, and Decision Records MUST describe every affected shipped behaviour and trust boundary consistently. The release procedure MUST include an explicit pre-release alignment check.
+The shipped command inventory and each command synopsis MUST agree across top-level and command-local help, README, consumer command guide, `rig(1)`, Bash and Zsh completion output, and the current changelog baseline. User and developer guides, Specifications, and Decision Records MUST describe affected configuration, lifecycle, built-in-provider, extension, and trust-boundary behaviour consistently. The release procedure MUST include an explicit pre-release alignment check.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats checks every shipped command across the README, consumer command guide, changelog, manual, and generated Bash and Zsh completions; compares the exact human-facing synopsis in the README, command guide, and changelog; and exercises command-local help plus targeted manual synopsis structure. Repository guide and specification audits verify documentation structure.
+_Verify:_ Bats checks the shipped command inventory across README, consumer command guide, changelog, manual, and generated completions; compares human-facing synopsis; and exercises command-local help plus targeted manual structure. Repository guide, specification, and decision audits verify documentation structure.
 
-_Evidence:_ `tests/rig.bats` contains the public command inventory alignment test, and `docs/guides/developer/definition-of-done.md` plus `docs/guides/developer/releasing.md` define delivery and pre-release checks.
+_Evidence:_ `help describes the current command surface`, `public command inventory stays aligned across documentation`, `completion help provide command-local help`, and `completion definitions evaluate and expose accepted options` in `tests/rig.bats` enforce the shipped interface alignment.

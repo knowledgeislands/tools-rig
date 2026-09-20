@@ -46,13 +46,11 @@ install.kind = "formula"
 install.locator = "mgit"
 install.platforms = ["macos"]
 
-[provider.homebrew]
-adapter = "homebrew"
-capabilities = ["observe", "apply"]
-
 [profile.default]
 tools = ["mgit"]
 ```
+
+Rig recognises `homebrew` as a built-in provider, including its supported formula operations. You declare the native owner with `install.provider`; you do not register its adapter or capabilities.
 
 Rig reads this optional root file first and then regular `conf.d/*.toml` fragments in bytewise filename order. The merged configuration must contain exactly one `[rig]` table. Rig accepts a deliberately small TOML subset and never evaluates the values as shell code.
 
@@ -106,7 +104,7 @@ Use the detailed comparison when you need every selected tool and provider obser
 rig status
 ```
 
-Doctor and status invoke only providers whose selected work declares the exact `observe` capability. Status 0 means the completed checks are healthy, status 1 means checks completed with findings, and status 2 means command syntax, configuration, or profile resolution is invalid.
+Doctor and status use built-in observations or observations explicitly allowed for a selected external provider. Status 0 means the completed checks are healthy, status 1 means checks completed with findings, and status 2 means command syntax, configuration, or profile resolution is invalid.
 
 ## Preview before applying
 
@@ -122,7 +120,7 @@ Only after the plan is expected should you allow provider changes:
 rig apply
 ```
 
-Rig preflights the complete selected plan before mutation, orders required tools before dependants, and invokes only providers with the exact `apply` capability. Homebrew remains responsible for Homebrew resolution and state; Rig coordinates the declared intent.
+Rig preflights the complete selected plan before mutation, orders required tools before dependants, and invokes only built-in or explicitly trusted external operations. Homebrew remains responsible for Homebrew resolution and state; Rig coordinates the declared intent.
 
 ## Add another profile
 
@@ -160,7 +158,30 @@ rig doctor --profile developer
 rig apply --profile developer --dry-run
 ```
 
-For a new-machine path, declare `bootstrap-profile` under `[rig]` and use `rig bootstrap --dry-run` before `rig bootstrap`. Bootstrap uses the same preflighted application plan as apply.
+For the bootstrap path, declare `bootstrap-profile` under `[rig]` and use `rig bootstrap --dry-run` before `rig bootstrap`. Bootstrap is a native Rig lifecycle: it identifies and verifies required managers, then preflights and reconciles the profile. It does not install missing manager systems, and you do not declare setup tools or a bootstrap provider.
+
+## Describe a workstation declaratively
+
+A workstation is a profile rather than a provider. Add the settings and resources the machine should have, then select them alongside its tools:
+
+```toml
+[setting.show-file-extensions]
+name = "Show file extensions"
+purpose = "Keep file identities visible in Finder"
+rationale = "Visible extensions make source files easier to distinguish"
+provider = "macos-defaults"
+platforms = ["macos"]
+domain = "NSGlobalDomain"
+key = "AppleShowAllExtensions"
+value-type = "bool"
+value = "true"
+
+[profile.workstation]
+profiles = ["developer"]
+settings = ["show-file-extensions"]
+```
+
+The `macos-defaults` provider is built in. The same rule applies to launchd services and scheduled jobs: declare the desired resource and select it from a profile, without a `[provider.launchd]` table.
 
 ## Enable completion
 
@@ -177,6 +198,6 @@ Persist the generated source through the shell or configuration manager that alr
 
 - Use the [command guide](commands.md) to choose between queries, health checks, mutation, and publication.
 - Use the [publication guide](publishing.md) to share a deliberately public profile.
-- Use the [custom action guide](provider-actions.md) only when a host-specific operation does not fit a portable built-in adapter.
-- Use the [operational-resource guide](operational-resources.md) when a profile should own services or scheduled jobs as desired state.
-- Use `man rig` for the exhaustive schema, native adapter matrix, environment, exit status, and custom-provider protocol.
+- Use the [external action guide](provider-actions.md) only when a host-specific operation does not fit a portable built-in adapter.
+- Use the [managed-resource guide](operational-resources.md) when a profile should own services, scheduled jobs, settings, or a semantic Dock layout as desired state.
+- Use `man rig` for the exhaustive schema, native adapter matrix, environment, exit status, and extension-provider protocol.

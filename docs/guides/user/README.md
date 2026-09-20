@@ -1,8 +1,8 @@
 # Use Rig
 
-Rig is for people who want their working setup to be understandable as a whole, not only reproducible through a collection of unrelated installers and configuration managers.
+Rig is for people who want their working setup to be understandable as a whole, not only reproducible through unrelated installers and configuration managers.
 
-A Rig declaration tells you what tools and operational resources matter, what each one is for, why it belongs, which contexts need it, and which native system is responsible for it. Rig can then compare that declaration with the current machine and coordinate provider work without taking ownership away from Homebrew, uv, chezmoi, launchd, or another provider.
+A Rig declaration tells you which tools and managed resources matter, what each one is for, why it belongs, which contexts need it, and which native system is responsible for it. Rig can then compare the declaration with the current machine and coordinate native managers without making you configure its built-in adapters.
 
 ## Start with the questions
 
@@ -11,41 +11,41 @@ Rig is useful when you want durable answers to questions such as:
 - What is my rig?
 - Which tools do I use for navigation, development, writing, or operations?
 - Why is a particular tool part of the setup?
-- Which tools belong on this laptop, a minimal machine, or a developer workstation?
-- Which parts are present here, and which provider reported that state?
+- Which tools and settings belong on this laptop, a minimal machine, or a developer workstation?
+- Which parts are present here, and which native system reported that state?
 - What can I share publicly without publishing private configuration or observed machine state?
 
-## Understand the four core concepts
+## Understand the five core concepts
 
 - **Catalogue** — the complete description of tools you care about. Each entry can record category, purpose, rationale, relationships, supported platforms, and installation metadata.
-- **Operational resource** — a service or scheduled job whose identity, intent, and desired state Rig owns while a provider owns native projection and operation.
-- **Profile** — a named selection of catalogue tools and operational resources for a machine, role, or context. Profiles may compose other profiles; resources may require tools.
-- **Provider** — the bridge to a system that already owns installation or observation. Rig selects and orders work; the provider retains its own manifests and state.
+- **Managed resource** — a service, scheduled job, typed setting, or semantic layout whose identity, intent, and desired state Rig declares while a provider owns native projection and operation.
+- **Profile** — a named selection of catalogue tools and managed resources for a machine, role, or context. A workstation is a profile, not a provider. Profiles may compose other profiles; resources may require tools.
+- **Provider** — a native system that already owns installation or state. Built-in providers such as Homebrew and launchd need no adapter or capability declarations; external providers are explicit trust boundaries.
 - **State** — the comparison between a resolved profile and provider observations on the current machine.
 
 Publication is an optional projection of that model. It exports one deliberately public profile as versioned data; a website owns how that data is presented.
 
 ## Follow the everyday lifecycle
 
-1. **Declare** a catalogue, operational resources, profiles, and any provider-backed installations.
+1. **Declare** a catalogue, managed resources, profiles, and the native provider for each materialised item.
 2. **Understand** the resolved setup with `rig show`, `rig list`, and `rig explain`.
 3. **Check Rig itself** with `rig diag`.
 4. **Assess the machine** with `rig doctor` for a summary or `rig status` for full expected-versus-observed detail.
 5. **Preview change** with `rig apply --dry-run`.
-6. **Materialise** with `rig apply`, or use `rig bootstrap` for a profile intended for a new machine.
+6. **Materialise** with `rig apply`, or use Rig's native `rig bootstrap` lifecycle to verify required managers and materialise the selected bootstrap profile.
 7. **Publish deliberately** with offline `rig export` followed by explicit `rig publish` when configured.
 
-Inspection comes before mutation. Rig never turns a read-only catalogue query into provider execution, and a dry run never applies provider changes.
+Inspection comes before mutation. Rig never turns a read-only declaration query into provider execution, and a dry run never applies provider changes.
 
 ## Choose a guide
 
-- [Get started](getting-started.md) — install Rig, create a small configuration, understand it, check the machine, and preview the first application.
-- [Use the commands](commands.md) — choose the right command and understand whether it reads configuration, observes providers, mutates providers, or publishes data.
-- [Publish a rig](publishing.md) — create a safe public profile, inspect its versioned JSON, and hand it to a trusted publisher.
-- [Run custom provider actions](provider-actions.md) — expose bounded host-specific observations or maintenance through private configuration.
-- [Manage operational resources](operational-resources.md) — declare services and scheduled jobs, preview deferred execution, and understand receipts.
+- [Get started](getting-started.md) — install Rig, create a small configuration, understand it, check a machine, and preview the first application.
+- [Use commands](commands.md) — choose the right command and understand whether it reads declarations, observes providers, mutates state, or publishes data.
+- [Publish a rig](publishing.md) — choose a safe public profile, inspect its versioned JSON, and hand it to a trusted publisher.
+- [Run external provider actions](provider-actions.md) — expose bounded host-specific operations only when no built-in declarative integration fits.
+- [Manage resources](operational-resources.md) — declare services, scheduled jobs, typed settings, and Dock layouts and preview their desired state.
 
-For the exhaustive configuration grammar, environment variables, provider protocol, and exit-status contract, use `man rig`. Specifications are maintained for implementers and verification; most users should start with these guides.
+For the exhaustive configuration grammar, environment variables, built-in provider matrix, extension protocol, and exit-status contract, use `man rig`. Specifications are maintained for implementers and verification; most users should start with these guides.
 
 ## Configuration location
 

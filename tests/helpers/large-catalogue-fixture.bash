@@ -21,9 +21,6 @@ write_large_catalogue_fixture() {
 
     printf '%s\n' \
       '' \
-      '[provider.homebrew]' \
-      'adapter = "homebrew"' \
-      '' \
       '[provider.fixture]' \
       'adapter = "custom"' \
       'executable = "/usr/bin/false"' \

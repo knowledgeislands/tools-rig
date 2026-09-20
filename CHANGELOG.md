@@ -11,11 +11,11 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - `rig`
 - `rig show [--profile NAME]`
 - `rig list [--category ID] [--profile NAME]`
-- `rig explain TOOL|service:ID|scheduled-job:ID`
+- `rig explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID`
 - `rig status [--profile NAME] [--unmanaged]`
 - `rig doctor [--profile NAME]`
-- `rig apply [--profile NAME] [--dry-run]`
-- `rig bootstrap [--profile NAME] [--dry-run]`
+- `rig apply [--profile NAME] [--scope tools|resources|all] [--dry-run]`
+- `rig bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]`
 - `rig run PROVIDER ACTION [-- ARGUMENT...]`
 - `rig export PUBLICATION --output DIRECTORY`
 - `rig publish PUBLICATION`
@@ -29,25 +29,28 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - A standalone Bash 3.2-compatible executable with no required runtime dependency beyond Bash.
 - Non-mutating runtime, platform, XDG-path, and configuration diagnostics with explicit Rig overrides.
 - An inert TOML schema 1 loader with deterministic fragment order, validation, composed-profile resolution, transitive requirements, platform selection, and tool-centred `install.*` metadata.
+- Declarative built-in provider identities whose adapters and supported operations are inferred by Rig without `[provider.*]` boilerplate; provider tables are reserved for optional built-in configuration and explicitly trusted external executables.
+- A native bootstrap lifecycle that identifies and verifies required managers before preflighting and reconciling the selected profile, without synthetic setup tools or a bootstrap provider.
+- First-class typed macOS settings and semantic Dock layouts, built-in launchd reconciliation, and built-in application-bundle inventory selected as parts of a workstation profile rather than hidden behind a workstation provider.
 - First-class `service` and `scheduled-job` declarations selected by profiles, with literal program and environment arrays, service policies, calendar or interval schedules, desired state, and tool dependencies.
 - Source configuration rejects the superseded `[binding.*]` table shape; one tool table is the sole public home for installation metadata.
 - Standard TOML-compatible `rig.toml` and `conf.d/*.toml` sources, with a dependency-free schema subset, quoted strings, string arrays, inline comments, and model-wide fail-closed validation.
 - Read-only catalogue queries that do not invoke providers.
 - Human-readable `rig show` profile metadata and bounded-width, aligned selected-tool tables.
-- Versioned `rig-provider-v1` custom-provider invocation that preserves every configured literal argument boundary.
-- Versioned `observe-resource`, `apply-resource`, and `retire-resource` provider work units with exact `resource-observe`, `resource-apply`, and `resource-retire` capabilities, plus resource-aware action binding.
-- Conventional custom-provider executables at `${RIG_DATA_HOME}/providers/ID`, with explicit `executable` declarations retaining precedence.
-- Built-in Homebrew formula, cask, and Mac App Store, uv tool, and chezmoi target adapters with exact capability gates and native command mappings.
+- Versioned `rig-provider-v1` invocation with literal argument boundaries only for explicitly trusted external providers; Rig inserts the marker automatically and built-ins never receive it.
+- Versioned external `observe-resource`, `apply-resource`, and `retire-resource` work units plus resource-aware action binding, while built-in resources use Rig's internal provider registry.
+- Explicit `adapter = "custom"` extension declarations and operation allow-lists, with executable resolution limited to an explicit path or exact `${RIG_DATA_HOME}/providers/ID` convention.
+- Built-in Homebrew formula, cask, Mac App Store, uv tool, chezmoi target, launchd, macOS defaults, semantic Dock, and application-inventory adapters with native command mappings and internally defined operations.
 - Bounded reconciliation identities for tap-qualified Homebrew formula and cask locators and leading `~/` or `$HOME/` tool artifacts, while provider application retains the authored locator.
 - HTTPS direct-download executable adapter with declared SHA-256 verification, sibling temporary files, safe destination checks, atomic replacement, and failure cleanup.
 - Five-state observation with deterministic provider, state, and detail reporting without a competing state database.
 - A tool `artifacts` array naming machine-observable paths a tool materialises, so one provider can inventory what another installed and catalogue-only tools remain reconcilable.
-- Reverse reconciliation through the `rig-provider-v1 inventory` protocol: providers declaring the `inventory` capability enumerate their domain, and `rig status --unmanaged` reports every observed identity that no tool installation declares as an informational row.
+- Reverse reconciliation through built-in inventory sources or the external `rig-provider-v1 inventory` protocol; `rig status --unmanaged` reports every observed identity that no tool installation declares as an informational row.
 - A concise read-only doctor synthesis for configuration, XDG accessibility, provider availability, selected-tool health, and informational catalogue-only or incompatible tools.
 - Complete application preflight, a non-mutating dry-run, and dependency-first execution.
-- Provider-backed resource observation and reconciliation across `status`, doctor, apply, and bootstrap, with stale-resource retirement and an atomic per-platform receipt beneath Rig state.
-- Bootstrap-profile selection with explicit-profile precedence and default-profile fallback, delegated to the exact application plan and safety boundaries.
-- Configuration-defined observe and mutate provider actions with literal `arguments`, exact `allowed-arguments`, optional provider-owned validation, and native outcome propagation.
+- Built-in and external managed-resource observation and reconciliation across `status`, doctor, apply, and bootstrap, with stale-resource retirement and an atomic per-platform receipt beneath Rig state where retirement requires one.
+- Bootstrap-profile selection with explicit-profile precedence and default-profile fallback through Rig's native staged bootstrap plan and safety boundaries.
+- Built-in provider operations plus configuration-defined external observe and mutate actions with literal `arguments`, exact `allowed-arguments`, optional provider-owned validation, and native outcome propagation.
 - Failure handling that suppresses only transitive dependants while independent work continues.
 - Terminal-aware, line-oriented stderr progress for configuration loading, provider observation, inventory, application, actions, and publication, with stable stdout and explicit `RIG_PROGRESS=always|never` control.
 - Deterministic offline `rig-publication` version 1 JSON export of an explicitly selected, platform-neutral public profile with relationship closure, canonical URL metadata, disclosure allow-listing, and safe complete-tree replacement.

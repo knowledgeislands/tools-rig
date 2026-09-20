@@ -78,13 +78,13 @@ _Evidence:_ `rig_add_field` performs the loading expansion allow-list; artifact 
 
 ### RIG-CONF-008 — Canonical table identities
 
-Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[profile.ID]`, `[provider.ID]`, `[publication.ID]`, `[service.ID]`, `[scheduled-job.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`. Any other table shape, including `[binding.TOOL.PROVIDER]`, MUST be rejected; installation metadata belongs only in the tool table.
+Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[profile.ID]`, `[provider.ID]`, `[publication.ID]`, `[service.ID]`, `[scheduled-job.ID]`, `[setting.ID]`, `[dock.ID]`, `[dock-item.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`. Any other table shape, including `[binding.TOOL.PROVIDER]`, MUST be rejected; installation metadata belongs only in the tool table.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats table tests accept every supported table form and reject uppercase, empty, extra, whitespace-containing, digit-leading, and binding identities.
 
-_Evidence:_ `rig_parse_section_identity` validates table arity and identity segments; `tests/rig.bats` covers canonical and malformed identities.
+_Evidence:_ `rig_parse_section_identity` and `rig_valid_id` enforce the table and identifier grammar; the `section identities are strict and unique` Bats test covers accepted and rejected identities, including source-authored binding tables.
 
 ### RIG-CONF-009 — Root fields
 
@@ -98,70 +98,90 @@ _Evidence:_ `rig_validate_model` validates root fields and references; bootstrap
 
 ### RIG-CONF-010 — Catalogue fields
 
-Schema 1 category tables MUST require string `name` and `purpose`. Tool tables MUST require string `name`, `category`, `purpose`, and `rationale`, MUST require a non-empty `platforms` string array, and MAY contain `requires`, `related`, `alternatives`, and `artifacts` string arrays. A materialised tool MUST co-locate string `install.provider`, `install.kind`, and `install.locator`; it MAY contain string `install.destination` and `install.checksum` and string arrays `install.platforms` and `install.arguments`. A tool without `install.provider` is catalogue-only and MUST NOT contain any other `install.*` field.
+Schema 1 category tables MUST require string `name` and `purpose`. Tool tables MUST require string `name`, `category`, `purpose`, and `rationale`, MUST require a non-empty `platforms` string array, and MAY contain `requires`, `related`, `alternatives`, and `artifacts` string arrays. A materialised tool MUST co-locate string `install.provider`, `install.kind`, and `install.locator`; it MAY contain string `install.destination` and `install.checksum` and string arrays `install.platforms` and `install.arguments`. `install.provider` MUST name a built-in provider identity or an explicitly declared external provider. A tool without `install.provider` is catalogue-only and MUST NOT contain any other `install.*` field.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests parse every catalogue field, preserve array boundaries, resolve relationships, compare artifacts, and reject missing or misplaced fields.
+_Verify:_ Bats tests parse every catalogue field, preserve array boundaries, resolve built-in and external provider ownership, compare artifacts, and reject missing or misplaced fields.
 
-_Evidence:_ `rig_toml_field` maps public TOML keys into the catalogue model; `rig_validate_model` validates required meaning and references; `tests/rig.bats` covers resolution and rejection.
+_Evidence:_ `rig_toml_field`, `rig_synthesise_bindings`, and the tool branch of `rig_validate_model` implement the catalogue field contract; the `schema list fields preserve each declared item boundary`, `required catalogue and provider adapter fields are validated`, and `descriptive tools resolve without installation metadata` Bats tests cover it.
 
 ### RIG-CONF-011 — Profile fields
 
-Schema 1 profile tables MAY contain `profiles`, `tools`, `services`, and `scheduled-jobs` string arrays. Every item MUST name a declared profile, tool, service, or scheduled job respectively.
+Schema 1 profile tables MAY contain `profiles`, `tools`, `services`, `scheduled-jobs`, `settings`, and `docks` string arrays. Every item MUST name a declaration of the corresponding kind.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests compose profiles and tool membership, preserve array item boundaries, reject unknown references, and detect profile cycles.
+_Verify:_ Bats tests compose profiles and every selectable declaration kind, preserve array item boundaries, reject unknown references, and detect profile cycles.
 
-_Evidence:_ `rig_validate_references_for_field` and `rig_validate_cycles` validate the mapped values; `tests/rig.bats` covers composition and cycles.
+_Evidence:_ `rig_toml_field`, `rig_validate_model`, and `rig_select_profile` resolve every profile member kind; `profiles compose and requirements resolve to a sorted platform-specific set` in `tests/rig.bats` and `typed macOS resources query and dry-run deterministically` in `tests/rig-macos.bats` cover tools and typed resources.
 
 ### RIG-CONF-012 — Provider fields
 
-Schema 1 provider tables MUST require string `adapter`, MAY contain string `command`, `executable`, and `manifest`, and MAY contain `arguments` and `capabilities` string arrays. A provider whose adapter is `custom` MAY omit `executable`; Rig MUST then resolve exactly `${RIG_DATA_HOME}/providers/PROVIDER-ID`. An explicit executable MUST take precedence.
+Schema 1 MUST resolve built-in provider identities without a provider table. An optional table for a built-in provider MAY contain only its documented `executable`, `manifest`, or `arguments` configuration and MUST NOT redefine its adapter class or supported operations. A provider identity not reserved by Rig MUST have one `[provider.ID]` table requiring `adapter = "custom"` and a non-empty `capabilities` string array and MAY contain string `executable` and an `arguments` string array. When executable is omitted, Rig MUST resolve exactly `${RIG_DATA_HOME}/providers/PROVIDER-ID`; an explicit executable MUST take precedence. Provider tables MUST NOT contain `command`.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests parse provider fields, require the adapter, preserve argument and capability boundaries, resolve conventional custom executables, and preserve explicit overrides.
+_Verify:_ Bats tests use built-ins without provider tables, accept documented built-in overrides, require the custom adapter and operation allow-list for external providers, resolve explicit and exact conventional executables, preserve literal arguments, and reject adapter or capability overrides for built-ins.
 
-_Evidence:_ `rig_validate_model` and `rig_custom_provider_executable` enforce the provider contract; `tests/rig.bats` exercises every executable trust-boundary invocation.
+_Evidence:_ `rig_validate_model`, `rig_builtin_provider_adapter`, and `rig_provider_has_capability` keep reserved built-ins immutable and external providers explicit; `tests/rig-model-boundaries.bats` covers both rejection boundaries.
 
 ### RIG-CONF-013 — Installation fields
 
-Tool installation metadata MUST reference one declared provider and MUST obey that provider adapter's native kind contract. `install.destination` and `install.checksum` MUST be valid only for `direct-download` installations. Homebrew `mas` locators MUST be numeric application identities. Direct-download installations MUST use kind `executable`, an HTTPS locator, an absolute expanded destination, and a checksum containing `sha256:` followed by exactly 64 lowercase hexadecimal characters.
+Tool installation metadata MUST reference one built-in or explicitly declared external provider and MUST obey that provider's native kind contract. `install.destination` and `install.checksum` MUST be valid only for `direct-download` installations. Homebrew `mas` locators MUST be numeric application identities. Direct-download installations MUST use kind `executable`, an HTTPS locator, an absolute expanded destination, and a checksum containing `sha256:` followed by exactly 64 lowercase hexadecimal characters.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests resolve co-located installation ownership and reject unknown providers, partial installation declarations, incompatible adapter kinds, unsafe downloads, malformed checksums, and invalid Mac App Store identities.
+_Verify:_ Bats tests resolve co-located installation ownership without built-in provider boilerplate and reject unknown providers, partial installation declarations, incompatible kinds, unsafe downloads, malformed checksums, and invalid Mac App Store identities.
 
-_Evidence:_ `rig_validate_binding_adapter` enforces adapter-specific installation integrity after internal normalisation; `tests/rig.bats` covers valid and invalid declarations.
+_Evidence:_ `rig_validate_binding_adapter` owns the exact tool-installation kind matrix and rejects resource-only built-ins; `tests/rig.bats` and `tests/rig-model-boundaries.bats` cover every accepted and rejected class.
 
 ### RIG-CONF-014 — Publication fields
 
-Schema 1 publication tables MUST require string `profile`, `title`, `base-url`, and `publisher`. The profile MUST name a declared profile and the publisher MUST name a declared provider.
+Schema 1 publication tables MUST require string `profile`, `title`, `base-url`, and `publisher`. The profile MUST name a declared profile and the publisher MUST name an explicitly declared external provider allowed to publish.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests resolve one publication and reject missing or unknown profile and publisher references.
+_Verify:_ Bats tests resolve one publication and reject missing or unknown profile and publisher references, built-in provider identities, and external publishers without the exact publication operation.
 
-_Evidence:_ `rig_validate_model` validates publication fields and references; `tests/rig.bats` covers the contract.
+_Evidence:_ `rig_validate_model` requires an explicit custom publisher with the `publish` capability before export or handoff; `publication publishers must be explicit custom providers with publish capability` covers each rejection.
 
-### RIG-CONF-015 — Action fields
+### RIG-CONF-015 — Extension action fields
 
-Schema 1 action tables MUST require string `mode` and `description` and MAY contain `platforms`, `arguments`, `allowed-arguments`, and `resource-kinds` string arrays and string `argument-policy`. The provider named by the table identity MUST exist and use the `custom` adapter. Mode MUST be `observe` or `mutate`. `argument-policy` defaults to `rig`, MAY be `provider`, and MUST NOT be combined with `allowed-arguments` when set to `provider`. `resource-kinds` accepts only `service` and `scheduled-job`, requires provider argument policy, and makes the first caller argument a selected qualified resource. Configured and caller arguments MUST retain their literal array boundaries.
+Schema 1 action tables MUST require string `mode` and `description` and MAY contain `platforms`, `arguments`, `allowed-arguments`, and `resource-kinds` string arrays and string `argument-policy`. The provider named by the table identity MUST be an explicitly declared external provider. Mode MUST be `observe` or `mutate`. `argument-policy` defaults to `rig`, MAY be `provider`, and MUST NOT be combined with `allowed-arguments` when set to `provider`. `resource-kinds` accepts only supported managed-resource kinds, requires provider argument policy, and makes the first caller argument a selected qualified resource. Configured and caller arguments MUST retain their literal array boundaries. Built-in provider operations MUST NOT require action tables.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats table tests accept valid action records; reject malformed identities, missing fields, invalid modes, unknown providers, non-custom providers, and invalid argument policies; and preserve configured allow-listed argument boundaries.
+_Verify:_ Bats table tests accept valid external action records; reject malformed identities, missing fields, invalid modes, built-in or unknown providers, and invalid argument policies; preserve configured allow-listed argument boundaries; and exercise built-in operations without action declarations.
 
-_Evidence:_ `rig_validate_action` validates bounded action records; `tests/rig.bats` covers declarations and rejection before invocation.
+_Evidence:_ `rig_validate_action` accepts action tables only for custom providers, while `rig_command_run` dispatches built-in launchd operations directly; `tests/rig.bats` and `tests/rig-model-boundaries.bats` cover both paths.
 
 ### RIG-CONF-016 — Operational resource fields
 
-Schema 1 service and scheduled-job tables MUST require string `name`, `purpose`, `rationale`, `provider`, `locator`, and `desired-state`, plus non-empty `platforms` and `program` string arrays. They MAY contain `requires`, `environment`, optional working-directory and standard-output/error strings. A service desired state MUST be `running` or `stopped`; optional restart policy MUST be `always` or `never`, and start policy MUST be `load` or `manual`. A scheduled-job desired state MUST be `enabled` or `disabled`; it MUST declare exactly one non-empty `schedule.calendar` string array or positive-decimal-string `schedule.interval`; optional run policy MUST be `scheduled-only` or `also-at-load`, and priority MUST be `background` or `normal`. Calendar records MUST contain unique comma-separated `minute|hour|day|weekday|month=DECIMAL` pairs within native-neutral numeric ranges. Environment records MUST be literal `KEY=value` strings. Providers and required tools MUST resolve, providers MUST be custom, and provider locator pairs MUST be unique across resources.
+Schema 1 service and scheduled-job tables MUST require string `name`, `purpose`, `rationale`, `provider`, `locator`, and `desired-state`, plus non-empty `platforms` and `program` string arrays. They MAY contain `requires`, `environment`, optional working-directory and standard-output/error strings. A service desired state MUST be `running` or `stopped`; optional restart policy MUST be `always` or `never`, and start policy MUST be `load` or `manual`. A scheduled-job desired state MUST be `enabled` or `disabled`; it MUST declare exactly one non-empty `schedule.calendar` string array or positive-decimal-string `schedule.interval`; optional run policy MUST be `scheduled-only` or `also-at-load`, and priority MUST be `background` or `normal`. Calendar records MUST contain unique comma-separated `minute|hour|day|weekday|month=DECIMAL` pairs within native-neutral numeric ranges. Environment records MUST be literal `KEY=value` strings. Providers and required tools MUST resolve, the built-in `launchd` provider MUST be valid without a provider table, and provider locator pairs MUST be unique across resources.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests accept service and both scheduled-job schedule forms, preserve literal program and environment arguments, and reject unknown references, invalid enums, empty programs, malformed environment, invalid or conflicting schedules, and duplicate provider locators.
+_Verify:_ Bats tests accept built-in launchd services and both scheduled-job schedule forms without provider declarations, preserve literal program and environment arguments, and reject unknown references, invalid enums, empty programs, malformed environment, invalid or conflicting schedules, and duplicate provider locators.
 
-_Evidence:_ `rig_validate_resource`, calendar and environment validators, model reference validation, and focused operational-resource tests enforce the schema before any provider invocation.
+_Evidence:_ `rig_validate_resource`, `rig_validate_calendar_entry`, `rig_validate_environment_entry`, and `rig_validate_resource_locators` enforce the resource schema; the `built-in launchd observes applies and retires declared resources` and `resource schema rejects unsafe calendar declarations before provider execution` Bats tests cover accepted and rejected declarations.
+
+### RIG-CONF-017 — Typed macOS settings
+
+Schema 1 setting tables MUST require string `name`, `purpose`, `rationale`, `provider`, `domain`, `key`, `value-type`, and `value`, plus a non-empty `platforms` string array, and MAY contain a `requires` string array. Provider `macos-defaults` MUST be built in and restricted to platform `macos`; `value-type` MUST be `bool`, `int`, `float`, or `string`; and Rig MUST validate the string value against its declared type before observation or mutation.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats tests parse each value type, select settings through composed profiles, preserve literal string values, and reject unsupported providers, platforms, types, values, and tool references before native invocation.
+
+_Evidence:_ `rig_validate_setting` and `rig_validate_macos_platforms` validate typed settings before resolution; `typed macOS resources query and dry-run deterministically` and `typed macOS schema rejects invalid values before invocation` in `tests/rig-macos.bats` cover selection and fail-closed validation.
+
+### RIG-CONF-018 — Semantic Dock declarations
+
+Schema 1 dock tables MUST require string `name`, `purpose`, `rationale`, and `provider`, plus non-empty `platforms` and `items` string arrays, and MAY contain a `requires` string array. Provider `macos-dock` MUST be built in and restricted to platform `macos`. Every item MUST name one `[dock-item.ID]` table requiring `kind` and `path`; kind `application` MUST reject folder-only fields, while kind `folder` MAY contain `view` and `display`. Item array order MUST define the desired Dock order.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats tests parse applications and folders, preserve selected item order, resolve tool requirements, and reject unknown items, duplicate selected items, unsupported kinds, misplaced fields, and non-macOS use before native invocation.
+
+_Evidence:_ `rig_validate_dock`, `rig_validate_dock_item`, and `rig_dock_expected_paths` retain and validate semantic item order; `typed macOS resources query and dry-run deterministically` and `typed macOS resources observe and apply through native command fakes` in `tests/rig-macos.bats` cover application and folder declarations through planning and application.

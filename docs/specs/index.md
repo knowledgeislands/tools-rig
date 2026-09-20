@@ -1,6 +1,6 @@
 # Rig Specifications
 
-This corpus records Rig's accepted, testable behaviour. Decision Records explain why the behaviour exists, Guides explain how to use it, and roadmap records schedule delivery.
+This corpus records Rig's accepted, testable behaviour. Decision Records explain why behaviour exists, Guides explain how to use it, and roadmap records schedule delivery.
 
 ## Reading a requirement
 
@@ -14,17 +14,17 @@ Each numbered requirement contains one normative statement, its current conforma
 
 ## Gaps
 
-An unnumbered `## Gaps` entry is a candidate behaviour, not an accepted requirement. Promotion allocates the next identifier and records an honest conformance state.
+An unnumbered `## Gaps` entry is candidate behaviour, not an accepted requirement. Promotion allocates the next identifier and records an honest conformance state.
 
 ## Areas
 
 | File | Prefix | Covers |
 | --- | --- | --- |
-| cache.md | `RIG-CACHE` | Rig-owned cache classification, retention, cleanup safety, reporting |
-| catalogue.md | `RIG-CAT` | Categories, tools, rationale, platforms, relationships, installations |
-| configuration.md | `RIG-CONF` | Inert TOML schema, files, deterministic loading, trust boundary |
-| orchestration.md | `RIG-ORCH` | Profiles, work-unit ordering, invocation protocol, native authority |
-| portability.md | `RIG-PORT` | Runtime dependencies and XDG persistence |
-| publishing.md | `RIG-PUB` | Public profiles, versioned data, canonical URLs, trusted deployment |
-| queries.md | `RIG-QUERY` | Show, list, filtering, explanation, non-execution |
-| state.md | `RIG-STATE` | Observations, catalogue-only state, status/apply reports, preflight, outcomes |
+| [cache.md](cache.md) | `RIG-CACHE` | Rig-owned cache classification, retention, cleanup safety, reporting |
+| [catalogue.md](catalogue.md) | `RIG-CAT` | Categories, tools, rationale, platforms, relationships, installations |
+| [configuration.md](configuration.md) | `RIG-CONF` | Inert TOML schema, built-ins, extensions, managed-resource declarations |
+| [orchestration.md](orchestration.md) | `RIG-ORCH` | Profiles, native bootstrap, work ordering, built-ins, extension protocol |
+| [portability.md](portability.md) | `RIG-PORT` | Runtime dependencies and XDG persistence |
+| [publishing.md](publishing.md) | `RIG-PUB` | Public profiles, versioned data, canonical URLs, trusted deployment |
+| [queries.md](queries.md) | `RIG-QUERY` | Show, list, filtering, tool and managed-resource explanation, non-execution |
+| [state.md](state.md) | `RIG-STATE` | Observations, bootstrap/apply plans, machine-resource state, receipts, outcomes |

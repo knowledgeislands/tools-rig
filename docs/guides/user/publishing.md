@@ -47,7 +47,7 @@ After reviewing the profile and offline JSON, run:
 rig publish personal-site
 ```
 
-Rig validates the publication, profile, publisher, exact `publish` capability, executable, and generated one-file tree before invoking the publisher once. The publisher receives an isolated absolute export directory through the versioned custom-provider protocol.
+Rig validates the publication, profile, explicitly trusted custom publisher, exact `publish` operation, resolved executable, and generated one-file tree before invoking the publisher once. The executable may be explicit or the exact `${RIG_DATA_HOME}/providers/PROVIDER-ID` conventional path. The publisher receives an isolated absolute export directory through Rig's versioned extension protocol.
 
 On success, Rig removes the isolated cache export. If the publisher fails after a complete export exists, Rig reports and retains that path for diagnosis. Remove a retained tree only after inspection; Rig never treats it as deployed.
 

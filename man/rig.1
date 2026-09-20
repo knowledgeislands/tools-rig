@@ -14,7 +14,7 @@ rig \- describe and manage a personal working setup
 .RI [ \-\-profile " NAME" ]
 .br
 .B rig explain
-.I TOOL|service:ID|scheduled-job:ID
+.I TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID
 .br
 .B rig status
 .RI [ \-\-profile " NAME" ]
@@ -25,10 +25,12 @@ rig \- describe and manage a personal working setup
 .br
 .B rig apply
 .RI [ \-\-profile " NAME" ]
+.RI [ \-\-scope " tools|resources|all" ]
 .RI [ \-\-dry-run ]
 .br
 .B rig bootstrap
 .RI [ \-\-profile " NAME" ]
+.RI [ \-\-scope " tools|resources|all" ]
 .RI [ \-\-dry-run ]
 .br
 .BI "rig run " PROVIDER " " ACTION
@@ -54,21 +56,23 @@ rig \- describe and manage a personal working setup
 .SH DESCRIPTION
 \&
 .PP
-Rig describes the tools, services, and scheduled jobs that make up a person's
-working setup, explains why they belong, and compares the selected setup with
-the current machine.
+Rig describes the tools and managed resources that make up a person's working
+setup, explains why they belong, and compares the selected setup with the
+current machine. Managed resources include services, scheduled jobs, typed
+macOS settings, and semantic Dock layouts.
 .PP
-The catalogue records tool meaning. Operational resources record deferred
-service and scheduled-job intent. Profiles select tools and resources for
-machines, roles, or contexts. Providers connect selected declarations to
-native systems. State compares resolved intent with provider observations.
+The catalogue records tool meaning. Managed resources record declarative
+machine intent. Profiles select tools and resources for machines, roles, or
+contexts. Rig chooses its built-in integration from each declaration's
+provider identity; explicitly declared external providers extend that built-in
+set. State compares resolved intent with native observations.
 .PP
 Catalogue queries and diagnostics parse inert configuration and do not invoke
 provider code. Status and doctor invoke observation capabilities.
 Apply and bootstrap cross the explicit mutation boundary only after complete
 plan preflight.
-Run crosses an explicit provider-action trust boundary after validating its
-declaration. Publish
+Run crosses an explicit provider-action trust boundary after resolving either
+a built-in operation or a declared external-provider action. Publish
 crosses a network-capable trust boundary only after export validation.
 Package and configuration systems retain authority over their native
 manifests, resolution, configuration, and state.
@@ -92,11 +96,13 @@ for the complete expected-versus-observed comparison.
 .PP
 Review
 .B rig apply \-\-dry-run
-before allowing provider changes. Use
+before allowing native-system changes. Use
 .B rig apply
 or
 .B rig bootstrap
-only when the complete plan is expected. Public sharing follows the separate
+only when the complete plan is expected, or select
+.BR "\-\-scope tools" " or " "\-\-scope resources"
+for one part of reconciliation. Public sharing follows the separate
 offline
 .B rig export
 and explicit
@@ -137,8 +143,8 @@ Without either form, the installer discovers the latest GitHub release.
 \&
 .TP
 .B rig show
-Describe the resolved default profile with aligned tool, service, and
-scheduled-job tables.
+Describe the resolved default profile with aligned tool and concise managed
+resource tables.
 .TP
 .BI "rig show \-\-profile " NAME
 Describe the named resolved profile with aligned tool and operational-resource
@@ -154,41 +160,41 @@ Narrow the list to tools in the declared category.
 Narrow the list to tools selected by the resolved profile.
 The category and profile filters may be combined.
 .TP
-.BI "rig explain " TOOL|service:ID|scheduled-job:ID
+.BI "rig explain " TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID
 Show a tool's identity and installation metadata, or a qualified operational
-resource's purpose, rationale, provider, desired state, deferred execution
-fields, policies, tool dependencies, and profile membership.
+resource's purpose, rationale, native ownership, desired values, policies,
+tool dependencies, and profile membership. Dock explanations include ordered
+item details.
 .TP
 .B rig status
 Compare every tool and operational resource in the resolved default profile
-with its selected provider observation. Catalogue-only tools are reported as
-neutral unavailable rows; stale receipt entries are pending retirement.
+with its selected native observation. Catalogue-only tools are reported as
+neutral unavailable rows; stale resource receipts are pending retirement.
 .TP
 .BI "rig status \-\-profile " NAME
 Compare a named resolved profile without changing the configured default.
 .TP
 .B rig status \-\-unmanaged
-Additionally ask every provider declaring the
-.B inventory
-capability to enumerate its domain, and report each observed identity that no
-tool installation declares. Unmanaged rows are informational and do not make
-the result unhealthy; a provider that cannot inventory reports its own state
-and detail instead. Reverse reconciliation answers the opposite question to
+Additionally ask each selected inventory source to enumerate its native
+domain, and report each observed identity that no tool installation declares.
+Built-in inventory needs no configuration declaration; external inventory
+must be explicitly allowed. Unmanaged rows are informational and do not make
+the result unhealthy. Reverse reconciliation answers the opposite question to
 the tool table: not whether declared software is installed, but whether
 installed software was ever declared.
 .TP
 .B rig doctor
 Check the resolved default profile and print one compact operational health
-answer. Doctor checks effective XDG path accessibility, provider availability,
-and selected tool and resource observations. Catalogue-only and
+answer. Doctor checks effective XDG path accessibility, native-manager and
+external-provider availability, and selected tool and resource observations.
+Catalogue-only and
 incompatible-platform tools are informational.
 .TP
 .BI "rig doctor \-\-profile " NAME
 Check a named resolved profile without changing the configured default.
-Doctor invokes only selected providers' exact declared
-.B observe
-capability; it never applies, repairs, publishes, or invokes unselected
-providers.
+Doctor invokes only fixed built-in observation operations or external
+observation operations explicitly allowed for selected providers. It never
+applies, repairs, publishes, or invokes unselected providers.
 .TP
 .B rig apply
 Preflight every selected bound tool, operational resource, stale receipt
@@ -203,11 +209,19 @@ Apply a named resolved profile without changing the configured default.
 .B rig apply \-\-dry-run
 Perform complete preflight and print planned work without invoking a provider.
 .TP
+.BI "rig apply \-\-scope " tools|resources|all
+Limit reconciliation to selected tool installations, to managed resources and
+their stale receipts, or to both. The default is
+.BR all .
+The scope changes execution, not profile resolution or declaration ownership.
+.TP
 .B rig bootstrap
-Materialise the configured bootstrap profile through the same resolver,
-dependency order, complete preflight, dispatch, reporting, and failure
-boundaries as
+Run Rig's native bootstrap lifecycle for the configured bootstrap profile.
+Rig identifies, verifies, and preflights required native managers before using
+the same dependency order, complete preflight, dispatch, reporting, and
+failure boundaries as
 .BR "rig apply" .
+Bootstrap is not a provider and requires no synthetic setup tools.
 An explicit
 .BI "\-\-profile " NAME
 takes precedence over
@@ -216,16 +230,16 @@ when that field is absent, bootstrap uses
 .BR default-profile .
 .B \-\-dry-run
 prints the shared plan without invoking a provider.
+The
+.B \-\-scope
+option has the same values and meaning as for
+.BR "rig apply" .
 .TP
 .BI "rig run " PROVIDER " " ACTION " [\-\- " ARGUMENT... "]"
-Invoke one configuration-defined action through its named custom provider.
-An
-.B observe
-action uses the provider's observation verb; a
-.B mutate
-action uses its application verb. Configured arguments precede accepted
-caller arguments. Rig passes provider output through and preserves its native
-exit status.
+Invoke one built-in provider operation or one explicitly declared external
+provider action. External actions use their declared observation or mutation
+operation. Configured arguments precede accepted caller arguments. Rig passes
+provider output through and preserves its native exit status.
 .TP
 .BI "rig export " PUBLICATION " \-\-output " DIRECTORY
 Generate a deterministic, versioned
@@ -235,7 +249,7 @@ Export invokes no provider, publisher, or network command.
 .TP
 .BI "rig publish " PUBLICATION
 Render and validate one isolated public-data export beneath the effective Rig
-cache, then invoke the publication's selected trusted custom publisher exactly
+cache, then invoke the publication's selected trusted external publisher exactly
 once.
 The publisher and receiving website own presentation, credentials, destination,
 deployment, and rollback.
@@ -427,7 +441,13 @@ with
 .B profiles
 and
 .B tools
-string arrays. Provider tables and tool
+string arrays, plus optional
+.BR services ,
+.BR scheduled-jobs ,
+.BR settings ,
+and
+.B docks
+arrays. Tool
 .B install.*
 fields retain their native locator and argument data without executing it while
 configuration is loaded. Source-authored
@@ -471,39 +491,94 @@ Profiles select resources with
 and
 .B scheduled-jobs
 arrays. Resource requirements name tools.
+.PP
+.B [setting.ID]
+declares one typed macOS defaults value. It requires
+.BR name ,
+.BR purpose ,
+.BR rationale ,
+.BR provider ,
+.BR domain ,
+.BR key ,
+.BR value-type ,
+.BR value ,
+and a non-empty
+.B platforms
+array, and accepts
+.BR requires .
+The provider is the built-in
+.BR macos-defaults ;
+.B value-type
+is
+.BR bool ,
+.BR int ,
+.BR float ,
+or
+.BR string .
+.PP
+.B [dock.ID]
+declares one semantic macOS Dock order. It requires
+.BR name ,
+.BR purpose ,
+.BR rationale ,
+.BR provider ,
+and non-empty
+.B platforms
+and
+.B items
+arrays, and accepts
+.BR requires .
+The provider is the built-in
+.BR macos-dock .
+Each ordered item names one
+.B [dock-item.ID]
+table with
+.B kind
+and
+.BR path .
+Kind
+.B application
+names an application path. Kind
+.B folder
+may also declare its
+.B view
+and
+.B display
+semantics. Profiles select settings and Dock layouts through their respective
+arrays; Dock items are selected only by a Dock layout.
+.PP
+Provider identities built into Rig need no
 .B [provider.ID]
-requires
-.B adapter
-and accepts
-.BR command ,
-.BR executable ,
-.BR manifest ,
-and
-.B arguments
-and
-.B capabilities
-string arrays.
-For a
-.B custom
-provider, omitted
-.B executable
-resolves exactly beneath the effective Rig data directory as
-.IR providers/ID .
-An explicit value overrides that convention. Rig does not search the provider
-directory or execute adjacent files.
-The execution engine supports built-in
+table and their supported operations cannot be granted or removed by
+configuration. The built-in identities are
 .BR homebrew ,
 .BR uv ,
 .BR chezmoi ,
+.BR direct-download ,
+.BR launchd ,
+.BR macos-defaults ,
 and
-.B direct-download
-adapters plus the executable
-.B custom
-adapter. Every action requires the exact declared
-.B observe
-or
-.B apply
-capability.
+.BR macos-dock .
+Where documented, a built-in provider table may override only its native
+.BR executable ,
+.BR manifest ,
+or literal
+.B arguments
+configuration; it cannot declare an adapter or capabilities.
+.PP
+An identity not built into Rig is an external provider. Its
+.B [provider.ID]
+table requires a non-empty
+.B capabilities
+operation allow-list, and accepts an
+.B executable
+and literal
+.BR arguments .
+If
+.B executable
+is omitted, Rig resolves exactly
+.IR ${RIG_DATA_HOME}/providers/ID .
+Rig does not search for alternatives or execute adjacent files.
 .B [tool.ID]
 requires
 .B install.provider
@@ -529,9 +604,7 @@ requires
 and
 .BR publisher .
 Offline export does not invoke the publisher. Explicit publication requires
-that provider to use the
-.B custom
-adapter and declare the exact
+an explicitly declared external provider with the exact
 .B publish
 capability.
 .B [action.PROVIDER.NAME]
@@ -554,11 +627,11 @@ selected qualified resource before any caller arguments. The mode is exactly
 or
 .BR mutate .
 Only the executable
-.B custom
-adapter dispatches actions in schema 1. Argument policy defaults to Rig's exact
+external-provider boundary dispatches declared actions. Built-in operations do
+not need action declarations. Argument policy defaults to Rig's exact
 allowlist; value
 .B provider
-delegates validation to that custom provider.
+delegates validation to that external provider.
 .PP
 The
 .B base-url
@@ -573,7 +646,6 @@ A minimal catalogue is:
 [rig]
 schema = 1
 default-profile = "default"
-bootstrap-profile = "bootstrap"
 
 [category.navigation]
 name = "Navigation"
@@ -590,15 +662,7 @@ install.kind = "formula"
 install.locator = "mgit"
 install.platforms = ["macos"]
 
-[provider.homebrew]
-
-adapter = "homebrew"
-capabilities = ["observe", "apply"]
-
 [profile.default]
-tools = ["mgit"]
-
-[profile.bootstrap]
 tools = ["mgit"]
 .fi
 .TP
@@ -609,8 +673,9 @@ Optional configuration fragments.
 Default data directory.
 .TP
 .I ${XDG_DATA_HOME:-$HOME/.local/share}/rig/providers/ID
-Conventional executable for custom provider
-.IR ID .
+Conventional executable for an explicitly declared external provider whose
+table omits
+.BR executable .
 .TP
 .I ${XDG_STATE_HOME:-$HOME/.local/state}/rig
 Default state directory.
@@ -739,10 +804,12 @@ chezmoi status --path-style=absolute -- LOCATOR
 chezmoi apply -- LOCATOR
 .fi
 .PP
-Provider arguments precede the native command. Tool
+No declaration is needed to enable these built-in identities or their fixed
+operations. Optional configured provider arguments precede the native command.
+Tool
 .B install.arguments
 precede the locator. Each configured value remains one literal argument. An
-explicit
+allowed explicit
 .B executable
 replaces the adapter default.
 .PP
@@ -757,18 +824,59 @@ to write a sibling temporary file, verifies SHA-256, sets executable mode, and
 renames it over a regular destination. Rig refuses symlink and non-regular
 destinations, restricts redirects to HTTPS, rechecks destination safety before
 replacement, and removes failed temporary files.
-.SS CUSTOM PROVIDER PROTOCOL
+.SS BUILT-IN MACOS RESOURCES
 \&
 .PP
-The
-.B custom
-adapter requires one
+On macOS, the built-in
+.B launchd
+integration owns service and scheduled-job reconciliation without a provider
+or action declaration. It renders one LaunchAgent property list beneath
+.IR ~/Library/LaunchAgents ,
+compares both its content and launchctl load state, replaces safe regular files,
+loads or unloads the resolved user domain as declared, and removes stale
+managed property lists during retirement. Other platforms report these
+resources unavailable without mutation.
+.PP
+Launchd exposes fixed operations through
+.BR "rig run launchd" :
+.B status
+for a selected service or scheduled job,
+.B logs
+for either resource with optional
+.BR \-\-follow ,
+.B restart
+for either resource, and
+.B run
+for a selected scheduled job. Pass the qualified resource after the command's
+.B \-\-
+separator, for example:
+.PP
+.nf
+rig run launchd logs -- service:example-daemon
+rig run launchd run -- scheduled-job:good-morning
+.fi
+.PP
+The built-in
+.B macos-defaults
+integration observes and applies typed settings. The built-in
+.B macos-dock
+integration observes and applies a declared semantic Dock order. Native macOS
+application inventory is read-only. These integrations require neither
+provider tables nor external executables and remain unavailable without
+mutation on other platforms.
+.SS EXTENSION PROVIDER PROTOCOL
+\&
+.PP
+This protocol is an advanced extension-author interface, not part of ordinary
+Rig configuration. An external provider declaration resolves one exact
+executable, either from its
 .B executable
-and an exact
+field or the conventional Rig data path, and requires an exact
 .B capabilities
 array. Capability values are atomic and are not split on commas.
 .PP
-Rig invokes a custom provider using this versioned literal-argument protocol:
+Rig invokes an external provider using this versioned literal-argument
+protocol:
 .PP
 .nf
 EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 VERB PROVIDER TOOL KIND LOCATOR [INSTALL_ARGUMENT ...]
@@ -779,10 +887,14 @@ is exactly
 .B observe
 or
 .BR apply .
+Rig inserts
+.B rig-provider-v1
+itself; a user never supplies that marker in configuration or a Rig command.
+Built-in integrations use internal calls and never receive it.
 Rig preserves every configured value as one argument and performs no
 evaluation, shell expansion, or implicit word splitting.
 .PP
-Operational resources use separate exact capabilities
+External operational-resource providers use separate exact capabilities
 .BR resource-observe ,
 .BR resource-apply ,
 and
@@ -803,7 +915,7 @@ actions append
 .B "resource-v1 KIND ID LOCATOR [FIELD=VALUE ...] --"
 before remaining caller arguments.
 .PP
-For a declared provider action, Rig fixes
+For a declared external-provider action, Rig fixes
 .I KIND
 to
 .B action
@@ -834,7 +946,7 @@ EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 publish PROVIDER PUBLICATION
     directory ABS_EXPORT_DIR
 .fi
 .PP
-The publisher must declare the exact
+An external publisher must declare the exact
 .B publish
 capability. Rig passes publisher output through and preserves its native result.
 .PP
@@ -846,7 +958,7 @@ declaration:
 EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 inventory PROVIDER
 .fi
 .PP
-The provider must declare the exact
+An external provider must declare the exact
 .B inventory
 capability. Inventory stdout contains zero or more lines, each beginning with
 an identity comparable to a tool installation

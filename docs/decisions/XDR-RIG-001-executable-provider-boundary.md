@@ -12,33 +12,31 @@ decision_depends_on: [PDR-RIG-001, ADR-RIG-003]
 
 ## Context
 
-Rig must inspect declarative intent without silently executing it, yet providers and publishers necessarily invoke programs that can inspect, change, or disclose local state. A command string hidden in data would blur that transition and make argument boundaries, review, and failure behaviour unreliable. Even a nominally read-only custom observer is arbitrary code from Rig's perspective.
+Rig must inspect declarative intent without silently executing it. Built-in providers necessarily invoke native programs, while external providers and publishers may execute arbitrary code that can inspect, change, or disclose local state. A command string hidden in data would blur that transition and make argument boundaries, review, and failure behaviour unreliable.
 
-Publication adds a second risk: a useful catalogue contains rationale and relationships, while provider commands, manifest paths, host identity, private profiles, and observed machine state may disclose sensitive operational detail.
+Publication adds a separate disclosure risk because a useful private rig can contain rationale, machine policy, paths, and relationships that do not belong in a public projection.
 
 ## Decision
 
-Rig never sources or evaluates configuration. Built-in adapters are trusted code shipped with Rig. A custom provider or publisher is an explicit executable trust transition and must resolve one executable, either from its literal `executable` declaration or the exact `${RIG_DATA_HOME}/providers/PROVIDER-ID` convention. Rig performs no search or discovery and passes configured arguments literally without `eval`, shell command strings, or implicit shell expansion.
+Rig never sources or evaluates configuration. Built-in adapters are trusted code shipped and reviewed with Rig. Their provider identities, supported operations, executable defaults, platform gates, and argument construction are owned by the executable rather than granted through user capability declarations.
 
-`show`, `list`, and `explain` resolve declarations without invoking provider code. `status` and `doctor` may invoke only declared observation capabilities and remain non-mutating by contract, although a custom observer must still be trusted by its owner.
+An external provider or publisher is an explicit executable trust transition. Configuration must declare `adapter = "custom"` and allow each operation Rig may invoke. It may name an executable, or omit that field to select exactly `${RIG_DATA_HOME}/providers/PROVIDER-ID`. Rig performs no executable search or adjacent-file discovery and passes configured values literally without `eval`, shell command strings, or implicit expansion.
 
-Machine mutation occurs only through an explicit `apply` command or an explicitly selected `mutate` action invoked as `rig run PROVIDER ACTION`. `rig run` accepts only a declared provider action. Configured arguments and caller arguments accepted by Rig's exact allowlist—or explicitly delegated through `argument-policy = "provider"`—cross the provider boundary as literal values. Rig rejects undeclared actions, invalid policies, and non-allow-listed caller arguments before provider invocation. Network publication occurs only through an explicit `publish` command.
+Rig inserts the `rig-provider-v1` marker only when invoking an external extension. The marker is an implementation-language-neutral ABI version, not a user option, configuration value, or protocol used by built-in providers.
 
-Static export accepts only an explicitly selected public profile. It excludes provider configuration, command arguments, native manifest paths, host and account identifiers, private profiles, credentials, and observed machine state. Relationships whose other endpoint is not public are omitted.
+Catalogue queries and diagnostics invoke no provider code. Status and doctor may invoke only observation operations. Machine mutation occurs only through explicit apply or bootstrap commands, or an explicitly allowed extension mutation. Network publication occurs only through an explicit publish command.
 
-Direct-download application requires declared integrity evidence before installing content.
+Static export accepts only an explicitly selected public profile. It excludes providers, installation metadata, machine resources, commands, arguments, native manifests, host identity, credentials, other profiles, and observed machine state.
 
-Operational-resource queries expose deferred program, environment, schedule, and policy as inert data without crossing the executable boundary. Status and doctor may invoke only `resource-observe`; apply and bootstrap may invoke `resource-apply` and `resource-retire` only after complete preflight. Resource-aware actions resolve one selected qualified resource before its declaration crosses the same literal-argument boundary.
+Direct-download application requires declared integrity evidence before installing content. Deferred programs, schedules, settings, and layouts remain inert data until an explicit mutation command completes full-plan preflight.
 
 ## Consequences
 
-Read-only catalogue queries are safe against executable configuration. Provider, operation, and publisher invocation remains powerful and visibly trusted rather than disguised as parsing. Custom integrations can use any implementation language without becoming core dependencies because they are required only when selected.
+Read-only declaration inspection remains safe against executable configuration. Built-in mutation stays reviewable as part of Rig, while external integrations remain powerful but visibly trusted and narrowly allowed.
 
-Host-specific audits and service controls can be described in private Rig configuration without being hard-coded into the public CLI. Observation and mutation remain distinct, reviewable transitions.
-
-The public projection is deliberately narrower than the local catalogue. The user must review both public-profile membership and the generated artifact before deployment; Rig cannot infer whether free-form public rationale is socially safe to disclose.
+The public projection is deliberately narrower than the private declaration. The user must review both public-profile membership and the generated artifact before deployment.
 
 ## References
 
-- [PDR-RIG-001](PDR-RIG-001-catalogue-led-working-setup.md) — makes publication a derived catalogue view.
+- [PDR-RIG-001](PDR-RIG-001-catalogue-led-working-setup.md) — defines the declarative product boundary.
 - [ADR-RIG-003](ADR-RIG-003-declarative-configuration-grammar.md) — establishes inert configuration.

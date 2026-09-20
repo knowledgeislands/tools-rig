@@ -12,7 +12,7 @@ decision_depends_on: [PDR-RIG-001]
 
 ## Context
 
-Rig participates in bootstrapping machines where language runtimes and package managers may not exist yet. The current dispatcher is Bash, while one subordinate machine-audit implementation requires Bun. Requiring a compiled or interpreted language host would add an installation prerequisite at the point where Rig is intended to establish prerequisites.
+Rig participates in bootstrapping machines where language runtimes and package managers may not exist yet. It must be able to identify and report missing managers, inspect declarations, and reconcile work whose managers are available without first requiring a compiled or interpreted language host.
 
 ## Decision
 

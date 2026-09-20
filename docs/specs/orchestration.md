@@ -26,13 +26,13 @@ _Evidence:_ `rig_resolve_profile` accepts an explicit profile independently of t
 
 ### RIG-ORCH-018 — Bootstrap profile precedence
 
-Rig MUST allow one optional bootstrap profile distinct from the default profile. `rig bootstrap --profile NAME` MUST select the explicit profile; otherwise bootstrap MUST select `bootstrap-profile` when declared and fall back to `default-profile` when absent. The selected profile MUST use the same resolver and provider plan as apply.
+Rig MUST implement bootstrap as a native staged lifecycle over one resolved profile rather than as a provider or synthetic setup tools. `rig bootstrap --profile NAME` MUST select the explicit profile; otherwise bootstrap MUST select `bootstrap-profile` when declared and fall back to `default-profile` when absent. Bootstrap MUST identify and verify every required manager before preflighting and reconciling the complete tool and managed-resource plan.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats selects distinct default and bootstrap profiles, proves explicit precedence and default fallback, and compares bootstrap with apply plan output and provider order.
+_Verify:_ Bats selects distinct default and bootstrap profiles, proves explicit precedence and default fallback, records manager availability checks before dependent work, and proves no bootstrap provider or setup-tool declaration is required.
 
-_Evidence:_ `rig_command_bootstrap` resolves the root-field precedence before delegating to `rig_command_apply`; configuration validation and focused Bats cases cover all three selection paths.
+_Evidence:_ `rig_command_bootstrap`, `rig_preflight_apply`, and `rig_bootstrap_preflight_homebrew_manifest` implement native profile selection and complete preflight; `bootstrap selects its declared profile with explicit and default fallbacks` and `bootstrap preflights later providers before manifest mutation` cover precedence, availability, ordering, and failure boundaries.
 
 ### RIG-ORCH-007 — Profile composition
 
@@ -64,17 +64,17 @@ _Conformance:_ conforming
 
 _Verify:_ Bats tests substitute recording providers and assert Rig forwards native kind, locator, and literal arguments without interpreting provider state.
 
-_Evidence:_ The custom-provider boundary delegates observation and application while retaining no persistent observed state.
+_Evidence:_ Provider observation and application delegate native state while retaining no persistent observed installation database.
 
 ### RIG-ORCH-004 — Capability-aware actions
 
-Rig MUST report a missing observation capability as unavailable without invocation and MUST reject a missing application capability during full-plan preflight before mutation.
+Rig MUST derive a built-in provider's supported operations from its internal registry. For an external provider, Rig MUST report a missing allowed observation as unavailable without invocation and MUST reject a missing allowed mutation during full-plan preflight before mutation. Configuration MUST NOT grant or remove built-in operations.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests remove exact `observe` and `apply` capabilities and assert status 1 or preflight status 2 respectively with no provider invocation.
+_Verify:_ Bats tests built-ins with no capability declarations and removes exact external `observe` and `apply` allowances to assert status 1 or preflight status 2 respectively with no extension invocation.
 
-_Evidence:_ `rig_provider_has_capability`, `rig_command_status`, and `rig_preflight_apply` enforce exact atomic capability values.
+_Evidence:_ `rig_provider_has_capability` derives built-in operations from the registry and reads external allow-lists only after model validation; `tests/rig-model-boundaries.bats` proves configuration cannot grant or remove built-in operations.
 
 ### RIG-ORCH-005 — Dependency order
 
@@ -88,13 +88,13 @@ _Evidence:_ `rig_build_plan` emits a stable dependency-first work plan consumed 
 
 ### RIG-ORCH-006 — Initial provider classes
 
-Rig MUST support Homebrew, uv, chezmoi, direct-download, and custom executable providers without requiring an unselected provider's executable. A selected custom provider without `executable` MUST resolve exactly `${RIG_DATA_HOME}/providers/PROVIDER-ID`, respecting Rig then XDG data-home precedence; an explicit executable MUST win.
+Rig MUST provide built-in Homebrew, uv, chezmoi, direct-download, launchd, macOS application inventory, macOS defaults, and semantic Dock integrations without provider declarations. It MUST support providers explicitly declared with `adapter = "custom"` without requiring an unselected extension's executable. A selected custom provider that omits `executable` MUST resolve exactly `${RIG_DATA_HOME}/providers/PROVIDER-ID`; an explicit executable MUST take precedence.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests exercise each provider through fakes, cover explicit and conventional custom executables under Rig and XDG data homes, and run an unrelated profile while native executables are absent.
+_Verify:_ Bats tests exercise every built-in through fakes without provider tables, exercise explicit and exact conventional extension executables, and run unrelated profiles while unselected native and extension executables are absent.
 
-_Evidence:_ `rig_provider_executable` and `rig_custom_provider_executable` resolve defaults only for selected actions; Bats records built-in and custom adapter calls and proves a declared unselected missing executable is not invoked.
+_Evidence:_ `rig_builtin_provider_adapter`, `rig_provider_executable`, `rig_custom_provider_executable`, `rig_launchd_observe_resource`, and `rig_macos_application_inventory` implement the provider classes; `canonical built-in providers are implicit and infer their capabilities`, `custom provider default executable covers every trust-boundary invocation`, and the launchd and typed macOS Bats tests cover each class.
 
 ### RIG-ORCH-017 — Built-in native command matrix
 
@@ -107,13 +107,13 @@ Built-in adapters MUST preserve each provider argument and tool `install.argumen
 - chezmoi `target`: `chezmoi status --path-style=absolute -- LOCATOR` to observe and `chezmoi apply -- LOCATOR` to apply.
 - direct-download `executable`: local destination and checksum inspection to observe; `curl --fail --location --proto =https --proto-redir =https --silent --show-error --output TEMP HTTPS_LOCATOR`, SHA-256 verification, executable mode, and sibling rename to apply.
 
-For a Homebrew formula or cask, `OBSERVED_IDENTITY` MUST be the terminal token of a possibly tap-qualified locator and `LOCATOR` MUST remain the complete authored value. An explicit provider `executable` MUST replace the matrix default. A built-in provider MUST expose no action without the exact corresponding declared `observe` or `apply` capability.
+For a Homebrew formula or cask, `OBSERVED_IDENTITY` MUST be the terminal token of a possibly tap-qualified locator and `LOCATOR` MUST remain the complete authored value. An explicit documented provider `executable` override MUST replace the matrix default. Built-in observation and application MUST be available from Rig's provider registry without a capability declaration.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats fake executables record exact native argument boundaries for every built-in kind, including provider and installation arguments containing spaces.
 
-_Evidence:_ `rig_prepare_builtin_invocation`, `rig_observe_provider`, and `rig_apply_provider` implement the matrix; focused Bats coverage compares exact call logs.
+_Evidence:_ `rig_prepare_builtin_invocation`, `rig_observe_provider`, `rig_apply_provider`, and `rig_apply_direct_download` implement the native matrix; `built-in adapters observe dry-run and apply with exact native commands`, Homebrew identity, uv extras, and direct-download Bats tests compare exact invocation boundaries.
 
 ### RIG-ORCH-009 — Platform installation selection
 
@@ -125,13 +125,13 @@ _Verify:_ Bats tests resolve compatible and `any` tool installations, then asser
 
 _Evidence:_ `tests/rig.bats` covers exact, `any`, incompatible, and catalogue-only installation declarations without invoking providers unexpectedly.
 
-### RIG-ORCH-010 — Literal executable arguments
+### RIG-ORCH-010 — Literal extension arguments
 
-Rig MUST invoke a custom provider as one resolved executable with each configured provider and tool installation argument preserved as a literal argument boundary. Resolution MUST use only the explicit field or exact conventional data-home path and MUST NOT search, copy, generate, or recursively discover executables.
+Rig MUST invoke an external provider as one resolved executable with each configured provider and tool installation argument preserved as a literal argument boundary. Resolution MUST use only the explicit executable or exact `${RIG_DATA_HOME}/providers/PROVIDER-ID` conventional path and MUST NOT search, copy, generate, or recursively discover executables.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests record custom-provider arguments containing spaces and shell metacharacters, exercise every invocation surface through the conventional provider directory, and assert no shell interpretation or directory discovery occurs.
+_Verify:_ Bats tests record extension arguments containing spaces and shell metacharacters across every invocation surface, exercise explicit and exact conventional executable resolution, and assert no shell interpretation or directory discovery occurs.
 
 _Evidence:_ `rig_custom_provider_executable` resolves one explicit or conventional path and `rig_prepare_provider_invocation` constructs a Bash indexed argument array; Bats verifies paths, spaces, globs, and command syntax remain inert.
 
@@ -145,19 +145,19 @@ _Verify:_ Bats fails a prerequisite and asserts its dependant is skipped with `b
 
 _Evidence:_ `rig_plan_blocker` and apply result arrays retain native failure detail and bound suppression to the failed branch.
 
-### RIG-ORCH-014 — Versioned custom-provider protocol
+### RIG-ORCH-014 — Versioned extension-provider protocol
 
-For tool observation and application, Rig MUST invoke a custom provider as `EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 VERB PROVIDER TOOL KIND LOCATOR [INSTALL_ARGUMENT ...]`, with `VERB` exactly `observe` or `apply`. Publication uses the separate fixed `publish` variant specified by RIG-PUB-007.
+For external tool observation and application, Rig MUST invoke the explicitly declared provider as `EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 VERB PROVIDER TOOL KIND LOCATOR [INSTALL_ARGUMENT ...]`, with `VERB` exactly `observe` or `apply`. Rig MUST insert `rig-provider-v1`; it MUST NOT accept that marker from user configuration or pass it to a built-in provider. Publication uses the separate fixed `publish` variant specified by RIG-PUB-007.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats records every argument for observation and application and compares the version marker, verb, identities, installation data, and argument order.
 
-_Evidence:_ `rig_prepare_custom_invocation` and `rig_prepare_provider_invocation` implement the ADR-RIG-005 installation protocol, while recording-provider tests compare its argument boundaries.
+_Evidence:_ `rig_prepare_custom_invocation` and `rig_prepare_provider_invocation` implement the extension installation protocol, while recording-provider tests compare its argument boundaries.
 
-### RIG-ORCH-015 — Observation response boundary
+### RIG-ORCH-015 — Extension observation response boundary
 
-Rig MUST accept custom-provider observation stdout only as one supported state token, mapping invalid output to `unknown` with `invalid-response` and a non-zero exit to `unknown` with `exit:N`.
+Rig MUST accept external-provider observation stdout only as one supported state token, mapping invalid output to `unknown` with `invalid-response` and a non-zero exit to `unknown` with `exit:N`.
 
 _Conformance:_ conforming
 
@@ -165,9 +165,9 @@ _Verify:_ Bats exercises every state token, invalid, empty, multiline, and non-z
 
 _Evidence:_ `rig_command_status` parses the isolated protocol channel and retains provider-native failure status as detail.
 
-### RIG-ORCH-016 — Application diagnostic boundary
+### RIG-ORCH-016 — Extension application diagnostic boundary
 
-Rig MUST reserve stdout for its deterministic application report and route custom-provider application stdout and stderr to Rig's stderr.
+Rig MUST reserve stdout for its deterministic application report and route external-provider application stdout and stderr to Rig's stderr.
 
 _Conformance:_ conforming
 
@@ -189,17 +189,17 @@ _Evidence:_ `rig_progress_start`, `rig_progress_step`, and `rig_progress_finish`
 
 ### RIG-ORCH-012 — Explicit action dispatch
 
-`rig run PROVIDER ACTION` MUST resolve one declared provider action, verify that it supports the active platform, map `observe` mode to the provider `observe` verb and `mutate` mode to `apply`, and invoke the action with configured arguments. It MUST preserve the provider's native outcome and MUST reject invalid input before provider invocation.
+`rig run PROVIDER ACTION` MUST resolve either one built-in operation registered by Rig or one action explicitly declared for an external provider, verify that it supports the active platform, and invoke it with literal arguments. It MUST preserve the provider's native outcome and MUST reject invalid input before invocation. Built-in operations MUST NOT require action declarations.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats tests use recording providers to assert exact operation selection, platform and capability validation, invocation boundaries, exit status, and no invocation after validation failure.
 
-_Evidence:_ `rig_command_run` maps declared modes to the versioned custom-provider ABI, preflights the selected operation and executable, passes provider output through, and preserves its native exit status; `tests/rig.bats` records exact invocations.
+_Evidence:_ `rig_command_run_launchd_action` dispatches registered built-in launchd operations while `rig_command_run_action` and `rig_prepare_operation_invocation` dispatch declared external actions; `built-in launchd observes applies and retires declared resources` and `run dispatches declared observe and mutate operations with literal arguments` cover selection, validation, literal arguments, and native outcomes.
 
 ### RIG-ORCH-013 — Bounded caller arguments
 
-`rig run PROVIDER ACTION [-- ARGUMENT...]` MUST accept a caller argument only when it exactly matches one `allowed-arguments` array item, unless the action explicitly declares `argument-policy = "provider"`. Under provider policy Rig MUST pass literal caller arguments to that one declared custom provider, which owns domain validation. Rig MUST append accepted caller arguments literally without shell interpretation. An action with neither policy nor `allowed-arguments` MUST reject all caller arguments.
+`rig run PROVIDER ACTION [-- ARGUMENT...]` MUST accept a caller argument only when it exactly matches one `allowed-arguments` array item, unless the external action explicitly declares `argument-policy = "provider"`. Under provider policy Rig MUST pass literal caller arguments to that one declared external provider, which owns domain validation. Rig MUST append accepted caller arguments literally without shell interpretation. An external action with neither policy nor `allowed-arguments` MUST reject all caller arguments.
 
 _Conformance:_ conforming
 
@@ -211,30 +211,40 @@ _Evidence:_ `rig_operation_allows_argument` performs literal equality checks bef
 
 ### RIG-ORCH-020 — Resource profile resolution
 
-Composed profiles MUST select services and scheduled jobs in addition to tools. Every resource `requires` entry MUST select that tool and its transitive requirements for the active platform. Resource work MUST be ordered bytewise after the dependency-ordered tool plan; an unavailable or failed required tool MUST suppress only its dependent resource.
+Composed profiles MUST select services, scheduled jobs, settings, and Dock layouts in addition to tools. Every managed resource `requires` entry MUST select that tool and its transitive requirements for the active platform. Resource work MUST be ordered deterministically after the dependency-ordered tool plan; an unavailable or failed required tool MUST suppress only its dependent resource.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats tests select resources directly and through composed profiles, assert required tools enter the plan, compare stable resource ordering, and exercise dependent and independent failures.
 
-_Evidence:_ resource selection shares profile traversal and tool selection, then builds a separate sorted resource plan consumed after tool execution.
+_Evidence:_ `rig_select_profile`, `rig_select_resource`, `rig_sort_selected_resources`, and `rig_resource_blocker` resolve and order resources after tools; `operational resources resolve through profiles and remain inert in queries`, `apply and bootstrap scopes stage tools and resources independently`, and resource failure tests cover selection and suppression.
 
-### RIG-ORCH-021 — Resource provider protocol
+### RIG-ORCH-021 — Extension resource protocol
 
-For resource observation, application, and retirement, Rig MUST invoke `EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 VERB PROVIDER RESOURCE-ID RESOURCE-KIND LOCATOR [FIELD=VALUE ...]`. `VERB` MUST be `observe-resource`, `apply-resource`, or `retire-resource`; `RESOURCE-KIND` MUST be `service` or `scheduled-job`. Selected declarations MUST use ordered literal field records, repeating array keys in declaration order and supplying documented policy defaults. Providers MUST declare the exact corresponding `resource-observe`, `resource-apply`, or `resource-retire` capability. Observation accepts only the standard five state tokens.
+For external resource observation, application, and retirement, Rig MUST invoke `EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 VERB PROVIDER RESOURCE-ID RESOURCE-KIND LOCATOR [FIELD=VALUE ...]`. `VERB` MUST be `observe-resource`, `apply-resource`, or `retire-resource`. Selected declarations MUST use ordered literal field records, repeating array keys in declaration order and supplying documented policy defaults. External providers MUST allow the exact corresponding operation. Observation accepts only the standard five state tokens. Built-in providers MUST receive equivalent resolved data through internal calls without `rig-provider-v1`.
 
 _Conformance:_ conforming
 
 _Verify:_ Recording-provider Bats tests assert exact verbs, identities, repeated key order, metacharacter and leading-dash boundaries, default fields, capability rejection, observation tokens, and native failure detail.
 
-_Evidence:_ resource invocation and observation helpers extend `rig-provider-v1` without shell evaluation or provider-side configuration discovery.
+_Evidence:_ `rig_append_resource_fields`, `rig_prepare_resource_invocation`, `rig_observe_resource`, `rig_apply_resource`, and `rig_retire_resource` implement the external protocol; `resource status and dry-run use literal provider records without mutation` and `resource apply records managed identities and retires deselected entries` compare its literal records and outcomes.
 
 ### RIG-ORCH-022 — Resource-aware actions
 
-An action declaring `resource-kinds` MUST use provider argument policy and MUST consume its first caller argument as `service:ID` or `scheduled-job:ID`. Rig MUST reject an unknown kind, identity, foreign-provider resource, or resource not selected by the default profile. The provider invocation MUST append `resource-v1 KIND ID LOCATOR [FIELD=VALUE ...] --` before remaining literal caller arguments. Actions without `resource-kinds` MUST preserve the existing action ABI.
+An external action declaring `resource-kinds` MUST use provider argument policy and MUST consume its first caller argument as a qualified selected managed resource. Rig MUST reject an unknown kind, identity, foreign-provider resource, or resource not selected by the default profile. The extension invocation MUST append `resource-v1 KIND ID LOCATOR [FIELD=VALUE ...] --` before remaining literal caller arguments. Built-in resource operations MUST resolve the same qualified identity without requiring an action table or extension payload.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats tests cover both kinds, selected and rejected targets, provider ownership, complete literal declaration payloads, caller arguments after the separator, and unchanged ordinary actions.
 
-_Evidence:_ `rig_command_run_action` resolves and validates the qualified resource before extending the existing action invocation.
+_Evidence:_ `rig_action_allows_resource_kind` and `rig_command_run_action` validate a qualified selected resource and append its `resource-v1` payload; `resource-aware actions receive selected declaration before caller arguments` and `run dispatches declared observe and mutate operations with literal arguments` cover both dispatch forms.
+
+### RIG-ORCH-023 — Built-in macOS resource adapters
+
+On macOS, Rig MUST observe, apply, and retire launchd services and scheduled jobs through its built-in launchd adapter; MUST observe and apply typed macOS defaults through its built-in settings adapter; MUST observe and apply semantic Dock order through its built-in Dock adapter; and MUST inventory native application bundles through its built-in read-only application source. These integrations MUST require no provider or action declarations and MUST remain unavailable without mutation on other platforms.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats fakes native macOS commands and filesystem surfaces to compare exact observation, dry-run, apply, retirement, inventory, platform-gating, and literal argument behaviour without any external-provider executable or provider table.
+
+_Evidence:_ `rig_launchd_observe_resource`, `rig_launchd_apply_resource`, `rig_launchd_retire_resource`, `rig_setting_observe`, `rig_setting_apply`, `rig_dock_observe`, `rig_dock_apply`, and `rig_macos_application_inventory` implement the four built-in surfaces; the built-in launchd test and all four `tests/rig-macos.bats` tests cover reconciliation and inventory without extension dispatch.

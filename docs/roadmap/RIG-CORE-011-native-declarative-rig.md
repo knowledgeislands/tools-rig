@@ -4,12 +4,12 @@ area: CORE
 title: Native declarative Rig
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 998b7fc766e66d3ad542d2b367e718d1c3819c58
 created_at: 2026-09-20T17:28:14Z
-updated_at: 2026-09-20T17:28:14Z
+updated_at: 2026-09-20T18:46:29Z
 ---
 
 # RIG-CORE-011: Native declarative Rig
@@ -34,14 +34,14 @@ Rig has built-in Homebrew, uv, chezmoi, and direct-download tool adapters, but t
 
 ## Steps
 
-- [ ] Amend the living product, architecture, security decisions and specifications around declarative nouns, implicit built-ins, native bootstrap, typed machine resources, and the extension-only ABI.
-- [ ] Add a canonical built-in manager registry so ordinary tool and resource declarations need no provider table or capability boilerplate while genuine extensions retain explicit executable authority.
-- [ ] Add scoped reconciliation and make bootstrap a native staged lifecycle over honest declarations rather than synthetic setup tools.
-- [ ] Promote launchd into Rig as a Bash 3.2 built-in with observation, application, retirement, and ordinary resource actions, excluding private label-specific behaviour.
-- [ ] Replace the workstation provider with profile-selected macOS settings, Dock layout, and application inventory that participate in status, doctor, dry-run, and apply.
-- [ ] Migrate the private Rig TOML and chezmoi sources to the declarative model, retaining narrowly private operations only where no typed model exists and removing obsolete providers only after parity tests.
-- [ ] Align README, user and developer guides, manual, help, completions, changelog, definition of done, and release checklist with the resulting interface.
-- [ ] Run public and private verification, review `chezmoi diff`, and leave the live system unapplied unless separately approved.
+- [x] Amend the living product, architecture, security decisions and specifications around declarative nouns, implicit built-ins, native bootstrap, typed machine resources, and the extension-only ABI.
+- [x] Add a canonical built-in manager registry so ordinary tool and resource declarations need no provider table or capability boilerplate while genuine extensions retain explicit executable authority.
+- [x] Add scoped reconciliation and make bootstrap a native staged lifecycle over honest declarations rather than synthetic setup tools.
+- [x] Promote launchd into Rig as a Bash 3.2 built-in with observation, application, retirement, and ordinary resource actions, excluding private label-specific behaviour.
+- [x] Replace the workstation provider with profile-selected macOS settings, Dock layout, and application inventory that participate in status, doctor, dry-run, and apply.
+- [x] Migrate the private Rig TOML and chezmoi sources to the declarative model, retaining narrowly private operations only where no typed model exists and removing obsolete providers only after parity tests.
+- [x] Align README, user and developer guides, manual, help, completions, changelog, definition of done, and release checklist with the resulting interface.
+- [x] Run public and private verification, review `chezmoi diff`, and leave the live system unapplied unless separately approved.
 
 ## Files touched
 
@@ -76,6 +76,32 @@ Rewrite the normal user journey around declarative tools, profiles, services, jo
 ### Roadmap
 
 This record owns the complete correction and private migration. Capture only independently valuable follow-on adapters or typed resource families that are not required for the current live parity boundary.
+
+## Review
+
+### Delivered
+
+Delivered the native declarative Rig model from immutable baseline `998b7fc766e66d3ad542d2b367e718d1c3819c58`. Ordinary configuration now declares tools and typed resources while Rig owns built-in orchestration; the executable protocol remains available only for explicit extensions and publishers.
+
+### Summary of changes
+
+Canonical Homebrew, uv, chezmoi, direct-download, launchd, macOS defaults, Dock, and application-inventory adapters are implicit. Bootstrap is a scoped native lifecycle, launchd resources reconcile and retire through atomic receipts, settings and Dock layouts participate in queries and state, and artifact health refines installed-tool observations. Help, completions, manual, changelog, decisions, specifications, and user and developer guides describe the same interface.
+
+### Verification
+
+The repository audit passed all 15 selected skills. ShellCheck passed for `bin/rig` and `install.sh`; all 168 Bats cases passed; `mandoc -T lint man/rig.1` and `git diff --check` passed. The private candidate validates as schema 1 and resolves its bootstrap profile to 89 tools, two services, three scheduled jobs, 35 settings, and one Dock layout.
+
+### Outstanding concerns
+
+The chezmoi source migration is prepared but deliberately not applied to the live home directory. Private maintenance, completion regeneration, permission repair, and SSH-loading operations remain explicit scripts because this item does not invent an unbounded task runner. Package-cache cleanup remains separate roadmap work.
+
+### Post-change review
+
+The implementation now matches the corrected schema-1 contract and keeps provider-native manifests and state authoritative. Full-plan preflight, dry-run non-mutation, dependency suppression, resource retirement, extension trust boundaries, and Bash 3.2 portability are covered by focused tests. The item is ready for acceptance after review of the public diff and coupled chezmoi source diff.
+
+### Mini recap
+
+Rig configuration now says what belongs in a working setup and what state is desired; Rig handles ordinary execution mechanics. The main follow-up learning route is to decide whether any retained private operations deserve future bounded resource types.
 
 ## Discussion
 

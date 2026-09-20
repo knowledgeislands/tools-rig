@@ -36,13 +36,13 @@ _Evidence:_ `rig_command_status` invokes the selected provider for each comparis
 
 ### RIG-STATE-004 — Read-only status
 
-`rig status` MUST invoke only an exact declared `observe` capability and MUST NOT invoke an `apply` capability.
+`rig status` MUST invoke only built-in observation operations or exact external operations explicitly allowed for observation and MUST NOT invoke mutation.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats recording logs assert status calls only `observe`; unsupported adapters, capabilities, and executables produce unavailable rows without invocation.
+_Verify:_ Bats recording logs assert status calls only built-in or explicitly allowed external observation; unavailable native commands, missing extension operations, and missing extension executables produce unavailable rows without mutation.
 
-_Evidence:_ `rig_command_status` checks adapter, capability, and executable availability before constructing an observation invocation.
+_Evidence:_ `rig_command_status`, `rig_observe_plan`, and `rig_observe_resource_plan` dispatch observation only; `status reports native observation failure without exposing provider exit as command status` and `resource status and dry-run use literal provider records without mutation` prove mutation logs and receipts remain untouched.
 
 ### RIG-STATE-008 — Catalogue-only neutrality
 
@@ -78,13 +78,13 @@ _Evidence:_ `rig_command_doctor` consumes the operational plan and provider obse
 
 ### RIG-STATE-014 — Read-only doctor
 
-`rig doctor` MUST invoke only exact declared `observe` capabilities for providers selected by the resolved profile and MUST NOT invoke apply, repair, publication, or unselected-provider capabilities.
+`rig doctor` MUST invoke only built-in observation operations or exact external operations explicitly allowed for providers selected by the resolved profile and MUST NOT invoke apply, repair, publication, or unselected-provider operations.
 
 _Conformance:_ conforming
 
 _Verify:_ Recording-provider Bats tests assert only selected `observe` calls and no invocation when a provider executable is unavailable.
 
-_Evidence:_ `rig_observe_plan` supplies status and doctor through the same capability, adapter, and observation gates; recording logs contain only `observe` calls.
+_Evidence:_ `rig_command_doctor` consumes `rig_observe_plan` and `rig_observe_resource_plan` without application dispatch; `doctor gives compact healthy synthesis using observation capabilities only` and `doctor reports unavailable providers without invoking mutation` cover selected observation and unavailable executables.
 
 ### RIG-STATE-015 — Doctor output and outcomes
 
@@ -100,13 +100,13 @@ _Evidence:_ Doctor Bats cases assert exact summaries, actionable findings, and f
 
 ### RIG-STATE-005 — Explicit apply
 
-`rig apply [--profile NAME]` MUST invoke the exact `apply` capability only for bound tools selected by the resolved profile.
+`rig apply [--profile NAME]` MUST invoke only built-in mutation operations or exact external operations explicitly allowed for bound tools selected by the resolved profile.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats configures selected and unselected recording providers and asserts only selected work receives an apply invocation.
 
-_Evidence:_ `rig_command_apply` executes only work produced from the resolved profile and selected installations.
+_Evidence:_ `rig_command_apply` traverses only `rig_build_plan` and the selected resource plan; `operational commands honour explicit profiles and ignore unselected providers` and `apply and bootstrap scopes stage tools and resources independently` cover the selection boundary.
 
 ### RIG-STATE-006 — Dry-run plan
 
@@ -130,23 +130,23 @@ _Evidence:_ `rig_plan_blocker` identifies failed prerequisite work and `tests/ri
 
 ### RIG-STATE-010 — Full-plan preflight
 
-`rig apply` MUST validate every selected bound work unit's adapter, exact `apply` capability, and executable resolution before invoking any provider.
+`rig apply` MUST validate every selected work unit against the built-in provider registry or the external provider's exact allowed operation and executable before invoking any provider.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats places a failure late in the selected plan and asserts every provider mutation log remains absent.
+_Verify:_ Bats places a built-in registry, external operation, executable, or managed-resource validation failure late in the selected plan and asserts every mutation log remains absent.
 
-_Evidence:_ `rig_preflight_apply` traverses the complete plan before `rig_command_apply` begins its execution loop.
+_Evidence:_ `rig_preflight_apply`, `rig_preflight_provider`, `rig_preflight_resource`, and `rig_preflight_resource_receipt` validate the complete plan before dispatch; `apply preflights every selected provider before mutation` and `resource apply preflights every provider before any mutation` prove late failures prevent every mutation.
 
 ### RIG-STATE-016 — Bootstrap materialisation
 
-`rig bootstrap [--profile NAME] [--dry-run]` MUST enter the same resolved provider plan, dependency ordering, full preflight, dispatch, reporting, failure suppression, and outcome statuses as `rig apply`. An explicit profile MUST take precedence; otherwise Rig MUST select `[rig] bootstrap-profile` when declared and fall back to `default-profile` when it is absent. Dry-run MUST invoke no provider.
+`rig bootstrap [--profile NAME] [--dry-run]` MUST run Rig's native bootstrap lifecycle without requiring a bootstrap provider or synthetic setup tools. An explicit profile MUST take precedence; otherwise Rig MUST select `[rig] bootstrap-profile` when declared and fall back to `default-profile` when it is absent. Rig MUST identify and verify required managers, fully preflight the resulting tool and managed-resource plan, and then use the same dependency ordering, reporting, failure suppression, and outcome vocabulary as apply. Dry-run MUST describe every stage without invoking a provider or changing the machine.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats compares bootstrap with apply for identical selected-profile plans, provider calls, dependency order, dry-run non-mutation, preflight rejection, and failed-prerequisite suppression.
+_Verify:_ Bats exercises explicit, configured, and fallback profile selection; missing and present manager availability; complete dry-run; failure isolation; and equivalent reconciliation outcomes without bootstrap provider configuration.
 
-_Evidence:_ `rig_command_bootstrap` resolves only the bootstrap profile precedence and delegates materialisation to `rig_command_apply`; focused Bats cases compare both entry points and exercise fallback and failure boundaries.
+_Evidence:_ `rig_command_bootstrap`, `rig_bootstrap_preflight_homebrew_manifest`, and `rig_command_apply` implement the staged native lifecycle; `bootstrap selects its declared profile with explicit and default fallbacks`, `bootstrap and apply execute the same dependency-ordered provider plan`, and the six `tests/rig-bootstrap-manifest.bats` tests cover selection, preflight, dry-run, reconciliation, and failure outcomes.
 
 ### RIG-STATE-017 — Bounded comparison identities
 
@@ -180,23 +180,23 @@ _Evidence:_ Operational command tests assert aggregate status independently from
 
 ### RIG-STATE-018 — Operational resource state
 
-`rig status` and `rig doctor` MUST observe every selected resource through its exact `resource-observe` capability and MUST NOT mutate it. Status MUST append deterministic resource identity, kind, provider, state, and detail rows. A non-present selected resource or stale receipt row MUST be unhealthy; stale rows MUST report retirement pending. Doctor MUST turn the same findings into actionable provider-owned diagnostics.
+`rig status` and `rig doctor` MUST observe every selected service and scheduled job through the built-in provider registry or an exact external observation operation and MUST NOT mutate it. Status MUST append deterministic resource identity, kind, provider, state, and detail rows. A non-present selected resource or stale receipt row MUST be unhealthy; stale rows MUST report retirement pending. Doctor MUST turn the same findings into actionable provider-owned diagnostics.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats tests all resource state tokens, protocol failures, stale receipts, healthy and finding outcomes, and provider logs containing only observation verbs.
 
-_Evidence:_ resource observation uses the standard state vocabulary and separate result arrays consumed by status and doctor.
+_Evidence:_ `rig_observe_resource_plan`, `rig_print_resource_status`, and the resource branch of `rig_command_doctor` compare selected and stale resources; `resource status and dry-run use literal provider records without mutation` and `resource apply records managed identities and retires deselected entries` cover observation-only dispatch and retirement-pending state.
 
 ### RIG-STATE-019 — Resource application and retirement
 
-`rig apply` and `rig bootstrap` MUST preflight every selected tool, selected resource, stale receipt provider, executable, exact capability, and receipt target before the first mutation. They MUST apply dependency-ordered tools, then selected resources in bytewise order, then stale resource retirements. A failed tool MUST suppress dependent resources while independent resources continue. Retirement MUST not begin after any selected application failure. Dry-run MUST invoke no provider, write no state, and print every resource locator, desired field record, and pending retirement.
+`rig apply` and `rig bootstrap` MUST preflight every selected tool, setting, Dock layout, service, scheduled job, stale receipt provider, built-in or extension operation, executable, and receipt target before the first mutation. They MUST apply dependency-ordered tools before dependent managed resources, then perform stale resource retirements. A failed tool MUST suppress dependent resources while independent resources continue. Retirement MUST not begin after any selected application failure. Dry-run MUST invoke no provider, write no state, and print every desired managed-resource record and pending retirement.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats tests complete-plan rejection without a mutation log, literal complete dry-run, dependency suppression, independent continuation, native failures, resource ordering, and apply/bootstrap parity.
 
-_Evidence:_ resource preflight extends the complete tool preflight; application maintains separate outcomes and gates retirement on aggregate success.
+_Evidence:_ `rig_preflight_apply`, `rig_resource_blocker`, `rig_command_apply`, and `rig_command_bootstrap` implement ordered application and deferred retirement; `resource apply preflights every provider before any mutation`, `resource apply failure preserves the previous atomic receipt`, and apply/bootstrap scope and parity tests cover those boundaries.
 
 ### RIG-STATE-020 — Reconciliation receipt
 
@@ -207,3 +207,13 @@ _Conformance:_ conforming
 _Verify:_ Bats tests XDG and Rig state overrides, first write, exact content, deselection, deletion, rename transfer, malformed records, unsafe targets, native failure preservation, atomic replacement, and empty successful receipts.
 
 _Evidence:_ receipt helpers read a bounded four-field format, compare locators, preflight the filesystem boundary, write a mode-restricted sibling temporary file, and rename only after success.
+
+### RIG-STATE-021 — Typed machine-resource state
+
+`rig status` and `rig doctor` MUST compare every selected setting and Dock layout with live built-in provider observations and MUST report non-present state as a finding. `rig apply --dry-run` MUST disclose each proposed defaults value and ordered Dock item without mutation. `rig apply` and `rig bootstrap` MUST apply only the selected declarations after full-plan preflight and MUST NOT depend on a workstation provider, provider-owned policy file, or non-Bash runtime.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats uses isolated native-command fakes to cover present and drifted settings, ordered Dock equality, missing required paths, complete dry-run disclosure, successful apply, platform gating, and absence of extension invocations.
+
+_Evidence:_ `rig_setting_observe`, `rig_setting_apply`, `rig_dock_observe`, `rig_dock_apply`, `rig_macos_resource_preflight`, and `rig_print_resource_projection` own typed machine state; `typed macOS resources query and dry-run deterministically`, `typed macOS resources observe and apply through native command fakes`, and `typed macOS schema rejects invalid values before invocation` cover that state boundary.

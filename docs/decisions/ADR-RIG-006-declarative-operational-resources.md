@@ -12,28 +12,25 @@ decision_depends_on: [PDR-RIG-001, ADR-RIG-003, ADR-RIG-005, XDR-RIG-001]
 
 ## Context
 
-Services and scheduled jobs are part of a person's selected working setup, but provider-local registries make Rig unable to explain, observe, preview, or reconcile them. A provider that calls another configuration manager to discover its authority also reverses Rig's manager-of-managers boundary. Scheduled execution raises an additional trust concern: applying configuration authorises code to run later outside the interactive command.
+Services, scheduled jobs, stable machine settings, and semantic workstation layouts are part of a person's selected setup. Hiding them in provider-local registries prevents Rig from explaining, observing, previewing, and reconciling the complete profile. Treating the whole workstation as a provider has the same problem: the aggregation belongs to a profile, while each native manager owns only its own domain.
 
-Removing a selected resource creates a reconciliation problem. Once its declaration disappears, a provider still needs the former native locator to retire it safely. Persisting observed native state would make Rig a competing service database, while keeping no application evidence would strand deselected resources.
+Removing a selected long-lived resource also creates a reconciliation problem. Once its declaration disappears, a native manager still needs the former locator to retire it safely without making Rig persist a competing copy of observed state.
 
 ## Decision
 
-Schema 1 adds first-class `[service.ID]` and `[scheduled-job.ID]` declarations. Profiles select them through `services` and `scheduled-jobs`; resource `requires` fields select tool dependencies. Rig owns identity, purpose, rationale, provider, locator, desired state, literal program arguments, environment, working directory, logs, and execution or scheduling policy. Providers retain native projection, observation, activation, and retirement mechanics.
+Schema 1 provides first-class services, scheduled jobs, typed settings, and semantic Dock layouts. Profiles select them alongside tools. Every managed declaration carries stable identity, purpose, rationale, supported platforms, native ownership, desired state, and the provider-specific data Rig needs to validate and explain it.
 
-Rig passes each selected declaration across the existing executable trust boundary as versioned, literal `key=value` arguments. Custom providers declare the separate `resource-observe`, `resource-apply`, and `resource-retire` capabilities. They do not parse Rig TOML or discover an authoritative provider-local registry. Resource-aware generic actions receive one selected qualified resource and its complete declaration before any remaining caller arguments.
+Launchd is a built-in macOS provider for services and scheduled jobs. macOS defaults and semantic Dock layout are built-in typed resource providers. Application-bundle inventory is a built-in read-only observation source. None requires a custom executable, adapter declaration, capability list, or provider-owned configuration registry.
 
-Read-only catalogue queries disclose operational declarations without invoking providers. Status and doctor observe them. Apply and bootstrap preflight all selected tool and resource work before mutation; dry-run prints complete deferred-execution data without invoking providers.
+A workstation is a composed profile selecting its applications, command-line tools, settings, Dock layout, services, and scheduled jobs. `rig show`, qualified `rig explain`, `rig status`, `rig doctor`, `rig apply --dry-run`, and `rig apply` operate on that resolved declaration. Provider-specific escape-hatch actions do not replace desired-state declarations.
 
-Rig stores one application receipt beneath `${RIG_STATE_HOME}/resources/PLATFORM.tsv`. Each line contains only the provider, resource kind, Rig identity, and native locator last managed by a fully successful reconciliation. It is not observed state and cannot recreate a declaration. A later profile resolution compares the selected set with that receipt, applies selected resources first, retires stale locators afterward, and replaces the receipt atomically only after success. Reusing the same provider, kind, and locator transfers receipt ownership during a rename without retiring the live native resource.
+Rig stores minimal successful-application receipts only for resources whose safe retirement requires former identity and locator evidence. Receipts are not observed state and cannot recreate a declaration. Built-in and external providers receive the same resolved intent, but only an external provider crosses the versioned executable protocol boundary.
 
 ## Consequences
 
-- Rig configuration is the sole declaration authority for services and scheduled jobs.
-- Deferred execution is visible in `show`, qualified `explain`, status, doctor, and apply dry-run before mutation.
-- Providers receive more arguments but remain implementation-language independent and preserve literal boundaries.
-- Rig persists minimal successful-application evidence for safe retirement while continuing not to persist provider observations.
-- Applying a different profile reconciles operational resources to that profile's exact selected set; bootstrap participates in the same contract.
-- Native manifests remain provider-owned projections and may be installed by another manager, but they are not a second declaration registry.
+Rig configuration is the sole declaration authority for the selected workstation shape, while native managers retain projection, observation, activation, and retirement mechanics. Deferred execution and machine policy are visible before mutation.
+
+Personal values stay in private Rig configuration, but the portable schema and built-in macOS behaviour belong in tools-rig. A platform concern that cannot yet be expressed remains an explicit manual or external-extension boundary rather than being hidden behind a generic workstation provider.
 
 ## References
 

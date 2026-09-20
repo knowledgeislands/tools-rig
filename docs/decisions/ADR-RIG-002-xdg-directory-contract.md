@@ -16,7 +16,7 @@ Rig needs predictable locations for configuration, reusable data, operational st
 
 ## Decision
 
-Rig uses the XDG Base Directory locations with standard fallbacks: configuration beneath `${XDG_CONFIG_HOME:-$HOME/.config}/rig`, data beneath `${XDG_DATA_HOME:-$HOME/.local/share}/rig`, state beneath `${XDG_STATE_HOME:-$HOME/.local/state}/rig`, and cache beneath `${XDG_CACHE_HOME:-$HOME/.cache}/rig`. `RIG_CONFIG_HOME`, `RIG_DATA_HOME`, `RIG_STATE_HOME`, and `RIG_CACHE_HOME` override the complete application directory. A custom provider without an explicit executable resolves exactly beneath the data directory as `providers/PROVIDER-ID`; Rig does not add that directory to `PATH` or discover neighbouring files. Because XDG defines no executable directory, installation defaults to `~/.local/bin` with `RIG_INSTALL_DIR` as the override.
+Rig uses the XDG Base Directory locations with standard fallbacks: configuration beneath `${XDG_CONFIG_HOME:-$HOME/.config}/rig`, data beneath `${XDG_DATA_HOME:-$HOME/.local/share}/rig`, state beneath `${XDG_STATE_HOME:-$HOME/.local/state}/rig`, and cache beneath `${XDG_CACHE_HOME:-$HOME/.cache}/rig`. `RIG_CONFIG_HOME`, `RIG_DATA_HOME`, `RIG_STATE_HOME`, and `RIG_CACHE_HOME` override the complete application directory. An external provider declared with `adapter = "custom"` and no `executable` resolves exactly beneath the data directory as `providers/PROVIDER-ID`; an explicit executable takes precedence. Rig does not add that directory to `PATH` or discover neighbouring files. Because XDG defines no executable directory, installation defaults to `~/.local/bin` with `RIG_INSTALL_DIR` as the override.
 
 ## Consequences
 

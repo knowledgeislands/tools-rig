@@ -1,39 +1,40 @@
-# Run custom provider actions
+# Run external provider actions
 
-Use declared actions for host-specific observations or maintenance that belong in private configuration but need one bounded Rig command surface. Prefer portable built-in adapters for ordinary installation and observation.
+Use an external provider only when host-specific behaviour cannot be expressed through a built-in provider or declarative managed resource. External executables are an advanced trust boundary, not the normal way to configure Homebrew, launchd, macOS settings, Dock layout, bootstrap, or a workstation.
 
-## Declare the provider and action
+## Declare the extension and action
 
 ```toml
 [provider.local]
 adapter = "custom"
 executable = "~/.local/libexec/rig-local-provider"
+capabilities = ["observe"]
 
-[action.local.service-status]
+[action.local.inspect-device]
 mode = "observe"
-description = "Inspect configured launchd services"
+description = "Inspect a host-specific attached device"
 platforms = ["macos"]
-arguments = ["user"]
+arguments = ["summary"]
 allowed-arguments = ["verbose"]
 ```
 
-The action names exactly one custom provider. `mode = "observe"` dispatches the provider's observation verb; `mode = "mutate"` dispatches its application verb.
+A non-built-in provider requires `adapter = "custom"` and an allow-list of operations Rig may invoke. `executable` may name an exact path; when omitted, Rig resolves only `${RIG_DATA_HOME}/providers/PROVIDER-ID`. Rig does not search for provider executables or infer trust from neighbouring files.
+
+The action fixes its mode, description, platforms, configured arguments, and caller-argument policy. `mode = "observe"` requires the provider's observation operation; `mode = "mutate"` requires its mutation operation.
 
 ## Invoke the declared action
 
 ```sh
-rig run local service-status
-rig run local service-status -- verbose
+rig run local inspect-device
+rig run local inspect-device -- verbose
 ```
 
-Configured `arguments` always precede caller arguments. By default, every caller argument must exactly match one `allowed-arguments` entry. Set `argument-policy = "provider"` only when the provider's native configuration is intentionally authoritative for further validation.
-
-An action can instead declare `resource-kinds = ["service", "scheduled-job"]`. Its first caller argument must then be a selected qualified target such as `service:indexer`; Rig passes the resource kind, identity, locator, and complete resolved declaration literally before `--` and any remaining caller arguments. Resource-aware actions require `argument-policy = "provider"` so the provider can validate its native operation.
+Configured `arguments` always precede caller arguments. By default, every caller argument must exactly match one `allowed-arguments` entry. Set `argument-policy = "provider"` only when the selected extension's own native configuration intentionally owns further validation.
 
 Values remain literal throughout dispatch. Rig does not evaluate shell text, search for adjacent executables, or infer an action that was not declared.
 
 ## Understand the boundary
 
-`rig run` is neither a general shell escape nor a portable Rig command family. The private configuration owns the action identity and trust decision; the custom provider owns its native operation and output. Rig validates the bounded declaration, invokes it once, passes output through, and returns the provider's native status.
+`rig run` is not a general shell escape. The private configuration owns the extension identity and trust decision; the executable owns its native operation and output. Rig validates the bounded declaration, invokes it once, passes output through, and returns the provider's native status.
 
-Use command-local help for syntax and `man rig` for the complete `rig-provider-v1` protocol.
+Rig automatically inserts its versioned extension protocol marker when it invokes the executable. `rig-provider-v1` is not a command option or configuration value and built-in providers never receive it. Extension authors can use the advanced protocol reference in `man rig`; ordinary users do not need to understand the argument layout.

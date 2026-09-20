@@ -48,13 +48,13 @@ _Evidence:_ `tests/rig.bats` preserves `requires`, `related`, and `alternatives`
 
 ### RIG-CAT-005 — Tool installations
 
-Rig MUST treat a tool with complete `install.*` metadata as materialisable and connect it to exactly one declared provider while retaining provider-native kind and locator values. A catalogue-only tool has no installation metadata. Source configuration MUST NOT define a separate binding table.
+Rig MUST treat a tool with complete `install.*` metadata as materialisable and connect it to exactly one built-in or explicitly declared external provider while retaining provider-native kind and locator values. Built-in provider identities MUST NOT require provider declarations. A catalogue-only tool has no installation metadata. Source configuration MUST NOT define a separate binding table.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests resolve co-located tool installation metadata for native manifests and package locators without interpreting either as a Rig package database, and reject source-authored `[binding.*]` tables.
+_Verify:_ Bats tests resolve co-located tool installation metadata for implicit built-ins and explicit extensions without interpreting native manifests or locators as a Rig package database, and reject source-authored `[binding.*]` tables.
 
-_Evidence:_ `rig_synthesise_bindings` normalises public `install.*` fields only after parsing; `tests/rig.bats` covers materialisable and catalogue-only tools together with rejection of unsupported binding tables.
+_Evidence:_ `rig_synthesise_bindings`, `rig_validate_binding_adapter`, and `rig_resolve_bindings` derive one internal binding from each complete `install.*` declaration; the `source configuration rejects former binding tables before writing stdout` and `tool installation selects its declared provider when compatible` Bats tests cover the public boundary.
 
 ### RIG-CAT-006 — Stable validation result
 

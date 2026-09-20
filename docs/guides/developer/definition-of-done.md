@@ -1,28 +1,30 @@
 # Complete a Rig change
 
-Use this checklist before presenting a Rig change for review. It defines delivery readiness for this repository; a roadmap record becomes `done` only after a human accepts its review packet through the selected KI workflow.
+Use this checklist before presenting a Rig change for review. It defines delivery readiness for this repository; a roadmap record becomes `done` only after a human accepts its review packet through the selected KI workflow. Mark an inapplicable item explicitly in the review packet rather than silently skipping it.
 
-Mark an inapplicable item explicitly in the review packet rather than silently skipping it. Release publication has additional steps in [Release Rig](releasing.md).
+Release publication has additional steps in [Release Rig](releasing.md).
 
 ## Confirm the contract
 
-- [ ] The change stays within the catalogue, profile, provider, state, operation, or publication boundary described by this repository.
+- [ ] The change stays within the catalogue, profile, provider, state, managed-resource, extension, or publication boundary described by the repository.
 - [ ] New durable rationale is in a Decision Record, accepted behaviour is in a Specification, practical procedure is in a guide, and future work is in the canonical roadmap.
-- [ ] Personal catalogue data, host-specific paths, credentials, provider-native state, and private observed state remain outside the public executable and public projection.
+- [ ] Ordinary configuration remains declarative: built-in adapters, capabilities, lifecycle sequencing, and protocol markers are inferred by Rig rather than repeated by the user.
+- [ ] A generally useful bootstrap stage, provider adapter, inventory source, setting type, or resource lifecycle is implemented in Rig rather than delegated to a personal workstation provider.
+- [ ] Personal catalogue data, host-specific values, credentials, provider-native state, external executables, and private observed state remain outside the public executable and public projection.
 - [ ] Runtime code remains compatible with macOS Bash 3.2 and adds no required runtime dependency beyond Bash.
-- [ ] Configuration, data, state, and cache behaviour preserve the XDG and Rig override contract.
+- [ ] Configuration, data, state, and cache behaviour preserve the XDG and Rig-override contract.
 
 ## Align affected public surfaces
 
-- [ ] CLI help, the README, user and developer guides, `man/rig.1`, Bash and Zsh completions, `CHANGELOG.md`, tests, Specifications, and Decision Records all describe the same shipped commands, options, defaults, behaviour, compatibility, and trust boundaries wherever the change applies.
+- [ ] CLI help, README, user and developer guides, `man/rig.1`, Bash and Zsh completions, `CHANGELOG.md`, tests, Specifications, and Decision Records describe the same shipped commands, options, configuration, defaults, lifecycle, built-in providers, extension boundary, and trust transitions wherever the change applies.
 
 ## Check distribution impact
 
 - [ ] `install.sh`, installer help, README installation examples, user guides, and manual installation guidance agree when installation changes.
 - [ ] The executable and manual continue to install or link together into documented, overrideable destinations.
 - [ ] The version source, `rig --version`, tag, release entry, and companion Homebrew formula agree for a release candidate.
-- [ ] The Homebrew tap remains the distribution owner and verified release-event dispatcher; consumer repositories remain responsible for their own review and publication.
-- [ ] First-time entries, maturity changes, personal-site updates, or consumers outside automation are named as explicit receiver-owned handoffs.
+- [ ] Release-event publication is included when distribution changes affect enrolled consumers.
+- [ ] First-time entries, maturity changes, personal-site updates, and consumers outside automation are named as explicit receiver-owned handoffs.
 
 ## Verify the repository
 
@@ -34,9 +36,9 @@ Mark an inapplicable item explicitly in the review packet rather than silently s
 - [ ] Run `git diff --check` and focused KI authoring, guide, specification, decision, and roadmap audits for touched documentation.
 - [ ] Exercise affected commands against isolated fixtures and, where safe and relevant, a live personal catalogue without applying changes.
 
-## Prepare the review
+## Prepare review
 
-- [ ] The roadmap record has its immutable baseline, completed steps, verification evidence, outstanding concerns, post-change review, and mini recap.
+- [ ] The roadmap record contains its immutable baseline, completed steps, verification evidence, outstanding concerns, post-change review, and mini recap.
 - [ ] Intended files are committed with a Conventional Commit; unrelated working-tree changes remain unstaged and untouched.
 - [ ] Commit contents have been inspected after hooks, and the working tree contains only known unrelated changes.
 - [ ] Nothing was pushed, released, applied to chezmoi, or changed in another repository without explicit authority.
