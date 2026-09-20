@@ -9,5 +9,5 @@ These guides explain how to use and develop Rig. Decision Records own rationale,
 ## Developer guides
 
 - [Develop Rig](developer/README.md) — preserve the shell-only and XDG contracts and run the verification gate.
-- [Definition of done](developer/done.md) — align every affected public surface and prepare work for human review.
+- [Definition of done](developer/definition-of-done.md) — align every affected public surface and prepare work for human review.
 - [Release Rig](developer/releasing.md) — verify, publish, and hand off a released version through its distribution channels.

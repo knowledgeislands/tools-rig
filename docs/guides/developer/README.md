@@ -12,7 +12,7 @@ When a change crosses that boundary, define and verify the portable contract her
 
 Update the public command surface in `bin/rig`, then keep `tests/rig.bats`, `man/rig.1`, README usage, and completion output aligned. Record durable rationale in Decision Records, accepted behaviour in Specifications, and future delivery in the roadmap.
 
-Before presenting a change for review, complete the [definition of done](done.md). It is the canonical repository checklist for affected documentation, command, completion, distribution, test, and roadmap surfaces.
+Before presenting a change for review, complete the [definition of done](definition-of-done.md). It is the canonical repository checklist for affected documentation, command, completion, distribution, test, and roadmap surfaces.
 
 Do not embed a personal machine profile in the executable. Use isolated XDG and Rig-specific environment values in tests so no developer configuration or state is read or written.
 
