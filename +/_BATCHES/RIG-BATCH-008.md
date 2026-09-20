@@ -22,3 +22,5 @@ policy: safe-local-v1
 | --- | --- | --- | --- | --- |
 | RIG-CORE-009 | done | `8c4880c7c252bb4d93849d3e91bc9de13759a954` | `74646aa9fa4aa9b27a5705daafbc14948c6c88aa` | None |
 | RIG-CORE-010 | done | `77801a21ff508aff7de1c345afe975ec55620260` | `74646aa9fa4aa9b27a5705daafbc14948c6c88aa` | None |
+
+<!-- ki-batch-close: RIG-BATCH-008 done 74646aa9fa4aa9b27a5705daafbc14948c6c88aa -->
