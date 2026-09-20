@@ -4,12 +4,12 @@ area: CORE
 title: Declarative operational resources
 theme: orchestration
 horizon: now
-status: in-progress
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: 77801a21ff508aff7de1c345afe975ec55620260
 created_at: 2026-09-20T11:52:55Z
-updated_at: 2026-09-20T13:00:46Z
+updated_at: 2026-09-20T15:20:00Z
 ---
 
 # RIG-CORE-010: Declarative operational resources
@@ -46,9 +46,9 @@ The personal dotfiles repository keeps service metadata in `.chezmoidata/service
 - [x] Include selected resources and stale receipt entries in complete preflight, dry-run, application, bootstrap, failure isolation, and progress reporting. Persist only the last successfully managed provider, kind, identity, and locator receipt beneath Rig state so deselection can retire native resources without persisting observed state.
 - [x] Cover schema validation, profile composition, tool dependencies, inert queries, literal provider boundaries, observation, complete dry-run, preflight, application, receipt atomicity, retirement, rename transfer, action binding, failure isolation, and XDG state behavior in Bats.
 - [x] Align README, user guides, command help, completions, manual, changelog, Specifications, and Decision Records.
-- [ ] Migrate the personal Rig fragment to canonical service and scheduled-job declarations, rename the custom provider to `launchd`, and make it render and operate native plists directly from resolved Rig arguments.
-- [ ] Remove the two chezmoi YAML registries, native plist templates and stubs, reload hook, runtime chezmoi callbacks, and duplicated launchcontrol discovery while preserving the scheduled wrapper and specialised mcporter restart behavior where still required.
-- [ ] Update dotfiles tests, guides, ignore rules, and Decision Records; compare all four native launchd projections and action behavior before and after migration; run `chezmoi diff` without applying it.
+- [x] Migrate the personal Rig fragment to canonical service and scheduled-job declarations, rename the custom provider to `launchd`, and make it render and operate native plists directly from resolved Rig arguments.
+- [x] Remove the two chezmoi YAML registries, native plist templates and stubs, reload hook, runtime chezmoi callbacks, and duplicated launchcontrol discovery while preserving the scheduled wrapper and specialised mcporter restart behavior where still required.
+- [x] Update dotfiles tests, guides, ignore rules, and Decision Records; compare all five native launchd projections and action behavior before and after migration; run `chezmoi diff` without applying it.
 
 ## Files touched
 
@@ -85,6 +85,32 @@ Explain services and scheduled jobs as first-class profile-selected operational 
 ### Roadmap
 
 Keep this record as the canonical tools-rig delivery account. If the dotfiles repository requires its own governed execution record, link it here rather than duplicating product rationale.
+
+## Review
+
+### Delivered
+
+Rig schema 1 now models profile-selected services and scheduled jobs as first-class operational resources, observes and reconciles them through a literal custom-provider ABI, records minimal successful-management receipts, and exposes them through the public query, status, doctor, apply, bootstrap, help, completion, manual, and documentation surfaces. The personal dotfiles source now consumes that contract with a direct `launchd` provider and no parallel operational registry.
+
+### Summary of changes
+
+Tools-rig commit `cb9476ea04f1f283329680d613b6b2d1f84e8073` added resource parsing, validation, profile resolution, provider verbs and capabilities, resource-aware actions, expected-versus-observed reporting, dry-run and progress plans, atomic receipts, retirement, tests, ADR-RIG-006, Specifications, guides, manual, completions, and changelog updates. Dotfiles commits `2e17e7bb2aabdd4f5185df81da159c0e69f131ab`, `7db7ea8547d3cc71d40b07ebeddca09d879d7c96`, `d96e162f0938cd48bbe8e9c74081a1629b5a1f5b`, and `f6ee48cde9b2d68edbf20674edabac7d723dc22b` declare two mcporter services and three scheduled jobs in Rig, install a Bash 3.2 `launchd` provider, remove both YAML registries and all chezmoi plist composition, consolidate current private decisions and guides, fail closed on native inspection or retirement errors, and atomically replace plists only after successful unload.
+
+### Verification
+
+The tools-rig gate passed: repository audit for 15 skills, ShellCheck, Bash syntax, 139 Bats tests, mandoc lint, and diff checks. The dotfiles gate passed: 47 Node tests, Bash 3.2 syntax, ShellCheck, `plutil -lint` for service and scheduled-job fixtures, repository audit for 19 skills, and review of scoped and full `chezmoi diff`. Tests exercise exactly five selected resources, literal provider arguments, deterministic plist output, tri-state observation, successful and failed retirement, receipt preservation, atomic apply ordering, resource-aware actions, and the specialised mcporter restart path. Independent review found no remaining blocking or material issue.
+
+### Outstanding concerns
+
+The live workstation still uses the previously applied sources until a separately reviewed `chezmoi apply` installs the new Rig fragment and provider, followed by an explicit `rig apply` to adopt the native resources. Neither operation is part of this delivery. The unrelated dotfiles `workspaces/kit/knowledgeislands/dot_mgit.toml` modification remains unstaged and outside the migration commit.
+
+### Post-change review
+
+The implementation preserves the manager-of-managers boundary: Rig owns declarative identity and desired state, the private launchd provider owns native rendering and launchctl mechanics, and chezmoi only materialises the private configuration and provider executable. Query commands remain inert, dry-run exposes deferred execution before mutation, and retirement is limited to receipt-backed resources.
+
+### Mini recap
+
+Services and scheduled jobs now have one authoritative declaration under Rig, with provider-native macOS projection and equivalent tests, while live application remains an explicit later operation.
 
 ## Discussion
 
