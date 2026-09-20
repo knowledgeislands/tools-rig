@@ -4,12 +4,12 @@ area: CORE
 title: TOML configuration
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: d7378853f2012083dd66c238c2ac1d3829bdae07
 created_at: 2026-09-19T08:39:31Z
-updated_at: 2026-09-19T09:25:21Z
+updated_at: 2026-09-20T06:25:00Z
 ---
 
 # RIG-CORE-007: TOML configuration
@@ -121,6 +121,10 @@ The implementation meets the goal without an external parser or second configura
 ### Mini recap
 
 Rig schema 1 is now genuine TOML-compatible data rather than a TOML-like private grammar. Durable rationale and behaviour live in the amended Decision Record and Specifications; practical authoring lives in the README, manual, and user guide. No follow-on roadmap item is proposed.
+
+## Done
+
+Accepted by Kris Brown on 20 September 2026 under the standing estate-baseline approval after the complete 15-skill audit, 124-test Bats suite, ShellCheck, mandoc and Markdown gates passed.
 
 ## Discussion
 

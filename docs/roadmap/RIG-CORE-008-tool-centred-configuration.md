@@ -4,12 +4,12 @@ area: CORE
 title: Tool-centred configuration
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: db8d44e32a6c9ffa1ddc0e8052f7431e326d70c2
 created_at: 2026-09-19T11:24:39Z
-updated_at: 2026-09-19T17:45:04Z
+updated_at: 2026-09-20T06:25:00Z
 ---
 
 # RIG-CORE-008: Tool-centred configuration
@@ -114,6 +114,10 @@ The delivered public configuration meets the one-entry-per-tool goal and retains
 ### Mini recap
 
 Rig now presents tools and actions in the intended public model, rejects the superseded source shape, and stays communicative during slow provider work while preserving stable reports. Internal resolver vocabulary remains an implementation detail rather than accepted configuration syntax.
+
+## Done
+
+Accepted by Kris Brown on 20 September 2026 under the standing estate-baseline approval after the complete 15-skill audit, 124-test Bats suite, ShellCheck, mandoc and Markdown gates passed.
 
 ## Discussion
 
