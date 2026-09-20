@@ -1,4 +1,4 @@
-.TH RIG 1 "2026-09-19" "Knowledge Islands" "User Commands"
+.TH RIG 1 "2026-09-20" "Knowledge Islands" "User Commands"
 .SH NAME
 \&
 .PP
@@ -51,9 +51,13 @@ rig \- describe and manage a personal working setup
 .SH DESCRIPTION
 \&
 .PP
-Rig is the declarative description and manager of a person's working setup.
-Its catalogue records tools, categories, purposes, rationale, relationships,
-supported platforms, profiles, and provider-backed installations.
+Rig describes the tools that make up a person's working setup, explains why
+they belong, and compares the selected setup with the current machine.
+.PP
+The catalogue records tool meaning. Profiles select tools for machines, roles,
+or contexts. Providers connect selected tools to systems such as Homebrew, uv,
+chezmoi, verified downloads, or custom executables. State compares resolved
+intent with provider observations.
 .PP
 Catalogue queries and diagnostics parse inert configuration and do not invoke
 provider code. Status and doctor invoke observation capabilities.
@@ -62,9 +66,38 @@ plan preflight.
 Run crosses an explicit provider-action trust boundary after validating its
 declaration. Publish
 crosses a network-capable trust boundary only after export validation.
-Package and
-configuration systems retain authority over their native manifests,
-resolution, configuration, and state.
+Package and configuration systems retain authority over their native
+manifests, resolution, configuration, and state.
+.SH USER WORKFLOW
+\&
+.PP
+Declare a catalogue and one or more profiles. Use
+.BR "rig show" ,
+.BR "rig list" ,
+and
+.B rig explain
+to understand the declaration without invoking providers.
+.PP
+Use
+.B rig diag
+to inspect Rig itself,
+.B rig doctor
+for a concise health assessment, and
+.B rig status
+for the complete expected-versus-observed comparison.
+.PP
+Review
+.B rig apply \-\-dry-run
+before allowing provider changes. Use
+.B rig apply
+or
+.B rig bootstrap
+only when the complete plan is expected. Public sharing follows the separate
+offline
+.B rig export
+and explicit
+.B rig publish
+boundary.
 .SH INSTALLATION
 \&
 .PP

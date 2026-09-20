@@ -1,178 +1,57 @@
-# Install and inspect Rig
+# Use Rig
 
-Rig `v0.2.0` is a public preview. Install the released executable and manual together:
+Rig is for people who want their working setup to be understandable as a whole, not only reproducible through a collection of unrelated installers and configuration managers.
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.2.0/install.sh | bash
-```
+A Rig declaration tells you what tools matter, what each one is for, why it belongs, which contexts need it, and which native system is responsible for it. Rig can then compare that declaration with the current machine and coordinate provider work without taking ownership away from Homebrew, uv, chezmoi, or another provider.
 
-To request that exact release explicitly, pass it to the installer:
+## Start with the questions
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.2.0/install.sh | bash -s -- v0.2.0
-```
+Rig is useful when you want durable answers to questions such as:
 
-Use a local development link when working from a checkout.
+- What is my rig?
+- Which tools do I use for navigation, development, writing, or operations?
+- Why is a particular tool part of the setup?
+- Which tools belong on this laptop, a minimal machine, or a developer workstation?
+- Which parts are present here, and which provider reported that state?
+- What can I share publicly without publishing private configuration or observed machine state?
 
-## Link a checkout
+## Understand the four core concepts
 
-From the repository root, run:
+- **Catalogue** — the complete description of tools you care about. Each entry can record category, purpose, rationale, relationships, supported platforms, and installation metadata.
+- **Profile** — a named selection of catalogue tools for a machine, role, or context. Profiles may compose other profiles and tool requirements.
+- **Provider** — the bridge to a system that already owns installation or observation. Rig selects and orders work; the provider retains its own manifests and state.
+- **State** — the comparison between a resolved profile and provider observations on the current machine.
 
-```sh
-./install.sh --link
-```
+Publication is an optional projection of that model. It exports one deliberately public profile as versioned data; a website owns how that data is presented.
 
-This links `bin/rig` into `${RIG_INSTALL_DIR:-$HOME/.local/bin}` and the manual into `${RIG_MAN_INSTALL_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/man/man1}`. Add the executable directory to `PATH` through your own shell or configuration manager; the installer does not edit startup files.
+## Follow the everyday lifecycle
 
-## Inspect Rig diagnostics
+1. **Declare** a catalogue, profiles, and any provider-backed installations.
+2. **Understand** the resolved setup with `rig show`, `rig list`, and `rig explain`.
+3. **Check Rig itself** with `rig diag`.
+4. **Assess the machine** with `rig doctor` for a summary or `rig status` for full expected-versus-observed detail.
+5. **Preview change** with `rig apply --dry-run`.
+6. **Materialise** with `rig apply`, or use `rig bootstrap` for a profile intended for a new machine.
+7. **Publish deliberately** with offline `rig export` followed by explicit `rig publish` when configured.
 
-Run:
+Inspection comes before mutation. Rig never turns a read-only catalogue query into provider execution, and a dry run never applies provider changes.
 
-```sh
-rig diag
-```
+## Choose a guide
 
-Rig prints its version, invoked executable, Bash version, active platform, effective configuration, data, state, and cache directories, and a summary of configuration discovery and validity. It does not invoke providers or inspect installed tools.
+- [Get started](getting-started.md) — install Rig, create a small configuration, understand it, check the machine, and preview the first application.
+- [Use the commands](commands.md) — choose the right command and understand whether it reads configuration, observes providers, mutates providers, or publishes data.
+- [Publish a rig](publishing.md) — create a safe public profile, inspect its versioned JSON, and hand it to a trusted publisher.
+- [Run custom provider actions](provider-actions.md) — expose bounded host-specific observations or maintenance through private configuration.
 
-Status 0 means the configuration is valid. Status 1 means no configuration source exists or the merged configuration is invalid; the available runtime and path diagnostics are still printed. `rig.toml` is optional when at least one regular `conf.d/*.toml` fragment supplies the complete model, including exactly one `[rig]` table. Status 2 is reserved for invalid command syntax. Set an XDG base variable to relocate its whole category, or set the corresponding `RIG_*_HOME` value to replace Rig's complete application directory.
+For the exhaustive configuration grammar, environment variables, provider protocol, and exit-status contract, use `man rig`. Specifications are maintained for implementers and verification; most users should start with these guides.
 
-Schema 1 uses a strict, dependency-free TOML subset: named tables, `schema = 1`, double-quoted basic strings, single-line string arrays, and `#` comments. Standard TOML tooling can read accepted Rig files, but Rig rejects unused TOML features such as literal strings, multiline values, floats, booleans, dates, and inline tables.
+## Configuration location
 
-Use `rig doctor` for selected-profile and provider health rather than treating diagnostics as a machine audit:
+By default, Rig reads:
 
-```sh
-rig doctor
-rig doctor --profile developer
-```
+1. `${XDG_CONFIG_HOME:-$HOME/.config}/rig/rig.toml`, when present;
+2. regular `${XDG_CONFIG_HOME:-$HOME/.config}/rig/conf.d/*.toml` fragments in bytewise filename order.
 
-Doctor prints one healthy summary or grouped configuration and tool findings. A missing or drifted tool points to `rig apply`; provider availability and observation failures name the provider that owns the next action. Catalogue-only and incompatible-platform declarations are informational. Status 0 means the selected rig is healthy, status 1 means completed checks found issues, and status 2 means syntax, configuration, or profile resolution failed. Doctor invokes only selected providers' declared `observe` capability and does not repair or apply anything.
+Set `RIG_CONFIG_HOME` to replace the complete Rig configuration directory. Similar `RIG_DATA_HOME`, `RIG_STATE_HOME`, and `RIG_CACHE_HOME` overrides replace the corresponding Rig application directories.
 
-## Check and apply a profile
-
-Declare an exact `observe` or `apply` capability on each provider, then inspect the selected profile before mutation:
-
-```sh
-rig status
-rig doctor
-rig apply --dry-run
-rig apply
-```
-
-Built-in adapters use `brew` or `mas` for Homebrew installations, `uv` for uv tools, `chezmoi` for managed targets, and `curl` plus an available SHA-256 utility for direct downloads. A custom provider without `executable` resolves exactly `${RIG_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/rig}/providers/PROVIDER`; Rig does not search the directory or execute adjacent files. Declare `executable` when an external command, non-default path, or test fake is required. Rig checks executables only for selected tool installations.
-
-Configuration loading and provider-backed checks and changes show progress on stderr in an interactive terminal while preserving report stdout. Use `RIG_PROGRESS=always` for redirected logs or `RIG_PROGRESS=never` to suppress progress.
-
-Keep Homebrew manifests, uv state, and chezmoi source state in their native systems. Rig selects and orders catalogue work; it does not replace those authorities. In particular, `rig status` never runs `chezmoi apply`, and `rig apply --dry-run` invokes no provider.
-
-For direct downloads, declare an HTTPS locator, absolute destination, and lowercase `sha256:` checksum. Rig refuses symlink and non-regular destinations and verifies a sibling temporary file before replacement. Review `rig apply --dry-run` before the first installation.
-
-## Bootstrap a new machine
-
-Declare an optional profile dedicated to first materialisation:
-
-```toml
-[rig]
-schema = 1
-default-profile = "default"
-bootstrap-profile = "bootstrap"
-
-[profile.bootstrap]
-tools = ["homebrew", "dotfiles"]
-```
-
-Then inspect and execute the same dependency-ordered, fully preflighted plan used by `apply`:
-
-```sh
-rig bootstrap --dry-run
-rig bootstrap
-```
-
-An explicit `--profile NAME` takes precedence over `bootstrap-profile`. If the field is absent, bootstrap falls back to `default-profile`, so existing configurations remain valid. Dry-run invokes no provider. Missing capabilities or executables fail before mutation; provider failures suppress only dependent work and independent work continues. Provider-native manifests remain authoritative, including any stale-state guard implemented by the selected provider.
-
-## Run a declared provider action
-
-Actions keep host-specific audits and controls in private configuration while giving them one bounded command surface:
-
-```toml
-[provider.local]
-adapter = "custom"
-executable = "~/.local/libexec/rig-local-provider"
-
-[action.local.service-status]
-mode = "observe"
-description = "Inspect configured launchd services"
-platforms = ["macos"]
-arguments = ["user"]
-allowed-arguments = ["verbose"]
-```
-
-Invoke the declaration by provider and action identity:
-
-```bash
-rig run local service-status
-rig run local service-status -- verbose
-```
-
-Rig invokes only the custom provider named by the action. `observe` maps to the provider's `observe` verb and `mutate` maps to `apply`. Configured arguments precede caller arguments, and every caller argument must exactly match one `allowed-arguments` array item unless `argument-policy = "provider"` explicitly delegates native-domain validation. Values remain literal; Rig does not evaluate shell text. The command passes provider output through and returns its native status.
-
-## Export a public rig
-
-Declare a publication that names the one profile intended for disclosure. The publisher remains a provider declaration for the separate deployment boundary; export does not invoke it.
-
-```toml
-[profile.public]
-tools = ["mgit"]
-
-[provider.site]
-adapter = "custom"
-executable = "~/.local/libexec/rig-site-publisher"
-capabilities = ["publish"]
-
-[publication.personal-site]
-profile = "public"
-title = "Kris's Rig"
-base-url = "https://rig.midnight.ninja/"
-publisher = "site"
-```
-
-Generate the complete public-data tree and inspect it before making it public:
-
-```sh
-rig export personal-site --output ./public-rig
-cat ./public-rig/rig.json
-```
-
-The tree contains exactly one regular file, `rig.json`. It declares `format` as `rig-publication` and integer `version` as `1`; consumers should check both fields before reading the remaining document. Re-export replaces the complete directory so stale files cannot survive. Rig rejects `/`, `.`, `..`, symlinks, and non-directory output targets. The artifact contains only the selected profile's public catalogue fields and relationships whose endpoints are both public; it excludes provider configuration, other profiles, paths, credentials, and observed machine state.
-
-Set `base-url` to the final domain root, subdomain, or subpath, including `https://rig.midnight.ninja/` or `https://midnight.ninja/rig/`. Rig normalizes it into `publication.canonical_url` metadata; it does not generate presentation or navigation. Export is offline and does not deploy the result.
-
-## Publish a public rig
-
-After reviewing the public profile and an offline export, dispatch the configured publisher explicitly:
-
-```bash
-rig publish personal-site
-```
-
-Rig validates the publication, publisher adapter, exact `publish` capability, executable, profile, and generated one-file data tree before invocation. It then calls the selected executable once with this fixed literal protocol:
-
-```text
-EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 publish PROVIDER PUBLICATION directory ABS_EXPORT_DIR
-```
-
-The publisher and receiving website own presentation, credentials, hosting destination, deployment, and rollback. Rig removes the isolated cache export after success. A staging or render failure invokes no publisher, and an interruption before the export is complete removes its incomplete `rig.json`. Once the export is complete, publisher failure or interruption returns the native or conventional signal status, reports the retained export path, and leaves that tree available for diagnosis. Cleanup revalidates and pins the cache parent before unlinking only `rig.json`; a path substitution or unexpected tree fails closed. Remove a retained tree after inspection; Rig never treats it as deployed.
-
-## Generate completion
-
-Print completion source with one stable command:
-
-```sh
-rig completion bash
-rig completion zsh
-```
-
-Persist generated completion through the shell or configuration manager that owns startup configuration. Rig does not edit shell startup files.
-
-## Verify the link
-
-Run `rig --version`, `rig --help`, and `man rig`. If the executable is not found, confirm `${RIG_INSTALL_DIR:-$HOME/.local/bin}` is on `PATH`. If the manual is not found, confirm its parent `man` directory is on `MANPATH`.
+The root `rig.toml` is optional when fragments supply the complete model, including exactly one `[rig]` table.

@@ -286,6 +286,7 @@ write_query_config() {
   for command in show list explain status doctor apply bootstrap run export publish diag completion help; do
     grep -Fq "\`rig $command" "$repo_root/README.md"
     grep -Fq "\`rig $command" "$repo_root/CHANGELOG.md"
+    grep -Fq "\`rig $command" "$repo_root/docs/guides/user/commands.md"
     grep -Fq "rig $command" "$repo_root/man/rig.1"
     [[ "$bash_completion" == *" $command"* ]] || false
     [[ "$zsh_completion" == *"$command:"* ]] || false
@@ -307,12 +308,15 @@ write_query_config() {
     'help [-h|--help]'; do
     grep -Fq "\`rig $synopsis\`" "$repo_root/README.md"
     grep -Fq "\`rig $synopsis\`" "$repo_root/CHANGELOG.md"
+    grep -Fq "\`rig $synopsis\`" "$repo_root/docs/guides/user/commands.md"
   done
 
   grep -Fq 'rig --help' "$repo_root/README.md"
   grep -Fq 'rig --version' "$repo_root/README.md"
   grep -Fq 'rig --help' "$repo_root/CHANGELOG.md"
   grep -Fq 'rig --version' "$repo_root/CHANGELOG.md"
+  grep -Fq 'rig --help' "$repo_root/docs/guides/user/commands.md"
+  grep -Fq 'rig --version' "$repo_root/docs/guides/user/commands.md"
   [[ "$man_synopsis" == *$'.B rig status\n.RI [ \\-\\-profile " NAME" ]\n.RI [ \\-\\-unmanaged ]'* ]] || false
 }
 

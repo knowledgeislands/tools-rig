@@ -1,25 +1,37 @@
 # Rig
 
-Rig is the declarative description and manager of a person's working setup. Its catalogue records preferred tools, what they are for, why they belong, how they relate, where they are supported, and how providers materialise them.
+Rig helps you describe the tools that make up your working setup, explain why each one belongs, and see whether the setup you expect is present on a machine.
 
-Profiles select catalogue subsets for machines, roles, or contexts. Rig can compare a selected profile with provider observations and derive an explicitly public profile into a personal site such as `rig.midnight.ninja`.
+Instead of treating a Brewfile, dotfiles repository, language tool manager, and download scripts as separate answers to “what is my setup?”, Rig gives them one catalogue and one set of profiles. Those native systems still install and configure their own tools; Rig describes the whole and coordinates them.
 
-## Principles
+## What Rig helps you answer
 
-- **Catalogue first** — stable categories and tool identities make the setup understandable before installation or mutation.
-- **Purpose and rationale** — the catalogue records both what a tool does and why it belongs.
-- **Composable profiles** — named subsets describe machines, roles, contexts, and a deliberately public view.
-- **Provider authority** — Homebrew, uv, chezmoi, downloads, custom executables, and publishers retain their native manifests, resolution, execution, deployment, and state.
-- **Expected versus observed** — Rig reports whether selected declarations are present, missing, drifted, unavailable, or unknown.
-- **Safe publication** — versioned public data excludes provider configuration, private profiles, and observed machine state.
-- **Shell-only core** — the installed executable requires Bash and no language runtime or package-manager dependency.
-- **XDG-aligned state** — configuration, data, state, and cache use XDG Base Directory locations and explicit Rig overrides.
+- What tools are part of my setup?
+- What is each tool for, and why did I choose it?
+- Which subset belongs on this machine or in this role?
+- Which system installs or observes each tool?
+- What is present, missing, drifted, unavailable, or unknown?
+- Which part of my rig can I publish without exposing private machine state?
 
-## Product model
+## The model in plain language
 
-The catalogue is Rig's source of meaning. Profiles resolve the catalogue for a context. Providers are the manager-of-managers mechanism that observes or materialises selected tools. State compares resolved intent with provider evidence. Declared provider actions expose bounded host-specific maintenance without turning it into permanent command families. Publication projects only an explicitly selected public profile into reviewable, versioned data before a trusted publisher deploys it.
+- A **catalogue** describes your tools: their category, purpose, rationale, relationships, platforms, and optional installation.
+- A **profile** selects the catalogue entries for a machine, role, or context such as `default`, `minimal`, or `developer`.
+- A **provider** connects a selected tool to the system that already manages it, such as Homebrew, uv, chezmoi, a verified download, or your own executable.
+- **State** compares the selected profile with what providers observe on the current machine.
+- A **publication** exports one deliberately public profile as data that a website such as `rig.midnight.ninja` can render.
 
-Personal catalogue contents, actions, and machine-specific paths belong in private Rig configuration, not in this executable. Provider-native manifests such as a Brewfile remain authoritative for their own systems.
+Rig is therefore a manager of managers. It does not replace package-manager manifests, chezmoi source state, provider credentials, or native configuration.
+
+## A typical Rig lifecycle
+
+1. Declare the tools you care about and why they belong.
+2. Group them into profiles for different machines or contexts.
+3. Use `rig show`, `rig list`, and `rig explain` to understand the declaration.
+4. Use `rig diag`, `rig doctor`, and `rig status` to inspect Rig and compare intent with the machine.
+5. Use `rig apply --dry-run` to review the complete plan before allowing provider changes.
+6. Use `rig apply` or `rig bootstrap` when you are ready to materialise a profile.
+7. Optionally use `rig export` and `rig publish` to share a deliberately public view.
 
 ## Install
 
@@ -29,41 +41,26 @@ Install the `v0.2.0` public preview:
 curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.2.0/install.sh | bash
 ```
 
-Pin an exact release explicitly when invoking an installer:
+Pin that exact release explicitly:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.2.0/install.sh | bash -s -- v0.2.0
 ```
 
-The executable defaults to `~/.local/bin/rig`, and the manual defaults beneath `${XDG_DATA_HOME:-$HOME/.local/share}/man/man1`. Set `RIG_INSTALL_DIR` or `RIG_MAN_INSTALL_DIR` to choose other locations. `RIG_VERSION=vX.Y.Z` remains available for automation; an explicit positional version takes precedence. Both forms accept exact v-prefixed semantic versions only. With neither form, the installer discovers the latest GitHub release.
+The executable defaults to `~/.local/bin/rig` and the manual defaults beneath `${XDG_DATA_HOME:-$HOME/.local/share}/man/man1`. The [getting-started guide](docs/guides/user/getting-started.md) covers alternate locations, first configuration, shell completion, and troubleshooting.
 
-### Local checkout
+## Create a first rig
 
-Link the executable and manual from this checkout into their conventional user locations:
-
-```sh
-./install.sh --link
-rig --version
-rig --help
-```
-
-Re-run `./install.sh --link` after moving the checkout.
-
-## Configure a catalogue
-
-Rig reads the optional `${RIG_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/rig}/rig.toml` followed by `conf.d/*.toml` fragments in bytewise filename order. At least one source must exist, and the merged declaration must contain exactly one `[rig]` table. Schema 1 accepts a strict TOML subset: basic strings, string arrays, the integer schema value, named tables, and `#` comments. Rig does not source shell code or evaluate values.
-
-Queries derive the active platform from Bash's `OSTYPE`. Set `RIG_PLATFORM` to an explicit catalogue platform identifier when testing a different target or when the host value is not recognised.
+Rig reads `${RIG_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/rig}/rig.toml` followed by regular `conf.d/*.toml` fragments in bytewise filename order. A minimal provider-backed rig looks like this:
 
 ```toml
 [rig]
 schema = 1
 default-profile = "default"
-bootstrap-profile = "bootstrap"
 
 [category.navigation]
 name = "Navigation"
-purpose = "Move through Knowledge Islands"
+purpose = "Move between related work"
 
 [tool.mgit]
 name = "MGit"
@@ -82,67 +79,64 @@ capabilities = ["observe", "apply"]
 
 [profile.default]
 tools = ["mgit"]
-
-[profile.bootstrap]
-tools = ["mgit"]
 ```
 
-Providers declare exact `observe` and `apply` capabilities. Built-in adapters map selected tool installations to native tools:
+Then inspect before changing anything:
 
-| Adapter | Installation kinds | Default executable | Native authority |
-| --- | --- | --- | --- |
-| `homebrew` | `formula`, `cask`, `mas` | `brew`; `mas` for `mas` | Homebrew and Mac App Store state |
-| `uv` | `tool` | `uv` | uv-managed tools |
-| `chezmoi` | `target` | `chezmoi` | chezmoi target state |
-| `direct-download` | `executable` | `curl` | HTTPS artifact selected by its declared SHA-256 |
-| `custom` | Any declared kind | `${RIG_DATA_HOME}/providers/ID` | Versioned `rig-provider-v1` protocol |
+```sh
+rig diag
+rig show
+rig explain mgit
+rig doctor
+rig status
+rig apply --dry-run
+```
 
-For a custom provider, omit `executable` to use `${RIG_DATA_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/rig}/providers/ID`. Set `executable` to use an external command, a non-default path, or an isolated test fake. Rig resolves only the declared provider ID and does not search or execute adjacent files. Provider and tool `install.arguments` arrays retain literal argument boundaries. A direct-download installation additionally requires an HTTPS `install.locator`, an absolute `install.destination`, and a lowercase `install.checksum = "sha256:..."`; Rig verifies a sibling temporary file before replacing a regular destination.
-
-`[action.PROVIDER.NAME]` declarations expose one trusted custom-provider action. Their mode is `observe` or `mutate`; `arguments` supplies fixed literal values. By default, `allowed-arguments` is the exact caller allowlist. `argument-policy = "provider"` delegates argument validation to the declared provider when its native configuration is authoritative.
-
-`[publication.ID]` names one public profile and one publisher. Offline `export` never invokes that provider. Explicit `publish` requires its `custom` adapter to declare the exact `publish` capability and passes one isolated `rig.json` tree through the versioned provider protocol.
-
-See `man rig` for the exact native command matrix and custom-provider protocol.
+Catalogue queries and diagnostics do not invoke providers. Doctor and status use only declared observation capabilities. A dry run preflights the complete application plan without invoking provider changes.
 
 ## Commands
 
 - `rig` shows top-level help.
-- `rig show [--profile NAME]` summarises the default or named resolved profile in a bounded-width, aligned tool table; `rig explain TOOL` provides complete metadata.
-- `rig list [--category ID] [--profile NAME]` lists catalogue tools, optionally narrowed by category and profile.
-- `rig explain TOOL` explains a tool's declared meaning, relationships, profile membership, and compatible installation metadata.
-- `rig status [--profile NAME] [--unmanaged]` compares expected tools with selected built-in or custom-provider observations.
-- `rig status --unmanaged` asks every provider declaring the `inventory` capability to enumerate its domain, then reports observed identities that no tool installation declares. It answers the opposite question to the tool table: not whether declared software is installed, but whether installed software was ever declared. Unmanaged rows are informational and never make the result unhealthy.
-- `rig doctor [--profile NAME]` gives a compact health answer for configuration, XDG paths, providers, and selected tools.
-- `rig apply [--profile NAME] [--dry-run]` materialises a resolved profile; dry-run preflights and prints planned work without invoking providers.
-- `rig bootstrap [--profile NAME] [--dry-run]` materialises the configured bootstrap profile through the same apply plan; an explicit profile wins, and older configurations fall back to `default-profile`.
-- `rig run PROVIDER ACTION [-- ARGUMENT...]` invokes one declared custom-provider action with bounded literal arguments.
-- `rig export PUBLICATION --output DIRECTORY` generates deterministic, versioned `rig.json` from the publication's explicitly selected public profile.
-- `rig publish PUBLICATION` renders an isolated public-data export and hands it to the publication's one trusted custom publisher.
-- `rig diag` reports the effective Rig runtime, active platform, XDG paths, and configuration discovery and validity.
-- `rig completion bash|zsh` prints shell completion source; `-h` or `--help` prints command usage.
+- `rig show [--profile NAME]` describes the default or named resolved profile.
+- `rig list [--category ID] [--profile NAME]` lists catalogue tools, optionally filtered by category and profile.
+- `rig explain TOOL` explains one tool's purpose, rationale, relationships, profiles, and compatible installation.
+- `rig status [--profile NAME] [--unmanaged]` compares selected tools with provider observations and can report undeclared observed identities.
+- `rig doctor [--profile NAME]` gives a compact health assessment for configuration, paths, providers, and selected tools.
+- `rig apply [--profile NAME] [--dry-run]` previews or materialises a resolved profile.
+- `rig bootstrap [--profile NAME] [--dry-run]` previews or materialises the configured bootstrap profile.
+- `rig run PROVIDER ACTION [-- ARGUMENT...]` invokes one explicitly declared custom-provider action.
+- `rig export PUBLICATION --output DIRECTORY` writes deterministic public Rig data without deploying it.
+- `rig publish PUBLICATION` exports and hands public Rig data to one trusted publisher.
+- `rig diag` reports runtime, platform, XDG paths, and configuration discovery.
+- `rig completion bash|zsh` prints shell completion source.
 - `rig help [-h|--help]`, `rig --help`, and `rig --version` provide command and version information.
 
-Catalogue queries, `diag`, and `export` never invoke providers. `status` and `doctor` invoke only declared `observe` capabilities. `apply` and `bootstrap` invoke exact `apply` capabilities only after complete plan preflight. `run` is an explicit trust transition to one configured provider action. `publish` is the separate network-capable transition to one selected publisher after export validation. See `man rig` for the complete command contract.
+The [command guide](docs/guides/user/commands.md) groups these commands by user lifecycle and explains their trust boundaries. `man rig` is the complete command and configuration reference.
 
-Configuration loading and provider-backed work report line-oriented progress on stderr when stderr is a terminal, leaving command reports and exported data on stable stdout. Set `RIG_PROGRESS=always` to retain progress in redirected logs or `RIG_PROGRESS=never` to suppress it.
+## Safety and ownership
 
-Use `diag` to inspect Rig's runtime, paths, and configuration discovery without provider execution. Use `doctor` for a concise operational health answer and `status` for the complete expected-versus-observed table. Doctor returns 0 when healthy, 1 when completed checks find issues, and 2 when syntax, configuration, or profile resolution is invalid.
+Rig configuration is inert TOML; Rig never sources it as shell code. It invokes only explicitly selected provider capabilities, preserves literal argument boundaries, and separates read-only inspection, provider mutation, and publication.
 
-## Status
-
-Rig is a pre-v1 tool under active development. Catalogue parsing, validation, profile resolution, provider resolution, read-only queries, operational health checks, built-in and custom-provider observation, dependency-ordered application and bootstrap, declared provider actions, integrity-checked direct downloads, deterministic versioned public-data export, and trusted publication dispatch are implemented.
+Personal catalogue data, host-specific paths, credentials, provider-native state, and observed machine state belong in private configuration or their native systems. A public export contains only the selected public profile's allow-listed catalogue data.
 
 ## Documentation
 
-- [Decision Records](docs/decisions/README.md) explain why Rig has its current boundaries.
-- [Specifications](docs/specs/index.md) define accepted behaviour and current conformance.
-- [Guides](docs/guides/README.md) explain how to use and develop Rig.
-- [Roadmap](ROADMAP.md) points to canonical forward-work records.
+- [Use Rig](docs/guides/user/README.md) explains the user journey and routes to focused guides.
+- [Getting started](docs/guides/user/getting-started.md) walks from installation to a safe dry run.
+- [Command guide](docs/guides/user/commands.md) explains every command by lifecycle and trust boundary.
+- [Publish a rig](docs/guides/user/publishing.md) covers offline export and trusted publisher handoff.
+- [Custom provider actions](docs/guides/user/provider-actions.md) covers advanced host-specific operations.
+- [Decision Records](docs/decisions/README.md) explain durable product and architecture rationale.
+- [Specifications](docs/specs/index.md) define accepted, testable behaviour.
+- [Roadmap](ROADMAP.md) points to canonical forward work.
+
+## Status
+
+Rig is a pre-v1 public preview. Its catalogue, profile resolution, queries, diagnostics, health checks, provider observation and application, bootstrap flow, declared actions, public-data export, and trusted publication dispatch are implemented.
 
 ## Contributing
 
-Issues and pull requests are welcome. Follow the [developer guide](docs/guides/developer/README.md) and run its complete verification gate before submitting a change.
+Issues and pull requests are welcome. Follow the [developer guide](docs/guides/developer/README.md) and its definition of done before submitting a change.
 
 ## License
 

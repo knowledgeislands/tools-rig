@@ -69,3 +69,13 @@ _Conformance:_ conforming
 _Verify:_ Bats installer fixtures cover positional precedence, environment compatibility, latest-release discovery, invalid-input non-execution, immutable artifact URLs, and staged validation.
 
 _Evidence:_ `install.sh` implements the exact-version contract and `tests/rig.bats` exercises it with isolated network fixtures and destinations.
+
+### RIG-PORT-007 — Public interface alignment
+
+The shipped command inventory and command synopsis MUST agree across top-level and command-local help, the README, consumer command guide, `rig(1)`, Bash and Zsh completion output, and the current changelog baseline. User and developer guides, Specifications, and Decision Records MUST describe every affected shipped behaviour and trust boundary consistently. The release procedure MUST include an explicit pre-release alignment check.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats checks every shipped command across the README, consumer command guide, changelog, manual, and generated Bash and Zsh completions; compares the exact human-facing synopsis in the README, command guide, and changelog; and exercises command-local help plus targeted manual synopsis structure. Repository guide and specification audits verify documentation structure.
+
+_Evidence:_ `tests/rig.bats` contains the public command inventory alignment test, and `docs/guides/developer/definition-of-done.md` plus `docs/guides/developer/releasing.md` define delivery and pre-release checks.

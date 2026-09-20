@@ -56,6 +56,12 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - Bash and Zsh completion definitions cover the shipped command and option surface, including command-local help.
 - A repository definition-of-done checklist and Bats alignment test keep help, README, user guides, manual, completions, changelog, and distribution guidance synchronised.
 
+### Documentation
+
+- The README and focused user guides now explain Rig's purpose, model, everyday lifecycle, and publication boundary before implementation details.
+- The consumer command guide covers every shipped command and participates in the tested public-surface alignment contract.
+- The definition of done and release guide now require explicit public-surface alignment and a pre-release documentation check.
+
 ## [0.2.0] — 2026-09-18
 
 Second public preview of the catalogue-led Rig baseline.
