@@ -31,5 +31,3 @@ After the release is published, create a canonical work item in `knowledgeisland
 - verification that both routes advertise or resolve the same version.
 
 Do not make the Rig build depend on the receiving website. A missed or delayed handoff is recommendation drift to report explicitly, not a reason to rewrite release history or transfer publication authority.
-
-At the time this guide was introduced, the intended advertised release was `v0.1.0`. Verify the live routes during every handoff; do not treat this historical statement as current website state.

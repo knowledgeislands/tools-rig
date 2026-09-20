@@ -78,11 +78,11 @@ _Evidence:_ `rig_add_field` performs the loading expansion allow-list; artifact 
 
 ### RIG-CONF-008 — Canonical table identities
 
-Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[profile.ID]`, `[provider.ID]`, `[publication.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`. The superseded `[binding.TOOL.PROVIDER]` shape MUST be rejected as a source table; installation metadata belongs only in its tool table.
+Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[profile.ID]`, `[provider.ID]`, `[publication.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`. Any other table shape, including `[binding.TOOL.PROVIDER]`, MUST be rejected; installation metadata belongs only in the tool table.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats table tests accept every current table form and reject uppercase, empty, extra, whitespace-containing, digit-leading, and former binding identities.
+_Verify:_ Bats table tests accept every supported table form and reject uppercase, empty, extra, whitespace-containing, digit-leading, and binding identities.
 
 _Evidence:_ `rig_parse_section_identity` validates table arity and identity segments; `tests/rig.bats` covers canonical and malformed identities.
 

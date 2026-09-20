@@ -1,7 +1,7 @@
 ---
 id: GDR-RIG-001
 title: 'Adopting Decision Records'
-date: 2026-09-15
+date: 2026-09-20
 status: current
 decision_type: governance
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/gdr
@@ -11,7 +11,7 @@ decision_type_url: https://knowledgeislands.info/specifications/decision-records
 
 ## Context
 
-Rig coordinates independently evolving package and configuration systems. Its product boundary, runtime constraints, configuration trust model, and migration choices need compact records that remain readable outside implementation history.
+Rig coordinates independently evolving package and configuration systems. Its product boundary, runtime constraints, configuration trust model, and architectural choices need compact records that remain readable without implementation detail.
 
 ## Decision
 

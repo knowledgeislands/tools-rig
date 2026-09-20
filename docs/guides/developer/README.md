@@ -2,6 +2,12 @@
 
 Keep Rig's installed core compatible with Bash 3.2 and free of runtime dependencies beyond Bash. Native package managers, configuration managers, and richer extension commands remain optional targets.
 
+## Respect the repository boundary
+
+This repository owns Rig's portable executable, configuration schema, provider protocols, public documentation, tests, and releases. A Rig owner's configuration repository owns their catalogue, profiles, publication choices, private provider executables, provider-native manifests, and host policy.
+
+When a change crosses that boundary, define and verify the portable contract here first, then update the owner's configuration against a released Rig version or an explicitly linked development checkout. Do not copy personal declarations into this repository or reimplement portable Rig behaviour in dotfiles.
+
 ## Make a change
 
 Update the public command surface in `bin/rig`, then keep `tests/rig.bats`, `man/rig.1`, README usage, and completion output aligned. Record durable rationale in Decision Records, accepted behaviour in Specifications, and future delivery in the roadmap.

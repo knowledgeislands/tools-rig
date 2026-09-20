@@ -54,7 +54,7 @@ _Conformance:_ conforming
 
 _Verify:_ Bats tests resolve co-located tool installation metadata for native manifests and package locators without interpreting either as a Rig package database, and reject source-authored `[binding.*]` tables.
 
-_Evidence:_ `rig_synthesise_bindings` normalises public `install.*` fields only after parsing; `tests/rig.bats` covers materialisable and catalogue-only tools together and isolates the former table syntax to a rejection test.
+_Evidence:_ `rig_synthesise_bindings` normalises public `install.*` fields only after parsing; `tests/rig.bats` covers materialisable and catalogue-only tools together with rejection of unsupported binding tables.
 
 ### RIG-CAT-006 — Stable validation result
 
