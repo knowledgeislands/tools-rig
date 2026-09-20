@@ -55,3 +55,13 @@ _Conformance:_ conforming
 _Verify:_ Bats tests query each unknown identity class and assert status 2, stderr naming, and no provider invocation.
 
 _Evidence:_ `tests/rig.bats` covers unknown category, profile, and tool identities with exact `rig: error:` diagnostics and an untouched provider marker.
+
+### RIG-QUERY-006 — Operational resource disclosure
+
+`rig show` MUST append selected service and scheduled-job tables when a resolved profile contains resources. `rig explain service:ID` and `rig explain scheduled-job:ID` MUST report identity, profiles, provider, locator, desired state, literal program and environment items, paths, logs, and execution or schedule policy including defaults. These commands MUST NOT invoke any provider or write a reconciliation receipt.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats tests compare selected resource tables and complete qualified explanations while a provider marker and isolated state directory remain untouched.
+
+_Evidence:_ resource queries read the same validated in-memory model as tool queries and remain outside provider-dispatch functions.

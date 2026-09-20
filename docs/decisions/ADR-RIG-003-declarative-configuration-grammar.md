@@ -36,6 +36,8 @@ The dependency-free core remains small enough to review because it rejects gener
 
 Configuration remains inert during catalogue queries and validation. Provider, action, and publisher invocation continue to be explicit executable trust transitions rather than side effects of parsing.
 
+Schema 1 operational resources use the same bounded grammar: `[service.ID]` and `[scheduled-job.ID]` tables contain only quoted strings and string arrays, while profile resource selectors remain arrays. Calendar intent is encoded as validated literal strings rather than inline tables, preserving inert Bash 3.2 parsing and ordinary TOML interoperability.
+
 ## References
 
 - [PDR-RIG-001](PDR-RIG-001-catalogue-led-working-setup.md) — establishes the catalogue-led product model.

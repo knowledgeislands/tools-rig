@@ -9,6 +9,7 @@ These guides explain how to use, develop, and release Rig. Decision Records own 
 - [Choose a command](user/commands.md) — understand every command and its read, observe, mutate, or publish boundary.
 - [Publish a public rig](user/publishing.md) — export a deliberately public profile and hand it to a trusted publisher.
 - [Run custom provider actions](user/provider-actions.md) — expose bounded host-specific operations through private configuration.
+- [Manage operational resources](user/operational-resources.md) — declare, inspect, and reconcile services and scheduled jobs.
 
 ## Developer guides
 

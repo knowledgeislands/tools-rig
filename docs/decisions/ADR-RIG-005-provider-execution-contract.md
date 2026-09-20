@@ -61,6 +61,8 @@ Catalogue-led description is therefore bidirectional: `status` answers whether d
 
 Configuration loading and provider-backed work may take long enough that silence is misleading. Rig therefore emits line-oriented progress on stderr for loading, observation, inventory, application, declared actions, and publication when stderr is interactive. `RIG_PROGRESS=always` retains those records in redirected logs and `RIG_PROGRESS=never` suppresses them. Stable command reports and exported data remain on stdout.
 
+Operational resources extend the same executable boundary with `observe-resource`, `apply-resource`, and `retire-resource` verbs. Providers declare the corresponding `resource-observe`, `resource-apply`, and `resource-retire` capabilities and receive one resource identity, kind, locator, then ordered literal `key=value` records. Rig's reconciliation receipt records only the identities and locators from its last successful resource application; it is application evidence for retirement, not persisted provider observation.
+
 ## Consequences
 
 Provider authors receive a small versioned protocol that works in any implementation language while Rig remains Bash 3.2-compatible. Users receive stable state and outcome reporting independent of provider-native output. Full-plan preflight prevents a late declarative or environment error from causing partial mutation, while runtime failures remain visible and do not block independent work.

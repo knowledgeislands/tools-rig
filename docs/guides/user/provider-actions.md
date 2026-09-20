@@ -28,6 +28,8 @@ rig run local service-status -- verbose
 
 Configured `arguments` always precede caller arguments. By default, every caller argument must exactly match one `allowed-arguments` entry. Set `argument-policy = "provider"` only when the provider's native configuration is intentionally authoritative for further validation.
 
+An action can instead declare `resource-kinds = ["service", "scheduled-job"]`. Its first caller argument must then be a selected qualified target such as `service:indexer`; Rig passes the resource kind, identity, locator, and complete resolved declaration literally before `--` and any remaining caller arguments. Resource-aware actions require `argument-policy = "provider"` so the provider can validate its native operation.
+
 Values remain literal throughout dispatch. Rig does not evaluate shell text, search for adjacent executables, or infer an action that was not declared.
 
 ## Understand the boundary

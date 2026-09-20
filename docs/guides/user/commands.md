@@ -8,7 +8,7 @@ These commands parse configuration and never invoke providers:
 
 - `rig show [--profile NAME]` — describe the resolved default or named profile in a readable tool table.
 - `rig list [--category ID] [--profile NAME]` — list declared tools, optionally restricted by category and resolved profile.
-- `rig explain TOOL` — show one tool's complete declared purpose, rationale, relationships, profile membership, platforms, artifacts, and compatible installation.
+- `rig explain TOOL|service:ID|scheduled-job:ID` — show one tool or qualified resource's complete declaration and profile membership.
 - `rig diag` — report the running Rig version, executable, Bash, platform, XDG paths, configuration sources, and validity.
 
 Use `show` for the whole selected setup, `list` to browse, `explain` for one tool, and `diag` when Rig itself cannot find or parse what you expect.
@@ -18,7 +18,7 @@ Use `show` for the whole selected setup, `list` to browse, `explain` for one too
 These commands may invoke only selected providers' declared observation capabilities:
 
 - `rig doctor [--profile NAME]` — give a compact health answer and actionable findings.
-- `rig status [--profile NAME] [--unmanaged]` — show the full expected-versus-observed comparison.
+- `rig status [--profile NAME] [--unmanaged]` — show the full expected-versus-observed comparison for tools and resources.
 
 `status --unmanaged` additionally asks providers with the `inventory` capability for identities in their domain that no catalogue installation declares. Those rows are informational and do not make an otherwise healthy status fail.
 
@@ -29,7 +29,7 @@ Neither command applies changes.
 - `rig apply [--profile NAME] [--dry-run]` — preflight the resolved profile, print the complete plan in dry-run mode, or invoke declared apply capabilities.
 - `rig bootstrap [--profile NAME] [--dry-run]` — use the configured bootstrap profile, an explicit profile, or the default-profile fallback through the same application plan.
 
-Run the dry-run form first. A dry run invokes no provider. Without `--dry-run`, these commands cross the provider-mutation boundary.
+Run the dry-run form first. A dry run invokes no provider and writes no resource receipt. Without `--dry-run`, these commands cross the provider-mutation boundary, reconcile selected resources, and retire stale receipt entries only after complete preflight.
 
 ## Run a declared host action
 

@@ -1,6 +1,6 @@
 # Rig
 
-Rig helps you describe the tools that make up your working setup, explain why each one belongs, and see whether the setup you expect is present on a machine.
+Rig helps you describe the tools and operational resources that make up your working setup, explain why each one belongs, and see whether the setup you expect is present on a machine.
 
 Instead of treating a Brewfile, dotfiles repository, language tool manager, and download scripts as separate answers to “what is my setup?”, Rig gives them one catalogue and one set of profiles. Those native systems still install and configure their own tools; Rig describes the whole and coordinates them.
 
@@ -16,7 +16,8 @@ Instead of treating a Brewfile, dotfiles repository, language tool manager, and 
 ## The model in plain language
 
 - A **catalogue** describes your tools: their category, purpose, rationale, relationships, platforms, and optional installation.
-- A **profile** selects the catalogue entries for a machine, role, or context such as `default`, `minimal`, or `developer`.
+- An **operational resource** declares a service or scheduled job, including what it runs and its intended provider-managed state.
+- A **profile** selects catalogue tools and operational resources for a machine, role, or context such as `default`, `minimal`, or `developer`.
 - A **provider** connects a selected tool to the system that already manages it, such as Homebrew, uv, chezmoi, a verified download, or your own executable.
 - **State** compares the selected profile with what providers observe on the current machine.
 - A **publication** exports one deliberately public profile as data that a website such as `rig.midnight.ninja` can render.
@@ -25,7 +26,7 @@ Rig is therefore a manager of managers. It does not replace package-manager mani
 
 ## A typical Rig lifecycle
 
-1. Declare the tools you care about and why they belong.
+1. Declare the tools and operational resources you care about and why they belong.
 2. Group them into profiles for different machines or contexts.
 3. Use `rig show`, `rig list`, and `rig explain` to understand the declaration.
 4. Use `rig diag`, `rig doctor`, and `rig status` to inspect Rig and compare intent with the machine.
@@ -92,17 +93,17 @@ rig status
 rig apply --dry-run
 ```
 
-Catalogue queries and diagnostics do not invoke providers. Doctor and status use only declared observation capabilities. A dry run preflights the complete application plan without invoking provider changes.
+Catalogue queries and diagnostics do not invoke providers. Doctor and status use only declared observation capabilities. A dry run preflights the complete tool and resource plan, including stale-resource retirement, without invoking provider changes or writing the resource receipt.
 
 ## Commands
 
 - `rig` shows top-level help.
 - `rig show [--profile NAME]` describes the default or named resolved profile.
 - `rig list [--category ID] [--profile NAME]` lists catalogue tools, optionally filtered by category and profile.
-- `rig explain TOOL` explains one tool's purpose, rationale, relationships, profiles, and compatible installation.
-- `rig status [--profile NAME] [--unmanaged]` compares selected tools with provider observations and can report undeclared observed identities.
-- `rig doctor [--profile NAME]` gives a compact health assessment for configuration, paths, providers, and selected tools.
-- `rig apply [--profile NAME] [--dry-run]` previews or materialises a resolved profile.
+- `rig explain TOOL|service:ID|scheduled-job:ID` explains one tool or qualified operational resource.
+- `rig status [--profile NAME] [--unmanaged]` compares selected tools and resources with provider observations and can report undeclared tool identities.
+- `rig doctor [--profile NAME]` gives a compact health assessment for configuration, paths, providers, selected tools, and selected resources.
+- `rig apply [--profile NAME] [--dry-run]` previews or materialises the resolved tool and resource plan.
 - `rig bootstrap [--profile NAME] [--dry-run]` previews or materialises the configured bootstrap profile.
 - `rig run PROVIDER ACTION [-- ARGUMENT...]` invokes one explicitly declared custom-provider action.
 - `rig export PUBLICATION --output DIRECTORY` writes deterministic public Rig data without deploying it.
@@ -129,13 +130,14 @@ Personal catalogue data, host-specific paths, credentials, provider-native state
 - [Command guide](docs/guides/user/commands.md) explains every command by lifecycle and trust boundary.
 - [Publish a rig](docs/guides/user/publishing.md) covers offline export and trusted publisher handoff.
 - [Custom provider actions](docs/guides/user/provider-actions.md) covers advanced host-specific operations.
+- [Operational resources](docs/guides/user/operational-resources.md) covers services, scheduled jobs, deferred execution, and reconciliation receipts.
 - [Decision Records](docs/decisions/README.md) explain durable product and architecture rationale.
 - [Specifications](docs/specs/index.md) define accepted, testable behaviour.
 - [Roadmap](ROADMAP.md) points to canonical forward work.
 
 ## Status
 
-Rig is a pre-v1 public preview. Its catalogue, profile resolution, queries, diagnostics, health checks, provider observation and application, bootstrap flow, declared actions, public-data export, and trusted publication dispatch are implemented.
+Rig is a pre-v1 public preview. Its catalogue, operational resources, profile resolution, queries, diagnostics, health checks, provider observation and application, bootstrap flow, declared actions, public-data export, and trusted publication dispatch are implemented.
 
 ## Contributing
 

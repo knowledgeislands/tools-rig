@@ -2,7 +2,7 @@
 
 Rig is for people who want their working setup to be understandable as a whole, not only reproducible through a collection of unrelated installers and configuration managers.
 
-A Rig declaration tells you what tools matter, what each one is for, why it belongs, which contexts need it, and which native system is responsible for it. Rig can then compare that declaration with the current machine and coordinate provider work without taking ownership away from Homebrew, uv, chezmoi, or another provider.
+A Rig declaration tells you what tools and operational resources matter, what each one is for, why it belongs, which contexts need it, and which native system is responsible for it. Rig can then compare that declaration with the current machine and coordinate provider work without taking ownership away from Homebrew, uv, chezmoi, launchd, or another provider.
 
 ## Start with the questions
 
@@ -18,7 +18,8 @@ Rig is useful when you want durable answers to questions such as:
 ## Understand the four core concepts
 
 - **Catalogue** — the complete description of tools you care about. Each entry can record category, purpose, rationale, relationships, supported platforms, and installation metadata.
-- **Profile** — a named selection of catalogue tools for a machine, role, or context. Profiles may compose other profiles and tool requirements.
+- **Operational resource** — a service or scheduled job whose identity, intent, and desired state Rig owns while a provider owns native projection and operation.
+- **Profile** — a named selection of catalogue tools and operational resources for a machine, role, or context. Profiles may compose other profiles; resources may require tools.
 - **Provider** — the bridge to a system that already owns installation or observation. Rig selects and orders work; the provider retains its own manifests and state.
 - **State** — the comparison between a resolved profile and provider observations on the current machine.
 
@@ -26,7 +27,7 @@ Publication is an optional projection of that model. It exports one deliberately
 
 ## Follow the everyday lifecycle
 
-1. **Declare** a catalogue, profiles, and any provider-backed installations.
+1. **Declare** a catalogue, operational resources, profiles, and any provider-backed installations.
 2. **Understand** the resolved setup with `rig show`, `rig list`, and `rig explain`.
 3. **Check Rig itself** with `rig diag`.
 4. **Assess the machine** with `rig doctor` for a summary or `rig status` for full expected-versus-observed detail.
@@ -42,6 +43,7 @@ Inspection comes before mutation. Rig never turns a read-only catalogue query in
 - [Use the commands](commands.md) — choose the right command and understand whether it reads configuration, observes providers, mutates providers, or publishes data.
 - [Publish a rig](publishing.md) — create a safe public profile, inspect its versioned JSON, and hand it to a trusted publisher.
 - [Run custom provider actions](provider-actions.md) — expose bounded host-specific observations or maintenance through private configuration.
+- [Manage operational resources](operational-resources.md) — declare services and scheduled jobs, preview deferred execution, and understand receipts.
 
 For the exhaustive configuration grammar, environment variables, provider protocol, and exit-status contract, use `man rig`. Specifications are maintained for implementers and verification; most users should start with these guides.
 

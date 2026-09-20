@@ -178,4 +178,5 @@ Persist the generated source through the shell or configuration manager that alr
 - Use the [command guide](commands.md) to choose between queries, health checks, mutation, and publication.
 - Use the [publication guide](publishing.md) to share a deliberately public profile.
 - Use the [custom action guide](provider-actions.md) only when a host-specific operation does not fit a portable built-in adapter.
+- Use the [operational-resource guide](operational-resources.md) when a profile should own services or scheduled jobs as desired state.
 - Use `man rig` for the exhaustive schema, native adapter matrix, environment, exit status, and custom-provider protocol.

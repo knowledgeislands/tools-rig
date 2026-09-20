@@ -296,7 +296,7 @@ write_query_config() {
   for synopsis in \
     'show [--profile NAME]' \
     'list [--category ID] [--profile NAME]' \
-    'explain TOOL' \
+    'explain TOOL|service:ID|scheduled-job:ID' \
     'status [--profile NAME] [--unmanaged]' \
     'doctor [--profile NAME]' \
     'apply [--profile NAME] [--dry-run]' \
@@ -764,7 +764,7 @@ write_query_config() {
 
     run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" explain "$flag"
     [ "$status" -eq 0 ]
-    [ "$output" = "Usage: rig explain TOOL" ]
+    [ "$output" = "Usage: rig explain TOOL|service:ID|scheduled-job:ID" ]
   done
 }
 
@@ -3490,6 +3490,235 @@ write_inventory_config() {
   [[ "$output" == *$'undeclared-one\tsurveyor\tunmanaged\tnative'* ]] || false
   [[ "$output" == *$'undeclared two\tsurveyor\tunmanaged\t-'* ]] || false
   [[ "$output" == *'Unmanaged: 2'* ]] || false
+}
+
+write_resource_fixture() {
+  RESOURCE_LOG=$BATS_TEST_TMPDIR/resource-provider-$BATS_TEST_NUMBER.log
+  RESOURCE_PROVIDER=$BATS_TEST_TMPDIR/resource-provider-$BATS_TEST_NUMBER
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'set -u' \
+    'log=${RESOURCE_LOG:?}' \
+    'printf "%s\n" "$*" >>"$log"' \
+    'if [ "${RESOURCE_FAIL_ID:-}" = "${4:-}" ] && [ "$2" = apply-resource ]; then exit 9; fi' \
+    'case "$2" in' \
+    '  observe-resource) printf "%s\n" present ;;' \
+    '  *) exit 0 ;;' \
+    'esac' >"$RESOURCE_PROVIDER"
+  chmod +x "$RESOURCE_PROVIDER"
+  : >"$RESOURCE_LOG"
+  printf '%s\n' \
+    '[rig]' \
+    'schema = 1' \
+    'default-profile = "default"' \
+    'bootstrap-profile = "default"' \
+    '' \
+    '[category.system]' \
+    'name = "System"' \
+    'purpose = "System support."' \
+    '' \
+    '[tool.base]' \
+    'name = "Base"' \
+    'category = "system"' \
+    'purpose = "Support a service."' \
+    'rationale = "Required by the declared service."' \
+    'platforms = ["macos"]' \
+    '' \
+    '[provider.runner]' \
+    'adapter = "custom"' \
+    "executable = \"$RESOURCE_PROVIDER\"" \
+    'capabilities = ["resource-observe", "resource-apply", "resource-retire"]' \
+    '' \
+    '[service.daemon]' \
+    'name = "Test daemon"' \
+    'purpose = "Exercise service reconciliation."' \
+    'rationale = "Proves deferred execution stays declarative."' \
+    'provider = "runner"' \
+    'locator = "example.test.daemon"' \
+    'platforms = ["macos"]' \
+    'requires = ["base"]' \
+    'desired-state = "running"' \
+    'program = ["/usr/bin/example", "--literal value", "$(not-executed)"]' \
+    'environment = ["SAFE=value;still-literal"]' \
+    'restart-policy = "always"' \
+    'start-policy = "load"' \
+    'standard-output = "/tmp/example.out"' \
+    'standard-error = "/tmp/example.err"' \
+    '' \
+    '[scheduled-job.morning]' \
+    'name = "Morning"' \
+    'purpose = "Exercise calendar projection."' \
+    'rationale = "Proves scheduled argv is inspectable."' \
+    'provider = "runner"' \
+    'locator = "example.test.morning"' \
+    'platforms = ["macos"]' \
+    'desired-state = "enabled"' \
+    'program = ["/usr/bin/true"]' \
+    'schedule.calendar = ["hour=8,minute=0", "weekday=1,hour=9"]' \
+    'run-policy = "scheduled-only"' \
+    'priority = "background"' \
+    '' \
+    '[profile.default]' \
+    'services = ["daemon"]' \
+    'scheduled-jobs = ["morning"]' \
+    '' \
+    '[action.runner.restart]' \
+    'mode = "mutate"' \
+    'description = "Restart one selected resource."' \
+    'platforms = ["macos"]' \
+    'argument-policy = "provider"' \
+    'resource-kinds = ["service", "scheduled-job"]' >"$CONFIG_HOME/rig.toml"
+}
+
+@test "operational resources resolve through profiles and remain inert in queries" {
+  write_resource_fixture
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" \
+    RESOURCE_LOG="$RESOURCE_LOG" RIG_PLATFORM=macos "$RIG" show
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'Services: 1\nID\tNAME\tPROVIDER\tDESIRED'* ]]
+  [[ "$output" == *$'daemon\tTest daemon\trunner\trunning'* ]]
+  [[ "$output" == *'Scheduled jobs: 1'* ]]
+  [[ "$output" == *$'morning\tMorning\trunner\tenabled\tcalendar:hour=8,minute=0;weekday=1,hour=9'* ]]
+  [ ! -s "$RESOURCE_LOG" ]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RESOURCE_LOG="$RESOURCE_LOG" \
+    RIG_PLATFORM=macos "$RIG" explain service:daemon
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'Resource: service:daemon'* ]]
+  [[ "$output" == *'program=$(not-executed)'* ]]
+  [[ "$output" == *'Profiles: default'* ]]
+  [ ! -s "$RESOURCE_LOG" ]
+}
+
+@test "resource status and dry-run use literal provider records without mutation" {
+  write_resource_fixture
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" \
+    RESOURCE_LOG="$RESOURCE_LOG" RIG_PLATFORM=macos "$RIG" status
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'daemon\tservice\trunner\tpresent\t-'* ]]
+  [[ "$output" == *$'morning\tscheduled-job\trunner\tpresent\t-'* ]]
+  grep -F 'rig-provider-v1 observe-resource runner daemon service example.test.daemon' "$RESOURCE_LOG"
+  : >"$RESOURCE_LOG"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" \
+    RESOURCE_LOG="$RESOURCE_LOG" RIG_PLATFORM=macos "$RIG" apply --dry-run
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'daemon\tservice\trunner\tplanned\treconcile:example.test.daemon'* ]]
+  [[ "$output" == *'program=--literal value'* ]]
+  [[ "$output" == *'program=$(not-executed)'* ]]
+  [[ "$output" == *'schedule-calendar=hour=8,minute=0'* ]]
+  [ ! -s "$RESOURCE_LOG" ]
+  [ ! -e "$BATS_TEST_TMPDIR/state/resources/macos.tsv" ]
+}
+
+@test "resource-aware actions receive selected declaration before caller arguments" {
+  write_resource_fixture
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RESOURCE_LOG="$RESOURCE_LOG" \
+    RIG_PLATFORM=macos "$RIG" run runner restart -- service:daemon --follow
+  [ "$status" -eq 0 ]
+  run grep -F 'rig-provider-v1 apply runner runner action restart resource-v1 service daemon example.test.daemon' "$RESOURCE_LOG"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'program=/usr/bin/example'* ]]
+  [[ "$output" == *' -- --follow'* ]]
+}
+
+@test "resource apply records managed identities and retires deselected entries" {
+  write_resource_fixture
+  sed '/requires = \["base"\]/d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/without-requirement.toml"
+  mv "$CONFIG_HOME/without-requirement.toml" "$CONFIG_HOME/rig.toml"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" \
+    RESOURCE_LOG="$RESOURCE_LOG" RIG_PLATFORM=macos "$RIG" apply
+  [ "$status" -eq 0 ]
+  [ -f "$BATS_TEST_TMPDIR/state/resources/macos.tsv" ]
+  grep -F $'runner\tservice\tdaemon\texample.test.daemon' "$BATS_TEST_TMPDIR/state/resources/macos.tsv"
+  grep -F $'runner\tscheduled-job\tmorning\texample.test.morning' "$BATS_TEST_TMPDIR/state/resources/macos.tsv"
+
+  sed 's/services = \["daemon"\]/services = []/; s/scheduled-jobs = \["morning"\]/scheduled-jobs = []/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/deselected.toml"
+  mv "$CONFIG_HOME/deselected.toml" "$CONFIG_HOME/rig.toml"
+  : >"$RESOURCE_LOG"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" \
+    RESOURCE_LOG="$RESOURCE_LOG" RIG_PLATFORM=macos "$RIG" apply
+  [ "$status" -eq 0 ]
+  grep -F 'rig-provider-v1 retire-resource runner daemon service example.test.daemon previous-managed=true' "$RESOURCE_LOG"
+  grep -F 'rig-provider-v1 retire-resource runner morning scheduled-job example.test.morning previous-managed=true' "$RESOURCE_LOG"
+  [ ! -s "$BATS_TEST_TMPDIR/state/resources/macos.tsv" ]
+}
+
+@test "resource schema rejects unsafe calendar declarations before provider execution" {
+  write_resource_fixture
+  sed 's/hour=8,minute=0/hour=24,minute=0/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/invalid.toml"
+  mv "$CONFIG_HOME/invalid.toml" "$CONFIG_HOME/rig.toml"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RESOURCE_LOG="$RESOURCE_LOG" \
+    RIG_PLATFORM=macos "$RIG" show
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"out-of-range schedule.calendar pair 'hour=24'"* ]]
+  [ ! -s "$RESOURCE_LOG" ]
+}
+
+@test "resource apply preflights every provider before any mutation" {
+  write_resource_fixture
+  sed '/^\[scheduled-job.morning\]/,/^\[profile.default\]/ s/provider = "runner"/provider = "bad"/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/preflight.toml"
+  printf '%s\n' \
+    '' \
+    '[provider.bad]' \
+    'adapter = "custom"' \
+    "executable = \"$RESOURCE_PROVIDER\"" \
+    'capabilities = ["resource-observe"]' >>"$CONFIG_HOME/preflight.toml"
+  mv "$CONFIG_HOME/preflight.toml" "$CONFIG_HOME/rig.toml"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" \
+    RESOURCE_LOG="$RESOURCE_LOG" RIG_PLATFORM=macos "$RIG" apply
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"provider 'bad' does not declare capability 'resource-apply'"* ]]
+  [ ! -s "$RESOURCE_LOG" ]
+  [ ! -e "$BATS_TEST_TMPDIR/state/resources/macos.tsv" ]
+}
+
+@test "resource locator transfer renames receipt ownership without retirement" {
+  write_resource_fixture
+  sed '/requires = \["base"\]/d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/without-requirement.toml"
+  mv "$CONFIG_HOME/without-requirement.toml" "$CONFIG_HOME/rig.toml"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" \
+    RESOURCE_LOG="$RESOURCE_LOG" RIG_PLATFORM=macos "$RIG" apply
+  [ "$status" -eq 0 ]
+
+  sed 's/\[service.daemon\]/[service.renamed]/; s/services = \["daemon"\]/services = ["renamed"]/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/renamed.toml"
+  mv "$CONFIG_HOME/renamed.toml" "$CONFIG_HOME/rig.toml"
+  : >"$RESOURCE_LOG"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" \
+    RESOURCE_LOG="$RESOURCE_LOG" RIG_PLATFORM=macos "$RIG" apply
+  [ "$status" -eq 0 ]
+  grep -F 'rig-provider-v1 apply-resource runner renamed service example.test.daemon' "$RESOURCE_LOG"
+  ! grep -F 'retire-resource runner daemon' "$RESOURCE_LOG"
+  grep -F $'runner\tservice\trenamed\texample.test.daemon' "$BATS_TEST_TMPDIR/state/resources/macos.tsv"
+  ! grep -F $'runner\tservice\tdaemon\t' "$BATS_TEST_TMPDIR/state/resources/macos.tsv"
+}
+
+@test "resource apply failure preserves the previous atomic receipt" {
+  write_resource_fixture
+  sed '/requires = \["base"\]/d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/without-requirement.toml"
+  mv "$CONFIG_HOME/without-requirement.toml" "$CONFIG_HOME/rig.toml"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" \
+    RESOURCE_LOG="$RESOURCE_LOG" RIG_PLATFORM=macos "$RIG" apply
+  [ "$status" -eq 0 ]
+  cp "$BATS_TEST_TMPDIR/state/resources/macos.tsv" "$BATS_TEST_TMPDIR/expected-receipt.tsv"
+
+  sed 's/locator = "example.test.daemon"/locator = "example.test.daemon.changed"/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/changed.toml"
+  mv "$CONFIG_HOME/changed.toml" "$CONFIG_HOME/rig.toml"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" \
+    RESOURCE_LOG="$RESOURCE_LOG" RESOURCE_FAIL_ID=daemon RIG_PLATFORM=macos "$RIG" apply
+  [ "$status" -eq 1 ]
+  cmp "$BATS_TEST_TMPDIR/expected-receipt.tsv" "$BATS_TEST_TMPDIR/state/resources/macos.tsv"
 }
 
 @test "status omits declared locators from the unmanaged table" {

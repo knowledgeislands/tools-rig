@@ -177,3 +177,33 @@ _Conformance:_ conforming
 _Verify:_ Bats covers healthy, catalogue-only, unhealthy observation, native failure, dependency suppression, syntax, and preflight outcomes.
 
 _Evidence:_ Operational command tests assert aggregate status independently from provider-native exit details.
+
+### RIG-STATE-018 — Operational resource state
+
+`rig status` and `rig doctor` MUST observe every selected resource through its exact `resource-observe` capability and MUST NOT mutate it. Status MUST append deterministic resource identity, kind, provider, state, and detail rows. A non-present selected resource or stale receipt row MUST be unhealthy; stale rows MUST report retirement pending. Doctor MUST turn the same findings into actionable provider-owned diagnostics.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats tests all resource state tokens, protocol failures, stale receipts, healthy and finding outcomes, and provider logs containing only observation verbs.
+
+_Evidence:_ resource observation uses the standard state vocabulary and separate result arrays consumed by status and doctor.
+
+### RIG-STATE-019 — Resource application and retirement
+
+`rig apply` and `rig bootstrap` MUST preflight every selected tool, selected resource, stale receipt provider, executable, exact capability, and receipt target before the first mutation. They MUST apply dependency-ordered tools, then selected resources in bytewise order, then stale resource retirements. A failed tool MUST suppress dependent resources while independent resources continue. Retirement MUST not begin after any selected application failure. Dry-run MUST invoke no provider, write no state, and print every resource locator, desired field record, and pending retirement.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats tests complete-plan rejection without a mutation log, literal complete dry-run, dependency suppression, independent continuation, native failures, resource ordering, and apply/bootstrap parity.
+
+_Evidence:_ resource preflight extends the complete tool preflight; application maintains separate outcomes and gates retirement on aggregate success.
+
+### RIG-STATE-020 — Reconciliation receipt
+
+After a fully successful resource reconciliation, Rig MUST atomically replace `${RIG_STATE_HOME}/resources/PLATFORM.tsv` with one tab-separated provider, kind, identity, and locator row per selected resource. It MUST NOT persist observations or declaration fields. A later plan MUST treat receipt rows whose provider, kind, and locator are absent from the selected set as stale retirement work. Reusing the same provider, kind, and locator under a new Rig identity MUST transfer ownership without retirement. Malformed or unsafe receipt paths MUST fail before mutation; failed or dry-run applications MUST leave the previous receipt unchanged.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats tests XDG and Rig state overrides, first write, exact content, deselection, deletion, rename transfer, malformed records, unsafe targets, native failure preservation, atomic replacement, and empty successful receipts.
+
+_Evidence:_ receipt helpers read a bounded four-field format, compare locators, preflight the filesystem boundary, write a mode-restricted sibling temporary file, and rename only after success.

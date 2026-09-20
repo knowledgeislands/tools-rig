@@ -4,12 +4,12 @@ area: CORE
 title: Declarative operational resources
 theme: orchestration
 horizon: now
-status: ready
+status: in-progress
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 77801a21ff508aff7de1c345afe975ec55620260
 created_at: 2026-09-20T11:52:55Z
-updated_at: 2026-09-20T11:56:34Z
+updated_at: 2026-09-20T13:00:46Z
 ---
 
 # RIG-CORE-010: Declarative operational resources
@@ -38,14 +38,14 @@ The personal dotfiles repository keeps service metadata in `.chezmoidata/service
 
 ## Steps
 
-- [ ] Amend the product, configuration, provider-execution, and executable-boundary Decision Records for first-class operational resources and deferred execution; add a focused architecture decision for canonical ownership and application receipts.
-- [ ] Extend schema 1 with `[service.ID]` and `[scheduled-job.ID]` tables plus `services` and `scheduled-jobs` profile selectors, using only quoted strings and string arrays.
-- [ ] Validate common identity, purpose, rationale, provider, locator, platform, tool dependency, desired-state, program, environment, path, log, and execution fields; validate service policies and scheduled calendar or interval grammar without shell evaluation.
-- [ ] Resolve composed-profile resources and their tool dependencies while keeping catalogue queries inert; add resource sections to `show`, qualified resource targets to `explain`, and operational rows to status and doctor.
-- [ ] Add custom-provider capabilities and literal argv contracts for resource observation, application, retirement, and resource-aware actions; never require a provider to parse TOML or call chezmoi for authoritative data.
-- [ ] Include selected resources and stale receipt entries in complete preflight, dry-run, application, bootstrap, failure isolation, and progress reporting. Persist only the last successfully managed provider, kind, identity, and locator receipt beneath Rig state so deselection can retire native resources without persisting observed state.
-- [ ] Cover schema validation, profile composition, tool dependencies, inert queries, literal provider boundaries, observation, complete dry-run, preflight, application, receipt atomicity, retirement, rename transfer, action binding, failure isolation, and XDG state behavior in Bats.
-- [ ] Align README, user guides, command help, completions, manual, changelog, Specifications, and Decision Records.
+- [x] Amend the product, configuration, provider-execution, and executable-boundary Decision Records for first-class operational resources and deferred execution; add a focused architecture decision for canonical ownership and application receipts.
+- [x] Extend schema 1 with `[service.ID]` and `[scheduled-job.ID]` tables plus `services` and `scheduled-jobs` profile selectors, using only quoted strings and string arrays.
+- [x] Validate common identity, purpose, rationale, provider, locator, platform, tool dependency, desired-state, program, environment, path, log, and execution fields; validate service policies and scheduled calendar or interval grammar without shell evaluation.
+- [x] Resolve composed-profile resources and their tool dependencies while keeping catalogue queries inert; add resource sections to `show`, qualified resource targets to `explain`, and operational rows to status and doctor.
+- [x] Add custom-provider capabilities and literal argv contracts for resource observation, application, retirement, and resource-aware actions; never require a provider to parse TOML or call chezmoi for authoritative data.
+- [x] Include selected resources and stale receipt entries in complete preflight, dry-run, application, bootstrap, failure isolation, and progress reporting. Persist only the last successfully managed provider, kind, identity, and locator receipt beneath Rig state so deselection can retire native resources without persisting observed state.
+- [x] Cover schema validation, profile composition, tool dependencies, inert queries, literal provider boundaries, observation, complete dry-run, preflight, application, receipt atomicity, retirement, rename transfer, action binding, failure isolation, and XDG state behavior in Bats.
+- [x] Align README, user guides, command help, completions, manual, changelog, Specifications, and Decision Records.
 - [ ] Migrate the personal Rig fragment to canonical service and scheduled-job declarations, rename the custom provider to `launchd`, and make it render and operate native plists directly from resolved Rig arguments.
 - [ ] Remove the two chezmoi YAML registries, native plist templates and stubs, reload hook, runtime chezmoi callbacks, and duplicated launchcontrol discovery while preserving the scheduled wrapper and specialised mcporter restart behavior where still required.
 - [ ] Update dotfiles tests, guides, ignore rules, and Decision Records; compare all four native launchd projections and action behavior before and after migration; run `chezmoi diff` without applying it.
@@ -76,7 +76,7 @@ Amend the living product, configuration, provider-execution, and executable-boun
 
 ### Specifications
 
-Add an operational-resources area and amend configuration, orchestration, query, state, portability, and trust-boundary requirements wherever the accepted schema or behavior changes.
+Integrate operational-resource requirements into the existing configuration, orchestration, query, and state Specifications so each accepted behaviour remains with its owning concern. This deliberate consolidation avoids a redundant standalone area; portability and trust-boundary constraints remain expressed through those requirements and the executable-boundary Decision Record.
 
 ### Guides
 

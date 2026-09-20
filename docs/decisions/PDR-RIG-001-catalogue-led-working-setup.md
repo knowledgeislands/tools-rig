@@ -34,6 +34,8 @@ Personal choices and host-specific operations belong in configuration outside th
 
 Provider capabilities differ, and Rig must report those differences rather than force every system into one universal lifecycle.
 
+Operational resources extend the catalogue-led model: services and scheduled jobs are first-class profile-selected declarations. Their identity, purpose, deferred program, and desired state belong to Rig configuration; providers translate that intent into native state without becoming a second catalogue.
+
 ## References
 
 - [GDR-RIG-001](GDR-RIG-001-adopting-decision-records.md) — establishes the decision collection.

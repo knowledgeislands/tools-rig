@@ -28,6 +28,8 @@ Static export accepts only an explicitly selected public profile. It excludes pr
 
 Direct-download application requires declared integrity evidence before installing content.
 
+Operational-resource queries expose deferred program, environment, schedule, and policy as inert data without crossing the executable boundary. Status and doctor may invoke only `resource-observe`; apply and bootstrap may invoke `resource-apply` and `resource-retire` only after complete preflight. Resource-aware actions resolve one selected qualified resource before its declaration crosses the same literal-argument boundary.
+
 ## Consequences
 
 Read-only catalogue queries are safe against executable configuration. Provider, operation, and publisher invocation remains powerful and visibly trusted rather than disguised as parsing. Custom integrations can use any implementation language without becoming core dependencies because they are required only when selected.

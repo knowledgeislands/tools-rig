@@ -14,7 +14,7 @@ rig \- describe and manage a personal working setup
 .RI [ \-\-profile " NAME" ]
 .br
 .B rig explain
-.I TOOL
+.I TOOL|service:ID|scheduled-job:ID
 .br
 .B rig status
 .RI [ \-\-profile " NAME" ]
@@ -54,13 +54,14 @@ rig \- describe and manage a personal working setup
 .SH DESCRIPTION
 \&
 .PP
-Rig describes the tools that make up a person's working setup, explains why
-they belong, and compares the selected setup with the current machine.
+Rig describes the tools, services, and scheduled jobs that make up a person's
+working setup, explains why they belong, and compares the selected setup with
+the current machine.
 .PP
-The catalogue records tool meaning. Profiles select tools for machines, roles,
-or contexts. Providers connect selected tools to systems such as Homebrew, uv,
-chezmoi, verified downloads, or custom executables. State compares resolved
-intent with provider observations.
+The catalogue records tool meaning. Operational resources record deferred
+service and scheduled-job intent. Profiles select tools and resources for
+machines, roles, or contexts. Providers connect selected declarations to
+native systems. State compares resolved intent with provider observations.
 .PP
 Catalogue queries and diagnostics parse inert configuration and do not invoke
 provider code. Status and doctor invoke observation capabilities.
@@ -136,11 +137,12 @@ Without either form, the installer discovers the latest GitHub release.
 \&
 .TP
 .B rig show
-Describe the resolved default profile with a bounded-width, aligned tool table.
+Describe the resolved default profile with aligned tool, service, and
+scheduled-job tables.
 .TP
 .BI "rig show \-\-profile " NAME
-Describe the named resolved profile with a bounded-width, aligned tool table
-without changing the configured default.
+Describe the named resolved profile with aligned tool and operational-resource
+tables without changing the configured default.
 .TP
 .B rig list
 List every declared catalogue tool in deterministic order.
@@ -152,14 +154,15 @@ Narrow the list to tools in the declared category.
 Narrow the list to tools selected by the resolved profile.
 The category and profile filters may be combined.
 .TP
-.BI "rig explain " TOOL
-Show the tool's identity, category, purpose, rationale, supported platforms,
-relationships, profile membership, and compatible installation metadata.
+.BI "rig explain " TOOL|service:ID|scheduled-job:ID
+Show a tool's identity and installation metadata, or a qualified operational
+resource's purpose, rationale, provider, desired state, deferred execution
+fields, policies, tool dependencies, and profile membership.
 .TP
 .B rig status
-Compare every tool in the resolved default profile with its selected built-in
-or custom-provider observation. Catalogue-only tools are reported as neutral
-unavailable rows.
+Compare every tool and operational resource in the resolved default profile
+with its selected provider observation. Catalogue-only tools are reported as
+neutral unavailable rows; stale receipt entries are pending retirement.
 .TP
 .BI "rig status \-\-profile " NAME
 Compare a named resolved profile without changing the configured default.
@@ -177,8 +180,8 @@ installed software was ever declared.
 .B rig doctor
 Check the resolved default profile and print one compact operational health
 answer. Doctor checks effective XDG path accessibility, provider availability,
-and selected-tool observations. Catalogue-only and incompatible-platform tools
-are informational.
+and selected tool and resource observations. Catalogue-only and
+incompatible-platform tools are informational.
 .TP
 .BI "rig doctor \-\-profile " NAME
 Check a named resolved profile without changing the configured default.
@@ -188,9 +191,11 @@ capability; it never applies, repairs, publishes, or invokes unselected
 providers.
 .TP
 .B rig apply
-Preflight every selected bound tool, then invoke built-in or custom-provider
-apply capabilities in dependency-first order. A failure skips only transitive
-dependants; independent work continues.
+Preflight every selected bound tool, operational resource, stale receipt
+entry, and receipt target before invoking providers. Tools run in
+dependency-first order, followed by selected resources and stale retirement.
+A failure skips only dependent work; independent work continues. The atomic
+resource receipt advances only after the complete resource plan succeeds.
 .TP
 .BI "rig apply \-\-profile " NAME
 Apply a named resolved profile without changing the configured default.
@@ -428,6 +433,44 @@ fields retain their native locator and argument data without executing it while
 configuration is loaded. Source-authored
 .B [binding.*]
 tables are invalid.
+.B [service.ID]
+and
+.B [scheduled-job.ID]
+declare operational resources. Both require
+.BR name ,
+.BR purpose ,
+.BR rationale ,
+.BR provider ,
+.BR locator ,
+.BR desired-state ,
+non-empty
+.B platforms
+and
+.B program
+arrays, and accept
+.BR requires ,
+.BR environment ,
+.BR working-directory ,
+.BR standard-output ,
+and
+.BR standard-error .
+Services accept
+.B restart-policy
+and
+.BR start-policy .
+Scheduled jobs require exactly one of
+.B schedule.calendar
+or
+.B schedule.interval
+and accept
+.B run-policy
+and
+.BR priority .
+Profiles select resources with
+.B services
+and
+.B scheduled-jobs
+arrays. Resource requirements name tools.
 .B [provider.ID]
 requires
 .B adapter
@@ -503,7 +546,10 @@ and
 .BR allowed-arguments ,
 and optional
 .B argument-policy
-fields. The mode is exactly
+and
+.B resource-kinds
+fields. Resource-aware actions require provider argument policy and accept one
+selected qualified resource before any caller arguments. The mode is exactly
 .B observe
 or
 .BR mutate .
@@ -568,6 +614,11 @@ Conventional executable for custom provider
 .TP
 .I ${XDG_STATE_HOME:-$HOME/.local/state}/rig
 Default state directory.
+.TP
+.I ${XDG_STATE_HOME:-$HOME/.local/state}/rig/resources/PLATFORM.tsv
+Atomic reconciliation receipt for resources last successfully managed on one
+platform. Each tab-separated row stores only provider, resource kind, identity,
+and locator; it is not observed state or declaration authority.
 .TP
 .I ${XDG_CACHE_HOME:-$HOME/.cache}/rig
 Default cache directory.
@@ -730,6 +781,27 @@ or
 .BR apply .
 Rig preserves every configured value as one argument and performs no
 evaluation, shell expansion, or implicit word splitting.
+.PP
+Operational resources use separate exact capabilities
+.BR resource-observe ,
+.BR resource-apply ,
+and
+.BR resource-retire .
+Selected declarations use this protocol:
+.PP
+.nf
+EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 observe-resource PROVIDER ID KIND LOCATOR [FIELD=VALUE ...]
+EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 apply-resource PROVIDER ID KIND LOCATOR [FIELD=VALUE ...]
+EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 retire-resource PROVIDER ID KIND LOCATOR previous-managed=true
+.fi
+.PP
+Each scalar is one ordered
+.I key=value
+argument and each array value repeats its key in declaration order. Providers
+receive complete resolved fields and do not parse Rig TOML. Resource-aware
+actions append
+.B "resource-v1 KIND ID LOCATOR [FIELD=VALUE ...] --"
+before remaining caller arguments.
 .PP
 For a declared provider action, Rig fixes
 .I KIND

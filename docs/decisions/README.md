@@ -10,3 +10,4 @@ Rig keeps living product, architecture, security, and governance decisions in th
 6. [XDR-RIG-001](XDR-RIG-001-executable-provider-boundary.md) — separating declarative queries from trusted execution and disclosure.
 7. [ADR-RIG-004](ADR-RIG-004-static-publication-projection.md) — separating deterministic versioned public data from website presentation and deployment.
 8. [ADR-RIG-005](ADR-RIG-005-provider-execution-contract.md) — defining provider invocation, state, ordering, and outcome reporting.
+9. [ADR-RIG-006](ADR-RIG-006-declarative-operational-resources.md) — making services and scheduled jobs profile-selected declarations with safe retirement receipts.

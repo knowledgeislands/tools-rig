@@ -206,3 +206,35 @@ _Conformance:_ conforming
 _Verify:_ Bats tests cover allowed and rejected arguments containing spaces and shell metacharacters, exact-match behaviour, argument order, and an empty provider-call log for rejected input.
 
 _Evidence:_ `rig_operation_allows_argument` performs literal equality checks before dispatch; `rig_command_run` appends accepted caller arguments without evaluation; `tests/rig.bats` covers rejection and literal boundary preservation.
+
+## Operational resources
+
+### RIG-ORCH-020 — Resource profile resolution
+
+Composed profiles MUST select services and scheduled jobs in addition to tools. Every resource `requires` entry MUST select that tool and its transitive requirements for the active platform. Resource work MUST be ordered bytewise after the dependency-ordered tool plan; an unavailable or failed required tool MUST suppress only its dependent resource.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats tests select resources directly and through composed profiles, assert required tools enter the plan, compare stable resource ordering, and exercise dependent and independent failures.
+
+_Evidence:_ resource selection shares profile traversal and tool selection, then builds a separate sorted resource plan consumed after tool execution.
+
+### RIG-ORCH-021 — Resource provider protocol
+
+For resource observation, application, and retirement, Rig MUST invoke `EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 VERB PROVIDER RESOURCE-ID RESOURCE-KIND LOCATOR [FIELD=VALUE ...]`. `VERB` MUST be `observe-resource`, `apply-resource`, or `retire-resource`; `RESOURCE-KIND` MUST be `service` or `scheduled-job`. Selected declarations MUST use ordered literal field records, repeating array keys in declaration order and supplying documented policy defaults. Providers MUST declare the exact corresponding `resource-observe`, `resource-apply`, or `resource-retire` capability. Observation accepts only the standard five state tokens.
+
+_Conformance:_ conforming
+
+_Verify:_ Recording-provider Bats tests assert exact verbs, identities, repeated key order, metacharacter and leading-dash boundaries, default fields, capability rejection, observation tokens, and native failure detail.
+
+_Evidence:_ resource invocation and observation helpers extend `rig-provider-v1` without shell evaluation or provider-side configuration discovery.
+
+### RIG-ORCH-022 — Resource-aware actions
+
+An action declaring `resource-kinds` MUST use provider argument policy and MUST consume its first caller argument as `service:ID` or `scheduled-job:ID`. Rig MUST reject an unknown kind, identity, foreign-provider resource, or resource not selected by the default profile. The provider invocation MUST append `resource-v1 KIND ID LOCATOR [FIELD=VALUE ...] --` before remaining literal caller arguments. Actions without `resource-kinds` MUST preserve the existing action ABI.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats tests cover both kinds, selected and rejected targets, provider ownership, complete literal declaration payloads, caller arguments after the separator, and unchanged ordinary actions.
+
+_Evidence:_ `rig_command_run_action` resolves and validates the qualified resource before extending the existing action invocation.

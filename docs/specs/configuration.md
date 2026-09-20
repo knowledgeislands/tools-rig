@@ -78,7 +78,7 @@ _Evidence:_ `rig_add_field` performs the loading expansion allow-list; artifact 
 
 ### RIG-CONF-008 — Canonical table identities
 
-Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[profile.ID]`, `[provider.ID]`, `[publication.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`. Any other table shape, including `[binding.TOOL.PROVIDER]`, MUST be rejected; installation metadata belongs only in the tool table.
+Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[profile.ID]`, `[provider.ID]`, `[publication.ID]`, `[service.ID]`, `[scheduled-job.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`. Any other table shape, including `[binding.TOOL.PROVIDER]`, MUST be rejected; installation metadata belongs only in the tool table.
 
 _Conformance:_ conforming
 
@@ -108,7 +108,7 @@ _Evidence:_ `rig_toml_field` maps public TOML keys into the catalogue model; `ri
 
 ### RIG-CONF-011 — Profile fields
 
-Schema 1 profile tables MAY contain `profiles` and `tools` string arrays. Every item MUST name a declared profile or tool respectively.
+Schema 1 profile tables MAY contain `profiles`, `tools`, `services`, and `scheduled-jobs` string arrays. Every item MUST name a declared profile, tool, service, or scheduled job respectively.
 
 _Conformance:_ conforming
 
@@ -148,10 +148,20 @@ _Evidence:_ `rig_validate_model` validates publication fields and references; `t
 
 ### RIG-CONF-015 — Action fields
 
-Schema 1 action tables MUST require string `mode` and `description` and MAY contain `platforms`, `arguments`, and `allowed-arguments` string arrays and string `argument-policy`. The provider named by the table identity MUST exist and use the `custom` adapter. Mode MUST be `observe` or `mutate`. `argument-policy` defaults to `rig`, MAY be `provider`, and MUST NOT be combined with `allowed-arguments` when set to `provider`. Configured and caller arguments MUST retain their literal array boundaries.
+Schema 1 action tables MUST require string `mode` and `description` and MAY contain `platforms`, `arguments`, `allowed-arguments`, and `resource-kinds` string arrays and string `argument-policy`. The provider named by the table identity MUST exist and use the `custom` adapter. Mode MUST be `observe` or `mutate`. `argument-policy` defaults to `rig`, MAY be `provider`, and MUST NOT be combined with `allowed-arguments` when set to `provider`. `resource-kinds` accepts only `service` and `scheduled-job`, requires provider argument policy, and makes the first caller argument a selected qualified resource. Configured and caller arguments MUST retain their literal array boundaries.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats table tests accept valid action records; reject malformed identities, missing fields, invalid modes, unknown providers, non-custom providers, and invalid argument policies; and preserve configured allow-listed argument boundaries.
 
 _Evidence:_ `rig_validate_action` validates bounded action records; `tests/rig.bats` covers declarations and rejection before invocation.
+
+### RIG-CONF-016 — Operational resource fields
+
+Schema 1 service and scheduled-job tables MUST require string `name`, `purpose`, `rationale`, `provider`, `locator`, and `desired-state`, plus non-empty `platforms` and `program` string arrays. They MAY contain `requires`, `environment`, optional working-directory and standard-output/error strings. A service desired state MUST be `running` or `stopped`; optional restart policy MUST be `always` or `never`, and start policy MUST be `load` or `manual`. A scheduled-job desired state MUST be `enabled` or `disabled`; it MUST declare exactly one non-empty `schedule.calendar` string array or positive-decimal-string `schedule.interval`; optional run policy MUST be `scheduled-only` or `also-at-load`, and priority MUST be `background` or `normal`. Calendar records MUST contain unique comma-separated `minute|hour|day|weekday|month=DECIMAL` pairs within native-neutral numeric ranges. Environment records MUST be literal `KEY=value` strings. Providers and required tools MUST resolve, providers MUST be custom, and provider locator pairs MUST be unique across resources.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats tests accept service and both scheduled-job schedule forms, preserve literal program and environment arguments, and reject unknown references, invalid enums, empty programs, malformed environment, invalid or conflicting schedules, and duplicate provider locators.
+
+_Evidence:_ `rig_validate_resource`, calendar and environment validators, model reference validation, and focused operational-resource tests enforce the schema before any provider invocation.

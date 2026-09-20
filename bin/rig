@@ -22,12 +22,21 @@ RIG_FIELD_KEYS=()
 RIG_FIELD_VALUES=()
 RIG_SELECTED_TOOLS=()
 RIG_SELECTED_BINDINGS=()
+RIG_SELECTED_RESOURCE_SECTIONS=()
 RIG_PLAN_TOOLS=()
 RIG_PLAN_BINDINGS=()
 RIG_PLAN_PROVIDERS=()
 RIG_PLAN_RESULTS=()
 RIG_PLAN_DETAILS=()
 RIG_PLAN_STATES=()
+RIG_RESOURCE_PLAN_SECTIONS=()
+RIG_RESOURCE_PLAN_RESULTS=()
+RIG_RESOURCE_PLAN_DETAILS=()
+RIG_RESOURCE_PLAN_STATES=()
+RIG_STALE_RESOURCE_PROVIDERS=()
+RIG_STALE_RESOURCE_KINDS=()
+RIG_STALE_RESOURCE_IDS=()
+RIG_STALE_RESOURCE_LOCATORS=()
 RIG_INVOKE_ARGUMENTS=()
 RIG_VISIT_NAMES=()
 RIG_VISIT_STATES=()
@@ -67,7 +76,8 @@ print_help() {
     'Commands:' \
     '  show [--profile NAME]                 Describe a resolved profile.' \
     '  list [--category ID] [--profile NAME] List declared catalogue tools.' \
-    '  explain TOOL                          Explain a declared tool.' \
+    '  explain TOOL|service:ID|scheduled-job:ID' \
+    '                                       Explain a declared tool or resource.' \
     '  status [--profile NAME] [--unmanaged]  Compare expected and observed state.' \
     '  doctor [--profile NAME]                Check whether a rig can operate.' \
     '  apply [--profile NAME] [--dry-run]     Materialise a resolved profile.' \
@@ -200,7 +210,7 @@ print_zsh_completion() {
     '      case $words[2] in' \
     "        show) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select a profile]:profile name:' ;;" \
     "        list) _arguments '(-h --help)'{-h,--help}'[show command help]' '--category[select a category]:category id:' '--profile[select a profile]:profile name:' ;;" \
-    "        explain) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
+    "        explain) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:tool or qualified resource:' ;;" \
     "        status) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--unmanaged[report observed items no tool installation declares]' ;;" \
     "        doctor) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' ;;" \
     "        apply) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \
@@ -234,12 +244,21 @@ rig_model_reset() {
   RIG_FIELD_VALUES=()
   RIG_SELECTED_TOOLS=()
   RIG_SELECTED_BINDINGS=()
+  RIG_SELECTED_RESOURCE_SECTIONS=()
   RIG_PLAN_TOOLS=()
   RIG_PLAN_BINDINGS=()
   RIG_PLAN_PROVIDERS=()
   RIG_PLAN_RESULTS=()
   RIG_PLAN_DETAILS=()
   RIG_PLAN_STATES=()
+  RIG_RESOURCE_PLAN_SECTIONS=()
+  RIG_RESOURCE_PLAN_RESULTS=()
+  RIG_RESOURCE_PLAN_DETAILS=()
+  RIG_RESOURCE_PLAN_STATES=()
+  RIG_STALE_RESOURCE_PROVIDERS=()
+  RIG_STALE_RESOURCE_KINDS=()
+  RIG_STALE_RESOURCE_IDS=()
+  RIG_STALE_RESOURCE_LOCATORS=()
   RIG_INVOKE_ARGUMENTS=()
   RIG_VISIT_NAMES=()
   RIG_VISIT_STATES=()
@@ -325,7 +344,7 @@ rig_parse_section_identity() {
   fi
 
   case "$name" in
-    category.*|tool.*|profile.*|provider.*|publication.*)
+    category.*|tool.*|profile.*|provider.*|publication.*|service.*|scheduled-job.*)
       RIG_SECTION_TYPE=${name%%.*}
       rest=${name#*.}
       rig_valid_id "$rest" || return 1
@@ -406,15 +425,26 @@ rig_field_kind() {
     provider:adapter|provider:command|provider:executable|provider:manifest|\
     binding:kind|binding:locator|binding:destination|binding:checksum|\
     publication:profile|publication:title|publication:base-url|publication:publisher|\
+    service:name|service:purpose|service:rationale|service:provider|service:locator|\
+    service:desired-state|service:working-directory|service:standard-output|\
+    service:standard-error|service:restart-policy|service:start-policy|\
+    scheduled-job:name|scheduled-job:purpose|scheduled-job:rationale|\
+    scheduled-job:provider|scheduled-job:locator|scheduled-job:desired-state|\
+    scheduled-job:working-directory|scheduled-job:standard-output|\
+    scheduled-job:standard-error|scheduled-job:schedule-interval|\
+    scheduled-job:run-policy|scheduled-job:priority|\
     action:mode|action:description|action:argument-policy)
       RIG_FIELD_KIND=scalar
       ;;
     tool:platform|tool:requires|tool:related|tool:alternative|tool:artifact|\
     tool:install-platform|tool:install-argument|\
-    profile:profile|profile:tool|\
+    profile:profile|profile:tool|profile:service|profile:scheduled-job|\
     provider:argument|provider:capability|\
     binding:platform|binding:argument|\
-    action:platform|action:argument|action:allow-argument)
+    service:platform|service:requires|service:program|service:environment|\
+    scheduled-job:platform|scheduled-job:requires|scheduled-job:program|\
+    scheduled-job:environment|scheduled-job:schedule-calendar|\
+    action:platform|action:argument|action:allow-argument|action:resource-kind)
       RIG_FIELD_KIND=repeatable
       ;;
     *) return 1 ;;
@@ -440,6 +470,13 @@ rig_toml_field() {
     provider:adapter|provider:command|provider:executable|provider:manifest|\
     binding:kind|binding:locator|binding:destination|binding:checksum|\
     publication:profile|publication:title|publication:base-url|publication:publisher|\
+    service:name|service:purpose|service:rationale|service:provider|service:locator|\
+    service:desired-state|service:working-directory|service:standard-output|\
+    service:standard-error|service:restart-policy|service:start-policy|\
+    scheduled-job:name|scheduled-job:purpose|scheduled-job:rationale|\
+    scheduled-job:provider|scheduled-job:locator|scheduled-job:desired-state|\
+    scheduled-job:working-directory|scheduled-job:standard-output|\
+    scheduled-job:standard-error|scheduled-job:run-policy|scheduled-job:priority|\
     action:mode|action:description|action:argument-policy)
       RIG_TOML_FIELD_KEY=$key
       RIG_TOML_FIELD_TYPE=string
@@ -458,6 +495,14 @@ rig_toml_field() {
     tool:install.arguments) RIG_TOML_FIELD_KEY=install-argument ; RIG_TOML_FIELD_TYPE=array ;;
     profile:profiles) RIG_TOML_FIELD_KEY=profile ; RIG_TOML_FIELD_TYPE=array ;;
     profile:tools) RIG_TOML_FIELD_KEY=tool ; RIG_TOML_FIELD_TYPE=array ;;
+    profile:services) RIG_TOML_FIELD_KEY=service ; RIG_TOML_FIELD_TYPE=array ;;
+    profile:scheduled-jobs) RIG_TOML_FIELD_KEY=scheduled-job ; RIG_TOML_FIELD_TYPE=array ;;
+    service:platforms|scheduled-job:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
+    service:requires|scheduled-job:requires) RIG_TOML_FIELD_KEY=requires ; RIG_TOML_FIELD_TYPE=array ;;
+    service:program|scheduled-job:program) RIG_TOML_FIELD_KEY=program ; RIG_TOML_FIELD_TYPE=array ;;
+    service:environment|scheduled-job:environment) RIG_TOML_FIELD_KEY=environment ; RIG_TOML_FIELD_TYPE=array ;;
+    scheduled-job:schedule.calendar) RIG_TOML_FIELD_KEY='schedule-calendar' ; RIG_TOML_FIELD_TYPE=array ;;
+    scheduled-job:schedule.interval) RIG_TOML_FIELD_KEY='schedule-interval' ; RIG_TOML_FIELD_TYPE=string ;;
     provider:arguments) RIG_TOML_FIELD_KEY=argument ; RIG_TOML_FIELD_TYPE=array ;;
     provider:capabilities) RIG_TOML_FIELD_KEY=capability ; RIG_TOML_FIELD_TYPE=array ;;
     binding:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
@@ -465,6 +510,7 @@ rig_toml_field() {
     action:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
     action:arguments) RIG_TOML_FIELD_KEY=argument ; RIG_TOML_FIELD_TYPE=array ;;
     action:allowed-arguments) RIG_TOML_FIELD_KEY=allow-argument ; RIG_TOML_FIELD_TYPE=array ;;
+    action:resource-kinds) RIG_TOML_FIELD_KEY='resource-kind' ; RIG_TOML_FIELD_TYPE=array ;;
     *) return 1 ;;
   esac
 }
@@ -1029,8 +1075,179 @@ rig_validate_binding_adapter() {
   fi
 }
 
+rig_validate_calendar_entry() {
+  local section_name entry remaining pair key value seen number
+
+  section_name=$1
+  entry=$2
+  [ -n "$entry" ] || rig_fail "[$section_name] schedule.calendar entries must not be empty" || return
+  remaining=$entry
+  seen=,
+  while :; do
+    case "$remaining" in
+      *,*) pair=${remaining%%,*}; remaining=${remaining#*,} ;;
+      *) pair=$remaining; remaining= ;;
+    esac
+    [ -n "$pair" ] && [ "$pair" != "${pair#*=}" ] ||
+      rig_fail "[$section_name] has invalid schedule.calendar entry '$entry'" || return
+    key=${pair%%=*}
+    value=${pair#*=}
+    case "$value" in ''|*[!0-9]*)
+      rig_fail "[$section_name] has invalid schedule.calendar value '$value'" || return ;;
+    esac
+    case "$seen" in *,$key,*)
+      rig_fail "[$section_name] repeats schedule.calendar key '$key'" || return ;;
+    esac
+    number=$((10#$value))
+    case "$key" in
+      minute) [ "$number" -le 59 ] ;;
+      hour) [ "$number" -le 23 ] ;;
+      day) [ "$number" -ge 1 ] && [ "$number" -le 31 ] ;;
+      weekday) [ "$number" -le 7 ] ;;
+      month) [ "$number" -ge 1 ] && [ "$number" -le 12 ] ;;
+      *) false ;;
+    esac || rig_fail "[$section_name] has out-of-range schedule.calendar pair '$pair'" || return
+    seen=$seen$key,
+    [ -z "$remaining" ] && break
+  done
+}
+
+rig_validate_environment_entry() {
+  local section_name entry key
+
+  section_name=$1
+  entry=$2
+  [ "$entry" != "${entry#*=}" ] ||
+    rig_fail "[$section_name] environment entry requires KEY=value: '$entry'" || return
+  key=${entry%%=*}
+  case "$key" in
+    ''|[!A-Za-z_]*|*[!A-Za-z0-9_]*)
+      rig_fail "[$section_name] has invalid environment name '$key'" || return ;;
+  esac
+}
+
+rig_validate_resource() {
+  local section_name section_type section_index provider adapter value
+  local field_index field_end calendar_count interval_count
+
+  section_name=$1
+  section_type=$2
+  rig_require_field "$section_name" name || return
+  rig_require_field "$section_name" purpose || return
+  rig_require_field "$section_name" rationale || return
+  rig_require_field "$section_name" provider || return
+  provider=$RIG_VALUE
+  rig_valid_id "$provider" && rig_reference_exists provider "$provider" ||
+    rig_fail "[$section_name] references unknown provider '$provider'" || return
+  rig_get_value "provider.$provider" adapter || return 2
+  adapter=$RIG_VALUE
+  [ "$adapter" = custom ] || rig_fail "[$section_name] resources require custom provider" || return
+  rig_require_field "$section_name" locator || return
+  case "$RIG_VALUE" in *$'\t'*|*$'\n'*)
+    rig_fail "[$section_name] locator must not contain tabs or newlines" || return ;;
+  esac
+  [ -n "$RIG_VALUE" ] || rig_fail "[$section_name] locator must not be empty" || return
+  rig_require_field "$section_name" desired-state || return
+  value=$RIG_VALUE
+  case "$section_type:$value" in
+    service:running|service:stopped|scheduled-job:enabled|scheduled-job:disabled) ;;
+    service:*) rig_fail "[$section_name] desired-state must be 'running' or 'stopped'" || return ;;
+    scheduled-job:*) rig_fail "[$section_name] desired-state must be 'enabled' or 'disabled'" || return ;;
+  esac
+
+  rig_section_index "$section_name" || return 2
+  section_index=$RIG_INDEX
+  rig_field_count "$section_index" platform
+  [ "$RIG_COUNT" -gt 0 ] || rig_fail "[$section_name] requires field 'platforms'" || return
+  rig_field_count "$section_index" program
+  [ "$RIG_COUNT" -gt 0 ] || rig_fail "[$section_name] requires field 'program'" || return
+  rig_validate_references_for_field "$section_index" requires tool || return
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    case "${RIG_FIELD_KEYS[$field_index]}" in
+      program)
+        [ -n "${RIG_FIELD_VALUES[$field_index]}" ] ||
+          rig_fail "[$section_name] program entries must not be empty" || return ;;
+      environment)
+        rig_validate_environment_entry "$section_name" "${RIG_FIELD_VALUES[$field_index]}" || return ;;
+      schedule-calendar)
+        rig_validate_calendar_entry "$section_name" "${RIG_FIELD_VALUES[$field_index]}" || return ;;
+    esac
+    field_index=$((field_index + 1))
+  done
+
+  if [ "$section_type" = service ]; then
+    if rig_get_value "$section_name" restart-policy; then
+      case "$RIG_VALUE" in always|never) ;; *)
+        rig_fail "[$section_name] restart-policy must be 'always' or 'never'" || return ;;
+      esac
+    fi
+    if rig_get_value "$section_name" start-policy; then
+      case "$RIG_VALUE" in load|manual) ;; *)
+        rig_fail "[$section_name] start-policy must be 'load' or 'manual'" || return ;;
+      esac
+    fi
+    return 0
+  fi
+
+  rig_field_count "$section_index" schedule-calendar
+  calendar_count=$RIG_COUNT
+  rig_field_count "$section_index" schedule-interval
+  interval_count=$RIG_COUNT
+  [ "$calendar_count" -gt 0 ] && [ "$interval_count" -eq 0 ] ||
+    { [ "$calendar_count" -eq 0 ] && [ "$interval_count" -eq 1 ]; } ||
+    rig_fail "[$section_name] requires exactly one of schedule.calendar or schedule.interval" || return
+  if [ "$interval_count" -eq 1 ]; then
+    rig_get_value "$section_name" schedule-interval || return 2
+    case "$RIG_VALUE" in ''|*[!0-9]*|0)
+      rig_fail "[$section_name] schedule.interval must be a positive decimal string" || return ;;
+    esac
+  fi
+  if rig_get_value "$section_name" run-policy; then
+    case "$RIG_VALUE" in scheduled-only|also-at-load) ;; *)
+      rig_fail "[$section_name] run-policy must be 'scheduled-only' or 'also-at-load'" || return ;;
+    esac
+  fi
+  if rig_get_value "$section_name" priority; then
+    case "$RIG_VALUE" in background|normal) ;; *)
+      rig_fail "[$section_name] priority must be 'background' or 'normal'" || return ;;
+    esac
+  fi
+}
+
+rig_validate_resource_locators() {
+  local index scan provider locator other_provider other_locator
+
+  index=0
+  while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+    case "${RIG_SECTION_TYPES[$index]}" in service|scheduled-job) ;; *)
+      index=$((index + 1)); continue ;;
+    esac
+    rig_get_value "${RIG_SECTION_NAMES[$index]}" provider || return 2
+    provider=$RIG_VALUE
+    rig_get_value "${RIG_SECTION_NAMES[$index]}" locator || return 2
+    locator=$RIG_VALUE
+    scan=$((index + 1))
+    while [ "$scan" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+      case "${RIG_SECTION_TYPES[$scan]}" in service|scheduled-job) ;;
+        *) scan=$((scan + 1)); continue ;;
+      esac
+      rig_get_value "${RIG_SECTION_NAMES[$scan]}" provider || return 2
+      other_provider=$RIG_VALUE
+      rig_get_value "${RIG_SECTION_NAMES[$scan]}" locator || return 2
+      other_locator=$RIG_VALUE
+      if [ "$provider" = "$other_provider" ] && [ "$locator" = "$other_locator" ]; then
+        rig_fail "[${RIG_SECTION_NAMES[$scan]}] duplicates provider locator from [${RIG_SECTION_NAMES[$index]}]" || return
+      fi
+      scan=$((scan + 1))
+    done
+    index=$((index + 1))
+  done
+}
+
 rig_validate_action() {
-  local section_name provider adapter mode argument_policy section_index
+  local section_name provider adapter mode argument_policy section_index field_index field_end kind
 
   section_name=$1
   provider=$2
@@ -1064,6 +1281,24 @@ rig_validate_action() {
     rig_field_count "$section_index" allow-argument
     [ "$RIG_COUNT" -eq 0 ] ||
       rig_fail "[$section_name] cannot combine argument-policy 'provider' with allowed-arguments" || return
+  fi
+  rig_section_index "$section_name" || return 2
+  section_index=$RIG_INDEX
+  rig_field_count "$section_index" resource-kind
+  if [ "$RIG_COUNT" -gt 0 ]; then
+    [ "$argument_policy" = provider ] ||
+      rig_fail "[$section_name] resource-kinds require argument-policy 'provider'" || return
+    field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+    field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+    while [ "$field_index" -lt "$field_end" ]; do
+      if [ "${RIG_FIELD_KEYS[$field_index]}" = resource-kind ]; then
+        kind=${RIG_FIELD_VALUES[$field_index]}
+        case "$kind" in service|scheduled-job) ;; *)
+          rig_fail "[$section_name] resource-kinds accepts only 'service' or 'scheduled-job'" || return ;;
+        esac
+      fi
+      field_index=$((field_index + 1))
+    done
   fi
 }
 
@@ -1121,6 +1356,11 @@ rig_validate_model() {
       profile)
         rig_validate_references_for_field "$index" profile profile || return
         rig_validate_references_for_field "$index" tool tool || return
+        rig_validate_references_for_field "$index" service service || return
+        rig_validate_references_for_field "$index" scheduled-job scheduled-job || return
+        ;;
+      service|scheduled-job)
+        rig_validate_resource "$section_name" "$section_type" || return
         ;;
       provider)
         rig_require_field "$section_name" adapter || return
@@ -1150,6 +1390,8 @@ rig_validate_model() {
     esac
     index=$((index + 1))
   done
+
+  rig_validate_resource_locators || return
 
   rig_validate_cycles
 }
@@ -1248,6 +1490,71 @@ rig_select_tool() {
   done
 }
 
+rig_resource_supports_platform() {
+  local section_name platform section_index field_index field_end
+
+  section_name=$1
+  platform=$2
+  rig_section_index "$section_name" || return 1
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = platform ] &&
+      [ "${RIG_FIELD_VALUES[$field_index]}" = "$platform" ]; then
+      return 0
+    fi
+    field_index=$((field_index + 1))
+  done
+  return 1
+}
+
+rig_select_resource() {
+  local kind resource platform section_name section_index field_index field_end tool
+
+  kind=$1
+  resource=$2
+  platform=$3
+  section_name=$kind.$resource
+  rig_resource_supports_platform "$section_name" "$platform" ||
+    rig_fail "$kind '$resource' does not support platform '$platform'" || return
+  if [ "${#RIG_SELECTED_RESOURCE_SECTIONS[@]}" -gt 0 ] &&
+    rig_array_contains "$section_name" "${RIG_SELECTED_RESOURCE_SECTIONS[@]}"; then
+    return 0
+  fi
+  RIG_SELECTED_RESOURCE_SECTIONS[${#RIG_SELECTED_RESOURCE_SECTIONS[@]}]=$section_name
+  rig_section_index "$section_name" || return 2
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = requires ]; then
+      tool=${RIG_FIELD_VALUES[$field_index]}
+      rig_select_tool "$tool" "$platform" "$section_name" || return
+    fi
+    field_index=$((field_index + 1))
+  done
+}
+
+rig_sort_selected_resources() {
+  local index scan value previous
+  local LC_ALL=C
+
+  index=1
+  while [ "$index" -lt "${#RIG_SELECTED_RESOURCE_SECTIONS[@]}" ]; do
+    value=${RIG_SELECTED_RESOURCE_SECTIONS[$index]}
+    scan=$index
+    while [ "$scan" -gt 0 ]; do
+      previous=${RIG_SELECTED_RESOURCE_SECTIONS[$((scan - 1))]}
+      [[ "$value" < "$previous" ]] || break
+      RIG_SELECTED_RESOURCE_SECTIONS[$scan]=$previous
+      scan=$((scan - 1))
+    done
+    RIG_SELECTED_RESOURCE_SECTIONS[$scan]=$value
+    index=$((index + 1))
+  done
+}
+
 rig_select_profile() {
   local profile platform section_index field_index field_end key target
 
@@ -1264,6 +1571,8 @@ rig_select_profile() {
       case "$key" in
         profile) rig_select_profile "$target" "$platform" || return ;;
         tool) rig_select_tool "$target" "$platform" || return ;;
+        service) rig_select_resource service "$target" "$platform" || return ;;
+        scheduled-job) rig_select_resource scheduled-job "$target" "$platform" || return ;;
       esac
     fi
     field_index=$((field_index + 1))
@@ -1354,6 +1663,7 @@ rig_resolve_profile() {
   platform=${2:-}
   RIG_SELECTED_TOOLS=()
   RIG_SELECTED_BINDINGS=()
+  RIG_SELECTED_RESOURCE_SECTIONS=()
   RIG_RESOLVED_PROFILE=
   RIG_RESOLVED_PLATFORM=
   [ -n "$platform" ] || rig_fail 'a platform is required for profile resolution' || return
@@ -1365,6 +1675,7 @@ rig_resolve_profile() {
 
   rig_select_profile "$profile" "$platform" || return
   rig_sort_selected_tools
+  rig_sort_selected_resources
   RIG_RESOLVED_PROFILE=$profile
   RIG_RESOLVED_PLATFORM=$platform
 }
@@ -1559,6 +1870,108 @@ rig_prepare_provider_invocation() {
   RIG_VALUE=$executable
 }
 
+rig_append_resource_fields() {
+  local section_name section_index section_type field_index field_end key
+  local restart_policy start_policy run_policy priority
+
+  section_name=$1
+  rig_section_index "$section_name" || return 2
+  section_index=$RIG_INDEX
+  section_type=${RIG_SECTION_TYPES[$section_index]}
+  restart_policy=0
+  start_policy=0
+  run_policy=0
+  priority=0
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    key=${RIG_FIELD_KEYS[$field_index]}
+    case "$key" in
+      provider|locator) ;;
+      *) RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]="$key=${RIG_FIELD_VALUES[$field_index]}" ;;
+    esac
+    case "$key" in
+      restart-policy) restart_policy=1 ;;
+      start-policy) start_policy=1 ;;
+      run-policy) run_policy=1 ;;
+      priority) priority=1 ;;
+    esac
+    field_index=$((field_index + 1))
+  done
+  if [ "$section_type" = service ]; then
+    [ "$restart_policy" -eq 1 ] || RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=restart-policy=never
+    [ "$start_policy" -eq 1 ] || RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=start-policy=load
+  else
+    [ "$run_policy" -eq 1 ] || RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=run-policy=scheduled-only
+    [ "$priority" -eq 1 ] || RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=priority=background
+  fi
+}
+
+rig_prepare_resource_invocation() {
+  local verb section_name section_index kind id provider locator executable
+
+  verb=$1
+  section_name=$2
+  rig_section_index "$section_name" || return 2
+  section_index=$RIG_INDEX
+  kind=${RIG_SECTION_TYPES[$section_index]}
+  id=${RIG_SECTION_IDS[$section_index]}
+  rig_get_value "$section_name" provider || return 2
+  provider=$RIG_VALUE
+  rig_get_value "$section_name" locator || return 2
+  locator=$RIG_VALUE
+  rig_prepare_custom_invocation "$verb" "$provider" "$id" "$kind" "$locator" || return
+  executable=$RIG_VALUE
+  rig_append_resource_fields "$section_name" || return
+  RIG_VALUE=$executable
+}
+
+rig_preflight_resource() {
+  local section_name verb capability provider executable
+
+  section_name=$1
+  verb=$2
+  case "$verb" in
+    observe-resource) capability='resource-observe' ;;
+    apply-resource) capability='resource-apply' ;;
+    retire-resource) capability='resource-retire' ;;
+    *) return 2 ;;
+  esac
+  rig_get_value "$section_name" provider || return 2
+  provider=$RIG_VALUE
+  rig_provider_has_capability "$provider" "$capability" ||
+    rig_fail "provider '$provider' does not declare capability '$capability'" || return
+  rig_custom_provider_executable "$provider" || return 2
+  executable=$RIG_VALUE
+  rig_executable_available "$executable" ||
+    rig_fail "provider '$provider' executable is unavailable: $executable" || return
+  rig_prepare_resource_invocation "$verb" "$section_name" || return
+}
+
+rig_observe_resource() {
+  local section_name executable
+
+  section_name=$1
+  RIG_OBSERVATION=unknown
+  RIG_OBSERVATION_DETAIL=-
+  if ! rig_preflight_resource "$section_name" observe-resource; then
+    RIG_OBSERVATION=unavailable
+    RIG_OBSERVATION_DETAIL=preflight-failed
+    return 0
+  fi
+  executable=$RIG_VALUE
+  rig_capture_invocation "$executable"
+  if [ "$RIG_NATIVE_STATUS" -ne 0 ]; then
+    RIG_OBSERVATION=unknown
+    RIG_OBSERVATION_DETAIL=exit:$RIG_NATIVE_STATUS
+    return 0
+  fi
+  case "$RIG_CAPTURED_OUTPUT" in
+    present|missing|drifted|unavailable|unknown) RIG_OBSERVATION=$RIG_CAPTURED_OUTPUT ;;
+    *) RIG_OBSERVATION=unknown; RIG_OBSERVATION_DETAIL=invalid-response ;;
+  esac
+}
+
 rig_plan_blocker() {
   local tool section_index field_index field_end dependency dependency_index
   local dependency_result blocker
@@ -1591,7 +2004,7 @@ rig_plan_blocker() {
 }
 
 rig_resolve_operational_plan() {
-  local profile platform
+  local profile platform index
 
   profile=$1
   rig_load_config || return
@@ -1599,7 +2012,17 @@ rig_resolve_operational_plan() {
   platform=$RIG_VALUE
   rig_resolve_profile "$profile" "$platform" || return
   rig_resolve_bindings || return
-  rig_build_plan
+  rig_build_plan || return
+  RIG_RESOURCE_PLAN_SECTIONS=()
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_RESOURCE_SECTIONS[@]}" ]; do
+    RIG_RESOURCE_PLAN_SECTIONS[$index]=${RIG_SELECTED_RESOURCE_SECTIONS[$index]}
+    index=$((index + 1))
+  done
+  if [ "${#RIG_SELECTED_RESOURCE_SECTIONS[@]}" -gt 0 ] ||
+    [ -n "${RIG_STATE_HOME:-}${XDG_STATE_HOME:-}${HOME:-}" ]; then
+    rig_load_resource_receipt "$platform"
+  fi
 }
 
 rig_adapter_is_builtin() {
@@ -1618,6 +2041,149 @@ rig_effective_data_home() {
     require_home || return
     RIG_VALUE=$HOME/.local/share/rig
   fi
+}
+
+rig_effective_state_home() {
+  if [ -n "${RIG_STATE_HOME:-}" ]; then
+    RIG_VALUE=$RIG_STATE_HOME
+  elif [ -n "${XDG_STATE_HOME:-}" ]; then
+    RIG_VALUE=$XDG_STATE_HOME/rig
+  else
+    require_home || return
+    RIG_VALUE=$HOME/.local/state/rig
+  fi
+}
+
+rig_resource_receipt_path() {
+  local state_home platform
+
+  platform=$1
+  rig_effective_state_home || return
+  state_home=$RIG_VALUE
+  RIG_VALUE=$state_home/resources/$platform.tsv
+}
+
+rig_selected_resource_has_locator() {
+  local provider kind locator section_name current_provider current_locator
+
+  provider=$1
+  kind=$2
+  locator=$3
+  for section_name in "${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}"; do
+    [ "${section_name%%.*}" = "$kind" ] || continue
+    rig_get_value "$section_name" provider || return 2
+    current_provider=$RIG_VALUE
+    rig_get_value "$section_name" locator || return 2
+    current_locator=$RIG_VALUE
+    [ "$provider" = "$current_provider" ] && [ "$locator" = "$current_locator" ] && return 0
+  done
+  return 1
+}
+
+rig_load_resource_receipt() {
+  local platform receipt provider kind id locator extra
+
+  platform=$1
+  RIG_STALE_RESOURCE_PROVIDERS=()
+  RIG_STALE_RESOURCE_KINDS=()
+  RIG_STALE_RESOURCE_IDS=()
+  RIG_STALE_RESOURCE_LOCATORS=()
+  rig_resource_receipt_path "$platform" || return
+  receipt=$RIG_VALUE
+  [ -e "$receipt" ] || return 0
+  [ -f "$receipt" ] && [ -r "$receipt" ] ||
+    rig_fail "resource receipt is not a readable regular file: $receipt" || return
+  while IFS=$'\t' read -r provider kind id locator extra ||
+    [ -n "$provider$kind$id$locator$extra" ]; do
+    [ -z "$extra" ] && rig_valid_id "$provider" && rig_valid_id "$id" ||
+      rig_fail "invalid resource receipt record: $receipt" || return
+    case "$kind" in service|scheduled-job) ;; *)
+      rig_fail "invalid resource receipt kind '$kind': $receipt" || return ;;
+    esac
+    [ -n "$locator" ] || rig_fail "invalid empty resource receipt locator: $receipt" || return
+    if rig_selected_resource_has_locator "$provider" "$kind" "$locator"; then
+      continue
+    fi
+    RIG_STALE_RESOURCE_PROVIDERS[${#RIG_STALE_RESOURCE_PROVIDERS[@]}]=$provider
+    RIG_STALE_RESOURCE_KINDS[${#RIG_STALE_RESOURCE_KINDS[@]}]=$kind
+    RIG_STALE_RESOURCE_IDS[${#RIG_STALE_RESOURCE_IDS[@]}]=$id
+    RIG_STALE_RESOURCE_LOCATORS[${#RIG_STALE_RESOURCE_LOCATORS[@]}]=$locator
+  done <"$receipt"
+}
+
+rig_prepare_retire_invocation() {
+  local provider kind id locator executable
+
+  provider=$1
+  kind=$2
+  id=$3
+  locator=$4
+  rig_reference_exists provider "$provider" ||
+    rig_fail "resource receipt references unknown provider '$provider'" || return
+  rig_provider_has_capability "$provider" resource-retire ||
+    rig_fail "provider '$provider' does not declare capability 'resource-retire'" || return
+  rig_custom_provider_executable "$provider" || return 2
+  executable=$RIG_VALUE
+  rig_executable_available "$executable" ||
+    rig_fail "provider '$provider' executable is unavailable: $executable" || return
+  rig_prepare_custom_invocation retire-resource "$provider" "$id" "$kind" "$locator" || return
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]='previous-managed=true'
+  RIG_VALUE=$executable
+}
+
+rig_write_resource_receipt() {
+  local platform receipt directory temporary section_name section_index
+  local kind id provider locator old_umask
+
+  platform=$1
+  rig_resource_receipt_path "$platform" || return
+  receipt=$RIG_VALUE
+  directory=${receipt%/*}
+  old_umask=$(umask)
+  umask 077
+  mkdir -p "$directory" || { umask "$old_umask"; return 1; }
+  temporary=$(mktemp "$directory/.resources.XXXXXX") || { umask "$old_umask"; return 1; }
+  for section_name in "${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}"; do
+    rig_section_index "$section_name" || { rm -f "$temporary"; umask "$old_umask"; return 2; }
+    section_index=$RIG_INDEX
+    kind=${RIG_SECTION_TYPES[$section_index]}
+    id=${RIG_SECTION_IDS[$section_index]}
+    rig_get_value "$section_name" provider || { rm -f "$temporary"; umask "$old_umask"; return 2; }
+    provider=$RIG_VALUE
+    rig_get_value "$section_name" locator || { rm -f "$temporary"; umask "$old_umask"; return 2; }
+    locator=$RIG_VALUE
+    printf '%s\t%s\t%s\t%s\n' "$provider" "$kind" "$id" "$locator" >>"$temporary" ||
+      { rm -f "$temporary"; umask "$old_umask"; return 1; }
+  done
+  mv "$temporary" "$receipt" || { rm -f "$temporary"; umask "$old_umask"; return 1; }
+  umask "$old_umask"
+}
+
+rig_preflight_resource_receipt() {
+  local platform receipt directory ancestor executable
+
+  platform=$1
+  rig_resource_receipt_path "$platform" || return
+  receipt=$RIG_VALUE
+  directory=${receipt%/*}
+  if [ -L "$receipt" ] || { [ -e "$receipt" ] && [ ! -f "$receipt" ]; }; then
+    rig_fail "resource receipt is not a safe regular-file target: $receipt" || return
+  fi
+  if [ -L "$directory" ] || { [ -e "$directory" ] && [ ! -d "$directory" ]; }; then
+    rig_fail "resource receipt directory is unsafe: $directory" || return
+  fi
+  ancestor=$directory
+  while [ ! -e "$ancestor" ]; do
+    [ "$ancestor" != "${ancestor%/*}" ] || { ancestor=/; break; }
+    ancestor=${ancestor%/*}
+    [ -n "$ancestor" ] || ancestor=/
+  done
+  [ -d "$ancestor" ] && [ -w "$ancestor" ] && [ -x "$ancestor" ] ||
+    rig_fail "resource receipt parent is unavailable: $ancestor" || return
+  for executable in mkdir mktemp mv rm; do
+    rig_executable_available "$executable" ||
+      rig_fail "resource receipt executable is unavailable: $executable" || return
+  done
 }
 
 rig_custom_provider_executable() {
@@ -2187,6 +2753,61 @@ rig_apply_provider() {
   fi
 }
 
+rig_observe_resource_plan() {
+  local index section_name state detail
+
+  RIG_RESOURCE_PLAN_RESULTS=()
+  RIG_RESOURCE_PLAN_DETAILS=()
+  RIG_RESOURCE_PLAN_STATES=()
+  index=0
+  while [ "$index" -lt "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" ]; do
+    section_name=${RIG_RESOURCE_PLAN_SECTIONS[$index]}
+    rig_observe_resource "$section_name" || return
+    state=$RIG_OBSERVATION
+    detail=$RIG_OBSERVATION_DETAIL
+    RIG_RESOURCE_PLAN_STATES[$index]=$state
+    RIG_RESOURCE_PLAN_DETAILS[$index]=$detail
+    case "$state" in
+      present) RIG_RESOURCE_PLAN_RESULTS[$index]=observed ;;
+      *) RIG_RESOURCE_PLAN_RESULTS[$index]=failed ;;
+    esac
+    index=$((index + 1))
+  done
+}
+
+rig_print_resource_status() {
+  local index section_name section_index kind id provider state detail unhealthy
+
+  unhealthy=0
+  printf '\nRESOURCE\tKIND\tPROVIDER\tSTATE\tDETAIL\n'
+  index=0
+  while [ "$index" -lt "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" ]; do
+    section_name=${RIG_RESOURCE_PLAN_SECTIONS[$index]}
+    rig_section_index "$section_name" || return 2
+    section_index=$RIG_INDEX
+    kind=${RIG_SECTION_TYPES[$section_index]}
+    id=${RIG_SECTION_IDS[$section_index]}
+    rig_get_value "$section_name" provider || return 2
+    provider=$RIG_VALUE
+    state=${RIG_RESOURCE_PLAN_STATES[$index]}
+    detail=${RIG_RESOURCE_PLAN_DETAILS[$index]}
+    [ "$state" = present ] || unhealthy=$((unhealthy + 1))
+    printf '%s\t%s\t%s\t%s\t%s\n' "$id" "$kind" "$provider" "$state" "$detail"
+    index=$((index + 1))
+  done
+  index=0
+  while [ "$index" -lt "${#RIG_STALE_RESOURCE_IDS[@]}" ]; do
+    printf '%s\t%s\t%s\tdrifted\tretire-pending:%s\n' \
+      "${RIG_STALE_RESOURCE_IDS[$index]}" "${RIG_STALE_RESOURCE_KINDS[$index]}" \
+      "${RIG_STALE_RESOURCE_PROVIDERS[$index]}" "${RIG_STALE_RESOURCE_LOCATORS[$index]}"
+    unhealthy=$((unhealthy + 1))
+    index=$((index + 1))
+  done
+  printf 'Resource summary: selected=%s retire-pending=%s unhealthy=%s\n' \
+    "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" "${#RIG_STALE_RESOURCE_IDS[@]}" "$unhealthy"
+  RIG_COUNT=$unhealthy
+}
+
 rig_command_status() {
   local profile index tool provider state detail unhealthy unmanaged_requested
   local present missing drifted unavailable unknown catalogue_only
@@ -2220,6 +2841,10 @@ rig_command_status() {
 
   rig_resolve_operational_plan "$profile" || return
   rig_observe_plan || return
+  if [ "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" -gt 0 ] ||
+    [ "${#RIG_STALE_RESOURCE_IDS[@]}" -gt 0 ]; then
+    rig_observe_resource_plan || return
+  fi
   printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   printf 'TOOL\tPROVIDER\tSTATE\tDETAIL\n'
   unhealthy=0
@@ -2251,6 +2876,11 @@ rig_command_status() {
   done
   printf 'Summary: present=%s missing=%s drifted=%s unavailable=%s unknown=%s catalogue-only=%s\n' \
     "$present" "$missing" "$drifted" "$unavailable" "$unknown" "$catalogue_only"
+  if [ "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" -gt 0 ] ||
+    [ "${#RIG_STALE_RESOURCE_IDS[@]}" -gt 0 ]; then
+    rig_print_resource_status || return
+    [ "$RIG_COUNT" -eq 0 ] || unhealthy=$((unhealthy + RIG_COUNT))
+  fi
   if [ "$unmanaged_requested" -eq 1 ]; then
     rig_collect_unmanaged || return
     printf '\nIDENTITY\tPROVIDER\tSTATE\tDETAIL\n'
@@ -2405,7 +3035,7 @@ rig_observe_plan() {
 }
 
 rig_command_doctor() {
-  local profile findings incompatible xdg_findings tool_findings
+  local profile findings incompatible xdg_findings tool_findings resource_findings index section_name state detail
 
   profile=
   case "$#" in
@@ -2431,6 +3061,28 @@ rig_command_doctor() {
   rig_observe_plan || return
   tool_findings=$RIG_VALUE
   findings=$RIG_DOCTOR_FINDINGS
+  resource_findings=
+  if [ "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" -gt 0 ]; then
+    rig_observe_resource_plan || return
+    index=0
+    while [ "$index" -lt "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" ]; do
+      section_name=${RIG_RESOURCE_PLAN_SECTIONS[$index]}
+      state=${RIG_RESOURCE_PLAN_STATES[$index]}
+      detail=${RIG_RESOURCE_PLAN_DETAILS[$index]}
+      if [ "$state" != present ]; then
+        resource_findings="${resource_findings}  ${section_name}: ${state} (${detail}); owner=provider; action=review-then-run-rig-apply"$'\n'
+        findings=$((findings + 1))
+      fi
+      index=$((index + 1))
+    done
+  fi
+  index=0
+  while [ "$index" -lt "${#RIG_STALE_RESOURCE_IDS[@]}" ]; do
+    resource_findings="${resource_findings}  ${RIG_STALE_RESOURCE_KINDS[$index]}.${RIG_STALE_RESOURCE_IDS[$index]}: drifted (retire-pending); owner=${RIG_STALE_RESOURCE_PROVIDERS[$index]}; action=review-then-run-rig-apply"$'\n'
+    findings=$((findings + 1))
+    index=$((index + 1))
+  done
+  resource_findings=${resource_findings%$'\n'}
   xdg_findings=$(rig_doctor_path_finding config "$RIG_DIAG_CONFIG_HOME"; \
     rig_doctor_path_finding data "$RIG_DIAG_DATA_HOME"; \
     rig_doctor_path_finding state "$RIG_DIAG_STATE_HOME"; \
@@ -2448,6 +3100,9 @@ rig_command_doctor() {
   if [ -n "$tool_findings" ]; then
     printf 'Tool findings:\n%s\n' "$tool_findings"
   fi
+  if [ -n "$resource_findings" ]; then
+    printf 'Resource findings:\n%s\n' "$resource_findings"
+  fi
   rig_doctor_incompatible_tools "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   incompatible=$RIG_COUNT
   if [ -n "$RIG_VALUE" ]; then
@@ -2459,7 +3114,7 @@ rig_command_doctor() {
 }
 
 rig_preflight_apply() {
-  local index
+  local index section_name
 
   index=0
   while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
@@ -2469,11 +3124,74 @@ rig_preflight_apply() {
     fi
     index=$((index + 1))
   done
+  index=0
+  while [ "$index" -lt "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" ]; do
+    section_name=${RIG_RESOURCE_PLAN_SECTIONS[$index]}
+    rig_preflight_resource "$section_name" apply-resource || return
+    index=$((index + 1))
+  done
+  index=0
+  while [ "$index" -lt "${#RIG_STALE_RESOURCE_IDS[@]}" ]; do
+    rig_prepare_retire_invocation \
+      "${RIG_STALE_RESOURCE_PROVIDERS[$index]}" \
+      "${RIG_STALE_RESOURCE_KINDS[$index]}" \
+      "${RIG_STALE_RESOURCE_IDS[$index]}" \
+      "${RIG_STALE_RESOURCE_LOCATORS[$index]}" || return
+    index=$((index + 1))
+  done
+  if [ "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" -gt 0 ] ||
+    [ "${#RIG_STALE_RESOURCE_IDS[@]}" -gt 0 ]; then
+    rig_preflight_resource_receipt "$RIG_RESOLVED_PLATFORM" || return
+  fi
+}
+
+rig_resource_blocker() {
+  local section_name section_index field_index field_end tool
+
+  section_name=$1
+  rig_section_index "$section_name" || return 2
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = requires ]; then
+      tool=${RIG_FIELD_VALUES[$field_index]}
+      if rig_plan_index "$tool"; then
+        case "${RIG_PLAN_RESULTS[$RIG_INDEX]:-}" in completed|planned|neutral) ;;
+          *) RIG_VALUE=$tool; return 0 ;;
+        esac
+      fi
+    fi
+    field_index=$((field_index + 1))
+  done
+  return 1
+}
+
+rig_apply_resource() {
+  local section_name executable
+
+  section_name=$1
+  rig_prepare_resource_invocation apply-resource "$section_name" || return
+  executable=$RIG_VALUE
+  "$executable" "${RIG_INVOKE_ARGUMENTS[@]}" 1>&2
+}
+
+rig_print_resource_projection() {
+  local section_name index
+
+  section_name=$1
+  rig_prepare_resource_invocation apply-resource "$section_name" || return
+  index=6
+  while [ "$index" -lt "${#RIG_INVOKE_ARGUMENTS[@]}" ]; do
+    printf '  %s\n' "${RIG_INVOKE_ARGUMENTS[$index]}"
+    index=$((index + 1))
+  done
 }
 
 rig_command_apply() {
   local profile dry_run profile_seen dry_run_seen index tool binding provider
   local blocker native_status planned completed failed skipped operational_failure
+  local section_name section_index kind id locator executable resource_total
 
   profile=
   dry_run=0
@@ -2520,8 +3238,9 @@ rig_command_apply() {
     [ -z "${RIG_PLAN_BINDINGS[$index]}" ] || planned=$((planned + 1))
     index=$((index + 1))
   done
+  resource_total=$((${#RIG_RESOURCE_PLAN_SECTIONS[@]} + ${#RIG_STALE_RESOURCE_IDS[@]}))
   if [ "$dry_run" -eq 0 ]; then
-    rig_progress_start applying "$planned"
+    rig_progress_start applying "$((planned + resource_total))"
   fi
 
   index=0
@@ -2563,6 +3282,88 @@ rig_command_apply() {
       "${RIG_PLAN_RESULTS[$index]}" "${RIG_PLAN_DETAILS[$index]}"
     index=$((index + 1))
   done
+  if [ "$resource_total" -gt 0 ]; then
+    printf '\nRESOURCE\tKIND\tPROVIDER\tRESULT\tDETAIL\n'
+  fi
+  RIG_RESOURCE_PLAN_RESULTS=()
+  RIG_RESOURCE_PLAN_DETAILS=()
+  index=0
+  while [ "$index" -lt "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" ]; do
+    section_name=${RIG_RESOURCE_PLAN_SECTIONS[$index]}
+    rig_section_index "$section_name" || return 2
+    section_index=$RIG_INDEX
+    kind=${RIG_SECTION_TYPES[$section_index]}
+    id=${RIG_SECTION_IDS[$section_index]}
+    rig_get_value "$section_name" provider || return 2
+    provider=$RIG_VALUE
+    rig_get_value "$section_name" locator || return 2
+    locator=$RIG_VALUE
+    if [ "$dry_run" -eq 1 ]; then
+      RIG_RESOURCE_PLAN_RESULTS[$index]=planned
+      RIG_RESOURCE_PLAN_DETAILS[$index]=reconcile:$locator
+      planned=$((planned + 1))
+    elif rig_resource_blocker "$section_name"; then
+      blocker=$RIG_VALUE
+      RIG_RESOURCE_PLAN_RESULTS[$index]=skipped
+      RIG_RESOURCE_PLAN_DETAILS[$index]=blocked-by:$blocker
+      skipped=$((skipped + 1))
+      operational_failure=1
+    else
+      rig_progress_step "$kind.$id via $provider"
+      rig_apply_resource "$section_name"
+      native_status=$?
+      if [ "$native_status" -eq 0 ]; then
+        RIG_RESOURCE_PLAN_RESULTS[$index]=completed
+        RIG_RESOURCE_PLAN_DETAILS[$index]=reconciled:$locator
+        completed=$((completed + 1))
+      else
+        RIG_RESOURCE_PLAN_RESULTS[$index]=failed
+        RIG_RESOURCE_PLAN_DETAILS[$index]=exit:$native_status
+        failed=$((failed + 1))
+        operational_failure=1
+      fi
+    fi
+    printf '%s\t%s\t%s\t%s\t%s\n' "$id" "$kind" "$provider" \
+      "${RIG_RESOURCE_PLAN_RESULTS[$index]}" "${RIG_RESOURCE_PLAN_DETAILS[$index]}"
+    if [ "$dry_run" -eq 1 ]; then
+      rig_print_resource_projection "$section_name" || return
+    fi
+    index=$((index + 1))
+  done
+  index=0
+  while [ "$index" -lt "${#RIG_STALE_RESOURCE_IDS[@]}" ]; do
+    provider=${RIG_STALE_RESOURCE_PROVIDERS[$index]}
+    kind=${RIG_STALE_RESOURCE_KINDS[$index]}
+    id=${RIG_STALE_RESOURCE_IDS[$index]}
+    locator=${RIG_STALE_RESOURCE_LOCATORS[$index]}
+    if [ "$dry_run" -eq 1 ]; then
+      printf '%s\t%s\t%s\tplanned\tretire:%s\n' "$id" "$kind" "$provider" "$locator"
+      planned=$((planned + 1))
+    elif [ "$operational_failure" -ne 0 ]; then
+      printf '%s\t%s\t%s\tskipped\tblocked-by:resource-failure\n' "$id" "$kind" "$provider"
+      skipped=$((skipped + 1))
+    else
+      rig_progress_step "retire $kind.$id via $provider"
+      rig_prepare_retire_invocation "$provider" "$kind" "$id" "$locator" || return
+      executable=$RIG_VALUE
+      "$executable" "${RIG_INVOKE_ARGUMENTS[@]}" 1>&2
+      native_status=$?
+      if [ "$native_status" -eq 0 ]; then
+        printf '%s\t%s\t%s\tcompleted\tretired:%s\n' "$id" "$kind" "$provider" "$locator"
+        completed=$((completed + 1))
+      else
+        printf '%s\t%s\t%s\tfailed\texit:%s\n' "$id" "$kind" "$provider" "$native_status"
+        failed=$((failed + 1))
+        operational_failure=1
+      fi
+    fi
+    index=$((index + 1))
+  done
+  if [ "$dry_run" -eq 0 ] && [ "$operational_failure" -eq 0 ] && [ "$resource_total" -gt 0 ]; then
+    rig_write_resource_receipt "$RIG_RESOLVED_PLATFORM" || {
+      rig_fail 'cannot update resource reconciliation receipt' || return
+    }
+  fi
   rig_progress_finish
   printf 'Summary: planned=%s completed=%s failed=%s skipped=%s\n' \
     "$planned" "$completed" "$failed" "$skipped"
@@ -2699,9 +3500,29 @@ rig_prepare_operation_invocation() {
   RIG_VALUE=$executable
 }
 
+rig_action_allows_resource_kind() {
+  local section_name wanted section_index field_index field_end
+
+  section_name=$1
+  wanted=$2
+  rig_section_index "$section_name" || return 1
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = resource-kind ] &&
+      [ "${RIG_FIELD_VALUES[$field_index]}" = "$wanted" ]; then
+      return 0
+    fi
+    field_index=$((field_index + 1))
+  done
+  return 1
+}
+
 rig_command_run_action() {
   local provider action section_name platform mode verb executable argument argument_policy native_status
-  local -a caller_arguments
+  local resource_count target kind id resource_section resource_index locator index
+  local -a caller_arguments remaining_arguments
 
   if [ "$#" -eq 1 ]; then
     case "$1" in
@@ -2756,14 +3577,63 @@ rig_command_run_action() {
     done
   fi
 
+  rig_section_index "$section_name" || return 2
+  resource_index=$RIG_INDEX
+  rig_field_count "$resource_index" resource-kind
+  resource_count=$RIG_COUNT
+  resource_section=
+  remaining_arguments=()
+  if [ "$resource_count" -gt 0 ]; then
+    [ "${#caller_arguments[@]}" -gt 0 ] ||
+      rig_fail "action '$provider $action' requires a qualified resource" || return
+    target=${caller_arguments[0]}
+    kind=${target%%:*}
+    id=${target#*:}
+    [ "$target" != "$id" ] && rig_valid_id "$id" &&
+      rig_action_allows_resource_kind "$section_name" "$kind" ||
+      rig_fail "action '$provider $action' does not allow resource '$target'" || return
+    resource_section=$kind.$id
+    rig_section_index "$resource_section" ||
+      rig_fail "unknown resource '$target'" || return
+    rig_get_value "$resource_section" provider || return 2
+    [ "$RIG_VALUE" = "$provider" ] ||
+      rig_fail "resource '$target' is owned by provider '$RIG_VALUE', not '$provider'" || return
+    rig_resolve_profile '' "$platform" || return
+    if [ "${#RIG_SELECTED_RESOURCE_SECTIONS[@]}" -eq 0 ] ||
+      ! rig_array_contains "$resource_section" "${RIG_SELECTED_RESOURCE_SECTIONS[@]}"; then
+      rig_fail "resource '$target' is not selected by the default profile" || return
+    fi
+    index=1
+    while [ "$index" -lt "${#caller_arguments[@]}" ]; do
+      remaining_arguments[${#remaining_arguments[@]}]=${caller_arguments[$index]}
+      index=$((index + 1))
+    done
+  else
+    remaining_arguments=("${caller_arguments[@]+"${caller_arguments[@]}"}")
+  fi
+
   rig_custom_provider_executable "$provider" || return 2
   executable=$RIG_VALUE
   [ -x "$executable" ] ||
     rig_fail "provider '$provider' executable unavailable: $executable" || return
   rig_prepare_operation_invocation "$section_name" "$provider" "$action" "$verb" || return
   executable=$RIG_VALUE
-  if [ "${#caller_arguments[@]}" -gt 0 ]; then
-    for argument in "${caller_arguments[@]}"; do
+  if [ -n "$resource_section" ]; then
+    rig_section_index "$resource_section" || return 2
+    resource_index=$RIG_INDEX
+    kind=${RIG_SECTION_TYPES[$resource_index]}
+    id=${RIG_SECTION_IDS[$resource_index]}
+    rig_get_value "$resource_section" locator || return 2
+    locator=$RIG_VALUE
+    RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]='resource-v1'
+    RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$kind
+    RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$id
+    RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
+    rig_append_resource_fields "$resource_section" || return
+    RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--
+  fi
+  if [ "${#remaining_arguments[@]}" -gt 0 ]; then
+    for argument in "${remaining_arguments[@]}"; do
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$argument
     done
   fi
@@ -3221,6 +4091,70 @@ rig_describe_compatible_binding() {
   RIG_VALUE="$provider ($kind: $locator)"
 }
 
+rig_resource_schedule_summary() {
+  local section_name section_index field_index field_end joined
+
+  section_name=$1
+  if rig_get_value "$section_name" schedule-interval; then
+    RIG_VALUE=interval:$RIG_VALUE
+    return
+  fi
+  rig_section_index "$section_name" || return 2
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  joined=
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = schedule-calendar ]; then
+      if [ -n "$joined" ]; then
+        joined="$joined;${RIG_FIELD_VALUES[$field_index]}"
+      else
+        joined=${RIG_FIELD_VALUES[$field_index]}
+      fi
+    fi
+    field_index=$((field_index + 1))
+  done
+  RIG_VALUE=calendar:$joined
+}
+
+rig_print_profile_resource_tables() {
+  local wanted label count section_name section_index id name provider desired schedule
+
+  for wanted in service scheduled-job; do
+    count=0
+    for section_name in "${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}"; do
+      [ "${section_name%%.*}" = "$wanted" ] && count=$((count + 1))
+    done
+    [ "$wanted" = service ] && label=Services || label='Scheduled jobs'
+    printf '\n%s: %s\n' "$label" "$count"
+    [ "$count" -gt 0 ] || continue
+    if [ "$wanted" = service ]; then
+      printf 'ID\tNAME\tPROVIDER\tDESIRED\n'
+    else
+      printf 'ID\tNAME\tPROVIDER\tDESIRED\tSCHEDULE\n'
+    fi
+    for section_name in "${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}"; do
+      [ "${section_name%%.*}" = "$wanted" ] || continue
+      rig_section_index "$section_name" || return 2
+      section_index=$RIG_INDEX
+      id=${RIG_SECTION_IDS[$section_index]}
+      rig_get_value "$section_name" name || return 2
+      name=$RIG_VALUE
+      rig_get_value "$section_name" provider || return 2
+      provider=$RIG_VALUE
+      rig_get_value "$section_name" desired-state || return 2
+      desired=$RIG_VALUE
+      if [ "$wanted" = service ]; then
+        printf '%s\t%s\t%s\t%s\n' "$id" "$name" "$provider" "$desired"
+      else
+        rig_resource_schedule_summary "$section_name" || return
+        schedule=$RIG_VALUE
+        printf '%s\t%s\t%s\t%s\t%s\n' "$id" "$name" "$provider" "$desired" "$schedule"
+      fi
+    done
+  done
+}
+
 rig_command_show() {
   local profile platform
 
@@ -3248,6 +4182,9 @@ rig_command_show() {
   printf 'Profile:  %s\nPlatform: %s\nTools:    %s\n\n' \
     "$RIG_RESOLVED_PROFILE" "$platform" "${#RIG_SELECTED_TOOLS[@]}"
   rig_print_profile_tool_table
+  if [ "${#RIG_SELECTED_RESOURCE_SECTIONS[@]}" -gt 0 ]; then
+    rig_print_profile_resource_tables
+  fi
 }
 
 rig_command_list() {
@@ -3325,17 +4262,98 @@ rig_command_list() {
   done
 }
 
+rig_profile_contains_resource() {
+  local profile wanted section_index field_index field_end key target
+
+  profile=$1
+  wanted=$2
+  rig_section_index "profile.$profile" || return 1
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ]; then
+      key=${RIG_FIELD_KEYS[$field_index]}
+      target=${RIG_FIELD_VALUES[$field_index]}
+      case "$key" in
+        profile) rig_profile_contains_resource "$target" "$wanted" && return 0 ;;
+        service|scheduled-job) [ "$key.$target" = "$wanted" ] && return 0 ;;
+      esac
+    fi
+    field_index=$((field_index + 1))
+  done
+  return 1
+}
+
+rig_collect_resource_memberships() {
+  local section_name profile index
+  local -a profiles
+
+  section_name=$1
+  rig_collect_section_ids profile
+  profiles=()
+  index=0
+  while [ "$index" -lt "${#RIG_QUERY_ITEMS[@]}" ]; do
+    profiles[$index]=${RIG_QUERY_ITEMS[$index]}
+    index=$((index + 1))
+  done
+  RIG_QUERY_ITEMS=()
+  for profile in "${profiles[@]+"${profiles[@]}"}"; do
+    if rig_profile_contains_resource "$profile" "$section_name"; then
+      RIG_QUERY_ITEMS[${#RIG_QUERY_ITEMS[@]}]=$profile
+    fi
+  done
+}
+
+rig_explain_resource() {
+  local target kind id section_name section_index field_index field_end key value profiles
+
+  target=$1
+  kind=${target%%:*}
+  id=${target#*:}
+  [ "$target" != "$id" ] && rig_valid_id "$id" ||
+    rig_fail "unknown resource '$target'" || return
+  case "$kind" in service|scheduled-job) ;; *)
+    rig_fail "unknown resource '$target'" || return ;;
+  esac
+  section_name=$kind.$id
+  rig_section_index "$section_name" || rig_fail "unknown resource '$target'" || return
+  section_index=$RIG_INDEX
+  rig_collect_resource_memberships "$section_name"
+  rig_join_query_items
+  profiles=$RIG_VALUE
+  printf 'Resource: %s\nKind: %s\nID: %s\nProfiles: %s\n' "$target" "$kind" "$id" "$profiles"
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    key=${RIG_FIELD_KEYS[$field_index]}
+    value=${RIG_FIELD_VALUES[$field_index]}
+    printf '%s=%s\n' "$key" "$value"
+    field_index=$((field_index + 1))
+  done
+  if [ "$kind" = service ]; then
+    rig_get_value "$section_name" restart-policy || printf '%s\n' 'restart-policy=never'
+    rig_get_value "$section_name" start-policy || printf '%s\n' 'start-policy=load'
+  else
+    rig_get_value "$section_name" run-policy || printf '%s\n' 'run-policy=scheduled-only'
+    rig_get_value "$section_name" priority || printf '%s\n' 'priority=background'
+  fi
+}
+
 rig_command_explain() {
   local tool name category category_name purpose rationale platforms requires related alternatives profiles platform binding
 
   if [ "$#" -eq 1 ]; then
     case "$1" in
-      -h|--help) printf '%s\n' 'Usage: rig explain TOOL'; return ;;
+      -h|--help) printf '%s\n' 'Usage: rig explain TOOL|service:ID|scheduled-job:ID'; return ;;
     esac
   fi
-  [ "$#" -eq 1 ] || syntax_error 'usage: rig explain TOOL' || return
+  [ "$#" -eq 1 ] || syntax_error 'usage: rig explain TOOL|service:ID|scheduled-job:ID' || return
   tool=$1
   rig_load_config || return
+  case "$tool" in
+    service:*|scheduled-job:*) rig_explain_resource "$tool"; return ;;
+  esac
   rig_valid_id "$tool" && rig_section_index "tool.$tool" ||
     rig_fail "unknown tool '$tool'" || return
   rig_current_platform || return
