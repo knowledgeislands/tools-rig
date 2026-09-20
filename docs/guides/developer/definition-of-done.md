@@ -6,22 +6,23 @@ Mark an inapplicable item explicitly in the review packet rather than silently s
 
 ## Confirm the contract
 
-- [ ] The change stays within the catalogue, profile, provider, state, operation, or publication boundary described by the repository.
-- [ ] New durable rationale is in a Decision Record, accepted behaviour is in a Specification, practical procedure is in a Guide, and future work is in the canonical roadmap.
+- [ ] The change stays within the catalogue, profile, provider, state, operation, or publication boundary described by this repository.
+- [ ] New durable rationale is in a Decision Record, accepted behaviour is in a Specification, practical procedure is in a guide, and future work is in the canonical roadmap.
 - [ ] Personal catalogue data, host-specific paths, credentials, provider-native state, and private observed state remain outside the public executable and public projection.
 - [ ] Runtime code remains compatible with macOS Bash 3.2 and adds no required runtime dependency beyond Bash.
 - [ ] Configuration, data, state, and cache behaviour preserve the XDG and Rig override contract.
 
 ## Align affected public surfaces
 
-- [ ] CLI help, README, user and developer guides, `man/rig.1`, Bash and Zsh completions, `CHANGELOG.md`, tests, Specifications, and Decision Records all describe the same shipped commands, options, defaults, behaviour, compatibility, and trust boundaries wherever the change applies.
+- [ ] CLI help, the README, user and developer guides, `man/rig.1`, Bash and Zsh completions, `CHANGELOG.md`, tests, Specifications, and Decision Records all describe the same shipped commands, options, defaults, behaviour, compatibility, and trust boundaries wherever the change applies.
 
 ## Check distribution impact
 
 - [ ] `install.sh`, installer help, README installation examples, user guides, and manual installation guidance agree when installation changes.
 - [ ] The executable and manual continue to install or link together into documented, overrideable destinations.
 - [ ] The version source, `rig --version`, tag, release entry, and companion Homebrew formula agree for a release candidate.
-- [ ] Website registry, personal-site renderer, Homebrew tap, and other cross-repository handoffs are named explicitly and remain owned by their receiving repositories.
+- [ ] The Homebrew tap remains the distribution owner and verified release-event dispatcher; consumer repositories remain responsible for their own review and publication.
+- [ ] First-time entries, maturity changes, personal-site updates, or consumers outside automation are named as explicit receiver-owned handoffs.
 
 ## Verify the repository
 
