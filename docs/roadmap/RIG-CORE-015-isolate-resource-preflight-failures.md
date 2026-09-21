@@ -4,13 +4,13 @@ area: CORE
 title: Isolate resource preflight failures
 theme: orchestration
 horizon: next
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 25f1cc6f79fd06cb35a905a9449a5e0d3b517395
 transferred_from: TRD-3a1ab790
 created_at: 2026-09-21T12:06:12Z
-updated_at: 2026-09-21T12:50:22Z
+updated_at: 2026-09-21T15:21:13Z
 ---
 
 # RIG-CORE-015: Isolate resource preflight failures
@@ -115,6 +115,10 @@ A fresh safety review confirms the complete plan is still preflighted before mut
 ### Mini recap
 
 One unavailable resource can no longer make unrelated recovery work unreachable, while shared safety failures still close the whole plan.
+
+## Done
+
+Accepted 2026-09-21 by Kris Brown on the review packet above.
 
 ## Discussion
 

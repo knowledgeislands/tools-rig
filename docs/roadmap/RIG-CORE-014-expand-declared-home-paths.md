@@ -4,13 +4,13 @@ area: CORE
 title: Expand declared home paths
 theme: orchestration
 horizon: next
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 25f1cc6f79fd06cb35a905a9449a5e0d3b517395
 transferred_from: TRD-3a1ab790
 created_at: 2026-09-21T12:06:12Z
-updated_at: 2026-09-21T12:50:22Z
+updated_at: 2026-09-21T15:21:13Z
 ---
 
 # RIG-CORE-014: Expand declared home paths
@@ -113,6 +113,10 @@ A fresh scope and regression review confirms stored declarations remain inert, l
 ### Mini recap
 
 Rig now accepts portable home-relative macOS setting and Dock declarations without phantom drift or impossible preflight, while unsupported text stays literal.
+
+## Done
+
+Accepted 2026-09-21 by Kris Brown on the review packet above.
 
 ## Discussion
 
