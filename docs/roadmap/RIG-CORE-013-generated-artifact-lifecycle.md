@@ -1,7 +1,7 @@
 ---
 id: RIG-CORE-013
 area: CORE
-title: Generated artifact lifecycle
+title: Generated artifact ownership
 theme: orchestration
 horizon: now
 status: awaiting-review
@@ -9,115 +9,109 @@ blocks: []
 blocked_by: []
 baseline_ref: 52517334dbd39f0b653cb373ede0f7718e9db04e
 created_at: 2026-09-21T07:44:37Z
-updated_at: 2026-09-21T09:10:19Z
+updated_at: 2026-09-21T11:40:38Z
 ---
 
-# RIG-CORE-013: Generated artifact lifecycle
+# RIG-CORE-013: Generated artifact ownership
 
 ## Goal
 
-Let one catalogue tool describe both its native installation and the application bundle it generates, while Rig safely creates or refreshes bundles that require a known explicit generator.
+Keep durable generated paths with the catalogue tool whose capability they expose while preserving the native tool's lifecycle ownership.
 
 ## Context
 
-Tool `artifacts` already make generated paths observable, but they do not materialise those paths. The personal rig therefore has a managed `codex-multi-auth` CLI and a separately described app bundle, while `claude-code` and its URL-handler bundle are split across two catalogue entries. That makes one capability look like multiple tools and leaves the Codex launcher outside normal apply and update behaviour.
-
-The installed Codex Multi Auth package exposes an idempotent `codex-multi-auth-app-launcher` command with a non-mutating `--dry-run`. Claude Code creates its own URL-handler bundle and needs observation only.
+Some tools create launchers, handlers, or comparable durable paths that are useful machine-state evidence. A second catalogue identity misrepresents those paths as separate user capabilities, while a configuration-triggered generator would turn Rig into a task runner.
 
 ## Boundary
 
-Keep one tool entry per capability. Add no arbitrary executable, hook, task-runner, or provider command to configuration. The initial native reconciler is a closed Rig-owned integration for `codex-multi-auth-app-launcher`; other artifact generators require explicit product work. Artifact deselection follows existing tool semantics and does not imply automatic uninstall or deletion.
+Keep one tool entry per capability. Artifact declarations are optional and observation-only. Rig must not derive or invoke artifact generators from configuration, and profile deselection does not imply automatic uninstall or deletion.
 
 ## Current state
 
-Schema 1 accepts an `artifacts` array and status validates each selected path, including macOS application-bundle integrity. Apply, bootstrap, and update materialise the owning installation but do not invoke a generator after successful provider work. Explain reports artifacts but has no reconciler metadata.
+Schema 1 accepts an `artifacts` array on tools. `rig explain` reports ownership, while `rig status` and `rig doctor` observe path health. macOS application-bundle health requires a readable property list and a working nested executable. Apply, bootstrap, update, and maintenance operate only through provider capabilities.
 
 ## Steps
 
-- [x] Add optional `artifact.reconciler` metadata to a tool, validate it against a closed built-in registry, require compatible installation and artifact declarations, and keep configuration inert.
-- [x] Implement the Codex Multi Auth app reconciler with fixed executable and arguments, bounded path expectations, dry-run planning, progress, and native failure propagation.
-- [x] Run the reconciler after successful tool application in `rig apply` and `rig bootstrap`, and after the owning tool is successfully advanced by `rig update`.
-- [x] Keep artifact observation authoritative for status and doctor, expose reconciler metadata through `rig explain`, and prove catalogue-only and automatically generated artifacts retain observation-only behaviour.
-- [x] Align README, changelog, manual, user and developer guidance, Decision Records, Specifications, help/completion conformance evidence, and reciprocal personal configuration guidance.
-- [x] Verify Bash 3.2 compatibility, full-plan safety, dry-run non-mutation, deterministic reporting, exact generator invocation, failure isolation, and all existing command behaviour.
+- [x] Keep generated paths with their owning tool and expose them through catalogue queries.
+- [x] Strengthen generic macOS application-bundle health without adding a product-specific generator.
+- [x] Keep artifact declarations inert and reject unknown lifecycle fields.
+- [x] Remove the specialised artifact reconciler from parsing, validation, apply, bootstrap, update, progress, and reporting.
+- [x] Align README, changelog, manual, guides, Decisions, Specifications, and focused Bats coverage.
+- [x] Verify Bash 3.2 compatibility, non-mutating observation, deterministic reports, and the full command suite.
 
 ## Files touched
 
-Expected public scope is `bin/rig`, focused Bats fixtures, `README.md`, `CHANGELOG.md`, `man/rig.1`, `docs/decisions/`, `docs/specs/`, `docs/guides/`, and this work record. Personal catalogue migration remains a separate reviewed change in the chezmoi repository.
+Portable scope covers `bin/rig`, focused Bats fixtures, `README.md`, `CHANGELOG.md`, `man/rig.1`, `docs/decisions/`, `docs/specs/`, `docs/guides/`, and this work record. Personal catalogue choices remain in the owning chezmoi repository.
 
 ## Verify
 
-Run `ki repo audit --repo .`, `shellcheck bin/rig install.sh`, `bats tests/`, `mandoc -T lint man/rig.1`, and `git diff --check`. Use isolated fake npm and launcher executables to prove apply, bootstrap, update, dry-run, invalid declarations, absent generators, native failures, observation-only artifacts, and exact argument boundaries.
+Run `ki repo audit --repo .`, `shellcheck bin/rig install.sh`, `bash -n bin/rig install.sh`, `bats tests/`, `mandoc -T lint man/rig.1`, and `git diff --check`.
 
 ## Dependencies / blocks
 
-RIG-CORE-012 supplies the built-in npm lifecycle and complete application plan used here. Its implementation is present in the current baseline, so no build-order blocker remains.
+RIG-CORE-012 supplies the provider lifecycle used by apply, bootstrap, update, and maintenance. Artifact observation remains independent from that lifecycle.
 
 ## Documentation impact
 
 ### Decision Records
 
-Amend the declarative grammar and provider execution decisions so generated artifacts remain tool-owned and fixed reconcilers are product capabilities rather than configured commands.
+State that artifacts remain tool-owned observation and that their native tool owns creation, update, and removal.
 
 ### Specifications
 
-Extend configuration, state, orchestration, progress, and safety requirements for the closed reconciler field, observation boundary, supported lifecycle points, and non-mutating preview.
+Specify inert artifact declarations, generic health observation, and the absence of artifact-generator orchestration.
 
 ### Guides
 
-Explain when an artifact is observation-only, when Rig can reconcile it, and why deselection does not uninstall a tool or delete its artifacts.
+Explain when a durable generated path is useful Rig evidence and when an internal native detail should be omitted.
 
 ### Roadmap
 
-The reciprocal personal migration must retain Codex and Claude account-switching capabilities while collapsing each capability into its owning tool entry.
+The reciprocal personal migration retains the account-management CLI capabilities while omitting unnecessary application-bundle declarations.
+
+## Delegation
+
+Bounded review may inspect portable integration points and reciprocal personal configuration. The primary agent owns schema choice, integration, verification, commits, and live chezmoi application.
 
 ## Review
 
 ### Delivered
 
-Schema 1 now supports one closed `artifact.reconciler` field. Codex Multi Auth uses a fixed native generator after successful apply, bootstrap, and update work; ordinary artifacts remain observation-only. Application-bundle health now detects missing or broken nested executables, and `rig explain` reports artifact ownership.
+Tool-owned artifacts are now a generic, observation-only catalogue feature. The Codex-specific lifecycle path is absent from the schema and implementation, while macOS bundle health and artifact explanation remain available.
 
 ### Summary of changes
 
-- Added closed schema validation, preflight, invocation, progress, dry-run, postcondition, and failure reporting.
-- Resolve npm's global package root and invoke the installed launcher module through Node, avoiding an inert upstream symlink entrypoint.
-- Kept the generated bundle on the owning tool and strengthened generic macOS application artifact observation.
-- Aligned public documentation and executable contract evidence without changing the command or completion surface.
+- Removed the specialised reconciler field and all generator dispatch from the dependency-free Bash runtime.
+- Preserved generic artifact ownership, path comparison, and stricter macOS application health.
+- Reduced focused artifact tests to observation and aligned every public documentation surface.
+- Retained provider apply, bootstrap, update, and maintenance behaviour without artifact-specific work.
 
 ### Verification
 
-- `ki repo audit --repo .` passed all selected skills.
+- `ki repo audit --repo .` passed 15 selected skills.
 - `shellcheck bin/rig install.sh` and `bash -n bin/rig install.sh` passed.
-- `bats tests/` passed the complete suite, including 21 generated-artifact cases.
+- `bats tests/` passed all 179 tests.
 - `mandoc -T lint man/rig.1` and `git diff --check` passed.
-- Help, completions, README, manual, guides, changelog, Decisions, and Specifications remain covered by the public-surface alignment tests.
+- Help, completions, README, manual, guides, changelog, Decisions, and Specifications remain covered by public-surface alignment tests.
 
 ### Outstanding concerns
 
-None in the portable implementation. Personal catalogue migration is tracked independently by the owning configuration repository.
+None in the portable implementation. Whether a personal native artifact is useful enough to declare remains a catalogue-owner decision.
 
 ### Post-change review
 
-Implementation commits: `5ac349a561bc5594bdb780006adb9df781f57e69`, `55905076aab1471791f420972ee5c66c6b6190e2`.
+Implementation commit: `f4e7959b` (`refactor(core): keep generated artifacts observational`).
 
 ### Mini recap
 
-Generated application bundles now belong to one catalogue capability. Rig owns only explicitly implemented artifact lifecycles and cannot be configured as a generic hook runner.
-
-## Delegation
-
-Use bounded read-only review lanes for public integration points and personal configuration migration. The primary agent owns schema choice, implementation, integration, full verification, commits, and any live chezmoi application.
+Rig can explain and inspect durable tool-owned artifacts without acquiring a hidden task-runner or product-specific launcher lifecycle.
 
 ## Discussion
 
 ### One capability, one tool
 
-An application bundle generated by a CLI is observable output of that tool, not another catalogue identity. Relationships, rationale, profile membership, installation, and artifacts therefore stay together.
+A durable generated path may be useful state evidence, but it is not automatically a separate capability. Its purpose, rationale, installation, profile membership, and optional artifact paths stay with the owning tool.
 
-### Closed reconciler
+### Native lifecycle ownership
 
-`artifact.reconciler` names a Rig-owned adapter, not an executable path. Rig fixes the executable name, accepted installation identity, destination contract, and arguments. Configuration cannot introduce another command or change the invocation.
-
-### Presence semantics
-
-Rig profiles express selected desired presence. As with package managers, removing a tool from a profile does not request uninstall. Generated artifact retirement therefore remains outside this item; status can subsequently report an undeclared bundle through normal inventory.
+An artifact declaration does not authorise execution. The native tool or provider may create the path as a side effect, while Rig remains responsible only for describing and observing the declared state.
