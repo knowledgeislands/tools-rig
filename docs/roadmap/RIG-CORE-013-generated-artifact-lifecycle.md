@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: 52517334dbd39f0b653cb373ede0f7718e9db04e
 created_at: 2026-09-21T07:44:37Z
-updated_at: 2026-09-21T08:46:40Z
+updated_at: 2026-09-21T09:10:19Z
 ---
 
 # RIG-CORE-013: Generated artifact lifecycle
@@ -80,6 +80,7 @@ Schema 1 now supports one closed `artifact.reconciler` field. Codex Multi Auth u
 ### Summary of changes
 
 - Added closed schema validation, preflight, invocation, progress, dry-run, postcondition, and failure reporting.
+- Resolve npm's global package root and invoke the installed launcher module through Node, avoiding an inert upstream symlink entrypoint.
 - Kept the generated bundle on the owning tool and strengthened generic macOS application artifact observation.
 - Aligned public documentation and executable contract evidence without changing the command or completion surface.
 
@@ -87,7 +88,7 @@ Schema 1 now supports one closed `artifact.reconciler` field. Codex Multi Auth u
 
 - `ki repo audit --repo .` passed all selected skills.
 - `shellcheck bin/rig install.sh` and `bash -n bin/rig install.sh` passed.
-- `bats tests/` passed the complete suite, including 20 generated-artifact cases.
+- `bats tests/` passed the complete suite, including 21 generated-artifact cases.
 - `mandoc -T lint man/rig.1` and `git diff --check` passed.
 - Help, completions, README, manual, guides, changelog, Decisions, and Specifications remain covered by the public-surface alignment tests.
 
@@ -97,7 +98,7 @@ None in the portable implementation. Personal catalogue migration is tracked ind
 
 ### Post-change review
 
-Implementation commit: `5ac349a561bc5594bdb780006adb9df781f57e69`.
+Implementation commits: `5ac349a561bc5594bdb780006adb9df781f57e69`, `55905076aab1471791f420972ee5c66c6b6190e2`.
 
 ### Mini recap
 
