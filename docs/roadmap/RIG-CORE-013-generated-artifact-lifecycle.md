@@ -4,12 +4,12 @@ area: CORE
 title: Generated artifact lifecycle
 theme: orchestration
 horizon: now
-status: in-progress
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: 52517334dbd39f0b653cb373ede0f7718e9db04e
 created_at: 2026-09-21T07:44:37Z
-updated_at: 2026-09-21T08:37:06Z
+updated_at: 2026-09-21T08:46:40Z
 ---
 
 # RIG-CORE-013: Generated artifact lifecycle
@@ -70,6 +70,38 @@ Explain when an artifact is observation-only, when Rig can reconcile it, and why
 ### Roadmap
 
 The reciprocal personal migration must retain Codex and Claude account-switching capabilities while collapsing each capability into its owning tool entry.
+
+## Review
+
+### Delivered
+
+Schema 1 now supports one closed `artifact.reconciler` field. Codex Multi Auth uses a fixed native generator after successful apply, bootstrap, and update work; ordinary artifacts remain observation-only. Application-bundle health now detects missing or broken nested executables, and `rig explain` reports artifact ownership.
+
+### Summary of changes
+
+- Added closed schema validation, preflight, invocation, progress, dry-run, postcondition, and failure reporting.
+- Kept the generated bundle on the owning tool and strengthened generic macOS application artifact observation.
+- Aligned public documentation and executable contract evidence without changing the command or completion surface.
+
+### Verification
+
+- `ki repo audit --repo .` passed all selected skills.
+- `shellcheck bin/rig install.sh` and `bash -n bin/rig install.sh` passed.
+- `bats tests/` passed the complete suite, including 20 generated-artifact cases.
+- `mandoc -T lint man/rig.1` and `git diff --check` passed.
+- Help, completions, README, manual, guides, changelog, Decisions, and Specifications remain covered by the public-surface alignment tests.
+
+### Outstanding concerns
+
+None in the portable implementation. Personal catalogue migration is tracked independently by the owning configuration repository.
+
+### Post-change review
+
+Implementation commit: `5ac349a561bc5594bdb780006adb9df781f57e69`.
+
+### Mini recap
+
+Generated application bundles now belong to one catalogue capability. Rig owns only explicitly implemented artifact lifecycles and cannot be configured as a generic hook runner.
 
 ## Delegation
 
