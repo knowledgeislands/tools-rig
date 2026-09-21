@@ -260,21 +260,13 @@ write_query_config() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"Usage: rig [options] [command]"* ]]
   [[ "$output" == *"Describe and manage a person's working setup."* ]]
-  [[ "$output" == *"show [--profile NAME]"* ]]
-  [[ "$output" == *"list [--category ID] [--profile NAME]"* ]]
-  [[ "$output" == *"explain TOOL"* ]]
-  [[ "$output" == *"status [--profile NAME] [--unmanaged]"* ]] || false
-  [[ "$output" == *"doctor [--profile NAME]"* ]] || false
-  [[ "$output" == *"apply [--profile NAME] [--scope SCOPE] [--dry-run]"* ]] || false
-  [[ "$output" == *"bootstrap [--profile NAME] [--scope SCOPE] [--dry-run]"* ]] || false
-  [[ "$output" == *"run PROVIDER ACTION [-- ARGUMENT...]"* ]] || false
-  [[ "$output" == *"export PUBLICATION --output DIRECTORY"* ]] || false
-  [[ "$output" == *"publish PUBLICATION"* ]] || false
-  [[ "$output" == *"clean [--dry-run]"* ]] || false
-  [[ "$output" == *"diag"* ]]
+  for command in show list explain status doctor apply bootstrap run export publish clean diag completion help; do
+    [[ "$output" == *"  $command"* ]] || false
+  done
   [[ "$output" != *"paths"* ]]
-  [[ "$output" == *"completion bash|zsh"* ]]
-  [[ "$output" == *"help"* ]]
+  [[ "$output" == *$'  show        Describe a resolved profile.'* ]]
+  [[ "$output" == *$'  completion  Print shell completion source.'* ]]
+  [[ "$output" == *"Run 'rig COMMAND --help' for command usage."* ]]
 }
 
 @test "public command inventory stays aligned across documentation" {
@@ -414,11 +406,11 @@ write_query_config() {
   [[ "$output" == *"compdef _rig rig"* ]]
   [[ "$output" == *"show:describe a resolved profile"* ]]
   [[ "$output" == *"diag:print runtime and configuration diagnostics"* ]]
-  [[ "$output" == *"doctor:check whether a rig can operate"* ]]
+  [[ "$output" == *"doctor:check whether Rig can operate"* ]]
   [[ "$output" == *"bootstrap:materialise the bootstrap profile"* ]] || false
   [[ "$output" == *"export:generate public rig data"* ]] || false
   [[ "$output" == *"publish:publish public rig data"* ]] || false
-  [[ "$output" == *"run:invoke a declared operation"* ]] || false
+  [[ "$output" == *"run:invoke a declared provider action"* ]] || false
   [[ "$output" == *"run) _arguments"*"'3:separator:(--)'"* ]] || false
   [[ "$output" == *"'(-V --version)'{-V,--version}"* ]]
   [[ "$output" == *"explain) _arguments '(-h --help)'"* ]]

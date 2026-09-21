@@ -17,7 +17,7 @@ Instead of treating a Brewfile, dotfiles repository, language tool manager, and 
 
 - A **catalogue** describes your tools: their category, purpose, rationale, relationships, platforms, and optional installation.
 - A **managed resource** declares a service, scheduled job, typed machine setting, or semantic layout together with its desired state.
-- A **profile** selects catalogue tools and managed resources for a machine, role, or context such as `default`, `minimal`, `developer`, or `workstation`.
+- A **profile** selects catalogue tools and managed resources for a machine, role, or context. One `default` profile is enough unless two contexts genuinely select different intent.
 - A **provider** is the native system that owns a declaration, such as Homebrew, uv, chezmoi, launchd, or macOS defaults. Rig knows its built-in providers; ordinary configuration does not register their adapters or capabilities.
 - **State** compares the selected profile with what providers observe on the current machine.
 - A **publication** exports one deliberately public profile as data that a website such as `rig.midnight.ninja` can render.
@@ -113,6 +113,8 @@ settings = ["show-file-extensions"]
 ```
 
 The provider name identifies the native authority. Rig supplies the adapter, observation, validation, and application behaviour for built-in providers such as `macos-defaults` and `launchd`.
+
+Do not create separate profiles merely to name lifecycle commands. `bootstrap-profile` may point to `default`; add profiles such as `minimal`, `developer`, or `public` only when they select a materially different setup. Profiles may compose one another so shared intent remains declared once.
 
 ## Commands
 

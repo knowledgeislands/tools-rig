@@ -37,6 +37,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - Standard TOML-compatible `rig.toml` and `conf.d/*.toml` sources, with a dependency-free schema subset, quoted strings, string arrays, inline comments, and model-wide fail-closed validation.
 - Read-only catalogue queries that do not invoke providers.
 - Human-readable `rig show` profile metadata and bounded-width, aligned selected-tool tables.
+- Compact top-level help aligns command names and descriptions while directing detailed syntax to each command's `--help`.
 - Versioned `rig-provider-v1` invocation with literal argument boundaries only for explicitly trusted external providers; Rig inserts the marker automatically and built-ins never receive it.
 - Versioned external `observe-resource`, `apply-resource`, and `retire-resource` work units plus resource-aware action binding, while built-in resources use Rig's internal provider registry.
 - Explicit `adapter = "custom"` extension declarations and operation allow-lists, with executable resolution limited to an explicit path or exact `${RIG_DATA_HOME}/providers/ID` convention.

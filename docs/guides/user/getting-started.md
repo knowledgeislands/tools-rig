@@ -124,7 +124,9 @@ Rig preflights the complete selected plan before mutation, orders required tools
 
 ## Add another profile
 
-Profiles let the same catalogue answer different contexts. Append a second catalogue tool and two profiles:
+Most people can start and remain with one `default` profile. A profile is not a stage in Rig's lifecycle: `show`, `doctor`, `apply`, and `bootstrap` can all operate on the same profile, and `bootstrap-profile` may name `default`.
+
+Add another profile only when a machine, role, context, or public projection selects materially different intent. Profiles let the same catalogue describe those differences without duplicating tool records. For example, append a second catalogue tool and two profiles:
 
 ```toml
 [category.quality]

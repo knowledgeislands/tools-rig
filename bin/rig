@@ -74,24 +74,22 @@ print_help() {
     '  -V, --version         Print the Rig version.' \
     '' \
     'Commands:' \
-    '  show [--profile NAME]                 Describe a resolved profile.' \
-    '  list [--category ID] [--profile NAME] List declared catalogue tools.' \
-    '  explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID' \
-    '                                       Explain a declared tool or resource.' \
-    '  status [--profile NAME] [--unmanaged]  Compare expected and observed state.' \
-    '  doctor [--profile NAME]                Check whether a rig can operate.' \
-    '  apply [--profile NAME] [--scope SCOPE] [--dry-run]' \
-    '                                        Materialise a resolved profile.' \
-    '  bootstrap [--profile NAME] [--scope SCOPE] [--dry-run]' \
-    '                                         Materialise the bootstrap profile.' \
-    '  run PROVIDER ACTION [-- ARGUMENT...]   Invoke a declared provider action.' \
-    '  export PUBLICATION --output DIRECTORY' \
-    '                                     Generate public rig data.' \
-    '  publish PUBLICATION                 Publish public rig data.' \
-    '  clean [--dry-run]                   Remove eligible Rig-owned cache data.' \
-    '  diag                  Print runtime and configuration diagnostics.' \
-    '  completion bash|zsh   Print shell completion source.' \
-    '  help                  Show this help.' \
+    '  show        Describe a resolved profile.' \
+    '  list        Browse declared catalogue tools.' \
+    '  explain     Explain a declared tool or managed resource.' \
+    '  status      Compare expected and observed state.' \
+    '  doctor      Check whether Rig can operate.' \
+    '  apply       Materialise a resolved profile.' \
+    '  bootstrap   Materialise the bootstrap profile.' \
+    '  run         Invoke a declared provider action.' \
+    '  export      Generate public Rig data.' \
+    '  publish     Publish public Rig data.' \
+    '  clean       Remove eligible Rig-owned cache data.' \
+    '  diag        Print runtime and configuration diagnostics.' \
+    '  completion  Print shell completion source.' \
+    '  help        Show this help.' \
+    '' \
+    "Run 'rig COMMAND --help' for command usage." \
     '' \
     'Configuration loading and provider work report progress on stderr when interactive.'
 }
@@ -190,13 +188,13 @@ print_zsh_completion() {
     '  local state' \
     '  commands=(' \
     "    'show:describe a resolved profile'" \
-    "    'list:list declared catalogue tools'" \
-    "    'explain:explain a declared tool'" \
+    "    'list:browse declared catalogue tools'" \
+    "    'explain:explain a declared tool or managed resource'" \
     "    'status:compare expected and observed state'" \
-    "    'doctor:check whether a rig can operate'" \
+    "    'doctor:check whether Rig can operate'" \
     "    'apply:materialise a resolved profile'" \
     "    'bootstrap:materialise the bootstrap profile'" \
-    "    'run:invoke a declared operation'" \
+    "    'run:invoke a declared provider action'" \
     "    'export:generate public rig data'" \
     "    'publish:publish public rig data'" \
     "    'clean:remove eligible Rig-owned cache data'" \
