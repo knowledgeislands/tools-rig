@@ -3,13 +3,13 @@ id: RIG-CORE-018
 title: Define reconciliation authority
 area: CORE
 theme: orchestration
-horizon: triage
-status: draft
+horizon: now
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-21T23:35:16Z
-updated_at: 2026-09-21T23:35:16Z
+updated_at: 2026-09-21T23:43:26Z
 ---
 
 ## Goal
@@ -26,7 +26,65 @@ The current profile model stores complete member arrays centrally. The real defa
 
 This work does not add arbitrary lifecycle hooks or make Rig authoritative for provider-native state. It must preserve the distinction between declarative intent, native ownership, minimal reconciliation receipts, and public projection.
 
+## Current state
+
+Profile arrays centrally enumerate declarations, receipts are platform-wide, declaration kinds have different deselection behaviour, conflicts are sometimes checked across the whole catalogue, and concurrent applies can replace the same receipt without serialization. The implementation does not yet distinguish appliable complete profiles from non-appliable views or consistently disclose provider mutation scope.
+
+## Steps
+
+- [ ] Amend the product, configuration, orchestration, state, and publication contracts with the locked authority model below.
+- [ ] Add item-centric `profiles` membership with omission meaning `default`, explicit profile inheritance, and rejection of ambiguous mixed central and item-centric selection.
+- [ ] Add profile identity, purpose, and appliable-versus-view semantics; reject `apply` and `bootstrap` for non-appliable profiles.
+- [ ] Resolve dependencies transitively, then validate native-target conflicts only across the resolved selection while retaining globally unique declaration identities.
+- [ ] Make lifecycle plans disclose declaration, manifest, or provider-wide mutation scope before execution.
+- [ ] Serialize receipt-backed reconciliation per target and fail safely when another apply owns the target lock.
+- [ ] Cover selection, inheritance, publication safety, deselection, conflicts, provider scope, and concurrent apply with deterministic tests.
+
+## Files touched
+
+Expected scope includes `bin/rig`, `tests/rig.bats`, `docs/decisions/`, `docs/specs/`, `docs/guides/user/`, `man/rig.1`, `README.md`, and `CHANGELOG.md`.
+
+## Verify
+
+Run the complete repository gate and focused fixtures proving implicit default membership, explicit inheritance, non-appliable view rejection, resolved-only conflict checks, the declaration-kind deselection table, provider-scope disclosure, and exclusive receipt reconciliation.
+
+## Dependencies / blocks
+
+Nothing blocks the portable authority model. `RIG-CORE-019` consumes its item-centric membership and profile metadata; `RIG-MIG-007` migrates personal configuration only after this behaviour lands.
+
+## Delegation
+
+Contract changes, profile-resolution implementation, and concurrent-reconciliation tests are bounded lanes. The coordinator owns the locked semantic model, integration, and final gate.
+
+## Documentation impact
+
+### Decision Records
+
+Update the catalogue-led product, inert configuration, execution, publication, and operational-resource decisions with authority rather than command-level detail.
+
+### Specifications
+
+Specify profile kinds, item membership, inheritance, deselection by declaration kind, conflict scope, provider operation scope, and reconciliation locking.
+
+### Guides
+
+Explain complete appliable profiles, safe views, switching effects, and how to read provider-wide work before applying it.
+
+### Roadmap
+
+This settles the semantic foundation for configuration, documentation, publication, and personal migration records; no separate authority item is expected.
+
 ## Discussion
+
+### Locked authority model
+
+Item-centric membership is authoritative. A declaration without `profiles` belongs to `default`; other complete machine or role profiles inherit `default` explicitly; minimal, public, and view profiles opt in explicitly. Profile declarations own identity, purpose, inheritance, and whether they are appliable. Central member arrays and item-centric membership cannot be mixed.
+
+An appliable profile is complete desired Rig intent for one target. Previously receipted services and scheduled jobs omitted from the next appliable profile are retired. Packages, artifacts, settings, layouts, ports, and skills are non-destructive on deselection unless a separately explicit cleanup contract says otherwise. A non-appliable view never owns receipts or influences retirement.
+
+Native-target conflicts are checked across the resolved selection, provider work discloses declaration, manifest, or provider-wide scope before execution, and receipt-backed reconciliation is serialized per target. A concurrent second apply fails before mutation with a clear active-owner diagnostic.
+
+The exploratory observations below are retained as rationale; the locked model above resolves their open choices for implementation.
 
 ### Item-centric membership
 

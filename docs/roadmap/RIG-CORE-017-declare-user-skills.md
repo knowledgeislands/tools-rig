@@ -4,12 +4,12 @@ title: Declare user skills
 area: CORE
 theme: orchestration
 horizon: now
-status: draft
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-21T18:02:02Z
-updated_at: 2026-09-21T23:35:16Z
+updated_at: 2026-09-21T23:43:26Z
 ---
 
 ## Goal
@@ -72,6 +72,14 @@ Explain global versus repository-local versus runtime-owned skills, source trust
 The personal-skill source cleanup remains part of the separate personal-rig migration outcome.
 
 ## Discussion
+
+### Locked declaration model
+
+User-level skills are first-class `[skill.ID]` managed capabilities, separate from executable tools but selected through the same item-centric profile rules. A declaration records name, purpose, rationale, native authority, immutable or reviewable source identity, user scope, intended agent runtimes, supported platforms, and optional public metadata. Rig never stores skill content.
+
+The first authority classes are Skills CLI for explicitly sourced global skills, KI bootstrap for KI projections, runtime or plugin ownership for observation-only bundled skills, and an explicit trusted local source for user-managed projections. Apply may materialise a missing declaration through its fixed native authority; update remains an explicit lifecycle action; deselection never removes a skill. Unqualified changing `npx` execution is forbidden. Publication is opt-in and exposes only reviewed name, purpose, rationale, and source metadata—not paths, runtime mappings, locks, or observed state.
+
+The exploratory observations below are retained as rationale; the declaration model above resolves their open choices for implementation.
 
 ### Declarative capability
 

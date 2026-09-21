@@ -3,13 +3,13 @@ id: RIG-CORE-019
 title: Humanise configuration model
 area: CORE
 theme: orchestration
-horizon: triage
-status: draft
+horizon: now
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-21T23:35:16Z
-updated_at: 2026-09-21T23:35:16Z
+updated_at: 2026-09-21T23:43:26Z
 ---
 
 ## Goal
@@ -26,7 +26,58 @@ The proposed item-centric membership model can remove the largest profile arrays
 
 This work does not adopt YAML, a complete general-purpose TOML evaluator, arbitrary environment expansion, last-wins overrides, or executable configuration. Personal values and rationale remain private data rather than defaults embedded in Rig.
 
+## Current state
+
+The inert parser handles one-line arrays only, the personal default membership line exceeds 1,300 characters, profiles lack human labels and purpose, platform-specific installation requires duplicated logical tools, and managed resources cannot order themselves relative to other resources. Diagnostics expose parser rules more readily than author intent.
+
+## Steps
+
+- [ ] Extend the schema-1 parser with bounded multiline arrays of basic strings while preserving duplicate rejection, literal values, and Bash 3.2 operation.
+- [ ] Add profile `name`, `purpose`, `inherits`, and appliable/view metadata using the membership semantics from `RIG-CORE-018`.
+- [ ] Add bounded platform installation and artifact variants beneath one logical tool identity with deterministic single-match validation.
+- [ ] Add resource-to-resource `depends-on` ordering with cycle, missing-reference, and selected-profile validation.
+- [ ] Improve diagnostics and examples so fragment composition, duplicate intent, profile meaning, and invalid variants are understandable to a configuration author.
+- [ ] Update the canonical sample configuration and every schema, manual, guide, completion-adjacent, and changelog surface.
+
+## Files touched
+
+Expected scope includes `bin/rig`, `tests/rig.bats`, `docs/specs/configuration.md`, `docs/specs/orchestration.md`, `docs/guides/user/`, `man/rig.1`, `README.md`, and `CHANGELOG.md`.
+
+## Verify
+
+Run the complete repository gate and fixtures for multiline arrays, item membership, profile metadata and inheritance, zero/one/multiple platform-variant matches, resource dependency order and cycles, duplicate declarations across fragments, and unchanged rejection of interpolation or executable values.
+
+## Dependencies / blocks
+
+The plan uses the locked profile semantics in `RIG-CORE-018`, but parser and diagnostic work can be prepared independently in the same ordered foundation batch. Personal configuration migration remains in `RIG-MIG-007`.
+
+## Delegation
+
+Parser fixtures, variant and dependency resolution, and documentation examples are separable lanes. The coordinator owns schema compatibility, trust-boundary review, and integrated validation.
+
+## Documentation impact
+
+### Decision Records
+
+Amend the inert-configuration decision only for durable representation choices; retain detailed fields in the Configuration Specification.
+
+### Specifications
+
+Specify multiline arrays, profile metadata, item membership, bounded platform variants, resource dependencies, validation, and schema-1 compatibility.
+
+### Guides
+
+Teach a small readable configuration incrementally and show how one logical tool varies safely by platform without duplicating identity.
+
+### Roadmap
+
+The personal-data rewrite and rationale curation remain in `RIG-MIG-007`; no alternative configuration-format item is needed.
+
 ## Discussion
+
+### Locked representation
+
+Schema 1 gains bounded multiline basic-string arrays. Profiles gain `name`, `purpose`, explicit `inherits`, and appliable/view kind. Item-local `profiles` follows `RIG-CORE-018`; a configuration cannot combine that mode with central membership arrays. One logical tool may contain bounded platform-specific installation and artifact variants, exactly one of which may match. Resources may depend on other resources through the existing acyclic dependency model, without conditions or arbitrary commands.
 
 ### Schema 1 evolution
 

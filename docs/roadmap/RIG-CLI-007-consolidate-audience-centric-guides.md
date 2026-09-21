@@ -4,13 +4,13 @@ title: Consolidate audience-centric guides
 area: CLI
 theme: cli
 horizon: now
-status: draft
+status: ready
 blocks: []
 blocked_by: []
 transferred_from: ki-website
 baseline_ref: null
 created_at: 2026-09-21T17:20:00Z
-updated_at: 2026-09-21T17:20:00Z
+updated_at: 2026-09-21T23:43:26Z
 ---
 
 ## Goal

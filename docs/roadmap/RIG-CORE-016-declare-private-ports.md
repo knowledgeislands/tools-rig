@@ -4,12 +4,12 @@ title: Declare private ports
 area: CORE
 theme: orchestration
 horizon: now
-status: draft
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-21T17:54:55Z
-updated_at: 2026-09-21T23:35:16Z
+updated_at: 2026-09-21T23:43:26Z
 ---
 
 ## Goal
@@ -71,6 +71,14 @@ Teach when to declare a stable port, how required and on-demand expectations dif
 The personal-config migration remains separate from this portable implementation item.
 
 ## Discussion
+
+### Locked declaration model
+
+The public configuration term is `[port.ID]`. A declaration names `protocol`, numeric `port`, expected `scope`, `mode`, and an owning tool or managed resource; it follows item-centric profile membership. The first version supports TCP with normalized `loopback` and `all-interfaces` scopes and `required`, `on-demand`, and `allocated` modes. Ownership matching uses bounded observable process evidence when available but never treats an inaccessible command line as proof of drift.
+
+`required` absence is missing, an unexpected occupant is conflicting, and broader-than-declared exposure is drifted. `on-demand` and `allocated` absence is healthy; an occupant is reported with the safest available ownership evidence. Unsupported or inaccessible observation is unavailable rather than healthy. Rig observes only: it never opens, reserves, closes, or kills a socket. Port declarations and all listener evidence are excluded from every public projection.
+
+The exploratory observations below are retained as rationale; the declaration model above resolves their open choices for implementation.
 
 ### Declarative resource
 
