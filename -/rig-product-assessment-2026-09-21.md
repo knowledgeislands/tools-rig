@@ -138,6 +138,16 @@ This should be a first-class private operational resource rather than a generic 
 
 Port declarations, observations, process details, bind addresses, and unmanaged-listener inventory must be excluded from every public projection. The versioned website data should continue to contain only its explicit catalogue allow-list.
 
+### User-level agent skills
+
+User-level skills are another material part of the working setup, but they are only partially managed today. `npx skills list -g` discovers 16 global skills. Only `caveman` has remote source provenance in the Skills CLI's XDG-state lock; seven KI skills are local symlinks into `ki-agentic-harness`, and eight Cloudflare skills are physical Claude and Codex copies reported as local. Rig declares none of them.
+
+Rig should consider a first-class skill declaration containing human meaning, trusted source, user scope, target agent runtimes, and native owner. Profiles would select these capabilities; `show`, qualified `explain`, `status`, and `doctor` would distinguish declared intent from the native inventory. The Skills CLI, `ki bootstrap`, runtime plugin managers, and explicitly trusted local sources should retain their own installation and update authority.
+
+Repository-local skills should remain repository concerns, while runtime-bundled and plugin-cached skills remain runtime-owned. Rig must not adopt an arbitrary directory merely because it contains `SKILL.md`: skills change agent behaviour and therefore cross an explicit trust boundary.
+
+Unlike ports, a skill's reviewed catalogue metadata may be suitable for deliberate publication. Public name, purpose, rationale, and source should be considered separately from private installation paths, runtime mappings, lock data, and observed state. Installation alone must never imply disclosure.
+
 ## Human configuration
 
 TOML remains the right format. The main problem is the deliberately restricted subset, not TOML itself.
@@ -276,6 +286,7 @@ Evaluate whether the catalogue, profiles, providers, state, managed resources, l
 - bootstrap boundaries;
 - external execution and public disclosure trust boundaries;
 - concurrency and state-receipt safety;
+- user-level agent skill provenance, source-manager ownership, and runtime projections;
 - Bash 3.2 maintainability;
 - query and observation performance on the real personal catalogue.
 
