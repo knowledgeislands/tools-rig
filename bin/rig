@@ -3539,19 +3539,33 @@ rig_verify_artifact_reconciler() {
 }
 
 rig_apply_artifact_reconciler() {
-  local tool section_name reconciler executable native_status
+  local tool section_name reconciler npm_executable node_executable package_root module native_status
 
   tool=$1
   section_name=tool.$tool
   rig_get_value "$section_name" artifact-reconciler || return 0
   reconciler=$RIG_VALUE
   case "$reconciler" in
-    codex-multi-auth-app-launcher) executable=codex-multi-auth-app-launcher ;;
+    codex-multi-auth-app-launcher) ;;
     *) return 2 ;;
   esac
-  rig_executable_available "$executable" ||
-    rig_fail "tool '$tool' artifact reconciler executable unavailable: $executable" || return
-  "$executable" 1>&2
+  rig_executable_available npm ||
+    rig_fail "tool '$tool' artifact reconciler npm executable unavailable" || return
+  rig_executable_available node ||
+    rig_fail "tool '$tool' artifact reconciler node executable unavailable" || return
+  npm_executable=$(command -v npm 2>/dev/null) || return 2
+  node_executable=$(command -v node 2>/dev/null) || return 2
+  package_root=$(
+    "$npm_executable" root --global
+  ) || return
+  case "$package_root" in
+    /*) ;;
+    *) rig_fail "tool '$tool' artifact reconciler received unsafe npm root" || return ;;
+  esac
+  module=$package_root/codex-multi-auth/scripts/codex-app-launcher.js
+  [ ! -L "$module" ] && [ -f "$module" ] && [ -r "$module" ] ||
+    rig_fail "tool '$tool' artifact reconciler module unavailable: $module" || return
+  "$node_executable" "$module" 1>&2
   native_status=$?
   [ "$native_status" -eq 0 ] || return "$native_status"
   rig_verify_artifact_reconciler "$tool"

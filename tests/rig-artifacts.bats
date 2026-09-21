@@ -109,8 +109,9 @@ write_reconciler_config() {
   kind=${5:-global}
   locator=${6:-codex-multi-auth}
   NATIVE_BIN=$BATS_TEST_TMPDIR/native-bin
+  PACKAGE_ROOT=$BATS_TEST_TMPDIR/npm-root
   LIFECYCLE_LOG=$BATS_TEST_TMPDIR/artifact-lifecycle.log
-  mkdir -p "$NATIVE_BIN"
+  mkdir -p "$NATIVE_BIN" "$PACKAGE_ROOT/codex-multi-auth/scripts"
 
   printf '%s\n' \
     '#!/usr/bin/env bash' \
@@ -118,9 +119,15 @@ write_reconciler_config() {
     'case "$1" in' \
     '  list) printf "%s\n" "/fixture" "└── codex-multi-auth@1.0.0" ;;' \
     '  install) ;;' \
+    '  root) printf "%s\n" "$RIG_ARTIFACT_TEST_ROOT" ;;' \
     '  *) exit 64 ;;' \
     'esac' >"$NATIVE_BIN/npm"
   chmod +x "$NATIVE_BIN/npm"
+
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'exec bash "$1"' >"$NATIVE_BIN/node"
+  chmod +x "$NATIVE_BIN/node"
 
   printf '%s\n' \
     '#!/usr/bin/env bash' \
@@ -130,8 +137,7 @@ write_reconciler_config() {
     'mkdir -p "$app/Contents/MacOS"' \
     'printf "%s\n" "<plist><dict><key>CFBundleExecutable</key><string>Codex</string></dict></plist>" >"$app/Contents/Info.plist"' \
     ': >"$app/Contents/MacOS/Codex"' \
-    'chmod +x "$app/Contents/MacOS/Codex"' >"$NATIVE_BIN/codex-multi-auth-app-launcher"
-  chmod +x "$NATIVE_BIN/codex-multi-auth-app-launcher"
+    'chmod +x "$app/Contents/MacOS/Codex"' >"$PACKAGE_ROOT/codex-multi-auth/scripts/codex-app-launcher.js"
 
   printf '%s\n' \
     '[rig]' 'schema = 1' 'default-profile = "default"' 'bootstrap-profile = "default"' \
@@ -157,6 +163,7 @@ run_reconciler() {
     HOME="$TEST_HOME" \
     PATH="$NATIVE_BIN:$PATH" \
     RIG_ARTIFACT_TEST_LOG="$LIFECYCLE_LOG" \
+    RIG_ARTIFACT_TEST_ROOT="$PACKAGE_ROOT" \
     RIG_ARTIFACT_TEST_EXIT="${RIG_ARTIFACT_TEST_EXIT:-0}" \
     RIG_CONFIG_HOME="$CONFIG_HOME" \
     RIG_PLATFORM=macos \
@@ -234,9 +241,22 @@ run_reconciler() {
 
   [ "$status" -eq 0 ]
   lifecycle=$(<"$LIFECYCLE_LOG")
-  [ "$lifecycle" = $'npm:install --global codex-multi-auth\nlauncher:' ]
+  [ "$lifecycle" = $'npm:install --global codex-multi-auth\nnpm:root --global\nlauncher:' ]
   [[ "$output" == *$'subject\tnpm\tcompleted\t'*"artifact-reconciled:codex-multi-auth-app-launcher"* ]]
   [ -x "$TEST_HOME/Applications/Codex Multi Auth.app/Contents/MacOS/Codex" ]
+}
+
+@test "artifact reconciler fails when installed launcher module is unavailable" {
+  local lifecycle
+  write_reconciler_config
+  rm "$PACKAGE_ROOT/codex-multi-auth/scripts/codex-app-launcher.js"
+
+  run_reconciler apply
+
+  [ "$status" -eq 1 ]
+  lifecycle=$(<"$LIFECYCLE_LOG")
+  [ "$lifecycle" = $'npm:install --global codex-multi-auth\nnpm:root --global' ]
+  [[ "$output" == *$'subject\tnpm\tfailed\t'*"artifact"* ]]
 }
 
 @test "artifact reconciler failure fails the owning tool" {
@@ -247,7 +267,7 @@ run_reconciler() {
 
   [ "$status" -eq 1 ]
   lifecycle=$(<"$LIFECYCLE_LOG")
-  [ "$lifecycle" = $'npm:install --global codex-multi-auth\nlauncher:' ]
+  [ "$lifecycle" = $'npm:install --global codex-multi-auth\nnpm:root --global\nlauncher:' ]
   [[ "$output" == *$'subject\tnpm\tfailed\t'*"artifact"*"37"* ]]
 }
 
@@ -259,7 +279,7 @@ run_reconciler() {
 
   [ "$status" -eq 0 ]
   lifecycle=$(<"$LIFECYCLE_LOG")
-  [ "$lifecycle" = $'npm:install --global codex-multi-auth\nlauncher:' ]
+  [ "$lifecycle" = $'npm:install --global codex-multi-auth\nnpm:root --global\nlauncher:' ]
   [[ "$output" == *"artifact-reconciled:codex-multi-auth-app-launcher"* ]]
 }
 
@@ -281,7 +301,7 @@ run_reconciler() {
 
   [ "$status" -eq 0 ]
   lifecycle=$(<"$LIFECYCLE_LOG")
-  [ "$lifecycle" = $'npm:install --global codex-multi-auth\nlauncher:' ]
+  [ "$lifecycle" = $'npm:install --global codex-multi-auth\nnpm:root --global\nlauncher:' ]
   [[ "$output" == *"artifact-reconciled:codex-multi-auth-app-launcher"* ]]
 }
 

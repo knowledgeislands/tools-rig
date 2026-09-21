@@ -265,10 +265,10 @@ _Evidence:_ `rig_lifecycle_supported`, `rig_collect_lifecycle_tasks`, `rig_execu
 
 ### RIG-ORCH-025 — Generated-artifact reconciliation
 
-After the owning installation succeeds, `rig apply` and `rig bootstrap` MUST run the tool's supported native artifact reconciler and verify its postcondition. After the owning tool update succeeds, `rig update` MUST do the same. Rig MUST use the fixed executable and zero configured arguments for `codex-multi-auth-app-launcher`, MUST reject unsafe destination shapes during preflight, MUST report a separate progress step, and MUST treat generator or postcondition failure as failure of the owning work item. Tools without a reconciler remain observation-only even when they declare artifacts.
+After the owning installation succeeds, `rig apply` and `rig bootstrap` MUST run the tool's supported native artifact reconciler and verify its postcondition. After the owning tool update succeeds, `rig update` MUST do the same. For `codex-multi-auth-app-launcher`, Rig MUST resolve the global package root through the selected npm executable and invoke the fixed regular `codex-multi-auth/scripts/codex-app-launcher.js` module through Node with zero configured arguments. It MUST reject unsafe destination or module shapes, MUST report a separate progress step, and MUST treat generator or postcondition failure as failure of the owning work item. Tools without a reconciler remain observation-only even when they declare artifacts.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats records exact provider-before-reconciler ordering for apply, bootstrap, and update; covers missing executables, native failures, unhealthy postconditions, and observation-only artifacts; and asserts no invocation during dry-run.
+_Verify:_ Bats records exact provider-before-npm-root-before-module ordering for apply, bootstrap, and update; covers missing runtimes or modules, native failures, unhealthy postconditions, and observation-only artifacts; and asserts no invocation during dry-run.
 
 _Evidence:_ `rig_preflight_artifact_reconciler`, `rig_apply_artifact_reconciler`, `rig_command_apply`, and `rig_run_lifecycle_tasks` implement the closed orchestration path; `tests/rig-artifacts.bats` covers it.

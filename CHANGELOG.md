@@ -29,7 +29,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 
 ### Behaviours
 
-- Tool-owned generated artifacts with a closed `artifact.reconciler` contract; Codex Multi Auth application bundles refresh after successful apply, bootstrap, or update work, while ordinary artifacts remain observation-only.
+- Tool-owned generated artifacts with a closed `artifact.reconciler` contract; Codex Multi Auth application bundles refresh through the installed package module after successful apply, bootstrap, or update work, while ordinary artifacts remain observation-only.
 - macOS application artifact health requires a readable `Info.plist` and a working executable beneath `Contents/MacOS`, exposing broken URL-handler bundles as drift.
 - A standalone Bash 3.2-compatible executable with no required runtime dependency beyond Bash.
 - Non-mutating runtime, platform, XDG-path, and configuration diagnostics with explicit Rig overrides.
