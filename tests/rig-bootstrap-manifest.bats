@@ -75,6 +75,33 @@ run_rig() {
   grep -F 'CALL <install> <--formula> <example/alpha>' "$BREW_LOG"
 }
 
+@test "bootstrap converges bounded Homebrew autoupdate policy" {
+  printf '%s\n' \
+    'autoupdate-interval = 43200' \
+    'autoupdate-options = ["upgrade", "cleanup", "immediate", "sudo"]' >>"$CONFIG_HOME/rig.toml"
+
+  run_rig bootstrap --dry-run
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'autoupdate\thomebrew\tplanned\tinterval:43200'* ]]
+  [ ! -e "$BREW_LOG" ]
+
+  run_rig bootstrap
+  [ "$status" -eq 0 ]
+  grep -Fqx 'CALL <autoupdate> <delete>' "$BREW_LOG"
+  grep -Fqx 'CALL <autoupdate> <start> <43200> <--cleanup> <--immediate> <--sudo> <--upgrade>' "$BREW_LOG"
+}
+
+@test "Homebrew autoupdate policy rejects arbitrary options before invocation" {
+  printf '%s\n' \
+    'autoupdate-interval = 43200' \
+    'autoupdate-options = ["arbitrary"]' >>"$CONFIG_HOME/rig.toml"
+
+  run_rig bootstrap
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"invalid autoupdate option 'arbitrary'"* ]]
+  [ ! -e "$BREW_LOG" ]
+}
+
 @test "bootstrap preflights later providers before manifest mutation" {
   sed 's/tools = \["alpha"\]/tools = ["alpha", "beta"]/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/extended.toml"
   printf '%s\n' \

@@ -140,7 +140,7 @@ _Evidence:_ `rig_preflight_apply`, `rig_preflight_provider`, `rig_preflight_reso
 
 ### RIG-STATE-016 — Bootstrap materialisation
 
-`rig bootstrap [--profile NAME] [--dry-run]` MUST run Rig's native bootstrap lifecycle without requiring a bootstrap provider or synthetic setup tools. An explicit profile MUST take precedence; otherwise Rig MUST select `[rig] bootstrap-profile` when declared and fall back to `default-profile` when it is absent. Rig MUST identify and verify required managers, fully preflight the resulting tool and managed-resource plan, and then use the same dependency ordering, reporting, failure suppression, and outcome vocabulary as apply. Dry-run MUST describe every stage without invoking a provider or changing the machine.
+`rig bootstrap [--profile NAME] [--dry-run]` MUST run Rig's native bootstrap lifecycle without requiring a bootstrap provider or synthetic setup tools. An explicit profile MUST take precedence; otherwise Rig MUST select `[rig] bootstrap-profile` when declared and fall back to `default-profile` when absent. Rig MUST identify required managers and preflight the complete declarative plan. It MAY defer only the executable readiness of selected built-in mise and npm managers when their fixed Homebrew and mise prerequisites are selected, MUST report and complete those stages in dependency order, and MUST then run the same complete reconciliation model as apply. Dry-run MUST describe every stage without invoking a provider or changing the machine.
 
 _Conformance:_ conforming
 
@@ -190,7 +190,7 @@ _Evidence:_ `rig_observe_resource_plan`, `rig_print_resource_status`, and the re
 
 ### RIG-STATE-019 — Resource application and retirement
 
-`rig apply` and `rig bootstrap` MUST preflight every selected tool, setting, Dock layout, service, scheduled job, stale receipt provider, built-in or extension operation, executable, and receipt target before the first mutation. They MUST apply dependency-ordered tools before dependent managed resources, then perform stale resource retirements. A failed tool MUST suppress dependent resources while independent resources continue. Retirement MUST not begin after any selected application failure. Dry-run MUST invoke no provider, write no state, and print every desired managed-resource record and pending retirement.
+`rig apply` MUST preflight every selected tool, setting, Dock layout, service, scheduled job, stale receipt provider, built-in or extension operation, executable, and receipt target before the first mutation. `rig bootstrap` MUST preserve that boundary except for the explicit built-in manager-readiness stages defined by RIG-ORCH-018, and MUST complete a normal apply preflight after those stages. Both commands MUST apply dependency-ordered tools before dependent managed resources, then perform stale resource retirements. A failed tool MUST suppress dependent resources while independent resources continue. Retirement MUST not begin after any selected application failure. Dry-run MUST invoke no provider, write no state, and print every desired managed-resource record and pending retirement.
 
 _Conformance:_ conforming
 
@@ -217,3 +217,13 @@ _Conformance:_ conforming
 _Verify:_ Bats uses isolated native-command fakes to cover present and drifted settings, ordered Dock equality, missing required paths, complete dry-run disclosure, successful apply, platform gating, and absence of extension invocations.
 
 _Evidence:_ `rig_setting_observe`, `rig_setting_apply`, `rig_dock_observe`, `rig_dock_apply`, `rig_macos_resource_preflight`, and `rig_print_resource_projection` own typed machine state; `typed macOS resources query and dry-run deterministically`, `typed macOS resources observe and apply through native command fakes`, and `typed macOS schema rejects invalid values before invocation` cover that state boundary.
+
+### RIG-STATE-022 — Lifecycle preflight and preview
+
+`rig update`, `rig maintain`, and `rig capture` MUST provide a non-mutating dry run that reports planned and unsupported work without invoking a provider or writing a manifest. Before a non-dry-run lifecycle mutation, Rig MUST preflight every supported target's executable and required manifest boundary before invoking the first provider. Lifecycle reports MUST be deterministic, MUST keep native diagnostics off the report channel, and MUST report independent completed, failed, and skipped outcomes.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats records provider calls and manifest content across dry-run, unavailable executable, unsafe manifest, successful, failed, duplicate, and unsupported lifecycle work.
+
+_Evidence:_ `rig_preflight_lifecycle_task` and `rig_run_lifecycle_tasks` implement complete supported-target preflight, stable tabular reports, dry-run isolation, and independent outcomes; `tests/rig-lifecycle.bats` covers the lifecycle state boundary.

@@ -1,7 +1,7 @@
 ---
 id: ADR-RIG-003
 title: 'Declarative Configuration Grammar'
-date: 2026-09-19
+date: 2026-09-21
 status: current
 decision_type: architecture
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/adr
@@ -24,7 +24,7 @@ Rig implements a strict schema-scoped subset of TOML 1.0 directly in Bash. It ac
 
 The declarative model contains categories, one table per tool, composable profiles, services, scheduled jobs, typed settings, semantic Dock layouts and items, publications, optional provider configuration, and explicitly allowed extension actions. Profiles select tools and managed resources. Fixed dotted `install.*` keys keep installation metadata with its tool.
 
-Built-in provider identifiers resolve without a `[provider.ID]` table. Rig owns their adapter class and supported operations. An optional table for a built-in may contain only documented provider-native configuration or executable overrides. A non-built-in provider requires `adapter = "custom"` and an allow-list of trusted operations. Its executable is either an explicit path or the exact conventional `${RIG_DATA_HOME}/providers/PROVIDER-ID` path; its invocation protocol never appears in ordinary configuration.
+Built-in provider identifiers resolve without a `[provider.ID]` table. Rig owns their adapter class, supported installation kinds, and fixed lifecycle operations. An optional table for a built-in may contain only documented provider-native configuration such as a manifest path, arguments, or executable override; it cannot grant a lifecycle capability or supply commands. A non-built-in provider requires `adapter = "custom"` and an allow-list of trusted extension operations. Its executable is either an explicit path or the exact conventional `${RIG_DATA_HOME}/providers/PROVIDER-ID` path; its invocation protocol never appears in ordinary configuration.
 
 The parser never sources files, evaluates commands, interprets shell syntax, or performs general environment expansion. Documented path fields alone expand a leading `~/`. All other dollar signs, substitutions, glob characters, separators, and embedded variables remain inert data.
 
@@ -32,7 +32,7 @@ The parser never sources files, evaluates commands, interprets shell syntax, or 
 
 Rig configuration works with standard TOML-aware editors while remaining small enough for a dependency-free Bash parser. A valid TOML document may still be unsupported by the schema, and diagnostics distinguish unsupported syntax from unknown declarative fields.
 
-Normal configuration says what belongs and which native authority owns it. Adapter selection, built-in capability discovery, bootstrap sequencing, and protocol versioning stay inside Rig. External executables remain explicit trust transitions rather than side effects of parsing.
+Normal configuration says what belongs and which native authority owns it. Adapter selection, built-in capability discovery, lifecycle sequencing, native command selection, and protocol versioning stay inside Rig. External executables remain explicit trust transitions rather than side effects of parsing.
 
 ## References
 

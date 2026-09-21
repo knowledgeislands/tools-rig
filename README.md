@@ -18,7 +18,7 @@ Instead of treating a Brewfile, dotfiles repository, language tool manager, and 
 - A **catalogue** describes your tools: their category, purpose, rationale, relationships, platforms, and optional installation.
 - A **managed resource** declares a service, scheduled job, typed machine setting, or semantic layout together with its desired state.
 - A **profile** selects catalogue tools and managed resources for a machine, role, or context. One `default` profile is enough unless two contexts genuinely select different intent.
-- A **provider** is the native system that owns a declaration, such as Homebrew, uv, chezmoi, launchd, or macOS defaults. Rig knows its built-in providers; ordinary configuration does not register their adapters or capabilities.
+- A **provider** is the native system that owns a declaration, such as Homebrew, uv, mise, npm, chezmoi, launchd, or macOS defaults. Rig knows its built-in providers; ordinary configuration does not register their adapters or capabilities.
 - **State** compares the selected profile with what providers observe on the current machine.
 - A **publication** exports one deliberately public profile as data that a website such as `rig.midnight.ninja` can render.
 
@@ -31,8 +31,9 @@ Rig is therefore a manager of managers. It does not replace package-manager mani
 3. Use `rig show`, `rig list`, and `rig explain` to understand the declaration.
 4. Use `rig diag`, `rig doctor`, and `rig status` to inspect Rig and compare intent with the machine.
 5. Use `rig apply --dry-run` to review the complete plan before allowing provider changes.
-6. Use `rig apply` to reconcile an operable machine or `rig bootstrap` to verify required managers and materialise the selected bootstrap profile.
-7. Optionally use `rig export` and `rig publish` to share a deliberately public view.
+6. Use `rig apply` to reconcile an operable machine, or `rig bootstrap` to stage the fixed Homebrew → mise → npm manager chain when declared and then materialise the selected bootstrap profile.
+7. Use explicit `rig update` and `rig maintain` runs when selected tools or provider state should advance; use `rig capture` only when deliberately refreshing a provider-native manifest.
+8. Optionally use `rig export` and `rig publish` to share a deliberately public view.
 
 ## Install
 
@@ -126,6 +127,9 @@ Do not create separate profiles merely to name lifecycle commands. `bootstrap-pr
 - `rig doctor [--profile NAME]` gives a compact health assessment for configuration, paths, providers, selected tools, and selected resources.
 - `rig apply [--profile NAME] [--scope tools|resources|all] [--dry-run]` previews or materialises the resolved tool and resource plan.
 - `rig bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]` previews or runs the native bootstrap lifecycle for the configured bootstrap profile.
+- `rig update [--profile NAME] [--dry-run]` advances selected Homebrew, uv, mise, and npm tools through their native managers.
+- `rig maintain [--profile NAME] [--dry-run]` runs one bounded native maintenance work item for each supported selected provider.
+- `rig capture PROVIDER [--dry-run]` deliberately refreshes a supported provider-native manifest; Homebrew capture is the current built-in operation.
 - `rig run PROVIDER ACTION [-- ARGUMENT...]` invokes a built-in provider operation or one explicitly trusted external-provider action.
 - `rig export PUBLICATION --output DIRECTORY` writes deterministic public Rig data without deploying it.
 - `rig publish PUBLICATION` exports and hands public Rig data to one trusted publisher.
@@ -136,7 +140,7 @@ Do not create separate profiles merely to name lifecycle commands. `bootstrap-pr
 
 The [command guide](docs/guides/user/commands.md) groups these commands by user lifecycle and explains their trust boundaries. `man rig` is the complete command and configuration reference.
 
-Cache maintenance is deliberately outside the normal lifecycle. Retained publication diagnostics remain available until you explicitly inspect them with `rig clean --dry-run` and remove eligible artifacts with `rig clean`; provider-native caches remain provider-owned.
+Rig-cache cleanup is deliberately separate from provider maintenance. Retained publication diagnostics remain available until you explicitly inspect them with `rig clean --dry-run` and remove eligible artifacts with `rig clean`; provider-native caches remain provider-owned and are touched only by an explicit supported `rig maintain` operation.
 
 ## Safety and ownership
 

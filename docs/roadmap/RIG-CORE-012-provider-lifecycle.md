@@ -4,12 +4,12 @@ area: CORE
 title: Provider lifecycle
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 3893ae077ddf11d6f52e62395ee13387ce1d467e
 created_at: 2026-09-21T05:50:39Z
-updated_at: 2026-09-21T05:50:39Z
+updated_at: 2026-09-21T06:27:45Z
 ---
 
 # RIG-CORE-012: Provider lifecycle
@@ -34,12 +34,12 @@ Keep personal packages, paths, manifests, credentials, and profile selection in 
 
 ## Steps
 
-- [ ] Specify the lifecycle: convergence stays under `apply` and `bootstrap`; `update` advances selected provider state; `maintain` performs explicit provider maintenance; `capture` refreshes one explicitly named native manifest; `clean` remains Rig-cache-only.
-- [ ] Add implicit built-in mise and npm providers with typed installation metadata, observation, application, update, and maintenance operations while preserving native manifests and literal argument boundaries.
-- [ ] Add bounded Homebrew and uv update/maintenance behaviour plus explicit Homebrew manifest capture, complete preflight, dry-run, progress, failure isolation, and deterministic reporting.
-- [ ] Keep external providers extension-only and reject lifecycle dispatch not fixed by Rig; do not expose arbitrary lifecycle commands through TOML.
-- [ ] Align help, per-command usage, completions, manual, README, changelog, specifications, decisions, user/developer guides, definition-of-done coverage, and release checklist.
-- [ ] Verify Bash 3.2 compatibility, provider fakes, non-mutation in dry-run, selected-profile scoping, manifest safety, and existing command regressions.
+- [x] Specify the lifecycle: convergence stays under `apply` and `bootstrap`; `update` advances selected provider state; `maintain` performs explicit provider maintenance; `capture` refreshes one explicitly named native manifest; `clean` remains Rig-cache-only.
+- [x] Add implicit built-in mise and npm providers with typed installation metadata, observation, application, update, and maintenance operations while preserving native manifests and literal argument boundaries.
+- [x] Add bounded Homebrew and uv update/maintenance behaviour plus explicit Homebrew manifest capture, complete preflight, dry-run, progress, failure isolation, and deterministic reporting.
+- [x] Keep external providers extension-only and reject lifecycle dispatch not fixed by Rig; do not expose arbitrary lifecycle commands through TOML.
+- [x] Align help, per-command usage, completions, manual, README, changelog, specifications, decisions, user/developer guides, definition-of-done coverage, and release checklist.
+- [x] Verify Bash 3.2 compatibility, provider fakes, non-mutation in dry-run, selected-profile scoping, manifest safety, and existing command regressions.
 
 ## Files touched
 
@@ -70,6 +70,32 @@ Teach the everyday lifecycle, when each mutation boundary is appropriate, how pr
 ### Roadmap
 
 This item owns portable lifecycle capabilities. `DOTFILES-UE-034` owns migration and removal of the personal residual operations.
+
+## Review
+
+### Delivered
+
+Rig now has fixed built-in mise and npm adapters; explicit `update`, `maintain`, and `capture` commands; bounded Homebrew autoupdate policy; and native bootstrap staging for the declared Homebrew → mise → npm manager chain. External providers cannot receive these lifecycle operations.
+
+### Summary of changes
+
+The CLI, configuration grammar, orchestration, reports, progress, completions, manual, changelog, decisions, specifications, user guides, developer guides, definition of done, and release checklist describe the same lifecycle. `clean` remains limited to Rig-owned cache data.
+
+### Verification
+
+The repository audit passed all selected skills. ShellCheck passed `bin/rig` and `install.sh`; all 178 Bats cases passed; `mandoc -T lint man/rig.1` and `git diff --check` passed. Focused fixtures prove non-mutating previews, fixed update/maintenance/capture invocations, manifest safety, bounded Homebrew autoupdate policy, and manager staging when mise and npm are initially absent.
+
+### Outstanding concerns
+
+The public replacement is complete. The coupled personal migration remains under `DOTFILES-UE-034` and must pass its own source, rendered-config, and chezmoi-diff verification before the live operation scripts are removed.
+
+### Post-change review
+
+The implementation keeps provider-native manifests and state authoritative while replacing personal dispatcher scripts with bounded product capabilities. Bootstrap defers executable readiness only for the fixed built-in chain represented by selected prerequisite tools; apply and all external boundaries retain complete preflight.
+
+### Mini recap
+
+Rig configuration declares the desired working setup; Rig coordinates fixed native lifecycle operations; provider systems retain native authority. The next step is the private source migration and reviewed chezmoi application.
 
 ## Discussion
 

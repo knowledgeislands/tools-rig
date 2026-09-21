@@ -29,7 +29,17 @@ Neither command applies changes.
 - `rig apply [--profile NAME] [--scope tools|resources|all] [--dry-run]` — preflight the resolved profile, print the selected scope in dry-run mode, or invoke built-in and explicitly allowed external mutation operations.
 - `rig bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]` — run Rig's native new-machine lifecycle for the configured bootstrap profile, an explicit profile, or the default-profile fallback.
 
-Run the dry-run form first. A dry run invokes no provider and writes no state. Without `--dry-run`, apply reconciles an operable profile; bootstrap first identifies and verifies required managers and then reconciles it. Bootstrap reports a missing manager rather than installing that manager system. Both cross the mutation boundary only after complete preflight.
+Run the dry-run form first. A dry run invokes no provider and writes no state. Without `--dry-run`, apply reconciles an operable profile after complete preflight. Bootstrap can stage only the fixed Homebrew → mise → npm manager chain when the corresponding prerequisite tools are selected; all external and unrelated managers must already be available. It reports each stage before completing a normal apply preflight.
+
+## Advance provider-managed state
+
+- `rig update [--profile NAME] [--dry-run]` — advance selected Homebrew, uv, mise, and npm tools with each manager's fixed native operation.
+- `rig maintain [--profile NAME] [--dry-run]` — run one bounded maintenance work item for each supported provider selected by the resolved profile.
+- `rig capture PROVIDER [--dry-run]` — deliberately refresh the named provider's native manifest; Homebrew is the current built-in capture target and requires a configured manifest path.
+
+Use a dry run first. Rig preflights every supported target before mutation, deduplicates shared provider work, and reports selected providers without a supported lifecycle operation as skipped. Update and maintenance resolve the default or named profile; capture names one provider directly because it writes that provider's manifest rather than reconciling a profile.
+
+These commands use fixed built-in behaviour. Configuration selects tools and may supply documented provider-native details such as the Homebrew manifest path, but it cannot define lifecycle shell commands, grant capabilities, or route lifecycle work through an external provider. `rig maintain` owns provider-native maintenance such as cache pruning; `rig clean` has a separate and narrower Rig-cache boundary.
 
 ## Run a declared host action
 
@@ -66,6 +76,6 @@ Every subcommand accepts `-h` or `--help` for command-local usage. `man rig` is 
 - Status 0 means the command completed successfully. For health commands, the checked rig is healthy.
 - Status 1 means an operational command completed with findings or a provider operation failed.
 - Status 2 means Rig rejected its own command syntax, configuration, or profile resolution.
-- `rig run` and publication dispatch preserve provider-native failure detail where their contract requires it.
+- `rig run`, `rig capture`, and publication dispatch preserve provider-native failure status where their contract requires it; profile-wide update and maintenance report independent provider failures and return status 1.
 
 Progress is written to stderr when interactive so reports remain stable on stdout. Set `RIG_PROGRESS=always` for redirected progress or `RIG_PROGRESS=never` to suppress it.

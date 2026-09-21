@@ -16,7 +16,7 @@ Release publication has additional steps in [Release Rig](releasing.md).
 
 ## Align affected public surfaces
 
-- [ ] CLI help, README, user and developer guides, `man/rig.1`, Bash and Zsh completions, `CHANGELOG.md`, tests, Specifications, and Decision Records describe the same shipped commands, options, configuration, defaults, lifecycle, built-in providers, extension boundary, and trust transitions wherever the change applies.
+- [ ] CLI help, README, user and developer guides, `man/rig.1`, Bash and Zsh completions, `CHANGELOG.md`, tests, Specifications, and Decision Records describe the same shipped commands, options, configuration, defaults, lifecycle operations, fixed built-in provider behaviour, extension boundary, and trust transitions wherever the change applies.
 
 ## Check distribution impact
 

@@ -1,4 +1,4 @@
-.TH RIG 1 "2026-09-20" "Knowledge Islands" "User Commands"
+.TH RIG 1 "2026-09-21" "Knowledge Islands" "User Commands"
 .SH NAME
 \&
 .PP
@@ -31,6 +31,17 @@ rig \- describe and manage a personal working setup
 .B rig bootstrap
 .RI [ \-\-profile " NAME" ]
 .RI [ \-\-scope " tools|resources|all" ]
+.RI [ \-\-dry-run ]
+.br
+.B rig update
+.RI [ \-\-profile " NAME" ]
+.RI [ \-\-dry-run ]
+.br
+.B rig maintain
+.RI [ \-\-profile " NAME" ]
+.RI [ \-\-dry-run ]
+.br
+.BI "rig capture " PROVIDER
 .RI [ \-\-dry-run ]
 .br
 .BI "rig run " PROVIDER " " ACTION
@@ -69,8 +80,8 @@ set. State compares resolved intent with native observations.
 .PP
 Catalogue queries and diagnostics parse inert configuration and do not invoke
 provider code. Status and doctor invoke observation capabilities.
-Apply and bootstrap cross the explicit mutation boundary only after complete
-plan preflight.
+Apply, bootstrap, update, maintain, and capture cross the explicit mutation
+boundary only after complete preflight.
 Run crosses an explicit provider-action trust boundary after resolving either
 a built-in operation or a declared external-provider action. Publish
 crosses a network-capable trust boundary only after export validation.
@@ -102,7 +113,13 @@ or
 .B rig bootstrap
 only when the complete plan is expected, or select
 .BR "\-\-scope tools" " or " "\-\-scope resources"
-for one part of reconciliation. Public sharing follows the separate
+for one part of reconciliation. Use
+.BR "rig update" ,
+.BR "rig maintain" ,
+and
+.B rig capture
+only as explicit, dry-run-first lifecycle transitions outside reconciliation.
+Public sharing follows the separate
 offline
 .B rig export
 and explicit
@@ -217,11 +234,11 @@ The scope changes execution, not profile resolution or declaration ownership.
 .TP
 .B rig bootstrap
 Run Rig's native bootstrap lifecycle for the configured bootstrap profile.
-Rig identifies, verifies, and preflights required native managers before using
-the same dependency order, complete preflight, dispatch, reporting, and
-failure boundaries as
-.BR "rig apply" .
-Bootstrap is not a provider and requires no synthetic setup tools.
+Rig fully preflights configuration, external providers, resources, and
+available built-ins. When selected Homebrew and mise tools are the fixed
+prerequisites for missing mise or npm managers, Rig reports and completes
+those bounded stages before a normal apply preflight. Bootstrap is not a
+provider and requires no synthetic setup tools.
 An explicit
 .BI "\-\-profile " NAME
 takes precedence over
@@ -234,6 +251,34 @@ The
 .B \-\-scope
 option has the same values and meaning as for
 .BR "rig apply" .
+.TP
+.B rig update
+.RI [ \-\-profile " NAME" ]
+.RI [ \-\-dry-run ]
+Advance tools selected by the resolved default or named profile through fixed
+Homebrew, uv, mise, and npm native operations. A Homebrew provider with a
+manifest is updated once through that manifest; other update work is
+deduplicated by selected installation. Unsupported selected providers are
+reported as skipped and are not invoked. Dry run performs the same resolution
+and preflight without provider mutation.
+.TP
+.B rig maintain
+.RI [ \-\-profile " NAME" ]
+.RI [ \-\-dry-run ]
+Run one bounded native maintenance work item for each supported provider
+selected by the resolved profile. Homebrew performs cleanup, optional
+manifest cleanup, and doctor; uv prunes its cache; mise rebuilds shims; npm
+verifies its cache. Unsupported selected providers are reported as skipped.
+Dry run performs the same resolution and preflight without provider mutation.
+.TP
+.BI "rig capture " PROVIDER
+.RI [ \-\-dry-run ]
+Refresh the named provider's declared native manifest through a fixed built-in
+capture operation. The current capture target is Homebrew. Rig requires a
+declared safe regular-file manifest target and a writable parent, excludes
+language-manager package domains from the generated Brewfile, and refuses
+external or unsupported providers. Dry run validates and reports the capture
+without writing the manifest.
 .TP
 .BI "rig run " PROVIDER " " ACTION " [\-\- " ARGUMENT... "]"
 Invoke one built-in provider operation or one explicitly declared external
@@ -555,18 +600,32 @@ table and their supported operations cannot be granted or removed by
 configuration. The built-in identities are
 .BR homebrew ,
 .BR uv ,
+.BR mise ,
+.BR npm ,
 .BR chezmoi ,
 .BR direct-download ,
 .BR launchd ,
+.BR macos-applications ,
 .BR macos-defaults ,
 and
 .BR macos-dock .
 Where documented, a built-in provider table may override only its native
 .BR executable ,
 .BR manifest ,
-or literal
-.B arguments
-configuration; it cannot declare an adapter or capabilities.
+literal
+.BR arguments ,
+or bounded native policy; it cannot declare an adapter or capabilities.
+Homebrew accepts a positive integer
+.B autoupdate-interval
+and
+.B autoupdate-options
+containing only
+.BR upgrade ,
+.BR cleanup ,
+.BR immediate ,
+and
+.BR sudo .
+Bootstrap applies that policy only when its selected tool plan uses Homebrew.
 .PP
 An identity not built into Rig is an external provider. Its
 .B [provider.ID]
@@ -788,6 +847,14 @@ The
 .B uv
 adapter supports
 .B tool
+installations, the
+.B mise
+adapter supports
+.B tool
+installations, the
+.B npm
+adapter supports
+.B global
 installations, and the
 .B chezmoi
 adapter supports
@@ -802,6 +869,10 @@ mas list
 mas install LOCATOR
 uv tool list
 uv tool install LOCATOR
+mise which LOCATOR
+mise install LOCATOR
+npm list --global --depth=0 LOCATOR
+npm install --global LOCATOR
 chezmoi status --path-style=absolute -- LOCATOR
 chezmoi apply -- LOCATOR
 .fi
@@ -826,6 +897,45 @@ to write a sibling temporary file, verifies SHA-256, sets executable mode, and
 renames it over a regular destination. Rig refuses symlink and non-regular
 destinations, restricts redirects to HTTPS, rechecks destination safety before
 replacement, and removes failed temporary files.
+.SS PROVIDER LIFECYCLE
+\&
+.PP
+Provider lifecycle capabilities are fixed in Rig's built-in registry.
+Configuration selects tools and may supply documented native details such as
+a Homebrew manifest path, but cannot define lifecycle commands or grant
+update, maintenance, or capture capabilities. External providers are not
+invoked by these lifecycle commands.
+.PP
+.B rig update
+uses
+.BR "brew bundle install --upgrade" ,
+.BR "brew upgrade" ,
+.BR "mas upgrade" ,
+.BR "uv tool upgrade" ,
+.BR "mise upgrade" ,
+or
+.BR "npm install --global"
+according to the selected declaration and manifest configuration.
+.B rig maintain
+uses fixed
+.BR "brew cleanup" ,
+.BR "brew bundle cleanup" ,
+.BR "brew doctor" ,
+.BR "uv cache prune" ,
+.BR "mise reshim" ,
+and
+.BR "npm cache verify"
+operations once per selected provider.
+.B rig capture
+uses
+.B brew bundle dump
+only for a declared Homebrew manifest.
+.PP
+Each command preflights every supported target before the first mutation,
+keeps native diagnostics on stderr, and emits a deterministic report on
+stdout. Unsupported selected providers are report-only skips. The
+.B \-\-dry-run
+form invokes no provider and writes no manifest.
 .SS BUILT-IN MACOS RESOURCES
 \&
 .PP
@@ -1027,13 +1137,17 @@ outside the Rig-owned statuses below.
 likewise returns the publisher's native non-zero status. Interrupted publication
 returns 129, 130, or 143 for HUP, INT, or TERM. Rig-owned publication
 validation, export, and cleanup failures return 2.
+.B rig capture
+returns the selected built-in provider's native status after successful
+preflight.
 .B rig clean
 returns 1 after completing independent safe work when an artifact is skipped
 or cannot be removed; invalid syntax or an unsafe cache boundary returns 2.
 .TP
 .B 0
-Healthy status or doctor result, or successful apply or bootstrap, including
-neutral catalogue-only rows.
+Healthy status or doctor result, or successful apply, bootstrap, update,
+maintain, or capture, including neutral catalogue-only rows and unsupported
+lifecycle skips.
 .TP
 .B 1
 Valid unhealthy observation or doctor finding, provider runtime failure,
@@ -1043,7 +1157,8 @@ this means configuration is missing or invalid.
 .TP
 .B 2
 Invalid command syntax, unknown query identity, invalid configuration,
-resolution failure, or apply or bootstrap preflight failure.
+resolution failure, or apply, bootstrap, update, maintain, or capture
+preflight failure.
 .SH SEE ALSO
 \&
 .BR bash (1),
@@ -1051,5 +1166,7 @@ resolution failure, or apply or bootstrap preflight failure.
 .BR curl (1),
 .BR chezmoi (1),
 .BR mas (1),
+.BR mise (1),
+.BR npm (1),
 .BR shasum (1),
 .BR uv (1)

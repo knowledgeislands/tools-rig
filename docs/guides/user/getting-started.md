@@ -122,6 +122,37 @@ rig apply
 
 Rig preflights the complete selected plan before mutation, orders required tools before dependants, and invokes only built-in or explicitly trusted external operations. Homebrew remains responsible for Homebrew resolution and state; Rig coordinates the declared intent.
 
+## Update and maintain selected tools
+
+Reconciliation makes declared tools present; it does not silently advance every installed version or perform package-manager maintenance. Preview those explicit lifecycle operations separately:
+
+```sh
+rig update --dry-run
+rig maintain --dry-run
+```
+
+`rig update` advances selected Homebrew, uv, mise, and npm tools through fixed native commands. `rig maintain` runs one bounded provider-native maintenance work item per supported selected provider. Both report unsupported selected providers without dispatching them, and both preflight all supported work before the first mutation.
+
+Homebrew's own background update job is optional provider policy applied by `rig bootstrap`, not an operation script. Declare only the interval and bounded native options you want:
+
+```toml
+[provider.homebrew]
+manifest = "~/.config/homebrew/Brewfile"
+autoupdate-interval = 43200
+autoupdate-options = ["upgrade", "cleanup", "immediate", "sudo"]
+```
+
+Bootstrap reports this policy in dry-run output and re-arms Homebrew's native job only when the selected profile uses Homebrew. The configuration cannot contain a shell command or an arbitrary flag.
+
+When a Homebrew provider declares a native manifest, refresh it only through an explicit capture:
+
+```sh
+rig capture homebrew --dry-run
+rig capture homebrew
+```
+
+Capture writes the configured provider-native manifest; it does not turn that file into Rig configuration. Rig configuration cannot supply arbitrary lifecycle commands or grant built-in capabilities.
+
 ## Add another profile
 
 Most people can start and remain with one `default` profile. A profile is not a stage in Rig's lifecycle: `show`, `doctor`, `apply`, and `bootstrap` can all operate on the same profile, and `bootstrap-profile` may name `default`.

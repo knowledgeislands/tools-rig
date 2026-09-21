@@ -118,6 +118,8 @@ _Evidence:_ `rig_toml_field`, `rig_validate_model`, and `rig_select_profile` res
 
 ### RIG-CONF-012 — Provider fields
 
+The documented built-in configuration includes bounded native policy as well as executable and manifest details. Homebrew MAY declare a positive integer `autoupdate-interval` and an `autoupdate-options` array containing only `upgrade`, `cleanup`, `immediate`, and `sudo`; options MUST require an interval. No other built-in or external provider may declare this policy. Rig MUST translate the values into fixed native arguments and MUST NOT accept arbitrary autoupdate arguments or commands.
+
 Schema 1 MUST resolve built-in provider identities without a provider table. An optional table for a built-in provider MAY contain only its documented `executable`, `manifest`, or `arguments` configuration and MUST NOT redefine its adapter class or supported operations. A provider identity not reserved by Rig MUST have one `[provider.ID]` table requiring `adapter = "custom"` and a non-empty `capabilities` string array and MAY contain string `executable` and an `arguments` string array. When executable is omitted, Rig MUST resolve exactly `${RIG_DATA_HOME}/providers/PROVIDER-ID`; an explicit executable MUST take precedence. Provider tables MUST NOT contain `command`.
 
 _Conformance:_ conforming
@@ -128,13 +130,13 @@ _Evidence:_ `rig_validate_model`, `rig_builtin_provider_adapter`, and `rig_provi
 
 ### RIG-CONF-013 — Installation fields
 
-Tool installation metadata MUST reference one built-in or explicitly declared external provider and MUST obey that provider's native kind contract. `install.destination` and `install.checksum` MUST be valid only for `direct-download` installations. Homebrew `mas` locators MUST be numeric application identities. Direct-download installations MUST use kind `executable`, an HTTPS locator, an absolute expanded destination, and a checksum containing `sha256:` followed by exactly 64 lowercase hexadecimal characters.
+Tool installation metadata MUST reference one built-in or explicitly declared external provider and MUST obey that provider's native kind contract. Built-in kinds MUST include Homebrew `formula`, `cask`, and `mas`; uv `tool`; mise `tool`; npm `global`; chezmoi `target`; and direct-download `executable`. `install.destination` and `install.checksum` MUST be valid only for `direct-download` installations. Homebrew `mas` locators MUST be numeric application identities. Direct-download installations MUST use an HTTPS locator, an absolute expanded destination, and a checksum containing `sha256:` followed by exactly 64 lowercase hexadecimal characters.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests resolve co-located installation ownership without built-in provider boilerplate and reject unknown providers, partial installation declarations, incompatible kinds, unsafe downloads, malformed checksums, and invalid Mac App Store identities.
+_Verify:_ Bats tests resolve every built-in kind without provider boilerplate and reject unknown providers, partial installation declarations, incompatible kinds, unsafe downloads, malformed checksums, and invalid Mac App Store identities.
 
-_Evidence:_ `rig_validate_binding_adapter` owns the exact tool-installation kind matrix and rejects resource-only built-ins; `tests/rig.bats` and `tests/rig-model-boundaries.bats` cover every accepted and rejected class.
+_Evidence:_ `rig_validate_binding_adapter` owns the exact tool-installation kind matrix and rejects resource-only built-ins; `tests/rig.bats`, `tests/rig-lifecycle.bats`, and `tests/rig-model-boundaries.bats` cover the accepted and rejected classes.
 
 ### RIG-CONF-014 — Publication fields
 

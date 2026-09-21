@@ -8,7 +8,7 @@ This repository owns Rig's portable executable, native lifecycle, declarative sc
 
 When a change crosses that boundary, define and verify the portable contract here first. A generally useful provider adapter, bootstrap stage, setting type, inventory source, or resource lifecycle belongs here rather than in a personal workstation provider. Update the owner's configuration against a released Rig version or an explicitly linked development checkout. Do not copy personal declarations into this repository or reimplement portable Rig behaviour in dotfiles.
 
-Built-in providers are product code. They infer their supported operations from Rig's internal registry and must not require users to repeat adapter or capability declarations. External providers are extensions: they require `adapter = "custom"` and an operation allow-list, resolve through an explicit executable or the exact `${RIG_DATA_HOME}/providers/ID` path, and alone receive the versioned `rig-provider-v1` protocol.
+Built-in providers are product code. They infer supported installation kinds and fixed reconcile, update, maintenance, and capture operations from Rig's internal registry and must not require users to repeat adapter or capability declarations. External providers are extensions: they require `adapter = "custom"` and an operation allow-list, resolve through an explicit executable or the exact `${RIG_DATA_HOME}/providers/ID` path, and alone receive the versioned `rig-provider-v1` protocol. Configuration must never become an arbitrary lifecycle task runner.
 
 ## Make a change
 

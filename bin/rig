@@ -81,6 +81,9 @@ print_help() {
     '  doctor      Check whether Rig can operate.' \
     '  apply       Materialise a resolved profile.' \
     '  bootstrap   Materialise the bootstrap profile.' \
+    '  update      Update selected provider-managed tools.' \
+    '  maintain    Run explicit selected-provider maintenance.' \
+    '  capture     Refresh one provider-native manifest.' \
     '  run         Invoke a declared provider action.' \
     '  export      Generate public Rig data.' \
     '  publish     Publish public Rig data.' \
@@ -154,7 +157,7 @@ print_bash_completion() {
     '  current=${COMP_WORDS[COMP_CWORD]}' \
     '  command=${COMP_WORDS[1]:-}' \
     '  if [ "$COMP_CWORD" -eq 1 ]; then' \
-    '    COMPREPLY=($(compgen -W "-h --help -V --version show list explain status doctor apply bootstrap run export publish clean diag completion help" -- "$current"))' \
+    '    COMPREPLY=($(compgen -W "-h --help -V --version show list explain status doctor apply bootstrap update maintain capture run export publish clean diag completion help" -- "$current"))' \
     '    return' \
     '  fi' \
     '  case "$command" in' \
@@ -165,6 +168,8 @@ print_bash_completion() {
     '    doctor) COMPREPLY=($(compgen -W "-h --help --profile" -- "$current")) ;;' \
     '    apply) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools resources all" -- "$current")) ;;' \
     '    bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools resources all" -- "$current")) ;;' \
+    '    update|maintain) COMPREPLY=($(compgen -W "-h --help --profile --dry-run" -- "$current")) ;;' \
+    '    capture) COMPREPLY=($(compgen -W "-h --help --dry-run homebrew" -- "$current")) ;;' \
     '    run) COMPREPLY=($(compgen -W "-h --help --" -- "$current")) ;;' \
     '    export) COMPREPLY=($(compgen -W "-h --help --output" -- "$current")) ;;' \
     '    publish) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
@@ -194,6 +199,9 @@ print_zsh_completion() {
     "    'doctor:check whether Rig can operate'" \
     "    'apply:materialise a resolved profile'" \
     "    'bootstrap:materialise the bootstrap profile'" \
+    "    'update:update selected provider-managed tools'" \
+    "    'maintain:run explicit selected-provider maintenance'" \
+    "    'capture:refresh one provider-native manifest'" \
     "    'run:invoke a declared provider action'" \
     "    'export:generate public rig data'" \
     "    'publish:publish public rig data'" \
@@ -214,6 +222,8 @@ print_zsh_completion() {
     "        doctor) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' ;;" \
     "        apply) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--scope[select plan scope]:scope:(tools resources all)' '--dry-run[print plan without invoking providers]' ;;" \
     "        bootstrap) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--scope[select plan scope]:scope:(tools resources all)' '--dry-run[print plan without invoking providers]' ;;" \
+    "        update|maintain) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \
+    "        capture) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:provider:(homebrew)' '--dry-run[print plan without invoking provider]' ;;" \
     "        run) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:provider name:' '2:action name:' '3:separator:(--)' '*::action argument:' ;;" \
     "        export) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' '--output[write complete public data tree]:directory:_directories' ;;" \
     "        publish) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' ;;" \
@@ -422,6 +432,7 @@ rig_field_kind() {
     tool:install-provider|tool:install-kind|tool:install-locator|\
     tool:install-destination|tool:install-checksum|\
     provider:adapter|provider:command|provider:executable|provider:manifest|\
+    provider:autoupdate-interval|\
     binding:kind|binding:locator|binding:destination|binding:checksum|\
     publication:profile|publication:title|publication:base-url|publication:publisher|\
     service:name|service:purpose|service:rationale|service:provider|service:locator|\
@@ -443,7 +454,7 @@ rig_field_kind() {
     tool:install-platform|tool:install-argument|\
     profile:profile|profile:tool|profile:service|profile:scheduled-job|\
     profile:setting|profile:dock|\
-    provider:argument|provider:capability|\
+    provider:argument|provider:capability|provider:autoupdate-option|\
     binding:platform|binding:argument|\
     service:platform|service:requires|service:program|service:environment|\
     scheduled-job:platform|scheduled-job:requires|scheduled-job:program|\
@@ -490,6 +501,10 @@ rig_toml_field() {
       RIG_TOML_FIELD_KEY=$key
       RIG_TOML_FIELD_TYPE=string
       ;;
+    provider:autoupdate-interval)
+      RIG_TOML_FIELD_KEY=autoupdate-interval
+      RIG_TOML_FIELD_TYPE=integer
+      ;;
     tool:install.provider) RIG_TOML_FIELD_KEY=install-provider; RIG_TOML_FIELD_TYPE=string ;;
     tool:install.kind) RIG_TOML_FIELD_KEY=install-kind; RIG_TOML_FIELD_TYPE=string ;;
     tool:install.locator) RIG_TOML_FIELD_KEY=install-locator; RIG_TOML_FIELD_TYPE=string ;;
@@ -519,6 +534,7 @@ rig_toml_field() {
     dock:items) RIG_TOML_FIELD_KEY=item ; RIG_TOML_FIELD_TYPE=array ;;
     provider:arguments) RIG_TOML_FIELD_KEY=argument ; RIG_TOML_FIELD_TYPE=array ;;
     provider:capabilities) RIG_TOML_FIELD_KEY=capability ; RIG_TOML_FIELD_TYPE=array ;;
+    provider:autoupdate-options) RIG_TOML_FIELD_KEY=autoupdate-option ; RIG_TOML_FIELD_TYPE=array ;;
     binding:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
     binding:arguments) RIG_TOML_FIELD_KEY=argument ; RIG_TOML_FIELD_TYPE=array ;;
     action:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
@@ -1025,14 +1041,14 @@ rig_validate_provider_adapter() {
   adapter=$2
   case "$adapter" in
     custom) ;;
-    homebrew|uv|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock) ;;
+    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock) ;;
     *) rig_fail "[$section_name] has unsupported adapter '$adapter'" || return ;;
   esac
 }
 
 rig_builtin_provider_adapter() {
   case "$1" in
-    homebrew|uv|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock)
+    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock)
       RIG_VALUE=$1
       return 0
       ;;
@@ -1071,12 +1087,12 @@ rig_validate_binding_adapter() {
 
   case "$adapter:$kind" in
     custom:*) ;;
-    homebrew:formula|homebrew:cask|homebrew:mas|uv:tool|chezmoi:target) ;;
+    homebrew:formula|homebrew:cask|homebrew:mas|uv:tool|mise:tool|npm:global|chezmoi:target) ;;
     direct-download:executable) ;;
     launchd:*|macos-applications:*|macos-defaults:*|macos-dock:*)
       rig_fail "[$section_name] adapter '$adapter' cannot install tools" || return
       ;;
-    homebrew:*|uv:*|chezmoi:*|direct-download:*)
+    homebrew:*|uv:*|mise:*|npm:*|chezmoi:*|direct-download:*)
       rig_fail "[$section_name] kind '$kind' is not supported by adapter '$adapter'" || return
       ;;
   esac
@@ -1459,6 +1475,7 @@ rig_validate_dock_item() {
 
 rig_validate_model() {
   local index section_name section_type section_id secondary_id adapter provider
+  local field_index field_end
 
   rig_section_index rig || rig_fail 'missing [rig] section' || return
   rig_require_field rig schema || return
@@ -1522,18 +1539,45 @@ rig_validate_model() {
       setting) rig_validate_setting "$section_name" || return ;;
       dock) rig_validate_dock "$section_name" || return ;;
       dock-item) rig_validate_dock_item "$section_name" || return ;;
-      provider)
-        if rig_get_value "$section_name" command; then
-          rig_fail "[$section_name] field 'command' is not supported" || return
-        fi
-        if rig_builtin_provider_adapter "$section_id"; then
+    provider)
+      if rig_get_value "$section_name" command; then
+        rig_fail "[$section_name] field 'command' is not supported" || return
+      fi
+      if rig_builtin_provider_adapter "$section_id"; then
           if rig_get_value "$section_name" adapter; then
             rig_fail "[$section_name] reserved built-in provider cannot declare adapter" || return
           fi
-          rig_field_count "$index" capability
-          [ "$RIG_COUNT" -eq 0 ] ||
-            rig_fail "[$section_name] reserved built-in provider cannot declare capabilities" || return
-        else
+        rig_field_count "$index" capability
+        [ "$RIG_COUNT" -eq 0 ] ||
+          rig_fail "[$section_name] reserved built-in provider cannot declare capabilities" || return
+        if rig_get_value "$section_name" autoupdate-interval; then
+          [ "$section_id" = homebrew ] ||
+            rig_fail "[$section_name] autoupdate policy is only supported by Homebrew" || return
+          case "$RIG_VALUE" in
+            ''|*[!0-9]*|0) rig_fail "[$section_name] has invalid autoupdate interval '$RIG_VALUE'" || return ;;
+          esac
+        fi
+        rig_field_count "$index" autoupdate-option
+        if [ "$RIG_COUNT" -gt 0 ]; then
+          [ "$section_id" = homebrew ] ||
+            rig_fail "[$section_name] autoupdate policy is only supported by Homebrew" || return
+          rig_get_value "$section_name" autoupdate-interval ||
+            rig_fail "[$section_name] autoupdate options require autoupdate-interval" || return
+          field_index=${RIG_SECTION_FIELD_STARTS[$index]}
+          field_end=${RIG_SECTION_FIELD_ENDS[$index]}
+          while [ "$field_index" -lt "$field_end" ]; do
+            if [ "${RIG_FIELD_KEYS[$field_index]}" = autoupdate-option ]; then
+              case "${RIG_FIELD_VALUES[$field_index]}" in
+                upgrade|cleanup|immediate|sudo) ;;
+                *)
+                  rig_fail "[$section_name] has invalid autoupdate option '${RIG_FIELD_VALUES[$field_index]}'" || return
+                  ;;
+              esac
+            fi
+            field_index=$((field_index + 1))
+          done
+        fi
+      else
           rig_require_field "$section_name" adapter || return
           adapter=$RIG_VALUE
           [ "$adapter" = custom ] ||
@@ -1985,8 +2029,10 @@ rig_provider_has_capability() {
   if rig_provider_adapter "$provider"; then
     adapter=$RIG_VALUE
     case "$adapter:$capability" in
-      homebrew:observe|homebrew:apply|\
-      uv:observe|uv:apply|\
+      homebrew:observe|homebrew:apply|homebrew:update|homebrew:maintain|homebrew:capture|\
+      uv:observe|uv:apply|uv:update|uv:maintain|\
+      mise:observe|mise:apply|mise:update|mise:maintain|\
+      npm:observe|npm:apply|npm:update|npm:maintain|\
       chezmoi:observe|chezmoi:apply|\
       direct-download:observe|direct-download:apply|\
       launchd:resource-observe|launchd:resource-apply|launchd:resource-retire|\
@@ -2938,7 +2984,7 @@ rig_resolve_operational_plan() {
 
 rig_adapter_is_builtin() {
   case "$1" in
-    homebrew|uv|chezmoi|direct-download) return 0 ;;
+    homebrew|uv|mise|npm|chezmoi|direct-download) return 0 ;;
   esac
   return 1
 }
@@ -3148,6 +3194,8 @@ rig_provider_executable() {
     homebrew:mas) RIG_VALUE=mas ;;
     homebrew:*) RIG_VALUE=brew ;;
     uv:*) RIG_VALUE=uv ;;
+    mise:*) RIG_VALUE=mise ;;
+    npm:*) RIG_VALUE=npm ;;
     chezmoi:*) RIG_VALUE=chezmoi ;;
     direct-download:*) RIG_VALUE=curl ;;
     *) return 1 ;;
@@ -3236,6 +3284,29 @@ rig_prepare_builtin_invocation() {
     uv:tool:apply)
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=tool
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=install
+      rig_append_arguments "$binding" || return
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
+      ;;
+    mise:tool:observe)
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=which
+      rig_append_arguments "$binding" || return
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
+      ;;
+    mise:tool:apply)
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=install
+      rig_append_arguments "$binding" || return
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
+      ;;
+    npm:global:observe)
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=list
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--global
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--depth=0
+      rig_append_arguments "$binding" || return
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
+      ;;
+    npm:global:apply)
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=install
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--global
       rig_append_arguments "$binding" || return
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
       ;;
@@ -3500,7 +3571,9 @@ rig_observe_provider() {
   rig_capture_invocation "$executable"
   if [ "$RIG_NATIVE_STATUS" -ne 0 ]; then
     if [ "$adapter:$kind:$RIG_NATIVE_STATUS" = homebrew:formula:1 ] ||
-      [ "$adapter:$kind:$RIG_NATIVE_STATUS" = homebrew:cask:1 ]; then
+      [ "$adapter:$kind:$RIG_NATIVE_STATUS" = homebrew:cask:1 ] ||
+      [ "$adapter:$kind:$RIG_NATIVE_STATUS" = mise:tool:1 ] ||
+      [ "$adapter:$kind:$RIG_NATIVE_STATUS" = npm:global:1 ]; then
       RIG_OBSERVATION=missing
     else
       RIG_OBSERVATION=unknown
@@ -3509,7 +3582,7 @@ rig_observe_provider() {
     return 0
   fi
   case "$adapter:$kind" in
-    homebrew:formula|homebrew:cask) RIG_OBSERVATION=present ;;
+    homebrew:formula|homebrew:cask|mise:tool|npm:global) RIG_OBSERVATION=present ;;
     homebrew:mas|uv:tool)
       rig_normalize_provider_identity "$adapter" "$kind" "$locator"
       observation_locator=$RIG_VALUE
@@ -3758,6 +3831,37 @@ rig_collect_unmanaged() {
   rig_progress_finish
 }
 
+rig_bootstrap_provider_prerequisite() {
+  local adapter index binding provider kind locator
+
+  adapter=$1
+  index=0
+  while [ "$index" -lt "${#RIG_PLAN_BINDINGS[@]}" ]; do
+    binding=${RIG_PLAN_BINDINGS[$index]}
+    provider=${RIG_PLAN_PROVIDERS[$index]}
+    if [ -n "$binding" ]; then
+      rig_get_value "$binding" kind || return 2
+      kind=$RIG_VALUE
+      rig_get_value "$binding" locator || return 2
+      locator=$RIG_VALUE
+      case "$adapter:$provider:$kind:$locator" in
+        mise:homebrew:formula:mise)
+          rig_get_value provider.homebrew manifest || return 1
+          RIG_BOOTSTRAP_DEFER_MISE=1
+          return 0
+          ;;
+        npm:mise:tool:node)
+          RIG_BOOTSTRAP_NPM_TOOL_INDEX=$index
+          RIG_BOOTSTRAP_DEFER_NPM=1
+          return 0
+          ;;
+      esac
+    fi
+    index=$((index + 1))
+  done
+  return 1
+}
+
 rig_preflight_provider() {
   local tool binding provider adapter kind executable destination parent
 
@@ -3782,8 +3886,13 @@ rig_preflight_provider() {
   kind=$RIG_VALUE
   rig_provider_executable "$provider" "$adapter" "$kind" || return 2
   executable=$RIG_VALUE
-  rig_executable_available "$executable" ||
+  if ! rig_executable_available "$executable"; then
+    if [ "${RIG_BOOTSTRAP_ALLOW_DEFERRED_MANAGERS:-0}" -eq 1 ] &&
+      rig_bootstrap_provider_prerequisite "$adapter"; then
+      return 0
+    fi
     rig_fail "provider '$provider' executable is unavailable: $executable" || return
+  fi
   if [ "$adapter" = direct-download ]; then
     rig_sha256_available ||
       rig_fail "provider '$provider' checksum executable is unavailable" || return
@@ -4576,6 +4685,8 @@ rig_bootstrap_preflight_homebrew_manifest() {
   scope=$1
   RIG_BOOTSTRAP_MANIFEST=
   RIG_BOOTSTRAP_MANIFEST_EXECUTABLE=
+  RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL=
+  RIG_BOOTSTRAP_AUTOUPDATE_OPTIONS=()
   [ "$scope" != resources ] || return 0
   uses_homebrew=0
   index=0
@@ -4587,10 +4698,18 @@ rig_bootstrap_preflight_homebrew_manifest() {
     index=$((index + 1))
   done
   [ "$uses_homebrew" -eq 1 ] || return 0
-  rig_get_value provider.homebrew manifest || return 0
-  manifest=$RIG_VALUE
-  [ -f "$manifest" ] && [ -r "$manifest" ] ||
-    rig_fail "provider 'homebrew' manifest is not a readable regular file: $manifest" || return
+  manifest=
+  if rig_get_value provider.homebrew manifest; then
+    manifest=$RIG_VALUE
+    [ -f "$manifest" ] && [ -r "$manifest" ] ||
+      rig_fail "provider 'homebrew' manifest is not a readable regular file: $manifest" || return
+  fi
+  if rig_get_value provider.homebrew autoupdate-interval; then
+    RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL=$RIG_VALUE
+    rig_collect_field_values provider.homebrew autoupdate-option || return
+    RIG_BOOTSTRAP_AUTOUPDATE_OPTIONS=("${RIG_QUERY_ITEMS[@]}")
+  fi
+  [ -n "$manifest" ] || [ -n "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL" ] || return 0
   rig_provider_executable homebrew homebrew formula || return 2
   executable=$RIG_VALUE
   rig_executable_available "$executable" ||
@@ -4608,12 +4727,55 @@ rig_bootstrap_apply_homebrew_manifest() {
   "$executable" bundle "--file=$manifest" 1>&2
 }
 
+rig_bootstrap_apply_homebrew_autoupdate() {
+  local executable option
+
+  executable=$RIG_BOOTSTRAP_MANIFEST_EXECUTABLE
+  [ -n "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL" ] || return 0
+  "$executable" autoupdate delete 1>&2 || return
+  RIG_INVOKE_ARGUMENTS=(autoupdate start "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL")
+  for option in "${RIG_BOOTSTRAP_AUTOUPDATE_OPTIONS[@]}"; do
+    RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--$option
+  done
+  "$executable" "${RIG_INVOKE_ARGUMENTS[@]}" 1>&2
+}
+
+rig_bootstrap_verify_deferred_mise() {
+  local executable
+
+  rig_provider_executable mise mise tool || return 2
+  executable=$RIG_VALUE
+  rig_executable_available "$executable" ||
+    rig_fail "bootstrap prerequisite did not make provider 'mise' available: $executable" || return
+}
+
+rig_bootstrap_apply_npm_prerequisite() {
+  local index tool binding provider executable native_status
+
+  index=$RIG_BOOTSTRAP_NPM_TOOL_INDEX
+  tool=${RIG_PLAN_TOOLS[$index]}
+  binding=${RIG_PLAN_BINDINGS[$index]}
+  provider=${RIG_PLAN_PROVIDERS[$index]}
+  rig_preflight_provider "$tool" "$binding" "$provider" || return
+  rig_apply_provider "$tool" "$binding" "$provider"
+  native_status=$?
+  [ "$native_status" -eq 0 ] || return "$native_status"
+  rig_provider_executable npm npm global || return 2
+  executable=$RIG_VALUE
+  rig_executable_available "$executable" ||
+    rig_fail "bootstrap prerequisite '$tool' did not make provider 'npm' available: $executable" || return
+}
+
 rig_command_bootstrap() {
-  local profile scope dry_run profile_seen scope_seen dry_run_seen native_status
+  local profile scope dry_run profile_seen scope_seen dry_run_seen native_status manager_total
 
   profile=
   scope=all
   dry_run=0
+  RIG_BOOTSTRAP_ALLOW_DEFERRED_MANAGERS=0
+  RIG_BOOTSTRAP_DEFER_MISE=0
+  RIG_BOOTSTRAP_DEFER_NPM=0
+  RIG_BOOTSTRAP_NPM_TOOL_INDEX=
   profile_seen=0
   scope_seen=0
   dry_run_seen=0
@@ -4684,26 +4846,87 @@ rig_command_bootstrap() {
       RIG_PLAN_PROVIDERS=()
       ;;
   esac
-  rig_preflight_apply "$scope" || return
+  RIG_BOOTSTRAP_ALLOW_DEFERRED_MANAGERS=1
+  rig_preflight_apply "$scope"
+  native_status=$?
+  if [ "$native_status" -ne 0 ]; then
+    RIG_BOOTSTRAP_ALLOW_DEFERRED_MANAGERS=0
+    return "$native_status"
+  fi
   rig_bootstrap_preflight_homebrew_manifest "$scope" || return
-  if [ -n "$RIG_BOOTSTRAP_MANIFEST" ]; then
+  if [ -n "$RIG_BOOTSTRAP_MANIFEST" ] || [ -n "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL" ] ||
+    [ "$RIG_BOOTSTRAP_DEFER_MISE" -eq 1 ] || [ "$RIG_BOOTSTRAP_DEFER_NPM" -eq 1 ]; then
     printf 'MANAGER\tPROVIDER\tRESULT\tDETAIL\n'
     if [ "$dry_run" -eq 1 ]; then
-      printf 'manifest\thomebrew\tplanned\tbundle:%s\n\n' "$RIG_BOOTSTRAP_MANIFEST"
-    else
-      rig_progress_start bootstrapping 1
-      rig_progress_step 'homebrew manifest'
-      rig_bootstrap_apply_homebrew_manifest
-      native_status=$?
-      rig_progress_finish
-      if [ "$native_status" -ne 0 ]; then
-        printf 'manifest\thomebrew\tfailed\texit:%s\n' "$native_status"
-        return "$native_status"
+      if [ -n "$RIG_BOOTSTRAP_MANIFEST" ]; then
+        printf 'manifest\thomebrew\tplanned\tbundle:%s\n' "$RIG_BOOTSTRAP_MANIFEST"
       fi
-      printf 'manifest\thomebrew\tcompleted\tbundle:%s\n\n' "$RIG_BOOTSTRAP_MANIFEST"
+      if [ -n "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL" ]; then
+        printf 'autoupdate\thomebrew\tplanned\tinterval:%s\n' "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL"
+      fi
+      if [ "$RIG_BOOTSTRAP_DEFER_MISE" -eq 1 ]; then
+        printf 'provider:mise\thomebrew\tplanned\tbootstrap-prerequisite\n'
+      fi
+      if [ "$RIG_BOOTSTRAP_DEFER_NPM" -eq 1 ]; then
+        printf 'provider:npm\tmise\tplanned\tbootstrap-prerequisite\n'
+      fi
+      printf '\n'
+    else
+      manager_total=0
+      [ -z "$RIG_BOOTSTRAP_MANIFEST" ] || manager_total=$((manager_total + 1))
+      [ -z "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL" ] || manager_total=$((manager_total + 1))
+      [ "$RIG_BOOTSTRAP_DEFER_MISE" -eq 0 ] || manager_total=$((manager_total + 1))
+      [ "$RIG_BOOTSTRAP_DEFER_NPM" -eq 0 ] || manager_total=$((manager_total + 1))
+      rig_progress_start bootstrapping "$manager_total"
+      if [ -n "$RIG_BOOTSTRAP_MANIFEST" ]; then
+        rig_progress_step 'homebrew manifest'
+        rig_bootstrap_apply_homebrew_manifest
+        native_status=$?
+        if [ "$native_status" -ne 0 ]; then
+          rig_progress_finish
+          printf 'manifest\thomebrew\tfailed\texit:%s\n' "$native_status"
+          return "$native_status"
+        fi
+        printf 'manifest\thomebrew\tcompleted\tbundle:%s\n' "$RIG_BOOTSTRAP_MANIFEST"
+      fi
+      if [ -n "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL" ]; then
+        rig_progress_step 'homebrew autoupdate'
+        rig_bootstrap_apply_homebrew_autoupdate
+        native_status=$?
+        if [ "$native_status" -ne 0 ]; then
+          rig_progress_finish
+          printf 'autoupdate\thomebrew\tfailed\texit:%s\n' "$native_status"
+          return "$native_status"
+        fi
+        printf 'autoupdate\thomebrew\tcompleted\tinterval:%s\n' "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL"
+      fi
+      RIG_BOOTSTRAP_ALLOW_DEFERRED_MANAGERS=0
+      if [ "$RIG_BOOTSTRAP_DEFER_MISE" -eq 1 ]; then
+        rig_progress_step 'verify provider mise'
+        if ! rig_bootstrap_verify_deferred_mise; then
+          rig_progress_finish
+          printf 'provider:mise\thomebrew\tfailed\tunavailable\n'
+          return 1
+        fi
+        printf 'provider:mise\thomebrew\tcompleted\tavailable\n'
+      fi
+      if [ "$RIG_BOOTSTRAP_DEFER_NPM" -eq 1 ]; then
+        rig_progress_step 'materialise provider npm'
+        rig_bootstrap_apply_npm_prerequisite
+        native_status=$?
+        if [ "$native_status" -ne 0 ]; then
+          rig_progress_finish
+          printf 'provider:npm\tmise\tfailed\texit:%s\n' "$native_status"
+          return "$native_status"
+        fi
+        printf 'provider:npm\tmise\tcompleted\tavailable\n'
+      fi
+      rig_progress_finish
+      printf '\n'
     fi
   fi
 
+  [ "$dry_run" -eq 1 ] || RIG_BOOTSTRAP_ALLOW_DEFERRED_MANAGERS=0
   if [ -n "$profile" ]; then
     if [ "$dry_run" -eq 1 ]; then
       rig_command_apply --profile "$profile" --scope "$scope" --dry-run
@@ -6577,6 +6800,374 @@ rig_clean_interrupted() {
   exit "$exit_code"
 }
 
+rig_lifecycle_supported() {
+  case "$1:$2" in
+    update:homebrew|update:uv|update:mise|update:npm|\
+      maintain:homebrew|maintain:uv|maintain:mise|maintain:npm|\
+      capture:homebrew) return 0 ;;
+  esac
+  return 1
+}
+
+rig_lifecycle_add_task() {
+  local key label provider binding supported index
+
+  key=$1
+  label=$2
+  provider=$3
+  binding=$4
+  supported=$5
+  index=0
+  while [ "$index" -lt "${#RIG_LIFECYCLE_KEYS[@]}" ]; do
+    [ "${RIG_LIFECYCLE_KEYS[$index]}" != "$key" ] || return 0
+    index=$((index + 1))
+  done
+  RIG_LIFECYCLE_KEYS[${#RIG_LIFECYCLE_KEYS[@]}]=$key
+  RIG_LIFECYCLE_LABELS[${#RIG_LIFECYCLE_LABELS[@]}]=$label
+  RIG_LIFECYCLE_PROVIDERS[${#RIG_LIFECYCLE_PROVIDERS[@]}]=$provider
+  RIG_LIFECYCLE_BINDINGS[${#RIG_LIFECYCLE_BINDINGS[@]}]=$binding
+  RIG_LIFECYCLE_SUPPORTED[${#RIG_LIFECYCLE_SUPPORTED[@]}]=$supported
+}
+
+rig_collect_lifecycle_tasks() {
+  local action index tool binding provider adapter key label supported
+
+  action=$1
+  RIG_LIFECYCLE_KEYS=()
+  RIG_LIFECYCLE_LABELS=()
+  RIG_LIFECYCLE_PROVIDERS=()
+  RIG_LIFECYCLE_BINDINGS=()
+  RIG_LIFECYCLE_SUPPORTED=()
+  RIG_LIFECYCLE_EXECUTABLES=()
+  index=0
+  while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
+    tool=${RIG_PLAN_TOOLS[$index]}
+    binding=${RIG_PLAN_BINDINGS[$index]}
+    provider=${RIG_PLAN_PROVIDERS[$index]}
+    if [ -n "$binding" ]; then
+      rig_provider_adapter "$provider" || return 2
+      adapter=$RIG_VALUE
+      supported=0
+      rig_lifecycle_supported "$action" "$adapter" && supported=1
+      if [ "$action" = maintain ]; then
+        key=$provider
+        label=$provider
+      elif [ "$adapter" = homebrew ] && rig_get_value "provider.$provider" manifest; then
+        key=homebrew:manifest
+        label=manifest
+      else
+        key=$provider:$binding
+        label=$tool
+      fi
+      rig_lifecycle_add_task "$key" "$label" "$provider" "$binding" "$supported"
+    fi
+    index=$((index + 1))
+  done
+}
+
+rig_lifecycle_manifest() {
+  local provider
+
+  provider=$1
+  rig_get_value "provider.$provider" manifest || return 1
+}
+
+rig_lifecycle_executable() {
+  local provider binding adapter kind
+
+  provider=$1
+  binding=$2
+  rig_provider_adapter "$provider" || return 2
+  adapter=$RIG_VALUE
+  kind=tool
+  if [ -n "$binding" ] && rig_get_value "$binding" kind; then
+    kind=$RIG_VALUE
+  fi
+  if [ "$adapter" = homebrew ] && rig_lifecycle_manifest "$provider"; then
+    kind=formula
+  fi
+  rig_provider_executable "$provider" "$adapter" "$kind"
+}
+
+rig_preflight_lifecycle_task() {
+  local action provider binding adapter executable manifest parent
+
+  action=$1
+  provider=$2
+  binding=$3
+  rig_provider_adapter "$provider" || return 2
+  adapter=$RIG_VALUE
+  rig_lifecycle_supported "$action" "$adapter" || return 0
+  rig_lifecycle_executable "$provider" "$binding" || return 2
+  executable=$RIG_VALUE
+  rig_executable_available "$executable" ||
+    rig_fail "provider '$provider' lifecycle executable unavailable: $executable" || return
+  RIG_VALUE=$executable
+  if [ "$adapter" = homebrew ] && rig_lifecycle_manifest "$provider"; then
+    manifest=$RIG_VALUE
+    if [ "$action" = capture ]; then
+      if [ -L "$manifest" ] || { [ -e "$manifest" ] && [ ! -f "$manifest" ]; }; then
+        rig_fail "provider '$provider' manifest is not a safe regular-file target: $manifest" || return
+      fi
+      parent=${manifest%/*}
+      [ -n "$parent" ] || parent=/
+      [ -d "$parent" ] && [ -w "$parent" ] ||
+        rig_fail "provider '$provider' manifest directory unavailable: $parent" || return
+    else
+      [ -f "$manifest" ] && [ -r "$manifest" ] ||
+        rig_fail "provider '$provider' manifest is not readable regular file: $manifest" || return
+    fi
+    RIG_VALUE=$executable
+  elif [ "$action" = capture ]; then
+    rig_fail "provider '$provider' does not declare a native manifest" || return
+  fi
+}
+
+rig_lifecycle_homebrew_exclusions() {
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--no-go
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--no-cargo
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--no-uv
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--no-krew
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--no-npm
+}
+
+rig_execute_lifecycle_task() {
+  local action provider binding executable adapter kind locator manifest normalized
+
+  action=$1
+  provider=$2
+  binding=$3
+  executable=$4
+  rig_provider_adapter "$provider" || return 2
+  adapter=$RIG_VALUE
+  kind=
+  locator=
+  if [ -n "$binding" ]; then
+    rig_get_value "$binding" kind || return 2
+    kind=$RIG_VALUE
+    rig_get_value "$binding" locator || return 2
+    locator=$RIG_VALUE
+  fi
+
+  case "$action:$adapter" in
+    update:homebrew)
+      if rig_lifecycle_manifest "$provider"; then
+        manifest=$RIG_VALUE
+        "$executable" bundle install --upgrade "--file=$manifest" 1>&2
+      elif [ "$kind" = mas ]; then
+        "$executable" upgrade "$locator" 1>&2
+      else
+        "$executable" upgrade "--$kind" "$locator" 1>&2
+      fi
+      ;;
+    update:uv)
+      rig_normalize_provider_identity "$adapter" "$kind" "$locator"
+      normalized=$RIG_VALUE
+      "$executable" tool upgrade "$normalized" 1>&2
+      ;;
+    update:mise)
+      "$executable" upgrade "$locator" 1>&2
+      ;;
+    update:npm)
+      "$executable" install --global "$locator" 1>&2
+      ;;
+    maintain:homebrew)
+      "$executable" cleanup 1>&2 || return
+      if rig_lifecycle_manifest "$provider"; then
+        manifest=$RIG_VALUE
+        RIG_INVOKE_ARGUMENTS=(bundle cleanup --force "--file=$manifest")
+        rig_lifecycle_homebrew_exclusions
+        "$executable" "${RIG_INVOKE_ARGUMENTS[@]}" 1>&2 || return
+      fi
+      "$executable" doctor 1>&2
+      ;;
+    maintain:uv)
+      "$executable" cache prune 1>&2
+      ;;
+    maintain:mise)
+      "$executable" reshim 1>&2
+      ;;
+    maintain:npm)
+      "$executable" cache verify 1>&2
+      ;;
+    capture:homebrew)
+      rig_lifecycle_manifest "$provider" || return 2
+      manifest=$RIG_VALUE
+      RIG_INVOKE_ARGUMENTS=(bundle dump --force --no-describe "--file=$manifest")
+      rig_lifecycle_homebrew_exclusions
+      "$executable" "${RIG_INVOKE_ARGUMENTS[@]}" 1>&2
+      ;;
+    *) return 2 ;;
+  esac
+}
+
+rig_run_lifecycle_tasks() {
+  local action dry_run index label provider binding supported executable native_status
+  local planned completed failed skipped supported_total exit_code
+
+  action=$1
+  dry_run=$2
+  planned=0
+  completed=0
+  failed=0
+  skipped=0
+  supported_total=0
+  exit_code=0
+  index=0
+  while [ "$index" -lt "${#RIG_LIFECYCLE_KEYS[@]}" ]; do
+    if [ "${RIG_LIFECYCLE_SUPPORTED[$index]}" -eq 1 ]; then
+      provider=${RIG_LIFECYCLE_PROVIDERS[$index]}
+      binding=${RIG_LIFECYCLE_BINDINGS[$index]}
+      rig_preflight_lifecycle_task "$action" "$provider" "$binding" || return
+      RIG_LIFECYCLE_EXECUTABLES[$index]=$RIG_VALUE
+      supported_total=$((supported_total + 1))
+    else
+      RIG_LIFECYCLE_EXECUTABLES[$index]=-
+    fi
+    index=$((index + 1))
+  done
+
+  printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
+  printf 'TARGET\tPROVIDER\tRESULT\tDETAIL\n'
+  [ "$dry_run" -eq 1 ] || rig_progress_start "$action" "$supported_total"
+  index=0
+  while [ "$index" -lt "${#RIG_LIFECYCLE_KEYS[@]}" ]; do
+    label=${RIG_LIFECYCLE_LABELS[$index]}
+    provider=${RIG_LIFECYCLE_PROVIDERS[$index]}
+    binding=${RIG_LIFECYCLE_BINDINGS[$index]}
+    supported=${RIG_LIFECYCLE_SUPPORTED[$index]}
+    executable=${RIG_LIFECYCLE_EXECUTABLES[$index]}
+    if [ "$supported" -ne 1 ]; then
+      printf '%s\t%s\tskipped\tunsupported-%s\n' "$label" "$provider" "$action"
+      skipped=$((skipped + 1))
+    elif [ "$dry_run" -eq 1 ]; then
+      printf '%s\t%s\tplanned\t%s\n' "$label" "$provider" "$action"
+      planned=$((planned + 1))
+    else
+      rig_progress_step "$label via $provider"
+      rig_execute_lifecycle_task "$action" "$provider" "$binding" "$executable"
+      native_status=$?
+      if [ "$native_status" -eq 0 ]; then
+        printf '%s\t%s\tcompleted\t%s\n' "$label" "$provider" "$action"
+        completed=$((completed + 1))
+      else
+        printf '%s\t%s\tfailed\texit:%s\n' "$label" "$provider" "$native_status"
+        failed=$((failed + 1))
+        exit_code=1
+      fi
+    fi
+    index=$((index + 1))
+  done
+  rig_progress_finish
+  printf 'Summary: planned=%s completed=%s failed=%s skipped=%s\n' \
+    "$planned" "$completed" "$failed" "$skipped"
+  return "$exit_code"
+}
+
+rig_command_lifecycle() {
+  local action profile dry_run profile_seen dry_run_seen
+
+  action=$1
+  shift
+  profile=
+  dry_run=0
+  profile_seen=0
+  dry_run_seen=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      -h|--help)
+        [ "$#" -eq 1 ] || { syntax_error "usage: rig $action [--profile NAME] [--dry-run]"; return; }
+        printf 'Usage: rig %s [--profile NAME] [--dry-run]\n' "$action"
+        return
+        ;;
+      --profile)
+        if [ "$profile_seen" -ne 0 ] || [ "$#" -lt 2 ] || [ -z "$2" ]; then
+          syntax_error "usage: rig $action [--profile NAME] [--dry-run]"
+          return
+        fi
+        profile=$2
+        profile_seen=1
+        shift 2
+        ;;
+      --dry-run)
+        if [ "$dry_run_seen" -ne 0 ]; then
+          syntax_error "usage: rig $action [--profile NAME] [--dry-run]"
+          return
+        fi
+        dry_run=1
+        dry_run_seen=1
+        shift
+        ;;
+      *) syntax_error "usage: rig $action [--profile NAME] [--dry-run]"; return ;;
+    esac
+  done
+  rig_resolve_operational_plan "$profile" || return
+  rig_collect_lifecycle_tasks "$action" || return
+  rig_run_lifecycle_tasks "$action" "$dry_run"
+}
+
+rig_command_capture() {
+  local provider dry_run dry_run_seen adapter executable native_status
+
+  provider=
+  dry_run=0
+  dry_run_seen=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      -h|--help)
+        [ "$#" -eq 1 ] || { syntax_error 'usage: rig capture PROVIDER [--dry-run]'; return; }
+        printf '%s\n' 'Usage: rig capture PROVIDER [--dry-run]'
+        return
+        ;;
+      --dry-run)
+        if [ "$dry_run_seen" -ne 0 ]; then
+          syntax_error 'usage: rig capture PROVIDER [--dry-run]'
+          return
+        fi
+        dry_run=1
+        dry_run_seen=1
+        shift
+        ;;
+      *)
+        if [ -n "$provider" ]; then
+          syntax_error 'usage: rig capture PROVIDER [--dry-run]'
+          return
+        fi
+        provider=$1
+        shift
+        ;;
+    esac
+  done
+  [ -n "$provider" ] || { syntax_error 'usage: rig capture PROVIDER [--dry-run]'; return; }
+  rig_load_config || return
+  rig_current_platform || return
+  RIG_RESOLVED_PROFILE=-
+  RIG_RESOLVED_PLATFORM=$RIG_VALUE
+  rig_provider_exists "$provider" || rig_fail "unknown provider '$provider'" || return
+  rig_provider_adapter "$provider" || return 2
+  adapter=$RIG_VALUE
+  rig_lifecycle_supported capture "$adapter" ||
+    rig_fail "provider '$provider' does not support capture" || return
+  rig_preflight_lifecycle_task capture "$provider" '' || return
+  executable=$RIG_VALUE
+  printf 'PROVIDER\tRESULT\tDETAIL\n'
+  if [ "$dry_run" -eq 1 ]; then
+    printf '%s\tplanned\tcapture\n' "$provider"
+    return 0
+  fi
+  rig_progress_start capturing 1
+  rig_progress_step "$provider manifest"
+  rig_execute_lifecycle_task capture "$provider" '' "$executable"
+  native_status=$?
+  rig_progress_finish
+  if [ "$native_status" -eq 0 ]; then
+    printf '%s\tcompleted\tcapture\n' "$provider"
+  else
+    printf '%s\tfailed\texit:%s\n' "$provider" "$native_status"
+  fi
+  return "$native_status"
+}
+
 rig_command_clean() {
   (
     local dry_run cache_root publish_root path state action index eligible removed skipped
@@ -6754,6 +7345,18 @@ main() {
     bootstrap)
       shift
       rig_command_bootstrap "$@"
+      ;;
+    update)
+      shift
+      rig_command_lifecycle update "$@"
+      ;;
+    maintain)
+      shift
+      rig_command_lifecycle maintain "$@"
+      ;;
+    capture)
+      shift
+      rig_command_capture "$@"
       ;;
     run)
       shift

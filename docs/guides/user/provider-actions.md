@@ -1,6 +1,6 @@
 # Run external provider actions
 
-Use an external provider only when host-specific behaviour cannot be expressed through a built-in provider or declarative managed resource. External executables are an advanced trust boundary, not the normal way to configure Homebrew, launchd, macOS settings, Dock layout, bootstrap, or a workstation.
+Use an external provider only when host-specific behaviour cannot be expressed through a built-in provider or declarative managed resource. External executables are an advanced trust boundary, not the normal way to configure Homebrew, launchd, macOS settings, a Dock layout, bootstrap, provider update, provider maintenance, manifest capture, or a workstation.
 
 ## Declare the extension and action
 

@@ -26,11 +26,13 @@ _Evidence:_ `rig_resolve_profile` accepts an explicit profile independently of t
 
 ### RIG-ORCH-018 — Bootstrap profile precedence
 
-Rig MUST implement bootstrap as a native staged lifecycle over one resolved profile rather than as a provider or synthetic setup tools. `rig bootstrap --profile NAME` MUST select the explicit profile; otherwise bootstrap MUST select `bootstrap-profile` when declared and fall back to `default-profile` when absent. Bootstrap MUST identify and verify every required manager before preflighting and reconciling the complete tool and managed-resource plan.
+When the selected tool plan uses Homebrew and `[provider.homebrew]` declares `autoupdate-interval`, bootstrap MUST converge Homebrew's native autoupdate job with the bounded declared options before tool reconciliation. Dry-run MUST report the policy without invoking Homebrew. A resources-only bootstrap MUST NOT touch tool-provider policy.
+
+Rig MUST implement bootstrap as a native staged lifecycle over one resolved profile rather than as a provider or synthetic setup tools. `rig bootstrap --profile NAME` MUST select the explicit profile; otherwise bootstrap MUST select `bootstrap-profile` when declared and fall back to `default-profile` when absent. Bootstrap MUST fully preflight configuration, external providers, available built-ins, resources, and the Homebrew manifest before mutation. When a selected Homebrew `mise` tool or mise `node` tool is the declared prerequisite for an unavailable built-in manager, bootstrap MAY defer only that manager's executable check, MUST report the stage, and MUST verify or materialise it before the complete reconciliation pass. No arbitrary or external provider may use deferred readiness.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats selects distinct default and bootstrap profiles, proves explicit precedence and default fallback, records manager availability checks before dependent work, and proves no bootstrap provider or setup-tool declaration is required.
+_Verify:_ Bats selects distinct default and bootstrap profiles, proves explicit precedence and default fallback, records manager availability and bounded Homebrew → mise → npm staging before dependent work, and proves no bootstrap provider or setup-tool declaration is required.
 
 _Evidence:_ `rig_command_bootstrap`, `rig_preflight_apply`, and `rig_bootstrap_preflight_homebrew_manifest` implement native profile selection and complete preflight; `bootstrap selects its declared profile with explicit and default fallbacks` and `bootstrap preflights later providers before manifest mutation` cover precedence, availability, ordering, and failure boundaries.
 
@@ -88,7 +90,7 @@ _Evidence:_ `rig_build_plan` emits a stable dependency-first work plan consumed 
 
 ### RIG-ORCH-006 — Initial provider classes
 
-Rig MUST provide built-in Homebrew, uv, chezmoi, direct-download, launchd, macOS application inventory, macOS defaults, and semantic Dock integrations without provider declarations. It MUST support providers explicitly declared with `adapter = "custom"` without requiring an unselected extension's executable. A selected custom provider that omits `executable` MUST resolve exactly `${RIG_DATA_HOME}/providers/PROVIDER-ID`; an explicit executable MUST take precedence.
+Rig MUST provide built-in Homebrew, uv, mise, npm, chezmoi, direct-download, launchd, macOS application inventory, macOS defaults, and semantic Dock integrations without provider declarations. It MUST support providers explicitly declared with `adapter = "custom"` without requiring an unselected extension's executable. A selected custom provider that omits `executable` MUST resolve exactly `${RIG_DATA_HOME}/providers/PROVIDER-ID`; an explicit executable MUST take precedence.
 
 _Conformance:_ conforming
 
@@ -104,6 +106,8 @@ Built-in adapters MUST preserve each provider argument and tool `install.argumen
 - Homebrew `cask`: `brew list --cask --versions OBSERVED_IDENTITY` to observe and `brew install --cask LOCATOR` to apply.
 - Homebrew `mas`: `mas list` with exact numeric identity matching to observe and `mas install LOCATOR` to apply.
 - uv `tool`: `uv tool list` with exact package identity matching to observe and `uv tool install LOCATOR` to apply.
+- mise `tool`: `mise which LOCATOR` to observe and `mise install LOCATOR` to apply.
+- npm `global`: `npm list --global --depth=0 LOCATOR` to observe and `npm install --global LOCATOR` to apply.
 - chezmoi `target`: `chezmoi status --path-style=absolute -- LOCATOR` to observe and `chezmoi apply -- LOCATOR` to apply.
 - direct-download `executable`: local destination and checksum inspection to observe; `curl --fail --location --proto =https --proto-redir =https --silent --show-error --output TEMP HTTPS_LOCATOR`, SHA-256 verification, executable mode, and sibling rename to apply.
 
@@ -248,3 +252,13 @@ _Conformance:_ conforming
 _Verify:_ Bats fakes native macOS commands and filesystem surfaces to compare exact observation, dry-run, apply, retirement, inventory, platform-gating, and literal argument behaviour without any external-provider executable or provider table.
 
 _Evidence:_ `rig_launchd_observe_resource`, `rig_launchd_apply_resource`, `rig_launchd_retire_resource`, `rig_setting_observe`, `rig_setting_apply`, `rig_dock_observe`, `rig_dock_apply`, and `rig_macos_application_inventory` implement the four built-in surfaces; the built-in launchd test and all four `tests/rig-macos.bats` tests cover reconciliation and inventory without extension dispatch.
+
+### RIG-ORCH-024 — Explicit provider lifecycle
+
+`rig update` MUST advance selected Homebrew, uv, mise, and npm tools through fixed native operations; `rig maintain` MUST perform at most one fixed maintenance work item for each selected provider among those four; and `rig capture PROVIDER` MUST refresh only a declared Homebrew manifest through its fixed native capture operation. Rig MUST derive these capabilities from its built-in registry, MUST NOT accept configuration-defined lifecycle commands or lifecycle capability grants, and MUST report unsupported selected providers without dispatching them.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats selects duplicate and unsupported provider work, compares exact native update, maintenance, and capture invocations, and proves configuration cannot redirect lifecycle dispatch through an external provider.
+
+_Evidence:_ `rig_lifecycle_supported`, `rig_collect_lifecycle_tasks`, `rig_execute_lifecycle_task`, and `rig_command_capture` implement the fixed lifecycle registry and deduplicated dispatch; `tests/rig-lifecycle.bats` covers each supported provider, unsupported reporting, and Homebrew manifest capture.

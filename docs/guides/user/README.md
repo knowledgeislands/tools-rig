@@ -32,8 +32,9 @@ Publication is an optional projection of that model. It exports one deliberately
 3. **Check Rig itself** with `rig diag`.
 4. **Assess the machine** with `rig doctor` for a summary or `rig status` for full expected-versus-observed detail.
 5. **Preview change** with `rig apply --dry-run`.
-6. **Materialise** with `rig apply`, or use Rig's native `rig bootstrap` lifecycle to verify required managers and materialise the selected bootstrap profile.
-7. **Publish deliberately** with offline `rig export` followed by explicit `rig publish` when configured.
+6. **Materialise** with `rig apply`, or use Rig's native `rig bootstrap` lifecycle to stage the fixed Homebrew → mise → npm manager chain when declared and then materialise the selected bootstrap profile.
+7. **Advance explicitly** with dry-run-first `rig update`, `rig maintain`, or `rig capture` when tools, provider state, or a native manifest should change outside reconciliation.
+8. **Publish deliberately** with offline `rig export` followed by explicit `rig publish` when configured.
 
 Inspection comes before mutation. Rig never turns a read-only declaration query into provider execution, and a dry run never applies provider changes.
 

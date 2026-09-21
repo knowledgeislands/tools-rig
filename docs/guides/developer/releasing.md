@@ -11,7 +11,7 @@ Those downstream surfaces are not release authority. They consume an already pub
 
 - [ ] Complete the [definition of done](definition-of-done.md).
 - [ ] Compare the public surface across `bin/rig` top-level and command-local help, README, user guides, `man/rig.1`, generated Bash and Zsh completions, `CHANGELOG.md`, Specifications, and Decision Records.
-- [ ] Confirm examples and reference material agree on the declarative schema, implicit built-in providers, native bootstrap lifecycle, managed-resource kinds, external-provider boundary, and any changed command synopsis.
+- [ ] Confirm examples and reference material agree on the declarative schema, implicit built-in providers, native apply, bootstrap, update, maintenance, capture, and clean lifecycles, managed-resource kinds, external-provider boundary, and every changed command synopsis.
 - [ ] Confirm the `bin/rig` version source, `rig --version`, changelog release entry, intended `vX.Y.Z` tag, installer examples, and companion Homebrew formula handoff agree.
 - [ ] Run the complete verification gate in the [developer guide](README.md), including the public command-inventory alignment test and manual rendering check.
 - [ ] Inspect the committed release diff and candidate. Exclude unrelated working-tree changes and record anything deliberately deferred.

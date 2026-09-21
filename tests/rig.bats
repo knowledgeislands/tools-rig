@@ -260,7 +260,7 @@ write_query_config() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"Usage: rig [options] [command]"* ]]
   [[ "$output" == *"Describe and manage a person's working setup."* ]]
-  for command in show list explain status doctor apply bootstrap run export publish clean diag completion help; do
+  for command in show list explain status doctor apply bootstrap update maintain capture run export publish clean diag completion help; do
     [[ "$output" == *"  $command"* ]] || false
   done
   [[ "$output" != *"paths"* ]]
@@ -275,7 +275,7 @@ write_query_config() {
   zsh_completion=$("$RIG" completion zsh)
   man_synopsis=$(sed -n '/^.SH SYNOPSIS/,/^.SH DESCRIPTION/p' "$repo_root/man/rig.1")
 
-  for command in show list explain status doctor apply bootstrap run export publish clean diag completion help; do
+  for command in show list explain status doctor apply bootstrap update maintain capture run export publish clean diag completion help; do
     grep -Fq "\`rig $command" "$repo_root/README.md"
     grep -Fq "\`rig $command" "$repo_root/CHANGELOG.md"
     grep -Fq "\`rig $command" "$repo_root/docs/guides/user/commands.md"
@@ -292,6 +292,9 @@ write_query_config() {
     'doctor [--profile NAME]' \
     'apply [--profile NAME] [--scope tools|resources|all] [--dry-run]' \
     'bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]' \
+    'update [--profile NAME] [--dry-run]' \
+    'maintain [--profile NAME] [--dry-run]' \
+    'capture PROVIDER [--dry-run]' \
     'run PROVIDER ACTION [-- ARGUMENT...]' \
     'export PUBLICATION --output DIRECTORY' \
     'publish PUBLICATION' \
@@ -384,20 +387,22 @@ write_query_config() {
   run "$RIG" completion bash
   [ "$status" -eq 0 ]
   [[ "$output" == *"complete -F _rig rig"* ]]
-  [[ "$output" == *"-h --help -V --version show list explain status doctor apply bootstrap run export publish clean diag completion help"* ]] || false
+  [[ "$output" == *"-h --help -V --version show list explain status doctor apply bootstrap update maintain capture run export publish clean diag completion help"* ]] || false
   [[ "$output" == *'show) COMPREPLY=($(compgen -W "-h --help --profile"'* ]]
   [[ "$output" == *'explain) COMPREPLY=($(compgen -W "-h --help"'* ]]
   [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile --unmanaged"'* ]] || false
   [[ "$output" == *'doctor) COMPREPLY=($(compgen -W "-h --help --profile"'* ]] || false
   [[ "$output" == *'apply) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools resources all"'* ]] || false
   [[ "$output" == *'bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools resources all"'* ]] || false
+  [[ "$output" == *'update|maintain) COMPREPLY=($(compgen -W "-h --help --profile --dry-run"'* ]] || false
+  [[ "$output" == *'capture) COMPREPLY=($(compgen -W "-h --help --dry-run homebrew"'* ]] || false
   [[ "$output" == *'run) COMPREPLY=($(compgen -W "-h --help --"'* ]] || false
   [[ "$output" == *'export) COMPREPLY=($(compgen -W "-h --help --output"'* ]] || false
   [[ "$output" == *'publish) COMPREPLY=($(compgen -W "-h --help"'* ]] || false
   [[ "$output" == *'clean) COMPREPLY=($(compgen -W "-h --help --dry-run"'* ]] || false
   [[ "$output" == *'completion) COMPREPLY=($(compgen -W "-h --help bash zsh"'* ]] || false
   [[ "$output" == *'help) COMPREPLY=($(compgen -W "-h --help"'* ]] || false
-  [[ "$output" == *"show list explain status doctor apply bootstrap run export publish clean diag completion help"* ]] || false
+  [[ "$output" == *"show list explain status doctor apply bootstrap update maintain capture run export publish clean diag completion help"* ]] || false
   [[ "$output" != *" paths "* ]]
 
   run "$RIG" completion zsh
@@ -408,6 +413,11 @@ write_query_config() {
   [[ "$output" == *"diag:print runtime and configuration diagnostics"* ]]
   [[ "$output" == *"doctor:check whether Rig can operate"* ]]
   [[ "$output" == *"bootstrap:materialise the bootstrap profile"* ]] || false
+  [[ "$output" == *"update:update selected provider-managed tools"* ]] || false
+  [[ "$output" == *"maintain:run explicit selected-provider maintenance"* ]] || false
+  [[ "$output" == *"capture:refresh one provider-native manifest"* ]] || false
+  [[ "$output" == *"update|maintain) _arguments"*"--profile[select profile]"*"--dry-run[print plan without invoking providers]"* ]] || false
+  [[ "$output" == *"capture) _arguments"*"1:provider:(homebrew)"*"--dry-run[print plan without invoking provider]"* ]] || false
   [[ "$output" == *"export:generate public rig data"* ]] || false
   [[ "$output" == *"publish:publish public rig data"* ]] || false
   [[ "$output" == *"run:invoke a declared provider action"* ]] || false
@@ -449,6 +459,18 @@ write_query_config() {
       COMP_CWORD=2
       _rig
       printf "bootstrap:%s\n" "${COMPREPLY[*]}"
+      COMP_WORDS=(rig update --)
+      COMP_CWORD=2
+      _rig
+      printf "update:%s\n" "${COMPREPLY[*]}"
+      COMP_WORDS=(rig maintain --)
+      COMP_CWORD=2
+      _rig
+      printf "maintain:%s\n" "${COMPREPLY[*]}"
+      COMP_WORDS=(rig capture --)
+      COMP_CWORD=2
+      _rig
+      printf "capture:%s\n" "${COMPREPLY[*]}"
       COMP_WORDS=(rig run --)
       COMP_CWORD=2
       _rig
@@ -479,6 +501,9 @@ write_query_config() {
   [[ "$output" == *"doctor:--help --profile"* ]] || false
   [[ "$output" == *"apply:--help --profile --scope --dry-run"* ]] || false
   [[ "$output" == *"bootstrap:--help --profile --scope --dry-run"* ]] || false
+  [[ "$output" == *"update:--help --profile --dry-run"* ]] || false
+  [[ "$output" == *"maintain:--help --profile --dry-run"* ]] || false
+  [[ "$output" == *"capture:--help --dry-run"* ]] || false
  [[ "$output" == *"run:--help --"* ]] || false
  [[ "$output" == *"publish:--help"* ]] || false
  [[ "$output" == *"clean:--help --dry-run"* ]] || false
