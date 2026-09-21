@@ -8,8 +8,11 @@ kind: work
 source_ref: "d744be5"
 observation: decision
 phase: received
-decision_status: unconsidered
+decision_status: adopted
 received_from_ref: 0b9f4e670346a5ca9501e0c0cb6760d002a4b874
+reviewed_at: 2026-09-21T12:18:14Z
+rationale: "Home-path normalization is a portable Rig configuration and state concern owned by RIG-CORE-014; resource-local preflight isolation remains separately governed by RIG-CORE-015."
+adopted_as: RIG-CORE-014
 ---
 
 # TRD-3a1ab790: Unexpanded $HOME breaks drift and apply
