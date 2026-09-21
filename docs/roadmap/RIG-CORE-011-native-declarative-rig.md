@@ -4,12 +4,12 @@ area: CORE
 title: Native declarative Rig
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 998b7fc766e66d3ad542d2b367e718d1c3819c58
 created_at: 2026-09-20T17:28:14Z
-updated_at: 2026-09-20T18:46:29Z
+updated_at: 2026-09-21T12:10:46Z
 ---
 
 # RIG-CORE-011: Native declarative Rig
@@ -102,6 +102,10 @@ The implementation now matches the corrected schema-1 contract and keeps provide
 ### Mini recap
 
 Rig configuration now says what belongs in a working setup and what state is desired; Rig handles ordinary execution mechanics. The main follow-up learning route is to decide whether any retained private operations deserve future bounded resource types.
+
+## Done
+
+Accepted 2026-09-21 by Kris Brown on the review packet above.
 
 ## Discussion
 

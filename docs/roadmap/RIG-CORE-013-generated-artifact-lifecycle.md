@@ -4,12 +4,12 @@ area: CORE
 title: Generated artifact ownership
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 52517334dbd39f0b653cb373ede0f7718e9db04e
 created_at: 2026-09-21T07:44:37Z
-updated_at: 2026-09-21T11:40:38Z
+updated_at: 2026-09-21T12:10:46Z
 ---
 
 # RIG-CORE-013: Generated artifact ownership
@@ -105,6 +105,10 @@ Implementation commit: `f4e7959b` (`refactor(core): keep generated artifacts obs
 ### Mini recap
 
 Rig can explain and inspect durable tool-owned artifacts without acquiring a hidden task-runner or product-specific launcher lifecycle.
+
+## Done
+
+Accepted 2026-09-21 by Kris Brown on the review packet above.
 
 ## Discussion
 

@@ -4,12 +4,12 @@ area: CORE
 title: Provider lifecycle
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 3893ae077ddf11d6f52e62395ee13387ce1d467e
 created_at: 2026-09-21T05:50:39Z
-updated_at: 2026-09-21T06:27:45Z
+updated_at: 2026-09-21T12:10:46Z
 ---
 
 # RIG-CORE-012: Provider lifecycle
@@ -96,6 +96,10 @@ The implementation keeps provider-native manifests and state authoritative while
 ### Mini recap
 
 Rig configuration declares the desired working setup; Rig coordinates fixed native lifecycle operations; provider systems retain native authority. The next step is the private source migration and reviewed chezmoi application.
+
+## Done
+
+Accepted 2026-09-21 by Kris Brown on the review packet above.
 
 ## Discussion
 
