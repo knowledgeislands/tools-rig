@@ -181,7 +181,8 @@ The category and profile filters may be combined.
 Show a tool's identity and installation metadata, or a qualified operational
 resource's purpose, rationale, native ownership, desired values, policies,
 tool dependencies, and profile membership. Dock explanations include ordered
-item details.
+item details. Tool explanations include declared artifacts and any closed
+native artifact reconciler.
 .TP
 .B rig status
 Compare every tool and operational resource in the resolved default profile
@@ -657,6 +658,33 @@ and
 .B install.arguments
 string arrays. A tool with no install provider is catalogue-only. Destination
 and checksum are restricted to direct-download installations.
+.PP
+The optional tool
+.B artifacts
+array keeps generated paths with the capability that owns them. Rig observes
+these paths through
+.B status
+and
+.BR doctor .
+For macOS application bundles, a healthy artifact has a readable regular
+.I Contents/Info.plist
+and at least one entry resolving to a regular executable beneath a real
+.I Contents/MacOS
+directory.
+.PP
+The optional string
+.B artifact.reconciler
+selects only a closed native Rig integration; it is not an executable path,
+command, or argument hook. The supported
+.B codex-multi-auth-app-launcher
+value requires a macOS-only npm global
+.B codex-multi-auth
+installation and exactly one
+.I $HOME/Applications/Codex Multi Auth.app
+or
+.I ~/Applications/Codex Multi Auth.app
+artifact. Other artifacts remain observation-only.
+.PP
 .B [publication.ID]
 requires
 .BR profile ,
@@ -936,6 +964,18 @@ keeps native diagnostics on stderr, and emits a deterministic report on
 stdout. Unsupported selected providers are report-only skips. The
 .B \-\-dry-run
 form invokes no provider and writes no manifest.
+.PP
+When a selected tool declares a supported
+.BR artifact.reconciler ,
+.BR "rig apply" ,
+.BR "rig bootstrap" ,
+and
+.B rig update
+run the fixed generator only after successful owning-provider work and verify
+the resulting artifact. The generator is a separate progress step, and its
+failure fails that owning work item. Dry-run reports the planned artifact step
+without requiring or invoking the generator. Profile deselection does not
+uninstall a tool or delete its generated artifacts.
 .SS BUILT-IN MACOS RESOURCES
 \&
 .PP

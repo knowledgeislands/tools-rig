@@ -65,3 +65,13 @@ _Conformance:_ conforming
 _Verify:_ Bats tests permute equivalent category, tool, provider, and installation declarations across fragments and compare bytewise-sorted internal resolver output.
 
 _Evidence:_ `rig_sort_selected_tools` applies bytewise ordering and `tests/rig.bats` resolves declarations split and reordered across fragments to stable output.
+
+### RIG-CAT-007 — Tool-owned generated artifacts
+
+Rig MUST keep a generated launcher, handler, or comparable path as an artifact of the catalogue tool whose capability it exposes. A generated artifact MUST NOT require a second catalogue entry merely to acknowledge its path. Installation, rationale, relationships, profile membership, artifacts, and any supported artifact reconciler MUST therefore resolve through the same tool identity.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats explains one tool with co-located installation, artifact, and reconciler metadata and observes artifact health through that tool.
+
+_Evidence:_ `rig_command_explain` reports the owning tool's artifacts and reconciler; `tests/rig-artifacts.bats` covers ownership and observation.

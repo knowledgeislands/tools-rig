@@ -117,6 +117,27 @@ The provider name identifies the native authority. Rig supplies the adapter, obs
 
 Do not create separate profiles merely to name lifecycle commands. `bootstrap-profile` may point to `default`; add profiles such as `minimal`, `developer`, or `public` only when they select a materially different setup. Profiles may compose one another so shared intent remains declared once.
 
+## Generated artifacts
+
+Generated launchers and handlers belong to their owning tool rather than becoming separate catalogue tools. Declare their paths in the tool's `artifacts` array so `explain`, `status`, and `doctor` can account for them. Most artifacts remain observation-only because their native application creates them. Rig exposes `artifact.reconciler` only for a small closed set of native lifecycle integrations; it is not a configurable command hook.
+
+```toml
+[tool.codex-multi-auth]
+name = "Codex Multi Auth"
+category = "accounts"
+purpose = "Switch between Codex account contexts"
+rationale = "Keeps account selection explicit"
+platforms = ["macos"]
+artifacts = ["$HOME/Applications/Codex Multi Auth.app"]
+artifact.reconciler = "codex-multi-auth-app-launcher"
+install.provider = "npm"
+install.kind = "global"
+install.locator = "codex-multi-auth"
+install.platforms = ["macos"]
+```
+
+For this supported declaration, `apply`, `bootstrap`, and `update` refresh the bundle only after npm work succeeds and then verify it. Dry-run reports the extra planned step without invoking the generator. Removing the tool from a profile does not uninstall the package or delete its artifact.
+
 ## Commands
 
 - `rig` shows top-level help.

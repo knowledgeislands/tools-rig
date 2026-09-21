@@ -38,6 +38,8 @@ Publication is an optional projection of that model. It exports one deliberately
 
 Inspection comes before mutation. Rig never turns a read-only declaration query into provider execution, and a dry run never applies provider changes.
 
+Generated launchers and URL handlers stay with the tool whose capability they expose. Their `artifacts` paths make them visible to `explain`, `status`, and `doctor`; they are not separate tools. Most are observed only and remain under their native owner's lifecycle. A documented `artifact.reconciler` opts into one closed Rig-owned integration, never an arbitrary command from configuration.
+
 ## Choose a guide
 
 - [Get started](getting-started.md) — install Rig, create a small configuration, understand it, check a machine, and preview the first application.

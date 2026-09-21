@@ -4,12 +4,12 @@ area: CORE
 title: Generated artifact lifecycle
 theme: orchestration
 horizon: now
-status: ready
+status: in-progress
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 52517334dbd39f0b653cb373ede0f7718e9db04e
 created_at: 2026-09-21T07:44:37Z
-updated_at: 2026-09-21T07:44:37Z
+updated_at: 2026-09-21T08:37:06Z
 ---
 
 # RIG-CORE-013: Generated artifact lifecycle
@@ -34,12 +34,12 @@ Schema 1 accepts an `artifacts` array and status validates each selected path, i
 
 ## Steps
 
-- [ ] Add optional `artifact.reconciler` metadata to a tool, validate it against a closed built-in registry, require compatible installation and artifact declarations, and keep configuration inert.
-- [ ] Implement the Codex Multi Auth app reconciler with fixed executable and arguments, bounded path expectations, dry-run planning, progress, and native failure propagation.
-- [ ] Run the reconciler after successful tool application in `rig apply` and `rig bootstrap`, and after the owning tool is successfully advanced by `rig update`.
-- [ ] Keep artifact observation authoritative for status and doctor, expose reconciler metadata through `rig explain`, and prove catalogue-only and automatically generated artifacts retain observation-only behaviour.
-- [ ] Align README, changelog, manual, user and developer guidance, Decision Records, Specifications, help/completion conformance evidence, and reciprocal personal configuration guidance.
-- [ ] Verify Bash 3.2 compatibility, full-plan safety, dry-run non-mutation, deterministic reporting, exact generator invocation, failure isolation, and all existing command behaviour.
+- [x] Add optional `artifact.reconciler` metadata to a tool, validate it against a closed built-in registry, require compatible installation and artifact declarations, and keep configuration inert.
+- [x] Implement the Codex Multi Auth app reconciler with fixed executable and arguments, bounded path expectations, dry-run planning, progress, and native failure propagation.
+- [x] Run the reconciler after successful tool application in `rig apply` and `rig bootstrap`, and after the owning tool is successfully advanced by `rig update`.
+- [x] Keep artifact observation authoritative for status and doctor, expose reconciler metadata through `rig explain`, and prove catalogue-only and automatically generated artifacts retain observation-only behaviour.
+- [x] Align README, changelog, manual, user and developer guidance, Decision Records, Specifications, help/completion conformance evidence, and reciprocal personal configuration guidance.
+- [x] Verify Bash 3.2 compatibility, full-plan safety, dry-run non-mutation, deterministic reporting, exact generator invocation, failure isolation, and all existing command behaviour.
 
 ## Files touched
 

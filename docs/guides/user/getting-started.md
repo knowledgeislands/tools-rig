@@ -122,6 +122,29 @@ rig apply
 
 Rig preflights the complete selected plan before mutation, orders required tools before dependants, and invokes only built-in or explicitly trusted external operations. Homebrew remains responsible for Homebrew resolution and state; Rig coordinates the declared intent.
 
+## Keep generated artifacts with their tool
+
+When a command-line capability also creates a launcher or URL-handler application, keep one catalogue entry. Add the generated path to that tool's `artifacts` array. `rig explain` shows the ownership, while `rig status` and `rig doctor` check the path and macOS bundle structure.
+
+Artifacts are observation-only unless Rig documents a closed native reconciler. The initial supported reconciler is deliberately specific:
+
+```toml
+[tool.codex-multi-auth]
+name = "Codex Multi Auth"
+category = "accounts"
+purpose = "Switch between Codex account contexts"
+rationale = "Keeps account selection explicit"
+platforms = ["macos"]
+artifacts = ["$HOME/Applications/Codex Multi Auth.app"]
+artifact.reconciler = "codex-multi-auth-app-launcher"
+install.provider = "npm"
+install.kind = "global"
+install.locator = "codex-multi-auth"
+install.platforms = ["macos"]
+```
+
+Rig accepts that reconciler only with the exact supported npm installation and application destination. `apply`, `bootstrap`, and `update` run it after successful npm work and verify the resulting bundle. Dry-run reports the step without invoking it. No configuration field can supply a launcher command or arguments, and removing a tool from a profile does not request package removal or artifact deletion.
+
 ## Update and maintain selected tools
 
 Reconciliation makes declared tools present; it does not silently advance every installed version or perform package-manager maintenance. Preview those explicit lifecycle operations separately:

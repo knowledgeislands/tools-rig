@@ -10,6 +10,8 @@ When a change crosses that boundary, define and verify the portable contract her
 
 Built-in providers are product code. They infer supported installation kinds and fixed reconcile, update, maintenance, and capture operations from Rig's internal registry and must not require users to repeat adapter or capability declarations. External providers are extensions: they require `adapter = "custom"` and an operation allow-list, resolve through an explicit executable or the exact `${RIG_DATA_HOME}/providers/ID` path, and alone receive the versioned `rig-provider-v1` protocol. Configuration must never become an arbitrary lifecycle task runner.
 
+Generated artifacts remain part of their owning tool. Add a closed native reconciler only when its installation tuple, destination, executable, arguments, preflight, and postcondition can be fixed and tested in Rig. Do not turn a personal operation script into `artifact.reconciler`, a custom provider, or a general hook.
+
 ## Make a change
 
 Update the public command surface in `bin/rig`, then keep `tests/rig.bats`, `man/rig.1`, README usage, command guides, completion output, and changelog aligned. Record durable rationale in Decision Records, accepted behaviour in Specifications, and future delivery in the roadmap.

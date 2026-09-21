@@ -430,7 +430,7 @@ rig_field_kind() {
     category:name|category:purpose|\
     tool:name|tool:category|tool:purpose|tool:rationale|\
     tool:install-provider|tool:install-kind|tool:install-locator|\
-    tool:install-destination|tool:install-checksum|\
+    tool:install-destination|tool:install-checksum|tool:artifact-reconciler|\
     provider:adapter|provider:command|provider:executable|provider:manifest|\
     provider:autoupdate-interval|\
     binding:kind|binding:locator|binding:destination|binding:checksum|\
@@ -510,6 +510,7 @@ rig_toml_field() {
     tool:install.locator) RIG_TOML_FIELD_KEY=install-locator; RIG_TOML_FIELD_TYPE=string ;;
     tool:install.destination) RIG_TOML_FIELD_KEY=install-destination; RIG_TOML_FIELD_TYPE=string ;;
     tool:install.checksum) RIG_TOML_FIELD_KEY=install-checksum; RIG_TOML_FIELD_TYPE=string ;;
+    'tool:artifact.reconciler') RIG_TOML_FIELD_KEY='artifact-reconciler'; RIG_TOML_FIELD_TYPE=string ;;
     tool:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
     tool:requires) RIG_TOML_FIELD_KEY=requires ; RIG_TOML_FIELD_TYPE=array ;;
     tool:related) RIG_TOML_FIELD_KEY=related ; RIG_TOML_FIELD_TYPE=array ;;
@@ -1473,6 +1474,50 @@ rig_validate_dock_item() {
   esac
 }
 
+rig_validate_artifact_reconciler() {
+  local section_name section_index reconciler artifact provider kind locator
+  local expected_tilde expected_home
+
+  section_name=$1
+  section_index=$2
+  if ! rig_get_value "$section_name" artifact-reconciler; then
+    return 0
+  fi
+  reconciler=$RIG_VALUE
+  case "$reconciler" in
+    codex-multi-auth-app-launcher) ;;
+    *) rig_fail "[$section_name] unsupported artifact reconciler '$reconciler'" || return ;;
+  esac
+
+  rig_field_count "$section_index" artifact
+  [ "$RIG_COUNT" -eq 1 ] ||
+    rig_fail "[$section_name] artifact reconciler requires exactly one artifact" || return
+  rig_get_value "$section_name" artifact || return 2
+  artifact=$RIG_VALUE
+  expected_tilde=\~/Applications/Codex\ Multi\ Auth.app
+  expected_home=\$HOME/Applications/Codex\ Multi\ Auth.app
+  if [ "$artifact" != "$expected_tilde" ] && [ "$artifact" != "$expected_home" ]; then
+    rig_fail "[$section_name] artifact reconciler '$reconciler' requires artifact '~/Applications/Codex Multi Auth.app'" || return
+  fi
+
+  rig_get_value "$section_name" install-provider ||
+    rig_fail "[$section_name] artifact reconciler requires install.provider" || return
+  provider=$RIG_VALUE
+  rig_get_value "$section_name" install-kind || return 2
+  kind=$RIG_VALUE
+  rig_get_value "$section_name" install-locator || return 2
+  locator=$RIG_VALUE
+  [ "$provider:$kind:$locator" = 'npm:global:codex-multi-auth' ] ||
+    rig_fail "[$section_name] artifact reconciler '$reconciler' requires npm global codex-multi-auth installation" || return
+
+  rig_field_count "$section_index" platform
+  [ "$RIG_COUNT" -eq 1 ] ||
+    rig_fail "[$section_name] artifact reconciler '$reconciler' requires macos-only tool platform" || return
+  rig_get_value "$section_name" platform || return 2
+  [ "$RIG_VALUE" = macos ] ||
+    rig_fail "[$section_name] artifact reconciler '$reconciler' requires macos-only tool platform" || return
+}
+
 rig_validate_model() {
   local index section_name section_type section_id secondary_id adapter provider
   local field_index field_end
@@ -1521,6 +1566,7 @@ rig_validate_model() {
           rig_fail "[$section_name] install metadata requires install.provider" || return
         fi
       fi
+      rig_validate_artifact_reconciler "$section_name" "$index" || return
       rig_validate_references_for_field "$index" requires tool || return
         rig_validate_references_for_field "$index" related tool || return
         rig_validate_references_for_field "$index" alternative tool || return
@@ -3423,6 +3469,94 @@ rig_normalize_artifact_identity() {
   esac
 }
 
+rig_preflight_artifact_reconciler() {
+  local tool section_name reconciler declared artifact path parent next
+
+  tool=$1
+  section_name=tool.$tool
+  rig_get_value "$section_name" artifact-reconciler || return 0
+  reconciler=$RIG_VALUE
+  rig_get_value "$section_name" artifact || return 2
+  declared=$RIG_VALUE
+  rig_normalize_artifact_identity "$declared"
+  artifact=$RIG_VALUE
+
+  case "$reconciler" in
+    codex-multi-auth-app-launcher) ;;
+    *) rig_fail "tool '$tool' has unsupported artifact reconciler '$reconciler'" || return ;;
+  esac
+
+  path=$artifact
+  if [ -L "$path" ] || { [ -e "$path" ] && [ ! -d "$path" ]; }; then
+    rig_fail "tool '$tool' artifact reconciler has unsafe app target: $declared" || return
+  fi
+  path=$artifact/Contents
+  if [ -L "$path" ] || { [ -e "$path" ] && [ ! -d "$path" ]; }; then
+    rig_fail "tool '$tool' artifact reconciler has unsafe Contents target: $declared" || return
+  fi
+  path=$artifact/Contents/MacOS
+  if [ -L "$path" ] || { [ -e "$path" ] && [ ! -d "$path" ]; }; then
+    rig_fail "tool '$tool' artifact reconciler has unsafe MacOS target: $declared" || return
+  fi
+  path=$artifact/Contents/Info.plist
+  if [ -L "$path" ] || { [ -e "$path" ] && [ ! -f "$path" ]; }; then
+    rig_fail "tool '$tool' artifact reconciler has unsafe Info.plist target: $declared" || return
+  fi
+  path=$artifact/Contents/MacOS/Codex
+  if [ -L "$path" ] || { [ -e "$path" ] && [ ! -f "$path" ]; }; then
+    rig_fail "tool '$tool' artifact reconciler has unsafe executable target: $declared" || return
+  fi
+
+  parent=${artifact%/*}
+  while [ ! -e "$parent" ]; do
+    next=${parent%/*}
+    [ "$next" != "$parent" ] || break
+    parent=$next
+  done
+  [ ! -L "$parent" ] && [ -d "$parent" ] && [ -w "$parent" ] && [ -x "$parent" ] ||
+    rig_fail "tool '$tool' artifact reconciler parent unavailable: $parent" || return
+  RIG_VALUE=$reconciler
+}
+
+rig_verify_artifact_reconciler() {
+  local tool section_name declared artifact
+
+  tool=$1
+  section_name=tool.$tool
+  rig_get_value "$section_name" artifact || return 2
+  declared=$RIG_VALUE
+  rig_normalize_artifact_identity "$declared"
+  artifact=$RIG_VALUE
+  [ ! -L "$artifact" ] && [ -d "$artifact" ] &&
+    [ ! -L "$artifact/Contents" ] && [ -d "$artifact/Contents" ] &&
+    [ ! -L "$artifact/Contents/MacOS" ] && [ -d "$artifact/Contents/MacOS" ] &&
+    [ ! -L "$artifact/Contents/Info.plist" ] && [ -f "$artifact/Contents/Info.plist" ] &&
+    [ -r "$artifact/Contents/Info.plist" ] &&
+    [ ! -L "$artifact/Contents/MacOS/Codex" ] &&
+    [ -f "$artifact/Contents/MacOS/Codex" ] &&
+    [ -x "$artifact/Contents/MacOS/Codex" ] ||
+    rig_fail "tool '$tool' artifact reconciler did not create a healthy app: $declared" || return
+}
+
+rig_apply_artifact_reconciler() {
+  local tool section_name reconciler executable native_status
+
+  tool=$1
+  section_name=tool.$tool
+  rig_get_value "$section_name" artifact-reconciler || return 0
+  reconciler=$RIG_VALUE
+  case "$reconciler" in
+    codex-multi-auth-app-launcher) executable=codex-multi-auth-app-launcher ;;
+    *) return 2 ;;
+  esac
+  rig_executable_available "$executable" ||
+    rig_fail "tool '$tool' artifact reconciler executable unavailable: $executable" || return
+  "$executable" 1>&2
+  native_status=$?
+  [ "$native_status" -eq 0 ] || return "$native_status"
+  rig_verify_artifact_reconciler "$tool"
+}
+
 rig_artifact_detail() {
   local kind identity maximum
 
@@ -3438,6 +3572,7 @@ rig_artifact_detail() {
 rig_observe_tool_artifacts() {
   local tool section_name section_index field_index field_end declared artifact
   local state detail rank candidate_state candidate_detail candidate_rank info_plist
+  local macos_dir app_exec app_exec_found
 
   tool=$1
   section_name=tool.$tool
@@ -3470,14 +3605,30 @@ rig_observe_tool_artifacts() {
         candidate_rank=3
       elif [ -d "$artifact" ]; then
         case "$artifact" in
-          *.app|*.app/)
-            info_plist=${artifact%/}/Contents/Info.plist
-            if [ ! -f "$info_plist" ] || [ ! -r "$info_plist" ]; then
+        *.app|*.app/)
+          info_plist=${artifact%/}/Contents/Info.plist
+          if [ ! -f "$info_plist" ] || [ ! -r "$info_plist" ]; then
+            candidate_state=drifted
+            candidate_detail=damaged-app
+            candidate_rank=2
+          else
+            macos_dir=${artifact%/}/Contents/MacOS
+            app_exec_found=0
+            if [ ! -L "$macos_dir" ] && [ -d "$macos_dir" ]; then
+              for app_exec in "$macos_dir"/*; do
+                if [ -f "$app_exec" ] && [ -x "$app_exec" ]; then
+                  app_exec_found=1
+                  break
+                fi
+              done
+            fi
+            if [ "$app_exec_found" -eq 0 ]; then
               candidate_state=drifted
               candidate_detail=damaged-app
               candidate_rank=2
             fi
-            ;;
+          fi
+          ;;
         esac
       fi
       if [ "$candidate_rank" -gt "$rank" ]; then
@@ -4357,6 +4508,7 @@ rig_preflight_apply() {
       if [ -n "${RIG_PLAN_BINDINGS[$index]}" ]; then
         rig_preflight_provider "${RIG_PLAN_TOOLS[$index]}" \
           "${RIG_PLAN_BINDINGS[$index]}" "${RIG_PLAN_PROVIDERS[$index]}" || return
+        rig_preflight_artifact_reconciler "${RIG_PLAN_TOOLS[$index]}" || return
       fi
       index=$((index + 1))
     done
@@ -4474,7 +4626,7 @@ rig_print_resource_projection() {
 rig_command_apply() {
   local profile scope dry_run profile_seen scope_seen dry_run_seen index tool binding provider
   local blocker native_status planned completed failed skipped operational_failure
-  local section_name section_index kind id locator resource_total
+  local section_name section_index kind id locator resource_total reconciler_total reconciler
 
   profile=
   scope=all
@@ -4544,14 +4696,20 @@ rig_command_apply() {
   failed=0
   skipped=0
   operational_failure=0
+  reconciler_total=0
   index=0
   while [ "$index" -lt "${#RIG_PLAN_BINDINGS[@]}" ]; do
-    [ -z "${RIG_PLAN_BINDINGS[$index]}" ] || planned=$((planned + 1))
+    if [ -n "${RIG_PLAN_BINDINGS[$index]}" ]; then
+      planned=$((planned + 1))
+      if rig_get_value "tool.${RIG_PLAN_TOOLS[$index]}" artifact-reconciler; then
+        reconciler_total=$((reconciler_total + 1))
+      fi
+    fi
     index=$((index + 1))
   done
   resource_total=$((${#RIG_RESOURCE_PLAN_SECTIONS[@]} + ${#RIG_STALE_RESOURCE_IDS[@]}))
   if [ "$dry_run" -eq 0 ]; then
-    rig_progress_start applying "$((planned + resource_total))"
+    rig_progress_start applying "$((planned + reconciler_total + resource_total))"
   fi
 
   index=0
@@ -4559,6 +4717,7 @@ rig_command_apply() {
     tool=${RIG_PLAN_TOOLS[$index]}
     binding=${RIG_PLAN_BINDINGS[$index]}
     provider=${RIG_PLAN_PROVIDERS[$index]}
+    reconciler=
     if [ "$dry_run" -eq 0 ] && [ -n "$binding" ]; then
       rig_progress_step "$tool via $provider"
     fi
@@ -4568,7 +4727,11 @@ rig_command_apply() {
       skipped=$((skipped + 1))
     elif [ "$dry_run" -eq 1 ]; then
       RIG_PLAN_RESULTS[$index]=planned
-      RIG_PLAN_DETAILS[$index]=-
+      if rig_get_value "tool.$tool" artifact-reconciler; then
+        RIG_PLAN_DETAILS[$index]=artifact-reconcile:$RIG_VALUE
+      else
+        RIG_PLAN_DETAILS[$index]=-
+      fi
     elif rig_plan_blocker "$tool"; then
       blocker=$RIG_VALUE
       RIG_PLAN_RESULTS[$index]=skipped
@@ -4579,12 +4742,28 @@ rig_command_apply() {
       rig_apply_provider "$tool" "$binding" "$provider"
       native_status=$?
       if [ "$native_status" -eq 0 ]; then
+        if rig_get_value "tool.$tool" artifact-reconciler; then
+          reconciler=$RIG_VALUE
+          rig_progress_step "$tool artifacts via $reconciler"
+          rig_apply_artifact_reconciler "$tool"
+          native_status=$?
+        fi
+      fi
+      if [ "$native_status" -eq 0 ]; then
         RIG_PLAN_RESULTS[$index]=completed
-        RIG_PLAN_DETAILS[$index]=-
+        if [ -n "${reconciler:-}" ]; then
+          RIG_PLAN_DETAILS[$index]=artifact-reconciled:$reconciler
+        else
+          RIG_PLAN_DETAILS[$index]=-
+        fi
         completed=$((completed + 1))
       else
         RIG_PLAN_RESULTS[$index]=failed
-        RIG_PLAN_DETAILS[$index]=exit:$native_status
+        if [ -n "${reconciler:-}" ]; then
+          RIG_PLAN_DETAILS[$index]=artifact-exit:$native_status
+        else
+          RIG_PLAN_DETAILS[$index]=exit:$native_status
+        fi
         failed=$((failed + 1))
         operational_failure=1
       fi
@@ -6029,6 +6208,7 @@ rig_explain_resource() {
 
 rig_command_explain() {
   local tool name category category_name purpose rationale platforms requires related alternatives profiles platform binding
+  local artifacts artifact_reconciler
 
   if [ "$#" -eq 1 ]; then
     case "$1" in
@@ -6071,6 +6251,13 @@ rig_command_explain() {
   rig_collect_field_values "tool.$tool" alternative
   rig_join_query_items
   alternatives=$RIG_VALUE
+  rig_collect_field_values "tool.$tool" artifact
+  rig_join_query_items
+  artifacts=$RIG_VALUE
+  artifact_reconciler=-
+  if rig_get_value "tool.$tool" artifact-reconciler; then
+    artifact_reconciler=$RIG_VALUE
+  fi
   rig_collect_profile_memberships "$tool"
   rig_join_query_items
   profiles=$RIG_VALUE
@@ -6080,6 +6267,7 @@ rig_command_explain() {
   printf 'Platforms: %s\nRequires: %s\nRelated: %s\nAlternatives: %s\nProfiles: %s\n' \
     "$platforms" "$requires" "$related" "$alternatives" "$profiles"
   printf 'Installation: %s\n' "$binding"
+  printf 'Artifacts: %s\nArtifact reconciler: %s\n' "$artifacts" "$artifact_reconciler"
 }
 
 rig_json_escape() {
@@ -6810,13 +6998,14 @@ rig_lifecycle_supported() {
 }
 
 rig_lifecycle_add_task() {
-  local key label provider binding supported index
+  local key label provider binding supported tool index
 
   key=$1
   label=$2
   provider=$3
   binding=$4
   supported=$5
+  tool=$6
   index=0
   while [ "$index" -lt "${#RIG_LIFECYCLE_KEYS[@]}" ]; do
     [ "${RIG_LIFECYCLE_KEYS[$index]}" != "$key" ] || return 0
@@ -6827,6 +7016,7 @@ rig_lifecycle_add_task() {
   RIG_LIFECYCLE_PROVIDERS[${#RIG_LIFECYCLE_PROVIDERS[@]}]=$provider
   RIG_LIFECYCLE_BINDINGS[${#RIG_LIFECYCLE_BINDINGS[@]}]=$binding
   RIG_LIFECYCLE_SUPPORTED[${#RIG_LIFECYCLE_SUPPORTED[@]}]=$supported
+  RIG_LIFECYCLE_TOOLS[${#RIG_LIFECYCLE_TOOLS[@]}]=$tool
 }
 
 rig_collect_lifecycle_tasks() {
@@ -6839,6 +7029,7 @@ rig_collect_lifecycle_tasks() {
   RIG_LIFECYCLE_BINDINGS=()
   RIG_LIFECYCLE_SUPPORTED=()
   RIG_LIFECYCLE_EXECUTABLES=()
+  RIG_LIFECYCLE_TOOLS=()
   index=0
   while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
     tool=${RIG_PLAN_TOOLS[$index]}
@@ -6859,7 +7050,7 @@ rig_collect_lifecycle_tasks() {
         key=$provider:$binding
         label=$tool
       fi
-      rig_lifecycle_add_task "$key" "$label" "$provider" "$binding" "$supported"
+      rig_lifecycle_add_task "$key" "$label" "$provider" "$binding" "$supported" "$tool"
     fi
     index=$((index + 1))
   done
@@ -7003,7 +7194,7 @@ rig_execute_lifecycle_task() {
 
 rig_run_lifecycle_tasks() {
   local action dry_run index label provider binding supported executable native_status
-  local planned completed failed skipped supported_total exit_code
+  local tool reconciler planned completed failed skipped supported_total reconciler_total exit_code
 
   action=$1
   dry_run=$2
@@ -7012,15 +7203,24 @@ rig_run_lifecycle_tasks() {
   failed=0
   skipped=0
   supported_total=0
+  reconciler_total=0
   exit_code=0
   index=0
   while [ "$index" -lt "${#RIG_LIFECYCLE_KEYS[@]}" ]; do
     if [ "${RIG_LIFECYCLE_SUPPORTED[$index]}" -eq 1 ]; then
       provider=${RIG_LIFECYCLE_PROVIDERS[$index]}
       binding=${RIG_LIFECYCLE_BINDINGS[$index]}
+      tool=${RIG_LIFECYCLE_TOOLS[$index]}
       rig_preflight_lifecycle_task "$action" "$provider" "$binding" || return
       RIG_LIFECYCLE_EXECUTABLES[$index]=$RIG_VALUE
       supported_total=$((supported_total + 1))
+      if [ "$action" = update ] && [ -n "$tool" ]; then
+        if rig_get_value "tool.$tool" artifact-reconciler; then
+          reconciler=$RIG_VALUE
+          rig_preflight_artifact_reconciler "$tool" || return
+          reconciler_total=$((reconciler_total + 1))
+        fi
+      fi
     else
       RIG_LIFECYCLE_EXECUTABLES[$index]=-
     fi
@@ -7029,29 +7229,53 @@ rig_run_lifecycle_tasks() {
 
   printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   printf 'TARGET\tPROVIDER\tRESULT\tDETAIL\n'
-  [ "$dry_run" -eq 1 ] || rig_progress_start "$action" "$supported_total"
+  [ "$dry_run" -eq 1 ] || rig_progress_start "$action" "$((supported_total + reconciler_total))"
   index=0
   while [ "$index" -lt "${#RIG_LIFECYCLE_KEYS[@]}" ]; do
     label=${RIG_LIFECYCLE_LABELS[$index]}
     provider=${RIG_LIFECYCLE_PROVIDERS[$index]}
     binding=${RIG_LIFECYCLE_BINDINGS[$index]}
+    tool=${RIG_LIFECYCLE_TOOLS[$index]}
     supported=${RIG_LIFECYCLE_SUPPORTED[$index]}
     executable=${RIG_LIFECYCLE_EXECUTABLES[$index]}
+    reconciler=
+    if [ "$action" = update ] && [ -n "$tool" ]; then
+      if rig_get_value "tool.$tool" artifact-reconciler; then
+        reconciler=$RIG_VALUE
+      fi
+    fi
     if [ "$supported" -ne 1 ]; then
       printf '%s\t%s\tskipped\tunsupported-%s\n' "$label" "$provider" "$action"
       skipped=$((skipped + 1))
     elif [ "$dry_run" -eq 1 ]; then
-      printf '%s\t%s\tplanned\t%s\n' "$label" "$provider" "$action"
+      if [ -n "$reconciler" ]; then
+        printf '%s\t%s\tplanned\tartifact-reconcile:%s\n' "$label" "$provider" "$reconciler"
+      else
+        printf '%s\t%s\tplanned\t%s\n' "$label" "$provider" "$action"
+      fi
       planned=$((planned + 1))
     else
       rig_progress_step "$label via $provider"
       rig_execute_lifecycle_task "$action" "$provider" "$binding" "$executable"
       native_status=$?
+      if [ "$native_status" -eq 0 ] && [ -n "$reconciler" ]; then
+        rig_progress_step "$label artifact via $reconciler"
+        rig_apply_artifact_reconciler "$tool"
+        native_status=$?
+      fi
       if [ "$native_status" -eq 0 ]; then
-        printf '%s\t%s\tcompleted\t%s\n' "$label" "$provider" "$action"
+        if [ -n "$reconciler" ]; then
+          printf '%s\t%s\tcompleted\tartifact-reconciled:%s\n' "$label" "$provider" "$reconciler"
+        else
+          printf '%s\t%s\tcompleted\t%s\n' "$label" "$provider" "$action"
+        fi
         completed=$((completed + 1))
       else
-        printf '%s\t%s\tfailed\texit:%s\n' "$label" "$provider" "$native_status"
+        if [ -n "$reconciler" ]; then
+          printf '%s\t%s\tfailed\tartifact-exit:%s\n' "$label" "$provider" "$native_status"
+        else
+          printf '%s\t%s\tfailed\texit:%s\n' "$label" "$provider" "$native_status"
+        fi
         failed=$((failed + 1))
         exit_code=1
       fi

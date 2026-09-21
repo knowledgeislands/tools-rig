@@ -41,6 +41,8 @@ Use a dry run first. Rig preflights every supported target before mutation, dedu
 
 These commands use fixed built-in behaviour. Configuration selects tools and may supply documented provider-native details such as the Homebrew manifest path, but it cannot define lifecycle shell commands, grant capabilities, or route lifecycle work through an external provider. `rig maintain` owns provider-native maintenance such as cache pruning; `rig clean` has a separate and narrower Rig-cache boundary.
 
+When a selected tool declares a supported `artifact.reconciler`, `apply`, `bootstrap`, and `update` run that fixed native integration after the owning provider succeeds. The dry-run report includes the planned artifact step. Tools that declare only `artifacts` remain observation-only.
+
 ## Run a declared host action
 
 - `rig run PROVIDER ACTION [-- ARGUMENT...]` — invoke one built-in provider operation or an action explicitly allowed for one external provider.
