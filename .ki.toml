@@ -68,6 +68,11 @@ MIG = "migration"
 # Relationships
 # -----------------------------------------------------------------------------
 
+[skills.ki-trades]
+
+[skills.ki-trades.routes."krisb/dotfiles"]
+import = ["work", "knowledge"]
+
 [skills.ki-agora]
 memberships.ki-all = { home = "https://github.com/knowledgeislands/ki-agentic-harness", role = "maintainer" }
 memberships.ki-fnd = { home = "https://github.com/knowledgeislands/ki-agentic-harness", role = "maintainer" }
