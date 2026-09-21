@@ -3,13 +3,13 @@ id: RIG-CORE-017
 title: Declare user skills
 area: CORE
 theme: orchestration
-horizon: triage
+horizon: now
 status: draft
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-21T18:02:02Z
-updated_at: 2026-09-21T18:02:02Z
+updated_at: 2026-09-21T23:35:16Z
 ---
 
 ## Goal
@@ -27,6 +27,49 @@ The result is observable but not reproducible as one personal setup. The native 
 Rig must not copy skill content into its own configuration, become a skill registry, or replace native skill-manager locks and source resolution. Repository-local skills remain repository concerns. Runtime-bundled and plugin-provided skills remain owned by their runtime or plugin manager rather than becoming duplicated global installations.
 
 Skill installation is a trust transition because instruction content changes agent behaviour. Rig must not infer trust from a directory found on disk or silently adopt an unproven local source.
+
+## Current state
+
+The global inventory is split among Skills CLI state, KI symlinks, physical runtime copies, plugins, and runtime-specific local files. Rig has no skill declaration, authority classification, profile selection, query, observation, or lifecycle model. Only one current Skills CLI entry retains remote source provenance in its native lock.
+
+## Steps
+
+- [ ] Decide whether skills are catalogue capabilities or managed resources, their profile and publication semantics, and the authority classes Rig recognises.
+- [ ] Define explicit source trust, agent-runtime projection, provenance, update scope, and profile-deselection behaviour.
+- [ ] Record the product, security, configuration, orchestration, state, query, and publication contracts.
+- [ ] Implement provider-native observation and bounded materialisation without evaluating skill content or copying provider state into Rig.
+- [ ] Cover remote, KI-projected, runtime-owned, plugin-owned, local, missing, drifted, and unmanaged cases with isolated tests.
+- [ ] Align every public CLI and documentation surface and define the later personal-skill migration boundary.
+
+## Files touched
+
+Expected scope includes `bin/rig`, `tests/`, `docs/decisions/`, `docs/specs/`, `docs/guides/`, `man/rig.1`, `README.md`, and `CHANGELOG.md`. Native locks, harness sources, plugin caches, and personal skill content remain outside this repository.
+
+## Verify
+
+Run the complete repository gate; use isolated agent roots and provider fakes to prove source and projection comparison, literal invocation, explicit trust, non-removal on deselection, and public-data allow-listing. No test may read or change the real user skill roots.
+
+## Dependencies / blocks
+
+No existing delivery record is a build prerequisite. Planning must resolve the catalogue-versus-resource and native-authority decisions before this item can become Ready. Personal source reconciliation follows separately.
+
+## Documentation impact
+
+### Decision Records
+
+Amend the product and trust-boundary decisions to place user-level agent capabilities and their executable-instruction risk deliberately.
+
+### Specifications
+
+Add configuration, query, state, orchestration, portability, lifecycle, and publication requirements with provider-specific evidence.
+
+### Guides
+
+Explain global versus repository-local versus runtime-owned skills, source trust, profile selection, updates, and deliberate public disclosure.
+
+### Roadmap
+
+The personal-skill source cleanup remains part of the separate personal-rig migration outcome.
 
 ## Discussion
 

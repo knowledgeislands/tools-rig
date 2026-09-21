@@ -3,13 +3,13 @@ id: RIG-CORE-016
 title: Declare private ports
 area: CORE
 theme: orchestration
-horizon: triage
+horizon: now
 status: draft
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-21T17:54:55Z
-updated_at: 2026-09-21T17:54:55Z
+updated_at: 2026-09-21T23:35:16Z
 ---
 
 ## Goal
@@ -27,6 +27,48 @@ Port intent is presently implicit in service arguments, project commands, or per
 This work does not make Rig a firewall, reverse proxy, socket activator, or arbitrary process manager. It does not open, close, reserve, or kill listeners. Service and tool owners retain their native lifecycle. Ephemeral application and operating-system listeners do not all become declarations merely because they are observable.
 
 Port declarations, observations, process details, bind addresses, and unmanaged-listener inventory remain private machine information and must never enter the public Rig projection.
+
+## Current state
+
+Rig has no port declaration, profile membership, listener observation, query, health, or unmanaged-listener model. Stable port intent remains implicit in service arguments and personal knowledge. The initial design questions are recorded below but have not been resolved into accepted behaviour.
+
+## Steps
+
+- [ ] Decide the human term, declaration shape, required versus on-demand semantics, owner relationship, state mapping, and publication exclusion.
+- [ ] Record durable rationale and accepted behaviour in the owning Decision Records and Specifications.
+- [ ] Extend schema, profile resolution, queries, status, doctor, and built-in read-only listener observation.
+- [ ] Add deterministic fixtures for loopback, all-interface, absent, conflicting, unavailable, and unmanaged listeners without opening real sockets during tests.
+- [ ] Align help, manual, completion, changelog, README, user guides, and the private-config migration contract.
+
+## Files touched
+
+Expected scope includes `bin/rig`, `tests/`, `docs/decisions/`, `docs/specs/`, `docs/guides/`, `man/rig.1`, `README.md`, and `CHANGELOG.md`. Personal declarations remain a separate migration outcome.
+
+## Verify
+
+Run the complete repository gate, exercise every declared listener state through isolated command fakes, prove declaration queries and dry runs do not inspect or mutate sockets unexpectedly, and prove every publication form excludes port data.
+
+## Dependencies / blocks
+
+No existing delivery record is a build prerequisite. Planning must settle the open authority and observation questions before this item can become Ready. Personal port declarations follow only after the portable contract lands.
+
+## Documentation impact
+
+### Decision Records
+
+Amend the product, operational-resource, and trust-boundary decisions if ports become first-class private declarations.
+
+### Specifications
+
+Add configuration, query, state, orchestration, portability, and publication-exclusion requirements with test evidence.
+
+### Guides
+
+Teach when to declare a stable port, how required and on-demand expectations differ, how bind-scope findings should be interpreted, and why dynamic listeners usually remain unmanaged inventory.
+
+### Roadmap
+
+The personal-config migration remains separate from this portable implementation item.
 
 ## Discussion
 
