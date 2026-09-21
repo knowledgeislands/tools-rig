@@ -128,6 +128,16 @@ This is adequate for the current Mac. A genuine second-platform use case should 
 
 Managed resources can depend on tools, but cannot yet express ordering between resources. Bootstrap is also deliberately narrow: it stages the supported Homebrew to mise to npm chain rather than universally installing every missing manager. Those are reasonable current boundaries, but they should be stated plainly.
 
+### Private port allocations and listeners
+
+Ports are another meaningful part of private machine intent. The current workstation has stable-looking loopback listeners for apps-observatory on TCP 1675, the MCP proxy on TCP 3333, and Headroom on TCP 8787, alongside dynamic application listeners and normal macOS services.
+
+Rig should be able to explain which stable ports have been allocated, what owns them, whether a listener is required or on demand, and whether its bind scope is loopback-only or intentionally broader. It should compare those declarations with local observations and distinguish an absent required listener, an unexpected occupant, and a listener whose network exposure has drifted.
+
+This should be a first-class private operational resource rather than a generic provider action. Rig should not open, close, reserve, or kill sockets: the associated service or tool retains lifecycle ownership. Dynamic application and system listeners can remain optional unmanaged inventory rather than all becoming declarations.
+
+Port declarations, observations, process details, bind addresses, and unmanaged-listener inventory must be excluded from every public projection. The versioned website data should continue to contain only its explicit catalogue allow-list.
+
 ## Human configuration
 
 TOML remains the right format. The main problem is the deliberately restricted subset, not TOML itself.
