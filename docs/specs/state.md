@@ -130,13 +130,13 @@ _Evidence:_ `rig_plan_blocker` identifies failed prerequisite work and `tests/ri
 
 ### RIG-STATE-010 — Full-plan preflight
 
-`rig apply` MUST validate every selected work unit against the built-in provider registry or the external provider's exact allowed operation and executable before invoking any provider.
+`rig apply` MUST validate every selected work unit against the built-in provider registry or the external provider's exact allowed operation and executable before invoking any provider. Configuration, provider capability, executable, platform, retirement, and receipt-boundary failures MUST stop the complete plan before mutation. Rig MUST discover resource-local environmental findings before mutation, record them against their resource rows, prevent those resources from being invoked, and continue independent work.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats places a built-in registry, external operation, executable, or managed-resource validation failure late in the selected plan and asserts every mutation log remains absent.
+_Verify:_ Bats places a shared registry, operation, executable, or receipt failure late in the selected plan and asserts every mutation log remains absent; a separate case proves a resource-local path failure produces a failed row while an independent resource completes.
 
-_Evidence:_ `rig_preflight_apply`, `rig_preflight_provider`, `rig_preflight_resource`, and `rig_preflight_resource_receipt` validate the complete plan before dispatch; `apply preflights every selected provider before mutation` and `resource apply preflights every provider before any mutation` prove late failures prevent every mutation.
+_Evidence:_ `rig_preflight_apply`, `rig_preflight_provider`, `rig_preflight_resource`, and `rig_preflight_resource_receipt` classify the complete plan before dispatch; `tests/rig.bats` proves shared failures prevent every mutation and `tests/rig-macos.bats` proves a Dock-local finding is isolated.
 
 ### RIG-STATE-016 — Bootstrap materialisation
 
@@ -190,13 +190,13 @@ _Evidence:_ `rig_observe_resource_plan`, `rig_print_resource_status`, and the re
 
 ### RIG-STATE-019 — Resource application and retirement
 
-`rig apply` MUST preflight every selected tool, setting, Dock layout, service, scheduled job, stale receipt provider, built-in or extension operation, executable, and receipt target before the first mutation. `rig bootstrap` MUST preserve that boundary except for the explicit built-in manager-readiness stages defined by RIG-ORCH-018, and MUST complete a normal apply preflight after those stages. Both commands MUST apply dependency-ordered tools before dependent managed resources, then perform stale resource retirements. A failed tool MUST suppress dependent resources while independent resources continue. Retirement MUST not begin after any selected application failure. Dry-run MUST invoke no provider, write no state, and print every desired managed-resource record and pending retirement.
+`rig apply` MUST preflight every selected tool, setting, Dock layout, service, scheduled job, stale receipt provider, built-in or extension operation, executable, and receipt target before the first mutation. `rig bootstrap` MUST preserve that boundary except for the explicit built-in manager-readiness stages defined by RIG-ORCH-018, and MUST complete a normal apply preflight after those stages. Both commands MUST apply dependency-ordered tools before dependent managed resources, then perform stale resource retirements. A failed tool MUST suppress dependent resources while independent resources continue. A resource-local preflight finding MUST produce a failed row and MUST NOT block independent selected resources. Any selected resource failure MUST prevent stale retirement and receipt replacement. Dry-run MUST invoke no provider, write no state, and print every desired managed-resource record and pending retirement with its planned, failed, or blocked outcome.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests complete-plan rejection without a mutation log, literal complete dry-run, dependency suppression, independent continuation, native failures, resource ordering, and apply/bootstrap parity.
+_Verify:_ Bats tests shared complete-plan rejection without a mutation log, resource-local preflight isolation, a literal complete dry-run, dependency suppression, independent continuation, native failures, retirement withholding, receipt preservation, resource ordering, and apply/bootstrap parity.
 
-_Evidence:_ `rig_preflight_apply`, `rig_resource_blocker`, `rig_command_apply`, and `rig_command_bootstrap` implement ordered application and deferred retirement; `resource apply preflights every provider before any mutation`, `resource apply failure preserves the previous atomic receipt`, and apply/bootstrap scope and parity tests cover those boundaries.
+_Evidence:_ `rig_preflight_apply`, `rig_resource_blocker`, `rig_command_apply`, and `rig_command_bootstrap` implement classified preflight, ordered application, and deferred retirement; `tests/rig-macos.bats`, `resource apply preflights every provider before any mutation`, `resource apply failure preserves the previous atomic receipt`, and apply/bootstrap scope and parity tests cover those boundaries.
 
 ### RIG-STATE-020 — Reconciliation receipt
 

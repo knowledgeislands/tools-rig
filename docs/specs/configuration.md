@@ -66,13 +66,13 @@ _Evidence:_ `rig_toml_parse_array` decodes one basic string at a time into the e
 
 ### RIG-CONF-007 — Bounded path expansion
 
-Rig MUST expand a leading `~/` only while loading provider `executable` and `manifest` fields and direct-download `install.destination` fields. When comparing tool artifacts, Rig MUST derive absolute comparison identity from a leading `~/` or `$HOME/` without changing the stored declaration. Rig MUST preserve embedded variables, other variable names, relative paths, and all other value text literally.
+Rig MUST expand documented home forms without shell evaluation. Provider `executable` and `manifest` fields and direct-download `install.destination` fields MUST retain their existing leading `~/` loading contract. Tool-artifact comparison MUST derive an absolute identity from a leading `~/` or `$HOME/` without changing the stored declaration. Typed string settings and Dock paths MUST resolve exact whole-value `~`, `~/...`, `$HOME`, and `$HOME/...` forms; typed string settings MUST additionally resolve exact `file://$HOME` and `file://$HOME/...` forms. Observation, validation, dry-run preflight, and application MUST use the same resolved value. Rig MUST preserve the authored declaration, embedded variables, other variable names, relative paths, unsupported tilde forms, and all other value text literally.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests compare path and non-path values containing supported home prefixes, embedded variables, variable names, tildes, dollar signs, equals signs, and comment characters under an isolated home directory.
+_Verify:_ Bats tests compare and apply path and non-path values containing supported whole-value home forms, file URLs, embedded variables, other variable names, tildes, dollar signs, equals signs, and comment characters under an isolated home directory.
 
-_Evidence:_ `rig_add_field` performs the loading expansion allow-list; artifact comparison has its own bounded identity conversion; `tests/rig.bats` proves unsupported shell-significant text remains literal.
+_Evidence:_ `rig_add_field`, `rig_normalize_artifact_identity`, and `rig_expand_home_value` implement bounded field-specific conversion; `tests/rig.bats` and `tests/rig-macos.bats` prove supported forms resolve consistently and unsupported shell-significant text remains literal.
 
 ## Schema 1 tables
 

@@ -26,6 +26,8 @@ Neither command applies changes.
 
 ## Preview and materialise
 
+Apply and bootstrap preflight the complete selected plan before mutation. Shared configuration, trust, executable, platform, and receipt-boundary failures reject the plan with status 2. A resource-local environmental finding produces a failed row with status 1, prevents that resource from being invoked, and leaves independent work available.
+
 - `rig apply [--profile NAME] [--scope tools|resources|all] [--dry-run]` — preflight the resolved profile, print the selected scope in dry-run mode, or invoke built-in and explicitly allowed external mutation operations.
 - `rig bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]` — run Rig's native new-machine lifecycle for the configured bootstrap profile, an explicit profile, or the default-profile fallback.
 
@@ -74,6 +76,8 @@ Cleanup is maintenance, not a step in the everyday Rig lifecycle. It does not lo
 Every subcommand accepts `-h` or `--help` for command-local usage. `man rig` is the exhaustive reference.
 
 ## Interpret exit status
+
+Resource-local preflight findings are operational outcomes, not invalid configuration. They therefore use status 1. Shared preflight safety failures use status 2 and prevent every mutation.
 
 - Status 0 means the command completed successfully. For health commands, the checked rig is healthy.
 - Status 1 means an operational command completed with findings or a provider operation failed.

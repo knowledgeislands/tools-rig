@@ -26,7 +26,7 @@ The declarative model contains categories, one table per tool, composable profil
 
 Built-in provider identifiers resolve without a `[provider.ID]` table. Rig owns their adapter class, supported installation kinds, and fixed lifecycle operations. An optional table for a built-in may contain only documented provider-native configuration such as a manifest path, arguments, or executable override; it cannot grant a lifecycle capability or supply commands. A non-built-in provider requires `adapter = "custom"` and an allow-list of trusted extension operations. Its executable is either an explicit path or the exact conventional `${RIG_DATA_HOME}/providers/PROVIDER-ID` path; its invocation protocol never appears in ordinary configuration.
 
-The parser never sources files, evaluates commands, interprets shell syntax, or performs general environment expansion. Documented path fields alone expand a leading `~/`. All other dollar signs, substitutions, glob characters, separators, and embedded variables remain inert data.
+The parser never sources files, evaluates commands, interprets shell syntax, or performs general environment expansion. Documented path fields may expand exact whole-value `~`, `~/...`, `$HOME`, and `$HOME/...` forms. Typed string resources may additionally expand exact `file://$HOME` and `file://$HOME/...` forms. All other dollar signs, substitutions, glob characters, separators, variable names, unsupported tilde forms, and embedded variables remain inert data. Queries preserve the authored declaration; observation, validation, preview, and application use the same bounded runtime value.
 
 ## Consequences
 

@@ -33,6 +33,7 @@ RIG_RESOURCE_PLAN_SECTIONS=()
 RIG_RESOURCE_PLAN_RESULTS=()
 RIG_RESOURCE_PLAN_DETAILS=()
 RIG_RESOURCE_PLAN_STATES=()
+RIG_RESOURCE_PREFLIGHT_DETAILS=()
 RIG_STALE_RESOURCE_PROVIDERS=()
 RIG_STALE_RESOURCE_KINDS=()
 RIG_STALE_RESOURCE_IDS=()
@@ -53,6 +54,7 @@ RIG_INVOKED_PATH=
 RIG_PUBLISH_STAGE=
 RIG_PUBLISH_ROOT=
 RIG_PUBLISH_STAGING_ROOT=
+RIG_RESOURCE_PREFLIGHT_DETAIL=
 RIG_PUBLISH_RETAINED_ROOT=
 RIG_PUBLISH_COMPLETE=0
 RIG_CLEAN_CLAIM=
@@ -264,6 +266,7 @@ rig_model_reset() {
   RIG_RESOURCE_PLAN_RESULTS=()
   RIG_RESOURCE_PLAN_DETAILS=()
   RIG_RESOURCE_PLAN_STATES=()
+  RIG_RESOURCE_PREFLIGHT_DETAILS=()
   RIG_STALE_RESOURCE_PROVIDERS=()
   RIG_STALE_RESOURCE_KINDS=()
   RIG_STALE_RESOURCE_IDS=()
@@ -276,6 +279,7 @@ rig_model_reset() {
   RIG_VALUE=
   RIG_INDEX=
   RIG_COUNT=0
+  RIG_RESOURCE_PREFLIGHT_DETAIL=
   RIG_RESOLVED_PROFILE=
   RIG_RESOLVED_PLATFORM=
   RIG_PUBLICATION_PLATFORM_NEUTRAL=0
@@ -2197,6 +2201,20 @@ rig_launchd_domain() {
   RIG_VALUE=gui/$uid
 }
 
+rig_expand_home_value() {
+  local value
+
+  value=$1
+  case "$value" in
+    '~'|\$HOME) require_home || return 2; value=$HOME ;;
+    \~/*) require_home || return 2; value=$HOME/${value#\~/} ;;
+    \$HOME/*) require_home || return 2; value=$HOME/${value#\$HOME/} ;;
+    file://\$HOME) require_home || return 2; value=file://$HOME ;;
+    file://\$HOME/*) require_home || return 2; value=file://$HOME/${value#file://\$HOME/} ;;
+  esac
+  RIG_VALUE=$value
+}
+
 rig_launchd_expand_home() {
   local value
 
@@ -2682,6 +2700,10 @@ rig_setting_observe() {
   rig_get_value "$section_name" key || return 2; key=$RIG_VALUE
   rig_get_value "$section_name" value-type || return 2; value_type=$RIG_VALUE
   rig_get_value "$section_name" value || return 2; expected=$RIG_VALUE
+  if [ "$value_type" = string ]; then
+    rig_expand_home_value "$expected" || return
+    expected=$RIG_VALUE
+  fi
   actual=$("$command" read "$domain" "$key" 2>/dev/null)
   native_status=$?
   if [ "$native_status" -ne 0 ]; then
@@ -2710,6 +2732,10 @@ rig_setting_apply() {
   rig_get_value "$section_name" key || return 2; key=$RIG_VALUE
   rig_get_value "$section_name" value-type || return 2; value_type=$RIG_VALUE
   rig_get_value "$section_name" value || return 2; value=$RIG_VALUE
+  if [ "$value_type" = string ]; then
+    rig_expand_home_value "$value" || return
+    value=$RIG_VALUE
+  fi
   "$command" write "$domain" "$key" "-$value_type" "$value" 1>&2
 }
 
@@ -2727,7 +2753,7 @@ rig_dock_expected_paths() {
       item=${RIG_FIELD_VALUES[$field_index]}
       rig_get_value "dock-item.$item" path || return 2
       path=$RIG_VALUE
-      rig_launchd_expand_home "$path" || return
+      rig_expand_home_value "$path" || return
       rig_dock_normalize_path "$RIG_VALUE"
       expanded=$RIG_VALUE
       if [ -n "$joined" ]; then joined=$joined$'\n'$expanded; else joined=$expanded; fi
@@ -2811,7 +2837,7 @@ rig_dock_apply() {
       item_section=dock-item.$item
       rig_get_value "$item_section" kind || return 2; kind=$RIG_VALUE
       rig_get_value "$item_section" path || return 2
-      rig_launchd_expand_home "$RIG_VALUE" || return; path=$RIG_VALUE
+      rig_expand_home_value "$RIG_VALUE" || return; path=$RIG_VALUE
       if [ "$kind" = folder ]; then
         set -- --add "$path"
         if rig_get_value "$item_section" view; then view=$RIG_VALUE; set -- "$@" --view "$view"; fi
@@ -2827,17 +2853,25 @@ rig_dock_apply() {
 }
 
 rig_macos_resource_preflight() {
-  local section_name verb adapter command killall_command paths path
+  local section_name verb adapter command killall_command paths path value_type value
 
   section_name=$1
   verb=$2
   adapter=$3
+  RIG_RESOURCE_PREFLIGHT_DETAIL=
   [ "${RIG_RESOLVED_PLATFORM:-macos}" = macos ] ||
     rig_fail "provider '$adapter' requires platform 'macos'" || return
   case "$adapter" in
     macos-defaults)
       rig_macos_defaults_command; command=$RIG_VALUE
       rig_executable_available "$command" || rig_fail "provider '$adapter' executable unavailable: $command" || return
+      if [ "$verb" = apply-resource ]; then
+        rig_get_value "$section_name" value-type || return 2; value_type=$RIG_VALUE
+        rig_get_value "$section_name" value || return 2; value=$RIG_VALUE
+        if [ "$value_type" = string ]; then
+          rig_expand_home_value "$value" || return
+        fi
+      fi
       ;;
     macos-dock)
       rig_macos_dockutil_command; command=$RIG_VALUE
@@ -2849,7 +2883,10 @@ rig_macos_resource_preflight() {
         rig_dock_expected_paths "$section_name" || return
         paths=$RIG_VALUE
         while IFS= read -r path; do
-          [ -e "$path" ] || rig_fail "[$section_name] Dock item path is missing: $path" || return
+          if [ ! -e "$path" ]; then
+            RIG_RESOURCE_PREFLIGHT_DETAIL="dock-item-path-missing:$path"
+            return 1
+          fi
         done <<< "$paths"
       fi
       ;;
@@ -4365,7 +4402,7 @@ rig_command_doctor() {
 }
 
 rig_preflight_apply() {
-  local scope index section_name
+  local scope index section_name native_status
 
   scope=${1:-all}
   if [ "$scope" != resources ]; then
@@ -4379,10 +4416,20 @@ rig_preflight_apply() {
     done
   fi
   [ "$scope" != tools ] || return 0
+  RIG_RESOURCE_PREFLIGHT_DETAILS=()
   index=0
   while [ "$index" -lt "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" ]; do
     section_name=${RIG_RESOURCE_PLAN_SECTIONS[$index]}
-    rig_preflight_resource "$section_name" apply-resource || return
+    RIG_RESOURCE_PREFLIGHT_DETAIL=
+    rig_preflight_resource "$section_name" apply-resource
+    native_status=$?
+    case "$native_status" in
+      0) RIG_RESOURCE_PREFLIGHT_DETAILS[$index]= ;;
+      1)
+        RIG_RESOURCE_PREFLIGHT_DETAILS[$index]=${RIG_RESOURCE_PREFLIGHT_DETAIL:-resource-unavailable}
+        ;;
+      *) return "$native_status" ;;
+    esac
     index=$((index + 1))
   done
   index=0
@@ -4626,7 +4673,12 @@ rig_command_apply() {
     provider=$RIG_VALUE
     rig_resource_locator_summary "$section_name" || return 2
     locator=$RIG_VALUE
-    if [ "$dry_run" -eq 1 ]; then
+    if [ -n "${RIG_RESOURCE_PREFLIGHT_DETAILS[$index]:-}" ]; then
+      RIG_RESOURCE_PLAN_RESULTS[$index]=failed
+      RIG_RESOURCE_PLAN_DETAILS[$index]=preflight:${RIG_RESOURCE_PREFLIGHT_DETAILS[$index]}
+      failed=$((failed + 1))
+      operational_failure=1
+    elif [ "$dry_run" -eq 1 ]; then
       RIG_RESOURCE_PLAN_RESULTS[$index]=planned
       RIG_RESOURCE_PLAN_DETAILS[$index]=reconcile:$locator
       planned=$((planned + 1))
@@ -4664,12 +4716,12 @@ rig_command_apply() {
     kind=${RIG_STALE_RESOURCE_KINDS[$index]}
     id=${RIG_STALE_RESOURCE_IDS[$index]}
     locator=${RIG_STALE_RESOURCE_LOCATORS[$index]}
-    if [ "$dry_run" -eq 1 ]; then
-      printf '%s\t%s\t%s\tplanned\tretire:%s\n' "$id" "$kind" "$provider" "$locator"
-      planned=$((planned + 1))
-    elif [ "$operational_failure" -ne 0 ]; then
+    if [ "$operational_failure" -ne 0 ]; then
       printf '%s\t%s\t%s\tskipped\tblocked-by:resource-failure\n' "$id" "$kind" "$provider"
       skipped=$((skipped + 1))
+    elif [ "$dry_run" -eq 1 ]; then
+      printf '%s\t%s\t%s\tplanned\tretire:%s\n' "$id" "$kind" "$provider" "$locator"
+      planned=$((planned + 1))
     else
       rig_progress_step "retire $kind.$id via $provider"
       rig_retire_resource "$provider" "$kind" "$id" "$locator"

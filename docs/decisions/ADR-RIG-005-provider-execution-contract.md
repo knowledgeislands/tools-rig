@@ -42,6 +42,8 @@ External observation returns exactly one state token: `present`, `missing`, `dri
 
 Rig owns planning, preflight, progress, stable reports, failure isolation, and minimal resource reconciliation receipts. Providers retain their native manifests, resolution, execution semantics, credentials, caches, and observed state. Rig does not persist observed installation state. `rig clean` remains a separate Rig-cache command and never cleans provider-native caches; provider maintenance happens only through explicit `rig maintain`.
 
+Complete preflight distinguishes shared safety boundaries from findings local to one resource. Invalid configuration, untrusted operations, unavailable provider executables, unsupported platforms, and unsafe receipt boundaries stop the complete plan before mutation. A bounded resource-local environmental finding is recorded against that resource, prevents its invocation, and allows independent work to continue. Any failed selected resource blocks stale retirement and receipt replacement, and the command reports an operational failure.
+
 ## Consequences
 
 Ordinary users declare intent without maintaining a parallel registry of adapters and capabilities. Built-in integrations can provide richer typed validation and more useful diagnostics while remaining Bash 3.2-compatible and platform-gated.

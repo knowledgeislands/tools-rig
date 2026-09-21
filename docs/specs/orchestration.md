@@ -141,13 +141,13 @@ _Evidence:_ `rig_custom_provider_executable` resolves one explicit or convention
 
 ### RIG-ORCH-011 — Ordered failure boundary
 
-After a work unit fails, Rig MUST suppress only its transitive dependants, identify the blocking tool, and continue independent work.
+After a work unit fails, Rig MUST suppress only its transitive dependants, identify a blocking tool when one exists, and continue independent work. A resource-local preflight finding MUST fail only that resource, MUST prevent its invocation, and MUST NOT block an independent tool or resource. Configuration, provider trust, executable availability, platform, and shared state-boundary failures MUST remain fatal before mutation.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats fails a prerequisite and asserts its dependant is skipped with `blocked-by:TOOL` while independent work completes.
+_Verify:_ Bats fails a prerequisite and a resource-local preflight check, then asserts dependants are skipped, the locally failed resource is not invoked, and independent work completes; shared preflight failures still prevent every mutation.
 
-_Evidence:_ `rig_plan_blocker` and apply result arrays retain native failure detail and bound suppression to the failed branch.
+_Evidence:_ `rig_plan_blocker`, `rig_preflight_apply`, and apply result arrays retain failure detail and bound suppression to the failed branch; `tests/rig.bats` and `tests/rig-macos.bats` cover dependency and resource-local boundaries.
 
 ### RIG-ORCH-014 — Versioned extension-provider protocol
 

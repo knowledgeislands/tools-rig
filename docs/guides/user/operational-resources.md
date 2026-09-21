@@ -64,6 +64,8 @@ value = "true"
 
 The explicit value type lets Rig validate, compare, and apply the setting without a provider-owned YAML file or an arbitrary workstation script.
 
+String settings may use exact whole-value `~`, `~/...`, `$HOME`, or `$HOME/...` forms. A file URL may use exact `file://$HOME` or `file://$HOME/...`. Rig expands those values consistently for observation, preview validation, and application while `rig explain` retains the authored value. It does not expand embedded variables such as `prefix-$HOME`, other names such as `$WORK_HOME`, or shell syntax.
+
 ## Declare a semantic Dock layout
 
 A Dock layout names ordered items. Applications and folders retain their own semantic options:
@@ -89,6 +91,8 @@ items = ["system-settings", "downloads"]
 ```
 
 Rig validates every item and required path before replacing the selected Dock layout.
+
+Dock paths accept exact whole-value `~`, `~/...`, `$HOME`, and `$HOME/...` forms. Rig validates the resolved path before replacing a selected layout; all other text remains literal.
 
 ## Select a workstation
 
@@ -118,7 +122,11 @@ rig apply --profile workstation --dry-run
 
 Declaration queries are inert. Status and doctor perform observation only. Dry-run preflights the complete plan and discloses deferred programs, schedules, settings, ordered Dock items, paths, policies, and pending retirements without invoking providers or writing state.
 
+Configuration, provider trust, executable, platform, and receipt-boundary failures reject the complete plan before mutation. A finding local to one resource appears as a failed row while independent resources remain planned.
+
 ## Apply and retire
+
+A resource with a local preflight finding is not invoked, independent resources may still reconcile, and the command exits with status 1. Any selected resource failure withholds stale retirement and receipt replacement.
 
 `rig apply` reconciles the exact selected profile after complete preflight. `rig bootstrap` first identifies and verifies required managers and then performs the same declared reconciliation; it does not install missing manager systems, and neither command requires a bootstrap provider or setup tools.
 

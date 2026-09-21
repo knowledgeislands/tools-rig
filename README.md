@@ -152,6 +152,8 @@ Rig configuration is inert TOML; Rig never sources it as shell code. Built-in op
 
 Personal catalogue data, host-specific paths, credentials, provider-native state, and observed machine state belong in private configuration or their native systems. A public export contains only the selected public profile's allow-listed catalogue data.
 
+Rig resolves only documented whole-value home forms for typed string settings and Dock paths; configuration remains inert and queries retain authored values. Application completes preflight before mutation: shared safety failures reject the plan, while a resource-local environmental finding fails only that resource and leaves independent work available. Any selected resource failure blocks retirement and receipt replacement.
+
 ## Documentation
 
 - [Use Rig](docs/guides/user/README.md) explains the user journey and routes to focused guides.

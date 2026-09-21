@@ -29,6 +29,8 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 
 ### Behaviours
 
+- Typed string settings and Dock paths resolve bounded whole-value home forms consistently across observation, preflight, and application while preserving inert authored configuration and literal query output.
+- Resource-local preflight findings produce failed rows without blocking independent work; shared safety failures remain fail-before-mutation, and any selected resource failure withholds retirement and receipt replacement.
 - Tool-owned generated artifacts remain observation-only under the lifecycle of their native tool.
 - macOS application artifact health requires a readable `Info.plist` and a working executable beneath `Contents/MacOS`, exposing broken URL-handler bundles as drift.
 - A standalone Bash 3.2-compatible executable with no required runtime dependency beyond Bash.

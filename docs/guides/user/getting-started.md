@@ -122,6 +122,8 @@ rig apply
 
 Rig preflights the complete selected plan before mutation, orders required tools before dependants, and invokes only built-in or explicitly trusted external operations. Homebrew remains responsible for Homebrew resolution and state; Rig coordinates the declared intent.
 
+Shared configuration, trust, executable, platform, and receipt-boundary failures stop the complete application plan before mutation. A path or equivalent environmental finding local to one resource fails that row while independent resources continue; any selected resource failure still withholds stale retirement and receipt replacement.
+
 ## Keep generated artifacts with their tool
 
 When a capability also creates a durable launcher, URL handler, or comparable path that you want Rig to inspect, keep one catalogue entry and add the path to that tool's `artifacts` array. `rig explain` shows the ownership, while `rig status` and `rig doctor` check the path and, for macOS application bundles, their basic structure.

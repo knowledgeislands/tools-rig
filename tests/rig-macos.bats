@@ -32,7 +32,7 @@ setup() {
     'rationale = "Make navigation predictable"' 'provider = "macos-dock"' 'platforms = ["macos"]' \
     'items = ["alpha", "documents"]' \
     '[dock-item.alpha]' 'kind = "application"' 'path = "~/Applications/Alpha.app"' \
-    '[dock-item.documents]' 'kind = "folder"' 'path = "~/Documents"' 'view = "grid"' \
+    '[dock-item.documents]' 'kind = "folder"' 'path = "$HOME/Documents"' 'view = "grid"' \
     'display = "folder"' >"$CONFIG_HOME/rig.toml"
 }
 
@@ -82,6 +82,83 @@ run_rig() {
   [ "$status" -ne 0 ]
   [[ "$output" == *"unsupported value-type 'number'"* ]]
   [ ! -e "$MACOS_LOG" ]
+}
+
+@test "string settings expand only bounded home forms" {
+  mkdir -p "$TEST_HOME/Downloads"
+  printf '%s\n' '#!/usr/bin/env bash' \
+    'printf "defaults" >>"$MACOS_LOG"' \
+    'for argument in "$@"; do printf " <%s>" "$argument" >>"$MACOS_LOG"; done; printf "\n" >>"$MACOS_LOG"' \
+    'case "$1:$3" in read:CapturePath) printf "%s\n" "$HOME/Downloads" ;; read:HomeURL) printf "file://%s/\n" "$HOME" ;; read:Literal) printf "%s\n" "prefix-\$HOME/x" ;; esac' \
+    >"$DEFAULTS_FAKE"
+  chmod +x "$DEFAULTS_FAKE"
+  printf '%s\n' \
+    '[rig]' 'schema = 1' 'default-profile = "default"' \
+    '[profile.default]' 'settings = ["capture-path", "home-url", "literal"]' \
+    '[setting.capture-path]' 'name = "Capture path"' 'purpose = "Store captures"' \
+    'rationale = "Keep captures together"' 'provider = "macos-defaults"' \
+    'domain = "example.capture"' 'key = "CapturePath"' 'value-type = "string"' \
+    'value = "$HOME/Downloads"' 'platforms = ["macos"]' \
+    '[setting.home-url]' 'name = "Home URL"' 'purpose = "Open home"' \
+    'rationale = "Keep a stable home shortcut"' 'provider = "macos-defaults"' \
+    'domain = "example.finder"' 'key = "HomeURL"' 'value-type = "string"' \
+    'value = "file://$HOME/"' 'platforms = ["macos"]' \
+    '[setting.literal]' 'name = "Literal"' 'purpose = "Preserve text"' \
+    'rationale = "Do not interpolate embedded variables"' 'provider = "macos-defaults"' \
+    'domain = "example.literal"' 'key = "Literal"' 'value-type = "string"' \
+    'value = "prefix-$HOME/x"' 'platforms = ["macos"]' >"$CONFIG_HOME/rig.toml"
+
+  run_rig status
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'capture-path\tsetting\tmacos-defaults\tpresent\t-'* ]]
+  [[ "$output" == *$'home-url\tsetting\tmacos-defaults\tpresent\t-'* ]]
+  [[ "$output" == *$'literal\tsetting\tmacos-defaults\tpresent\t-'* ]]
+
+  : >"$MACOS_LOG"
+  run_rig apply --scope resources
+  [ "$status" -eq 0 ]
+  grep -F "defaults <write> <example.capture> <CapturePath> <-string> <$TEST_HOME/Downloads>" "$MACOS_LOG"
+  grep -F "defaults <write> <example.finder> <HomeURL> <-string> <file://$TEST_HOME/>" "$MACOS_LOG"
+  grep -F 'defaults <write> <example.literal> <Literal> <-string> <prefix-$HOME/x>' "$MACOS_LOG"
+
+  : >"$MACOS_LOG"
+  run env -u HOME RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RIG_DEFAULTS="$DEFAULTS_FAKE" \
+    RIG_DOCKUTIL="$DOCKUTIL_FAKE" RIG_KILLALL="$KILLALL_FAKE" \
+    MACOS_LOG="$MACOS_LOG" "$RIG" apply --scope resources --dry-run
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'HOME is required'* ]]
+  [ ! -s "$MACOS_LOG" ]
+}
+
+@test "resource-local preflight failure does not block independent resources" {
+  printf '%s\n' \
+    '[rig]' 'schema = 1' 'default-profile = "default"' \
+    '[profile.default]' 'settings = ["dark-mode"]' 'docks = ["main"]' \
+    '[setting.dark-mode]' 'name = "Dark mode"' 'purpose = "Use a dark appearance"' \
+    'rationale = "Reduce glare"' 'provider = "macos-defaults"' 'domain = "NSGlobalDomain"' \
+    'key = "AppleInterfaceStyleSwitchesAutomatically"' 'value-type = "bool"' 'value = "true"' \
+    'platforms = ["macos"]' \
+    '[dock.main]' 'name = "Main Dock"' 'purpose = "Keep destinations ordered"' \
+    'rationale = "Make navigation predictable"' 'provider = "macos-dock"' 'platforms = ["macos"]' \
+    'items = ["missing"]' \
+    '[dock-item.missing]' 'kind = "folder"' 'path = "$HOME/Missing"' \
+    >"$CONFIG_HOME/rig.toml"
+
+  run_rig apply --scope resources --dry-run
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'main\tdock\tmacos-dock\tfailed\tpreflight:dock-item-path-missing:'"$TEST_HOME/Missing"* ]]
+  [[ "$output" == *$'dark-mode\tsetting\tmacos-defaults\tplanned'* ]]
+  [ ! -e "$MACOS_LOG" ]
+
+  run_rig apply --scope resources
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'main\tdock\tmacos-dock\tfailed\tpreflight:dock-item-path-missing:'"$TEST_HOME/Missing"* ]]
+  [[ "$output" == *$'dark-mode\tsetting\tmacos-defaults\tcompleted'* ]]
+  grep -F 'defaults <write> <NSGlobalDomain> <AppleInterfaceStyleSwitchesAutomatically> <-bool> <true>' "$MACOS_LOG"
+  ! grep -F 'dockutil <--remove>' "$MACOS_LOG"
+  ! grep -F 'killall <Dock>' "$MACOS_LOG"
+  [ ! -e "$BATS_TEST_TMPDIR/state/resources/macos.tsv" ]
 }
 
 @test "built-in application inventory excludes wrapped mobile bundles" {

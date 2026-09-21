@@ -4,13 +4,13 @@ area: CORE
 title: Expand declared home paths
 theme: orchestration
 horizon: next
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: 25f1cc6f79fd06cb35a905a9449a5e0d3b517395
 transferred_from: TRD-3a1ab790
 created_at: 2026-09-21T12:06:12Z
-updated_at: 2026-09-21T12:23:16Z
+updated_at: 2026-09-21T12:50:22Z
 ---
 
 # RIG-CORE-014: Expand declared home paths
@@ -33,17 +33,17 @@ Dock paths expand only `~` forms through a launchd-named helper. macOS setting v
 
 ## Steps
 
-- [ ] Add one bounded, non-evaluating semantic-value helper for exact `~`, `~/...`, `$HOME`, `$HOME/...`, `file://$HOME`, and `file://$HOME/...` forms.
-- [ ] Use the same expanded value for string-setting observation and application, and for Dock observation, preflight, and application.
-- [ ] Preserve embedded variables, other variable names, unsupported tilde forms, and stored/query values literally.
-- [ ] Add positive and negative Bats coverage, including unset-`HOME` behaviour for recognised forms.
-- [ ] Align the living configuration decision, specifications, operational-resources guide, manual, and changelog.
+- [x] Add one bounded, non-evaluating semantic-value helper for exact `~`, `~/...`, `$HOME`, `$HOME/...`, `file://$HOME`, and `file://$HOME/...` forms.
+- [x] Use the same expanded value for string-setting observation and application, and for Dock observation, preflight, and application.
+- [x] Preserve embedded variables, other variable names, unsupported tilde forms, and stored/query values literally.
+- [x] Add positive and negative Bats coverage, including unset-`HOME` behaviour for recognised forms.
+- [x] Align the living configuration decision, specifications, operational-resources guide, manual, and changelog.
 
 ## Files touched
 
 - `bin/rig`
 - `tests/rig-macos.bats`
-- `docs/decisions/ADR-RIG-003-configuration-trust-and-grammar.md`
+- `docs/decisions/ADR-RIG-003-declarative-configuration-grammar.md`
 - `docs/specs/configuration.md`
 - `docs/specs/state.md`
 - `docs/specs/orchestration.md`
@@ -81,6 +81,38 @@ Add consumer examples and limitations to the operational-resources guide.
 ### Roadmap
 
 Keep this record as the delivery and review authority; no follow-on item is expected unless verification exposes a separate concern.
+
+## Review
+
+### Delivered
+
+From immutable baseline `25f1cc6f79fd06cb35a905a9449a5e0d3b517395`, delivered the approved bounded home-value contract without shell evaluation, general environment expansion, or changes to authored query output.
+
+### Summary of changes
+
+- Added one non-evaluating runtime expansion helper for the accepted whole-value home forms.
+- Applied identical semantics to string-setting observation, preflight, and application and to Dock observation, preflight, and application.
+- Preserved literal declaration queries and unsupported variable forms.
+- Updated the living decision, Specifications, user guides, README, manual, and changelog.
+
+### Verification
+
+- `ki repo audit --repo .` — passed.
+- `shellcheck bin/rig install.sh` — passed.
+- `bats tests/` — passed, including new paths, file URLs, unsupported embedded variables, Dock paths, and unset-home cases.
+- `mandoc -T lint man/rig.1` — passed.
+
+### Outstanding concerns
+
+None within the approved boundary.
+
+### Post-change review
+
+A fresh scope and regression review confirms stored declarations remain inert, launchd retains its existing path semantics, supported resource values resolve consistently, and the CLI surface is unchanged. The item is ready for human acceptance.
+
+### Mini recap
+
+Rig now accepts portable home-relative macOS setting and Dock declarations without phantom drift or impossible preflight, while unsupported text stays literal.
 
 ## Discussion
 

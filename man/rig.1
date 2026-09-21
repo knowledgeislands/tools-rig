@@ -217,14 +217,20 @@ applies, repairs, publishes, or invokes unselected providers.
 Preflight every selected bound tool, operational resource, stale receipt
 entry, and receipt target before invoking providers. Tools run in
 dependency-first order, followed by selected resources and stale retirement.
-A failure skips only dependent work; independent work continues. The atomic
-resource receipt advances only after the complete resource plan succeeds.
+A failure skips only dependent work; independent work continues. A
+resource-local preflight finding produces a failed row and prevents only that
+resource from being invoked. Shared configuration, trust, executable,
+platform, and receipt-boundary failures stop the plan before mutation. The
+atomic resource receipt advances only after the complete resource plan
+succeeds, and stale retirement is withheld after any selected resource
+failure.
 .TP
 .BI "rig apply \-\-profile " NAME
 Apply a named resolved profile without changing the configured default.
 .TP
 .B rig apply \-\-dry-run
-Perform complete preflight and print planned work without invoking a provider.
+Perform complete preflight and print planned or resource-local failed work
+without invoking a provider.
 .TP
 .BI "rig apply \-\-scope " tools|resources|all
 Limit reconciliation to selected tool installations, to managed resources and
@@ -562,6 +568,20 @@ is
 .BR float ,
 or
 .BR string .
+.PP
+String setting values and Dock paths resolve exact whole-value
+.BR ~ ,
+.BR ~/... ,
+.BR $HOME ,
+and
+.B $HOME/...
+forms. String settings additionally resolve exact
+.B file://$HOME
+and
+.B file://$HOME/...
+forms. Rig does not expand embedded variables, other variable names,
+unsupported tilde forms, or shell syntax. Queries retain the authored value;
+observation, preflight, and application use the resolved value.
 .PP
 .B [dock.ID]
 declares one semantic macOS Dock order. It requires
@@ -1165,15 +1185,16 @@ maintain, or capture, including neutral catalogue-only rows and unsupported
 lifecycle skips.
 .TP
 .B 1
-Valid unhealthy observation or doctor finding, provider runtime failure,
-dependency suppression, or diagnostic finding. For
+Valid unhealthy observation or doctor finding, resource-local preflight
+finding, provider runtime failure, dependency suppression, or diagnostic
+finding. For
 .B rig diag
 this means configuration is missing or invalid.
 .TP
 .B 2
 Invalid command syntax, unknown query identity, invalid configuration,
-resolution failure, or apply, bootstrap, update, maintain, or capture
-preflight failure.
+resolution failure, or shared apply, bootstrap, update, maintain, or capture
+preflight safety failure.
 .SH SEE ALSO
 \&
 .BR bash (1),

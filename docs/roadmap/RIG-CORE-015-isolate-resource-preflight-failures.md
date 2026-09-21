@@ -4,13 +4,13 @@ area: CORE
 title: Isolate resource preflight failures
 theme: orchestration
 horizon: next
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: 25f1cc6f79fd06cb35a905a9449a5e0d3b517395
 transferred_from: TRD-3a1ab790
 created_at: 2026-09-21T12:06:12Z
-updated_at: 2026-09-21T12:23:16Z
+updated_at: 2026-09-21T12:50:22Z
 ---
 
 # RIG-CORE-015: Isolate resource preflight failures
@@ -33,12 +33,12 @@ Do not weaken configuration parsing, provider trust checks, dependency ordering,
 
 ## Steps
 
-- [ ] Classify built-in resource checks as shared-fatal or resource-local without changing configuration and trust validation.
-- [ ] Record local preflight failures against their resource plan rows, continue preflighting the complete plan, and skip only failed resources during execution.
-- [ ] Preserve fail-before-mutation behaviour for provider capability, executable, receipt, and other shared safety failures.
-- [ ] Keep dry-run non-mutating and deterministic, return 1 for local failed rows, and prevent retirement or receipt replacement after any selected resource failure.
-- [ ] Add Bats coverage proving an invalid Dock item does not block independent resources while global preflight failures still block every mutation.
-- [ ] Align the living execution decision, specifications, operational-resources guide, manual, and changelog.
+- [x] Classify built-in resource checks as shared-fatal or resource-local without changing configuration and trust validation.
+- [x] Record local preflight failures against their resource plan rows, continue preflighting the complete plan, and skip only failed resources during execution.
+- [x] Preserve fail-before-mutation behaviour for provider capability, executable, receipt, and other shared safety failures.
+- [x] Keep dry-run non-mutating and deterministic, return 1 for local failed rows, and prevent retirement or receipt replacement after any selected resource failure.
+- [x] Add Bats coverage proving an invalid Dock item does not block independent resources while global preflight failures still block every mutation.
+- [x] Align the living execution decision, specifications, operational-resources guide, manual, and changelog.
 
 ## Files touched
 
@@ -83,6 +83,38 @@ Explain to operators which preflight failures stop the plan and which fail one r
 ### Roadmap
 
 Keep this record as the delivery and review authority; no follow-on item is expected unless verification exposes a separate concern.
+
+## Review
+
+### Delivered
+
+From immutable baseline `25f1cc6f79fd06cb35a905a9449a5e0d3b517395`, delivered the approved resource-local preflight isolation while preserving shared fail-before-mutation safety boundaries.
+
+### Summary of changes
+
+- Classified missing Dock item paths as resource-local preflight findings while retaining shared provider, executable, platform, and receipt checks.
+- Added deterministic failed-row handling for dry-run and apply without invoking the failed resource.
+- Kept independent resources available, returned overall status 1, withheld stale retirement, and prevented receipt replacement after failure.
+- Updated the living decision, Specifications, user guides, README, manual, and changelog.
+
+### Verification
+
+- `ki repo audit --repo .` — passed.
+- `shellcheck bin/rig install.sh` — passed.
+- `bats tests/` — passed, including local Dock-path isolation and existing shared-preflight fail-before-mutation cases.
+- `mandoc -T lint man/rig.1` — passed.
+
+### Outstanding concerns
+
+None within the approved boundary.
+
+### Post-change review
+
+A fresh safety review confirms the complete plan is still preflighted before mutation, locally failed resources are never invoked, shared failures retain status 2, and receipt atomicity remains intact. The item is ready for human acceptance.
+
+### Mini recap
+
+One unavailable resource can no longer make unrelated recovery work unreachable, while shared safety failures still close the whole plan.
 
 ## Discussion
 
