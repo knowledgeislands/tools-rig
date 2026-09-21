@@ -188,12 +188,12 @@ _Verify:_ Bats tests parse applications and folders, preserve selected item orde
 
 _Evidence:_ `rig_validate_dock`, `rig_validate_dock_item`, and `rig_dock_expected_paths` retain and validate semantic item order; `typed macOS resources query and dry-run deterministically` and `typed macOS resources observe and apply through native command fakes` in `tests/rig-macos.bats` cover application and folder declarations through planning and application.
 
-### RIG-CONF-019 — Closed artifact reconciler
+### RIG-CONF-019 — Observation-only artifact declarations
 
-A tool MAY declare string `artifact.reconciler`. The value MUST name a closed Rig-owned reconciler and MUST NOT be an executable path or configured command. The `codex-multi-auth-app-launcher` reconciler MUST require exactly one `$HOME/Applications/Codex Multi Auth.app` or `~/Applications/Codex Multi Auth.app` artifact, a macOS-only tool, and the exact npm global `codex-multi-auth` installation. Unknown reconcilers and incompatible declarations MUST fail during model validation.
+A tool MAY declare an `artifacts` array of durable paths owned by that capability. Artifact declarations MUST remain inert configuration data and MUST NOT name an executable, command, argument list, or lifecycle hook. Unknown artifact lifecycle fields MUST fail closed during parsing.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats accepts the exact supported declaration and rejects unknown identities, missing artifacts, other destinations, incompatible installation tuples, and non-macOS tool declarations before invocation.
+_Verify:_ Bats accepts artifact arrays, rejects unknown artifact lifecycle fields before invocation, and proves configuration loading remains non-executing.
 
-_Evidence:_ `rig_toml_field` admits the one schema field and `rig_validate_artifact_reconciler` enforces the closed declaration contract; `tests/rig-artifacts.bats` covers every boundary.
+_Evidence:_ `rig_toml_field` admits only the `artifacts` array for this concern; `tests/rig-artifacts.bats` and parser rejection tests cover the boundary.

@@ -230,10 +230,10 @@ _Evidence:_ `rig_preflight_lifecycle_task` and `rig_run_lifecycle_tasks` impleme
 
 ### RIG-STATE-023 — Generated-artifact state
 
-Artifact observation MUST remain read-only and authoritative for `rig status` and `rig doctor`. A macOS application artifact MUST be a real directory with a readable regular `Contents/Info.plist` and at least one entry beneath a real `Contents/MacOS` directory that resolves to a regular executable; otherwise Rig MUST report drift. A dry run MUST report a planned supported reconciler without requiring or invoking its executable. Successful reconciliation MUST verify the reconciler-specific postcondition, while deselection MUST NOT uninstall the tool or delete its artifacts.
+Artifact observation MUST remain read-only and authoritative for `rig status` and `rig doctor`. A macOS application artifact MUST be a real directory with a readable regular `Contents/Info.plist` and at least one entry beneath a real `Contents/MacOS` directory that resolves to a regular executable; otherwise Rig MUST report drift. Profile deselection MUST NOT uninstall a tool or delete its artifacts.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats covers missing, unsafe, structurally damaged, broken-executable, healthy, dry-run, success, and failure states, including an observation-only application artifact.
+_Verify:_ Bats covers missing, unsafe, structurally damaged, broken-executable, and healthy application artifacts without invoking a generator.
 
-_Evidence:_ `rig_observe_tool_artifacts`, `rig_verify_artifact_reconciler`, and the apply and update reports implement the state contract; `tests/rig-artifacts.bats` supplies isolated filesystem evidence.
+_Evidence:_ `rig_observe_tool_artifacts` implements the state contract; `tests/rig-artifacts.bats` supplies isolated filesystem evidence.

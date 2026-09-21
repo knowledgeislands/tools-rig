@@ -119,24 +119,7 @@ Do not create separate profiles merely to name lifecycle commands. `bootstrap-pr
 
 ## Generated artifacts
 
-Generated launchers and handlers belong to their owning tool rather than becoming separate catalogue tools. Declare their paths in the tool's `artifacts` array so `explain`, `status`, and `doctor` can account for them. Most artifacts remain observation-only because their native application creates them. Rig exposes `artifact.reconciler` only for a small closed set of native lifecycle integrations; it is not a configurable command hook.
-
-```toml
-[tool.codex-multi-auth]
-name = "Codex Multi Auth"
-category = "accounts"
-purpose = "Switch between Codex account contexts"
-rationale = "Keeps account selection explicit"
-platforms = ["macos"]
-artifacts = ["$HOME/Applications/Codex Multi Auth.app"]
-artifact.reconciler = "codex-multi-auth-app-launcher"
-install.provider = "npm"
-install.kind = "global"
-install.locator = "codex-multi-auth"
-install.platforms = ["macos"]
-```
-
-For this supported declaration, `apply`, `bootstrap`, and `update` refresh the bundle only after npm work succeeds and then verify it. Dry-run reports the extra planned step without invoking the generator. Removing the tool from a profile does not uninstall the package or delete its artifact.
+Generated paths belong to the tool whose capability they expose rather than becoming separate catalogue tools. Declare a path in the tool's `artifacts` array only when it is a durable part of that capability which a user wants Rig to inspect. `explain`, `status`, and `doctor` then account for it, while the native tool remains responsible for creating, updating, and removing it. Rig configuration cannot turn an artifact into a lifecycle command or task hook.
 
 ## Commands
 

@@ -263,12 +263,12 @@ _Verify:_ Bats selects duplicate and unsupported provider work, compares exact n
 
 _Evidence:_ `rig_lifecycle_supported`, `rig_collect_lifecycle_tasks`, `rig_execute_lifecycle_task`, and `rig_command_capture` implement the fixed lifecycle registry and deduplicated dispatch; `tests/rig-lifecycle.bats` covers each supported provider, unsupported reporting, and Homebrew manifest capture.
 
-### RIG-ORCH-025 — Generated-artifact reconciliation
+### RIG-ORCH-025 — Artifact lifecycle ownership
 
-After the owning installation succeeds, `rig apply` and `rig bootstrap` MUST run the tool's supported native artifact reconciler and verify its postcondition. After the owning tool update succeeds, `rig update` MUST do the same. For `codex-multi-auth-app-launcher`, Rig MUST resolve the global package root through the selected npm executable and invoke the fixed regular `codex-multi-auth/scripts/codex-app-launcher.js` module through Node with zero configured arguments. It MUST reject unsafe destination or module shapes, MUST report a separate progress step, and MUST treat generator or postcondition failure as failure of the owning work item. Tools without a reconciler remain observation-only even when they declare artifacts.
+Rig MUST treat declared artifacts as observation-only state. `rig apply`, `rig bootstrap`, `rig update`, and `rig maintain` MUST NOT derive or invoke an artifact generator from configuration. Provider lifecycle work MAY create an artifact as a native side effect, but creation, update, and removal remain the native tool's responsibility and are not separate Rig work items.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats records exact provider-before-npm-root-before-module ordering for apply, bootstrap, and update; covers missing runtimes or modules, native failures, unhealthy postconditions, and observation-only artifacts; and asserts no invocation during dry-run.
+_Verify:_ Bats proves artifact declarations do not add provider invocations, progress steps, or dry-run work and that unknown artifact lifecycle fields fail closed.
 
-_Evidence:_ `rig_preflight_artifact_reconciler`, `rig_apply_artifact_reconciler`, `rig_command_apply`, and `rig_run_lifecycle_tasks` implement the closed orchestration path; `tests/rig-artifacts.bats` covers it.
+_Evidence:_ `rig_command_apply` and `rig_run_lifecycle_tasks` operate only on provider work; `tests/rig-artifacts.bats` covers observation independently.
