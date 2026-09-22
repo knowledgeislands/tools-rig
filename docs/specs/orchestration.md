@@ -309,9 +309,9 @@ For a selected tool with `variant.ID.*` declarations, Rig MUST select exactly on
 
 _Conformance:_ conforming
 
-_Verify:_ Resolve one tool on macOS and Linux, compare provider bindings and observed artifacts, reject uncovered and overlapping platforms, and inspect public output.
+_Verify:_ Resolve one tool on macOS and Linux, compare selected provider installations and observed artifacts, reject uncovered and overlapping platforms, and inspect public output.
 
-_Evidence:_ `rig_select_tool_variants`, `rig_select_bindings`, and `rig_observe_tool_artifacts` consume one selected variant; `tests/rig-human-config.bats` covers both platforms and publication isolation.
+_Evidence:_ `rig_select_tool_variants`, `rig_resolve_profile`, and `rig_observe_tool_artifacts` consume one selected variant; `tests/rig-human-config.bats` covers both platforms and publication isolation.
 
 ### RIG-ORCH-030 — Resource dependency order and failure boundary
 

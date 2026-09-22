@@ -92,6 +92,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 
 ### Documentation
 
+- Living decisions retain durable rationale, Specifications own detailed accepted behaviour, and the manual separates configuration schema from filesystem locations.
 - The README and focused user guides now explain Rig's purpose, model, everyday lifecycle, and publication boundary before implementation details.
 - The consumer command guide covers every shipped command and participates in the tested public-surface alignment contract.
 - The definition of done and release guide now require explicit public-surface alignment and a pre-release documentation check.

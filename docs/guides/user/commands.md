@@ -54,9 +54,9 @@ rig bootstrap --dry-run
 ```
 
 - `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]` reconciles an operable complete profile in tools → skills → resources order.
-- `rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]` runs Rig's bounded new-machine lifecycle, verifies the required native managers, and then materialises the selected bootstrap profile.
+- `rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]` runs Rig's bounded new-machine lifecycle, stages supported declared manager prerequisites where needed, and then materialises the selected bootstrap profile.
 
-Bootstrap is a lifecycle stage, not a provider or a reason to create another profile. It does not install an absent package manager from arbitrary configuration.
+Bootstrap is a lifecycle stage, not a provider or a reason to create another profile. It can stage only Rig's fixed Homebrew → mise → npm prerequisite chain when the selected declarations require it; configuration cannot supply arbitrary setup commands.
 
 Both commands preflight the selected plan before the first mutation. A shared safety problem rejects the plan. A finding local to one managed resource fails that row while allowing independent work to remain visible.
 

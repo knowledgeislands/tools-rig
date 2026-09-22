@@ -12,32 +12,24 @@ decision_depends_on: [PDR-RIG-001, ADR-RIG-003, XDR-RIG-001]
 
 ## Context
 
-A public rig should be usable at a personal subdomain such as `rig.midnight.ninja` or beneath a site path such as `midnight.ninja/rig`. Hosting systems already own domain configuration, credentials, builds, presentation, caching, deployment, and rollback. Making a remote site the catalogue authority would couple local machine management to network availability and deployment state.
-
-Generating an HTML and CSS tree would make one presentation part of Rig's durable contract. A receiving website can make better use of reviewed catalogue data while retaining its own navigation, accessibility, and visual conventions.
+A public rig should work on a personal subdomain such as `rig.midnight.ninja` or below a site path such as `midnight.ninja/rig`. Hosting systems already own domains, credentials, builds, presentation, caching, deployment, and rollback. Making the remote site authoritative would couple local machine management to network and deployment state. Generating a presentation tree would also make one website design part of Rig's durable contract.
 
 ## Decision
 
-Rig treats a published rig as a derived, versioned data projection of one explicitly configured non-appliable view. Every disclosed declaration opts into that view. A view cannot inherit a complete profile, and each dependency in its resolved relationship closure must also opt in explicitly. `rig export` generates exactly one `rig.json` file in a complete local output tree without invoking providers, publishers, or the network.
+Rig treats a published rig as a derived, versioned data projection of one explicitly configured non-appliable view. Every disclosed declaration and every dependency in its public relationship closure must opt into that view.
 
-The projection is platform-neutral: profile membership records public intent, while each tool retains its declared supported platforms. It has top-level format identity `rig-publication`, integer schema version `2`, publication metadata, profile identity, selected categories, selected tools with public catalogue metadata and closed relationships, and a deterministic `profile.skills` array including when empty. A skill enters a view only through explicit membership. Its allow-list contains `id`, `name`, `purpose`, `rationale`, and an optional reviewed `public-source` projected as `source`. The publication's configured `base-url` is projected as `canonical_url` metadata.
+Export writes one deterministic `rig.json` artifact without invoking a provider, publisher, or network operation. The projection contains only the public catalogue meaning needed by a website and identifies its format and schema version. Provider configuration, installation details, managed resources, private ports, local paths, native state, observed state, and unmanaged inventory remain private.
 
-`rig publish` remains a separate explicit operation that invokes the publication's configured trusted publisher. The publisher and receiving website own rendering, credentials, hosting destination, deployment, and rollback. Rig owns deterministic selection, schema serialization, bounded artifact generation, trusted dispatch, and outcome reporting.
-
-The local catalogue remains canonical. A published file is never authority for private configuration or observed machine state. Rebuilding from the same schema version, resolved public profile, and publication configuration produces byte-equivalent data regardless of declaration order or publishing host platform.
-
-Port declarations, port numbers, qualified owners, listener observations, and unmanaged listener inventory are categorically private. They never enter a public projection, even when a port is assigned to the publication view.
-
-Skill authorities, installation sources, runtime mappings, local paths and roots, locks, arguments, observed state, and unmanaged skill inventory are categorically private. They never enter the public projection even when the skill is selected by the publication view.
+Publication is a separate, explicit handoff to a configured external publisher. Rig supplies data; the receiving site owns presentation and deployment.
 
 ## Consequences
 
-A person can inspect or validate `rig.json` before disclosure, and a website can render it without reading private Rig configuration. The same artifact can support a personal server, Cloudflare, GitHub, or another site without adding a hosting or presentation dependency to Rig core.
+A person can inspect the generated data before disclosure, and a website can render it without reading private Rig configuration. The same projection can support a subdomain, a sub-page, or another hosting system without adding presentation or hosting dependencies to Rig.
 
-Schema consumers must select support by the top-level format and version. Presentation previews, templates, themes, and interactive or server-side features remain outside Rig. Hosting-specific setup remains in the selected publisher or external site configuration rather than entering the catalogue schema.
+Schema consumers select support by the top-level format version. Presentation, templates, themes, hosting, and interactive behaviour remain outside Rig.
 
-## Related decisions
+## References
 
-- [PDR-RIG-001](PDR-RIG-001-catalogue-led-working-setup.md)
-- [ADR-RIG-003](ADR-RIG-003-declarative-configuration-grammar.md)
-- [XDR-RIG-001](XDR-RIG-001-executable-provider-boundary.md)
+- [PDR-RIG-001](PDR-RIG-001-catalogue-led-working-setup.md) — establishes the private catalogue as authority.
+- [ADR-RIG-003](ADR-RIG-003-declarative-configuration-grammar.md) — establishes inert local configuration.
+- [XDR-RIG-001](XDR-RIG-001-executable-provider-boundary.md) — defines disclosure and publisher trust boundaries.

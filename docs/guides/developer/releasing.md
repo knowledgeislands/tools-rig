@@ -11,6 +11,7 @@ Expected public routes are:
 
 - [ ] Complete the [definition of done](definition-of-done.md).
 - [ ] Compare `bin/rig`, top-level and command-local help, README orientation, user guides, `man/rig.1`, generated Bash and Zsh completions, `CHANGELOG.md`, Specifications, and Decision Records.
+- [ ] Read the affected guidance as a user: confirm the journey has a recognisable outcome, introduces concepts incrementally, uses copyable examples, and remains clear with realistic configuration.
 - [ ] Confirm examples agree on the declarative schema, implicit built-in providers, native apply, bootstrap, update, maintenance, capture, and cleanup lifecycles, managed-resource kinds, extension boundary, and changed command synopsis.
 - [ ] Update `RIG_VERSION` in `src/rig/00-runtime.bash`, assemble `bin/rig`, and confirm the drift check, `rig --version`, changelog release entry, intended `vX.Y.Z` tag, installer examples, and Homebrew formula handoff all agree.
 - [ ] Run the complete verification gate in [Develop Rig](README.md), including public command-inventory alignment tests and rendered manual inspection.

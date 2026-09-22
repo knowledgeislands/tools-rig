@@ -48,13 +48,13 @@ _Evidence:_ `tests/rig.bats` preserves `requires`, `related`, and `alternatives`
 
 ### RIG-CAT-005 — Tool installations
 
-Rig MUST treat a tool with complete `install.*` or selected `variant.ID.install.*` metadata as materialisable and connect it to exactly one built-in or explicitly declared external provider while retaining provider-native kind and locator values. Built-in provider identities MUST NOT require provider declarations. A catalogue-only tool has no installation metadata. Source configuration MUST NOT define a separate binding table.
+Rig MUST treat a tool with complete `install.*` or selected `variant.ID.install.*` metadata as materialisable and connect it to exactly one built-in or explicitly declared external provider while retaining provider-native kind and locator values. Built-in provider identities MUST NOT require provider declarations. A catalogue-only tool MUST have no installation metadata.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests resolve co-located tool installation metadata for implicit built-ins and explicit extensions without interpreting native manifests or locators as a Rig package database, and reject source-authored `[binding.*]` tables.
+_Verify:_ Bats tests resolve co-located tool installation metadata through implicit built-ins and explicit extensions without interpreting native manifests or locators as a Rig package database, and reject installation metadata outside its owning tool.
 
-_Evidence:_ `rig_synthesise_bindings`, `rig_validate_binding_adapter`, and `rig_resolve_bindings` derive one internal binding from each complete `install.*` declaration; the `source configuration rejects former binding tables before writing stdout` and `tool installation selects its declared provider when compatible` Bats tests cover the public boundary.
+_Evidence:_ `rig_validate_model` and `rig_resolve_profile` validate and resolve complete `install.*` declarations; tool-installation Bats tests cover the public boundary.
 
 ### RIG-CAT-006 — Stable validation result
 

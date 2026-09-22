@@ -420,7 +420,7 @@ basic-string arrays, blank lines, and comments. Accepted files are valid TOML.
 Rig rejects unused TOML features
 and does not source configuration, evaluate commands, interpret shell syntax,
 or perform general environment expansion.
-.SH ENVIRONMENT
+.SS ENVIRONMENT VARIABLES
 \&
 .TP
 .B RIG_CONFIG_HOME
@@ -489,7 +489,9 @@ Set the base cache directory when
 .B RIG_CACHE_HOME
 is unset. The fallback is
 .IR $HOME/.cache .
-.SH FILES
+.SS SCHEMA 1 TABLES
+\&
+.SS CATALOGUE AND PROFILES
 \&
 .TP
 .I ${XDG_CONFIG_HOME:-$HOME/.config}/rig/rig.toml
@@ -568,9 +570,10 @@ arrays remain accepted only when the merged configuration contains no
 item-owned membership. Tool
 .B install.*
 fields retain their native locator and argument data without executing it while
-configuration is loaded. Source-authored
-.B [binding.*]
-tables are invalid.
+configuration is loaded. Installation metadata is valid only in its owning
+tool table.
+.SS MANAGED RESOURCES
+\&
 .B [service.ID]
 and
 .B [scheduled-job.ID]
@@ -721,6 +724,9 @@ It accepts item-owned
 membership. Omitted membership selects the configured default profile; an
 empty array selects no profile. Port declarations are observation-only and
 never enter apply, receipt, or public projection data.
+\&
+.SS PROVIDERS AND INSTALLATIONS
+\&
 .PP
 Provider identities built into Rig need no
 .B [provider.ID]
@@ -814,7 +820,8 @@ group with the corresponding optional installation fields. Every platform
 declared by the tool must match exactly one variant. Rig rejects uncovered or
 overlapping variants and never includes their installation or artifact data in
 a public export.
-.PP
+.SS PUBLICATION AND EXTENSIONS
+\&
 .B [publication.ID]
 requires
 .BR profile ,
@@ -858,9 +865,11 @@ must be an absolute HTTP or HTTPS URL without a query or fragment. Rig appends
 a trailing slash when omitted and projects it as
 .B publication.canonical_url
 metadata. Rig does not generate presentation or navigation.
+\&
+.SS MINIMAL EXAMPLE
+\&
 .PP
 A minimal catalogue is:
-.PP
 .nf
 [rig]
 schema = 1
@@ -886,6 +895,11 @@ name = "Default rig"
 purpose = "Complete everyday setup"
 kind = "complete"
 .fi
+.SH FILES
+\&
+.TP
+.I ${XDG_CONFIG_HOME:-$HOME/.config}/rig/rig.toml
+Optional root configuration file.
 .TP
 .I ${XDG_CONFIG_HOME:-$HOME/.config}/rig/conf.d/*.toml
 Optional configuration fragments.
@@ -1107,6 +1121,26 @@ keeps native diagnostics on stderr, and emits a deterministic report on
 stdout. Unsupported selected providers are report-only skips. The
 .B \-\-dry-run
 form invokes no provider and writes no manifest.
+.SS DECLARATION LIFECYCLE
+\&
+.TS
+allbox tab(|);
+l l l.
+Declaration|Selected lifecycle|Deselection
+Tool|Observe, apply, update, maintain|No automatic removal
+Skill|Observe, apply, update where supported|No automatic removal
+Service or scheduled job|Observe, apply, receipt-backed retire|Retire after successful complete-profile reconciliation
+Setting or Dock layout|Observe and apply|No automatic reversal
+Private port|Observe only|No mutation
+.TE
+.PP
+Complete profiles may enter the mutating lifecycle. Views remain available for
+queries and publication but are rejected before mutation. Provider work is
+classified before execution as declaration-scoped, manifest-scoped, or
+provider-wide. Declaration-scoped work affects one selected declaration;
+manifest-scoped work changes one declared native manifest; provider-wide work
+invokes a bounded native operation whose effect may extend beyond one declared
+item. Dry-run reports the same classification without invoking the provider.
 .SS BUILT-IN MACOS RESOURCES
 \&
 .PP

@@ -18,6 +18,7 @@ Release publication has additional steps in [Release Rig](releasing.md).
 ## Align affected public surfaces
 
 - [ ] CLI help, command-local help, README orientation, user and developer guides, `man/rig.1`, Bash and Zsh completions, Specifications, Decision Records, and `CHANGELOG.md` agree wherever the change affects them.
+- [ ] Affected guidance leads its intended reader to a recognisable outcome, introduces concepts before relying on them, uses copyable examples, and remains readable against realistic configuration.
 
 ## Check distribution impact
 

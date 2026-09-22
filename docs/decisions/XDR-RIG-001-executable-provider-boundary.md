@@ -12,31 +12,25 @@ decision_depends_on: [PDR-RIG-001, ADR-RIG-003]
 
 ## Context
 
-Rig must inspect declarative intent without silently executing it. Built-in providers necessarily invoke native programs, while external providers and publishers may execute arbitrary code that can inspect, change, or disclose local state. A command string hidden in data would blur that transition and make argument boundaries, review, and failure behaviour unreliable.
+Rig must inspect declarative intent without silently executing it. Built-in providers invoke reviewed native commands, while external providers and publishers may execute arbitrary code that can inspect, change, or disclose local state. Commands hidden in configuration would blur that transition and make arguments, review, and failure behaviour unreliable.
 
-Publication adds a separate disclosure risk because a useful private rig can contain rationale, machine policy, paths, and relationships that do not belong in a public projection.
+Publication creates a separate disclosure boundary because useful private configuration can contain native ownership, paths, machine policy, and relationships that do not belong on a public website. User-level skills add another trust concern: a declaration can refer to reviewed content, but Rig must not infer trust from an observed directory or evaluate that content itself.
 
 ## Decision
 
-Skill materialisation is an instruction-content trust transition. A managed skill therefore requires an explicit authority/trust pair and a reviewable source identity; Rig never infers trust from a directory found on disk, evaluates skill content, or copies native manager state into configuration. Local projection is confined to canonical real directories and a missing leaf symlink. Runtime- and plugin-owned skills are observation-only. Public disclosure is a second explicit opt-in and cannot expose native sources, runtime projections, local roots, locks, arguments, state, or unmanaged inventory.
+Rig never sources or evaluates configuration. Built-in adapters are reviewed Rig code with fixed provider identities, supported operations, platform gates, and argument construction. External providers and publishers are explicit executable trust transitions with narrowly allowed operations and deterministic executable resolution. Configuration cannot supply hidden commands or grant built-in capabilities.
 
-Rig never sources or evaluates configuration. Built-in adapters are trusted code shipped and reviewed with Rig. Their provider identities, supported operations, executable defaults, platform gates, and argument construction are owned by the executable rather than granted through user capability declarations.
+Declaration queries and diagnostics invoke no provider code. Status and doctor may invoke only bounded observation. Machine mutation occurs only through explicit apply, bootstrap, update, maintenance, capture, cleanup, or allowed provider-action commands. Network publication occurs only through explicit publish. Each provider-facing mutation completes its required preflight and discloses whether work is declaration-scoped, manifest-scoped, or provider-wide before invocation.
 
-An external provider or publisher is an explicit executable trust transition. Configuration must declare `adapter = "custom"` and allow each operation Rig may invoke. It may name an executable, or omit that field to select exactly `${RIG_DATA_HOME}/providers/PROVIDER-ID`. Rig performs no executable search or adjacent-file discovery and passes configured values literally without `eval`, shell command strings, or implicit expansion.
+Static export is offline and accepts only an explicitly selected public view. Its allow-list excludes provider configuration, installation metadata, machine resources, private ports, commands, arguments, native manifests, local paths, credentials, other profiles, observed state, and unmanaged inventory.
 
-Rig inserts the `rig-provider-v1` marker only when invoking an external extension. The marker is an implementation-language-neutral ABI version, not a user option, configuration value, or protocol used by built-in providers.
-
-Catalogue queries and diagnostics invoke no provider code. Status and doctor may invoke only observation operations. Machine mutation occurs only through explicit apply or bootstrap commands, or an explicitly allowed extension mutation. Network publication occurs only through an explicit publish command.
-
-Static export accepts only an explicitly selected public profile. It excludes providers, installation metadata, machine resources, commands, arguments, native manifests, host identity, credentials, other profiles, and observed machine state.
-
-Direct-download application requires declared integrity evidence before installing content. Deferred programs, schedules, settings, and layouts remain inert data until an explicit mutation command completes full-plan preflight.
+Skills require an explicit authority, trust classification, and reviewable source identity. Rig does not evaluate instruction content or treat an observed local directory as proof of trust. Direct downloads require declared integrity evidence before installation.
 
 ## Consequences
 
-Read-only declaration inspection remains safe against executable configuration. Built-in mutation stays reviewable as part of Rig, while external integrations remain powerful but visibly trusted and narrowly allowed.
+Read-only inspection remains safe for inert configuration. Built-in mutation is reviewable as part of Rig, while external integrations remain powerful but visible and narrowly authorised. A person must review both public-view membership and the generated artifact before deployment.
 
-The public projection is deliberately narrower than the private declaration. The user must review both public-profile membership and the generated artifact before deployment.
+The exact operation allow-lists, observation formats, lifecycle commands, and disclosure fields remain in the Specifications rather than this security rationale.
 
 ## References
 

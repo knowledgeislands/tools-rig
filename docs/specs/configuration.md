@@ -78,13 +78,13 @@ _Evidence:_ `rig_add_field`, `rig_normalize_artifact_identity`, and `rig_expand_
 
 ### RIG-CONF-008 — Canonical table identities
 
-Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[profile.ID]`, `[provider.ID]`, `[publication.ID]`, `[service.ID]`, `[scheduled-job.ID]`, `[setting.ID]`, `[dock.ID]`, `[dock-item.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`. Any other table shape, including `[binding.TOOL.PROVIDER]`, MUST be rejected; installation metadata belongs only in the tool table.
+Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[profile.ID]`, `[provider.ID]`, `[publication.ID]`, `[service.ID]`, `[scheduled-job.ID]`, `[setting.ID]`, `[dock.ID]`, `[dock-item.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`. Any other table shape MUST be rejected. Installation metadata MUST remain in its owning tool table.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats table tests accept every supported table form and reject uppercase, empty, extra, whitespace-containing, digit-leading, and binding identities.
+_Verify:_ Bats table tests accept every supported table form and reject uppercase, empty, extra, whitespace-containing, and digit-leading identities.
 
-_Evidence:_ `rig_parse_section_identity` and `rig_valid_id` enforce the table and identifier grammar; the `section identities are strict and unique` Bats test covers accepted and rejected identities, including source-authored binding tables.
+_Evidence:_ `rig_parse_section_identity` and `rig_valid_id` enforce the table and identifier grammar; the `section identities are strict and unique` Bats test covers the accepted and rejected identity grammar.
 
 ### RIG-CONF-009 — Root fields
 
@@ -104,7 +104,7 @@ _Conformance:_ conforming
 
 _Verify:_ Bats tests parse every catalogue field, preserve array boundaries, resolve built-in and external provider ownership, compare artifacts, and reject missing or misplaced fields.
 
-_Evidence:_ `rig_toml_field`, `rig_synthesise_bindings`, and the tool branch of `rig_validate_model` implement the catalogue field contract; the `schema list fields preserve each declared item boundary`, `required catalogue and provider adapter fields are validated`, and `descriptive tools resolve without installation metadata` Bats tests cover it.
+_Evidence:_ `rig_toml_field` and the tool branch of `rig_validate_model` implement the catalogue field contract; the `schema list fields preserve each declared item boundary`, `required catalogue and provider adapter fields are validated`, and `descriptive tools resolve without installation metadata` Bats tests cover it.
 
 ### RIG-CONF-011 — Profile fields
 
@@ -136,7 +136,7 @@ _Conformance:_ conforming
 
 _Verify:_ Bats tests resolve every built-in kind without provider boilerplate and reject unknown providers, partial installation declarations, incompatible kinds, unsafe downloads, malformed checksums, and invalid Mac App Store identities.
 
-_Evidence:_ `rig_validate_binding_adapter` owns the exact tool-installation kind matrix and rejects resource-only built-ins; `tests/rig.bats`, `tests/rig-lifecycle.bats`, and `tests/rig-model-boundaries.bats` cover the accepted and rejected classes.
+_Evidence:_ `rig_validate_model` owns the exact tool-installation kind matrix and rejects resource-only built-ins; `tests/rig.bats`, `tests/rig-lifecycle.bats`, and `tests/rig-model-boundaries.bats` cover the accepted and rejected classes.
 
 ### RIG-CONF-014 — Publication fields
 
@@ -218,7 +218,7 @@ _Conformance:_ conforming
 
 _Verify:_ Bats tests select distinct macOS and Linux installations and artifacts beneath one tool, reject zero and multiple matches, and inspect exported JSON for absence of variant materialisation data.
 
-_Evidence:_ `rig_toml_variant_field`, `rig_validate_tool_variants`, `rig_select_compatible_variant`, and `rig_synthesise_bindings` implement the bounded representation; `tests/rig-human-config.bats` covers selection, rejection, and publication safety.
+_Evidence:_ `rig_toml_variant_field`, `rig_validate_tool_variants`, and `rig_select_compatible_variant` implement the bounded representation; `tests/rig-human-config.bats` covers selection, rejection, and publication safety.
 
 ### RIG-CONF-022 — Qualified resource dependencies
 
