@@ -4,12 +4,12 @@ title: Humanise configuration model
 area: CORE
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 6c2db6a6399ad60850c5d20917c5428eca46f27e
 created_at: 2026-09-21T23:35:16Z
-updated_at: 2026-09-21T23:43:26Z
+updated_at: 2026-09-22T01:07:13Z
 ---
 
 ## Goal
@@ -32,12 +32,12 @@ The inert parser handles one-line arrays only, the personal default membership l
 
 ## Steps
 
-- [ ] Extend the schema-1 parser with bounded multiline arrays of basic strings while preserving duplicate rejection, literal values, and Bash 3.2 operation.
-- [ ] Add profile `name`, `purpose`, `inherits`, and appliable/view metadata using the membership semantics from `RIG-CORE-018`.
-- [ ] Add bounded platform installation and artifact variants beneath one logical tool identity with deterministic single-match validation.
-- [ ] Add resource-to-resource `depends-on` ordering with cycle, missing-reference, and selected-profile validation.
-- [ ] Improve diagnostics and examples so fragment composition, duplicate intent, profile meaning, and invalid variants are understandable to a configuration author.
-- [ ] Update the canonical sample configuration and every schema, manual, guide, completion-adjacent, and changelog surface.
+- [x] Extend the schema-1 parser with bounded multiline arrays of basic strings while preserving duplicate rejection, literal values, and Bash 3.2 operation.
+- [x] Add profile `name`, `purpose`, `inherits`, and appliable/view metadata using the membership semantics from `RIG-CORE-018`.
+- [x] Add bounded platform installation and artifact variants beneath one logical tool identity with deterministic single-match validation.
+- [x] Add resource-to-resource `depends-on` ordering with cycle, missing-reference, and selected-profile validation.
+- [x] Improve diagnostics and examples so fragment composition, duplicate intent, profile meaning, and invalid variants are understandable to a configuration author.
+- [x] Update the canonical sample configuration and every schema, manual, guide, completion-adjacent, and changelog surface.
 
 ## Files touched
 
@@ -72,6 +72,43 @@ Teach a small readable configuration incrementally and show how one logical tool
 ### Roadmap
 
 The personal-data rewrite and rationale curation remain in `RIG-MIG-007`; no alternative configuration-format item is needed.
+
+## Review
+
+### Delivered
+
+The schema-1 configuration model now supports readable multiline arrays, bounded platform-specific installation and artifact variants beneath one tool identity, and qualified resource dependencies with deterministic ordering, while preserving the inert Bash 3.2 trust boundary and the profile authority delivered by `RIG-CORE-018`.
+
+### Summary of changes
+
+- `bin/rig` now parses bounded multiline basic-string arrays and rejects split strings, unterminated arrays, and oversized constructs.
+- Tool variants use dotted `variant.ID.*` fields, require exactly one matching variant when variants are declared, select the correct provider binding and artifacts by platform, and keep installation detail out of public projections.
+- Services, scheduled jobs, settings, and Dock layouts accept qualified `depends-on` references, validate missing references and cycles, resolve transitively, run in stable topological order, and suppress only transitive dependants after failure.
+- `rig diag`, `show`, and `explain` expose the resulting human model without invoking providers.
+- Decision, Specification, README, guide, manual, changelog, and test surfaces describe and verify the same schema-1 model.
+
+### Verification
+
+- `ki repo audit --repo .`
+- `shellcheck bin/rig install.sh`
+- `bash -n bin/rig install.sh`
+- `bats tests/` — 199/199 passed
+- `mandoc -T lint man/rig.1`
+- `git diff --check`
+
+All required checks passed on the delivery tree.
+
+### Outstanding concerns
+
+No delivery blocker remains. Platform variants intentionally support one matching variant per tool and resource dependencies remain a bounded acyclic graph; conditional execution and arbitrary lifecycle hooks remain excluded.
+
+### Post-change review
+
+The delivered grammar is materially easier to maintain while remaining deterministic and inert. Variant and dependency resolution are covered independently and in the full suite, public data remains allow-listed, and the change preserves the single logical tool and typed resource models.
+
+### Mini recap
+
+Rig configuration can now be formatted for humans, describe one tool across supported platforms, and order related managed resources without returning to duplicate identities or generic scripts. Personal-data migration remains separately owned by `RIG-MIG-007`.
 
 ## Discussion
 

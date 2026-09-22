@@ -48,7 +48,7 @@ _Evidence:_ `tests/rig.bats` preserves `requires`, `related`, and `alternatives`
 
 ### RIG-CAT-005 — Tool installations
 
-Rig MUST treat a tool with complete `install.*` metadata as materialisable and connect it to exactly one built-in or explicitly declared external provider while retaining provider-native kind and locator values. Built-in provider identities MUST NOT require provider declarations. A catalogue-only tool has no installation metadata. Source configuration MUST NOT define a separate binding table.
+Rig MUST treat a tool with complete `install.*` or selected `variant.ID.install.*` metadata as materialisable and connect it to exactly one built-in or explicitly declared external provider while retaining provider-native kind and locator values. Built-in provider identities MUST NOT require provider declarations. A catalogue-only tool has no installation metadata. Source configuration MUST NOT define a separate binding table.
 
 _Conformance:_ conforming
 
@@ -75,3 +75,13 @@ _Conformance:_ conforming
 _Verify:_ Bats explains one tool with co-located installation and artifact metadata, then observes artifact health through that tool.
 
 _Evidence:_ `rig_command_explain` reports the owning tool's artifacts; `tests/rig-artifacts.bats` covers ownership and observation.
+
+### RIG-CAT-008 — One identity across platform variants
+
+Rig MUST allow one logical tool to retain one identifier, purpose, rationale, relationship set, and profile membership while declaring bounded platform-specific installation and artifact variants. Variants MUST refine materialisation and observation only; they MUST NOT duplicate catalogue identity or enter the public projection. Platform-neutral artifacts MAY remain on the tool alongside selected variant artifacts.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats resolves the same tool identifier to different native providers on macOS and Linux and reports only the active platform's variant artifacts.
+
+_Evidence:_ `rig_validate_tool_variants`, `rig_select_compatible_variant`, and `rig_collect_tool_artifacts` preserve one tool identity; `tests/rig-human-config.bats` exercises both platform projections.

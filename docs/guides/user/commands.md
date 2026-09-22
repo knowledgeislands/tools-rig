@@ -9,7 +9,7 @@ These commands parse configuration and never invoke providers:
 - `rig show [--profile NAME]` — describe the resolved default or named profile in a readable tool table.
 - `rig list [--category ID] [--profile NAME]` — list declared tools, optionally restricted by category and resolved profile.
 - `rig explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID` — show one tool or qualified managed resource's complete declaration and profile membership.
-- `rig diag` — report the running Rig version, executable, Bash, platform, XDG paths, configuration sources, and validity.
+- `rig diag` — report the running Rig version, executable, Bash, platform, XDG paths, configuration sources, validity, profile-selection mode, and model counts.
 
 Use `show` for the whole selected setup, `list` to browse, `explain` for one tool, and `diag` when Rig itself cannot find or parse what you expect.
 

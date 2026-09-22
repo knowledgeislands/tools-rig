@@ -124,6 +124,22 @@ Declaration queries are inert. Status and doctor perform observation only. Dry-r
 
 Configuration, provider trust, executable, platform, and receipt-boundary failures reject the complete plan before mutation. A finding local to one resource appears as a failed row while independent resources remain planned.
 
+## Order related resources
+
+Use `depends-on` when one managed resource needs another resource to reconcile first. References are qualified so the target kind stays obvious:
+
+```toml
+[service.example-daemon]
+# Other service fields remain as above.
+depends-on = ["setting:show-file-extensions"]
+
+[scheduled-job.good-morning]
+# Other scheduled-job fields remain as above.
+depends-on = ["service:example-daemon"]
+```
+
+Supported prefixes are `service:`, `scheduled-job:`, `setting:`, and `dock:`. Rig selects dependencies transitively and produces a deterministic dependency-first plan. Missing targets and cycles fail during configuration loading. If a resource fails, its transitive dependants are reported as blocked while independent resources can continue. `depends-on` cannot contain a condition, command, or lifecycle hook.
+
 ## Apply and retire
 
 A resource with a local preflight finding is not invoked, independent resources may still reconcile, and the command exits with status 1. Any selected resource failure withholds stale retirement and receipt replacement.

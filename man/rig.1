@@ -322,8 +322,9 @@ invoke providers, or inspect provider-native caches.
 .B rig diag
 Print a non-mutating diagnostic snapshot containing Rig and Bash versions,
 the invoked executable, active platform, effective XDG directories, root
-configuration and fragment count, configuration validity, schema, and default
-profile when available. No provider is invoked.
+configuration and fragment count, configuration validity, schema, default
+profile, selection mode, and declaration counts when available. No provider is
+invoked.
 .TP
 .BI "rig completion " bash|zsh
 Print completion source for the selected shell. With
@@ -394,8 +395,9 @@ is unset, its default is
 .IR ${XDG_CONFIG_HOME:-$HOME/.config}/rig .
 .PP
 Configuration uses schema 1's bounded TOML grammar: named tables, the integer
-schema value, single-line basic strings, single-line string arrays, blank lines,
-and comments. Accepted files are valid TOML. Rig rejects unused TOML features
+schema value, single-line basic strings, bounded single-line or multiline
+basic-string arrays, blank lines, and comments. Accepted files are valid TOML.
+Rig rejects unused TOML features
 and does not source configuration, evaluate commands, interpret shell syntax,
 or perform general environment expansion.
 .SH ENVIRONMENT
@@ -553,7 +555,17 @@ Profiles select resources with
 .B services
 and
 .B scheduled-jobs
-arrays. Resource requirements name tools.
+arrays. Resource requirements name tools. Every managed resource may also
+declare a
+.B depends-on
+string array containing qualified
+.BR service:ID ,
+.BR scheduled-job:ID ,
+.BR setting:ID ,
+or
+.B dock:ID
+references. Rig rejects missing references and cycles, selects dependencies
+transitively, and orders resources deterministically before provider work.
 .PP
 .B [setting.ID]
 declares one typed macOS defaults value. It requires
@@ -701,6 +713,21 @@ and at least one entry resolving to a regular executable beneath a real
 .I Contents/MacOS
 directory. Artifacts are observation-only; their native tool remains
 responsible for creation, update, and removal.
+.PP
+One tool may declare bounded platform variants through dotted
+.B variant.ID.*
+fields. Every variant requires a non-empty
+.B variant.ID.platforms
+array and may contain
+.B variant.ID.artifacts
+and a complete
+.BR variant.ID.install.provider ,
+.BR variant.ID.install.kind ,
+.B variant.ID.install.locator
+group with the corresponding optional installation fields. Every platform
+declared by the tool must match exactly one variant. Rig rejects uncovered or
+overlapping variants and never includes their installation or artifact data in
+a public export.
 .PP
 .B [publication.ID]
 requires

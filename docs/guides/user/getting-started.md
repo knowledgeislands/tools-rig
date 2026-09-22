@@ -58,6 +58,17 @@ Rig reads this optional root file first and then regular `conf.d/*.toml` fragmen
 
 Use `RIG_CONFIG_HOME` when you want the complete Rig configuration directory somewhere else.
 
+String arrays may use a readable multiline form when a list grows:
+
+```toml
+platforms = [
+  "macos",
+  "linux",
+]
+```
+
+Comments and a trailing comma are allowed. Each item must remain one basic string; strings themselves cannot span lines.
+
 ## Confirm Rig can read it
 
 Run the local diagnostic:
@@ -131,6 +142,25 @@ Shared configuration, trust, executable, platform, and receipt-boundary failures
 When a capability also creates a durable launcher, URL handler, or comparable path that you want Rig to inspect, keep one catalogue entry and add the path to that tool's `artifacts` array. `rig explain` shows the ownership, while `rig status` and `rig doctor` check the path and, for macOS application bundles, their basic structure.
 
 Artifacts are observation-only. The native tool remains responsible for creating, updating, and removing them; `apply`, `bootstrap`, and `update` do not run artifact generators. Omit transient or internal implementation details that do not add a useful user-visible capability.
+
+When the same tool uses different installations or durable artifacts on different platforms, keep that single tool entry and add bounded dotted variants:
+
+```toml
+platforms = ["macos", "linux"]
+
+variant.macos.platforms = ["macos"]
+variant.macos.install.provider = "homebrew"
+variant.macos.install.kind = "formula"
+variant.macos.install.locator = "example"
+variant.macos.artifacts = ["~/Applications/Example.app"]
+
+variant.linux.platforms = ["linux"]
+variant.linux.install.provider = "uv"
+variant.linux.install.kind = "tool"
+variant.linux.install.locator = "example"
+```
+
+Each declared tool platform must match exactly one variant. Rig reports an uncovered or overlapping platform before it invokes a provider. Public exports omit installation and artifact variant data.
 
 ## Update and maintain selected tools
 

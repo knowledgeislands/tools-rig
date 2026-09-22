@@ -36,7 +36,7 @@ _Evidence:_ `install.sh` implements the destination contract and `tests/rig.bats
 
 ### RIG-PORT-004 — Local diagnostics
 
-`rig diag` MUST report the Rig version, invoked executable, Bash version, active platform, effective configuration, data, state, and cache directories, root configuration file, fragment count, and configuration status. When configuration is valid it MUST also report the schema and default profile.
+`rig diag` MUST report the Rig version, invoked executable, Bash version, active platform, effective configuration, data, state, and cache directories, root configuration file, fragment count, and configuration status. When configuration is valid it MUST also report the schema, default profile, profile-selection mode, and counts for profiles, tools, managed resources, and tool variants.
 
 Diagnostics MUST NOT invoke a provider. The command MUST return status 0 for valid configuration, status 1 for missing or invalid configuration, and status 2 for invalid command syntax.
 

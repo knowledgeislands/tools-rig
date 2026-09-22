@@ -302,3 +302,23 @@ _Conformance:_ conforming
 _Verify:_ Bats inspects apply, bootstrap, update, maintain, and capture output before and after provider execution.
 
 _Evidence:_ `rig_command_apply`, `rig_command_bootstrap`, `rig_run_lifecycle_tasks`, and `rig_command_capture` emit operation scope before mutation; lifecycle and profile-authority Bats assert the stable report prefixes.
+
+### RIG-ORCH-029 — Deterministic platform variant selection
+
+For a selected tool with `variant.ID.*` declarations, Rig MUST select exactly one variant matching the active platform before installation or artifact observation. A matching variant MUST contribute its installation and artifact data to the existing tool identity; it MUST NOT create another catalogue item. Profile resolution MUST reject zero or multiple matches before provider work. Platform-neutral publication resolution MUST omit all installation and artifact variant data rather than selecting host-private materialisation details.
+
+_Conformance:_ conforming
+
+_Verify:_ Resolve one tool on macOS and Linux, compare provider bindings and observed artifacts, reject uncovered and overlapping platforms, and inspect public output.
+
+_Evidence:_ `rig_select_tool_variants`, `rig_select_bindings`, and `rig_observe_tool_artifacts` consume one selected variant; `tests/rig-human-config.bats` covers both platforms and publication isolation.
+
+### RIG-ORCH-030 — Resource dependency order and failure boundary
+
+Rig MUST close selected qualified resource dependencies transitively and order the selected resource plan topologically. When more than one ready resource exists, bytewise section identity MUST provide deterministic order. A failed or skipped resource MUST suppress its transitive resource dependants with a qualified `blocked-by` detail while independent resources continue. Tool requirements MUST remain before the resource graph. A resource dependency MUST NOT grant provider capability or introduce executable configuration.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats selects a cross-kind dependency chain in declaration-independent order, injects a dependency failure, and checks that only transitive dependants are blocked.
+
+_Evidence:_ `rig_select_resource`, `rig_sort_selected_resources`, `rig_resource_blocker`, and `rig_observe_resource_plan` implement closure, order, and propagation; `tests/rig-human-config.bats` covers the graph.

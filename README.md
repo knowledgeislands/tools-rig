@@ -81,6 +81,8 @@ purpose = "Complete everyday setup"
 kind = "complete"
 ```
 
+Long string arrays may span lines, retain comments, and use a trailing comma. Rig still accepts only basic strings inside arrays and never evaluates configuration.
+
 Then inspect before changing anything:
 
 ```sh
@@ -126,6 +128,33 @@ Do not create separate profiles merely to name lifecycle commands. `bootstrap-pr
 
 Generated paths belong to the tool whose capability they expose rather than becoming separate catalogue tools. Declare a path in the tool's `artifacts` array only when it is a durable part of that capability which a user wants Rig to inspect. `explain`, `status`, and `doctor` then account for it, while the native tool remains responsible for creating, updating, and removing it. Rig configuration cannot turn an artifact into a lifecycle command or task hook.
 
+## One tool on different platforms
+
+Keep one catalogue identity when the same capability is installed differently on macOS and Linux. Bounded dotted variants live inside the tool declaration:
+
+```toml
+[tool.example]
+name = "Example"
+category = "development"
+purpose = "Provide one cross-platform capability"
+rationale = "One identity keeps its meaning and relationships together"
+platforms = ["macos", "linux"]
+
+variant.macos.platforms = ["macos"]
+variant.macos.install.provider = "homebrew"
+variant.macos.install.kind = "formula"
+variant.macos.install.locator = "example"
+
+variant.linux.platforms = ["linux"]
+variant.linux.install.provider = "uv"
+variant.linux.install.kind = "tool"
+variant.linux.install.locator = "example"
+```
+
+Every declared tool platform must match exactly one variant. A variant may also declare `variant.ID.artifacts`; `status` and `explain` use only the active variant. Installations and artifacts are private materialisation details and are never published.
+
+Managed resources can declare deterministic ordering with qualified dependencies such as `depends-on = ["setting:development-defaults"]`. Rig closes those dependencies transitively, rejects missing endpoints or cycles, and blocks only transitive dependants after a resource failure.
+
 ## Commands
 
 - `rig` shows top-level help.
@@ -143,7 +172,7 @@ Generated paths belong to the tool whose capability they expose rather than beco
 - `rig export PUBLICATION --output DIRECTORY` writes deterministic public Rig data without deploying it.
 - `rig publish PUBLICATION` exports and hands public Rig data to one trusted publisher.
 - `rig clean [--dry-run]` removes only safely classified Rig-owned cache artifacts; preview it first.
-- `rig diag` reports runtime, platform, XDG paths, and configuration discovery.
+- `rig diag` reports runtime, platform, XDG paths, configuration discovery, profile-selection mode, and model counts.
 - `rig completion bash|zsh` prints shell completion source.
 - `rig help [-h|--help]`, `rig --help`, and `rig --version` provide command and version information.
 

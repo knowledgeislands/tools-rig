@@ -528,7 +528,7 @@ write_query_config() {
     XDG_DATA_HOME= XDG_STATE_HOME= XDG_CACHE_HOME= RIG_PLATFORM=fixture "$RIG" diag
 
   [ "$status" -eq 0 ]
-  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.2.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.toml\n  Fragment count: 2\n  Status: valid\n  Schema: 1\n  Default profile: default' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]
+  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.2.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.toml\n  Fragment count: 2\n  Status: valid\n  Schema: 1\n  Default profile: default\n  Selection mode: central\n  Profiles: 1\n  Tools: 1\n  Managed resources: 0\n  Tool variants: 0' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]
 }
 
 @test "diag accepts fragment-only configuration and reports the optional root absent" {
@@ -1182,7 +1182,7 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
   [[ "$output" == *'Name: Alpha # One'* ]] || false
 }
 
-@test "bounded TOML rejects valid constructs outside the Rig schema subset" {
+@test "bounded TOML accepts multiline string arrays and rejects other unsupported constructs" {
   write_minimal_config
   sed "s/name = \"Core\"/name = 'Core'/" \
     "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/unsupported.toml"
@@ -1235,8 +1235,7 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
     "$CONFIG_HOME/rig.toml"
   [ "$status" -eq 0 ]
   run_loader
-  [ "$status" -eq 2 ]
-  [[ "$output" == *'expected single-line TOML string array'* ]] || false
+  [ "$status" -eq 0 ]
 }
 
 @test "schema version and root scalar cardinality fail closed" {

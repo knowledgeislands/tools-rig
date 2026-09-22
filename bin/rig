@@ -22,6 +22,7 @@ RIG_FIELD_KEYS=()
 RIG_FIELD_VALUES=()
 RIG_SELECTED_TOOLS=()
 RIG_SELECTED_BINDINGS=()
+RIG_SELECTED_VARIANTS=()
 RIG_SELECTED_RESOURCE_SECTIONS=()
 RIG_ACTIVE_PROFILES=()
 RIG_PLAN_TOOLS=()
@@ -260,6 +261,7 @@ rig_model_reset() {
   RIG_FIELD_VALUES=()
   RIG_SELECTED_TOOLS=()
   RIG_SELECTED_BINDINGS=()
+  RIG_SELECTED_VARIANTS=()
   RIG_SELECTED_RESOURCE_SECTIONS=()
   RIG_ACTIVE_PROFILES=()
   RIG_PLAN_TOOLS=()
@@ -411,11 +413,13 @@ rig_add_section() {
 }
 
 rig_add_derived_binding_section() {
-  local tool_id provider name index
+  local tool_id provider variant name index
 
   tool_id=$1
   provider=$2
+  variant=${3:-}
   name=binding.$tool_id.$provider
+  [ -z "$variant" ] || name=$name.$variant
   if rig_section_index "$name"; then
     rig_fail "duplicate internal installation [$name]" || return
   fi
@@ -429,6 +433,7 @@ rig_add_derived_binding_section() {
   RIG_SECTION_FIELD_ENDS[$index]=${#RIG_FIELD_KEYS[@]}
   rig_index_section_name "$name" "$index"
   RIG_INDEX=$index
+  [ -z "$variant" ] || rig_add_field "$index" variant "$variant" '<derived install>' 0 || return
 }
 
 rig_field_kind() {
@@ -446,7 +451,10 @@ rig_field_kind() {
     tool:install-destination|tool:install-checksum|\
     provider:adapter|provider:command|provider:executable|provider:manifest|\
     provider:autoupdate-interval|\
-    binding:kind|binding:locator|binding:destination|binding:checksum|\
+    binding:kind|binding:locator|binding:destination|binding:checksum|binding:variant|\
+    tool:variant:*:install-provider|tool:variant:*:install-kind|\
+    tool:variant:*:install-locator|tool:variant:*:install-destination|\
+    tool:variant:*:install-checksum|\
     publication:profile|publication:title|publication:base-url|publication:publisher|\
     service:name|service:purpose|service:rationale|service:provider|service:locator|\
     service:desired-state|service:working-directory|service:standard-output|\
@@ -464,22 +472,48 @@ rig_field_kind() {
       RIG_FIELD_KIND=scalar
       ;;
     tool:platform|tool:requires|tool:related|tool:alternative|tool:artifact|tool:member-profile|\
+    tool:variant:*:platform|tool:variant:*:artifact|tool:variant:*:install-argument|\
     tool:install-platform|tool:install-argument|\
     profile:profile|profile:inherit|profile:tool|profile:service|profile:scheduled-job|\
     profile:setting|profile:dock|\
     provider:argument|provider:capability|provider:autoupdate-option|\
     binding:platform|binding:argument|\
     service:platform|service:requires|service:program|service:environment|service:member-profile|\
+    service:resource-dependency|\
     scheduled-job:platform|scheduled-job:requires|scheduled-job:program|\
     scheduled-job:environment|scheduled-job:schedule-calendar|scheduled-job:member-profile|\
-    setting:platform|setting:requires|setting:member-profile|\
-    dock:platform|dock:requires|dock:item|dock:member-profile|\
+    scheduled-job:resource-dependency|\
+    setting:platform|setting:requires|setting:member-profile|setting:resource-dependency|\
+    dock:platform|dock:requires|dock:item|dock:member-profile|dock:resource-dependency|\
     action:platform|action:argument|action:allow-argument|action:resource-kind)
       RIG_FIELD_KIND=repeatable
       ;;
     *) return 1 ;;
   esac
   return 0
+}
+
+rig_toml_variant_field() {
+  local key rest variant field canonical
+
+  key=$1
+  case "$key" in variant.*.*) ;; *) return 1 ;; esac
+  rest=${key#variant.}
+  variant=${rest%%.*}
+  field=${rest#*.}
+  rig_valid_id "$variant" || return 1
+  case "$field" in
+    platforms) canonical=platform; RIG_TOML_FIELD_TYPE=array ;;
+    artifacts) canonical=artifact; RIG_TOML_FIELD_TYPE=array ;;
+    install.provider) canonical=install-provider; RIG_TOML_FIELD_TYPE=string ;;
+    install.kind) canonical=install-kind; RIG_TOML_FIELD_TYPE=string ;;
+    install.locator) canonical=install-locator; RIG_TOML_FIELD_TYPE=string ;;
+    install.destination) canonical=install-destination; RIG_TOML_FIELD_TYPE=string ;;
+    install.checksum) canonical=install-checksum; RIG_TOML_FIELD_TYPE=string ;;
+    install.arguments) canonical=install-argument; RIG_TOML_FIELD_TYPE=array ;;
+    *) return 1 ;;
+  esac
+  RIG_TOML_FIELD_KEY=variant:$variant:$canonical
 }
 
 rig_toml_field() {
@@ -489,6 +523,9 @@ rig_toml_field() {
   key=$2
   RIG_TOML_FIELD_KEY=
   RIG_TOML_FIELD_TYPE=
+  if [ "$section_type" = tool ] && rig_toml_variant_field "$key"; then
+    return 0
+  fi
   case "$section_type:$key" in
     rig:schema)
       RIG_TOML_FIELD_KEY=schema
@@ -545,6 +582,10 @@ rig_toml_field() {
       RIG_TOML_FIELD_TYPE=array
       ;;
     service:requires|scheduled-job:requires) RIG_TOML_FIELD_KEY=requires ; RIG_TOML_FIELD_TYPE=array ;;
+    service:depends-on|scheduled-job:depends-on|setting:depends-on|dock:depends-on)
+      RIG_TOML_FIELD_KEY='resource-dependency'
+      RIG_TOML_FIELD_TYPE=array
+      ;;
     service:program|scheduled-job:program) RIG_TOML_FIELD_KEY=program ; RIG_TOML_FIELD_TYPE=array ;;
     service:environment|scheduled-job:environment) RIG_TOML_FIELD_KEY=environment ; RIG_TOML_FIELD_TYPE=array ;;
     scheduled-job:schedule.calendar) RIG_TOML_FIELD_KEY='schedule-calendar' ; RIG_TOML_FIELD_TYPE=array ;;
@@ -690,6 +731,42 @@ rig_toml_take_string() {
   rig_fail "$file:$line: unterminated TOML basic string" || return
 }
 
+rig_toml_array_complete() {
+  local input file line character escaped index length in_string
+
+  input=$1
+  file=$2
+  line=$3
+  RIG_COUNT=0
+  case "$input" in \[*) ;; *) return 1 ;; esac
+  escaped=0
+  in_string=0
+  index=1
+  length=${#input}
+  while [ "$index" -lt "$length" ]; do
+    character=${input:$index:1}
+    if [ "$in_string" -eq 1 ]; then
+      if [ "$escaped" -eq 1 ]; then
+        escaped=0
+      else
+        case "$character" in
+          \\) escaped=1 ;;
+          '"') in_string=0 ;;
+        esac
+      fi
+    else
+      case "$character" in
+        '"') in_string=1 ;;
+        ']') RIG_COUNT=1; return 0 ;;
+      esac
+    fi
+    index=$((index + 1))
+  done
+  [ "$in_string" -eq 0 ] ||
+    rig_fail "$file:$line: TOML basic strings must not span lines" || return
+  return 0
+}
+
 rig_toml_parse_array() {
   local section_index key input file line body item
 
@@ -797,6 +874,7 @@ rig_add_field() {
 
 rig_parse_file() {
   local file line line_number current_section key value section_type internal_key value_type
+  local array_line array_lines
 
   file=$1
   current_section=
@@ -850,6 +928,27 @@ rig_parse_file() {
             rig_add_field "$current_section" "$internal_key" "$RIG_VALUE" "$file" "$line_number" || return
             ;;
           array)
+            case "$value" in
+              \[*) ;;
+              *) rig_fail "$file:$line_number: expected TOML string array" || return ;;
+            esac
+            array_line=$line_number
+            array_lines=1
+            rig_toml_array_complete "$value" "$file" "$line_number" || return
+            while [ "$RIG_COUNT" -eq 0 ]; do
+              [ "$array_lines" -lt 1024 ] ||
+                rig_fail "$file:$array_line: TOML string array exceeds 1024 lines" || return
+              if ! IFS= read -r line; then
+                rig_fail "$file:$array_line: unterminated TOML string array" || return
+              fi
+              line_number=$((line_number + 1))
+              array_lines=$((array_lines + 1))
+              rig_toml_strip_comment "$line"
+              rig_trim "$RIG_VALUE"
+              line=$RIG_VALUE
+              [ -z "$line" ] || value="$value $line"
+              rig_toml_array_complete "$value" "$file" "$line_number" || return
+            done
             rig_toml_parse_array "$current_section" "$internal_key" "$value" "$file" "$line_number" || return
             ;;
         esac
@@ -883,8 +982,60 @@ rig_get_value() {
   return 1
 }
 
+rig_collect_tool_variants() {
+  local section_index field_index field_end key rest variant
+
+  section_index=$1
+  RIG_QUERY_ITEMS=()
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    key=${RIG_FIELD_KEYS[$field_index]}
+    case "$key" in variant:*:*)
+      rest=${key#variant:}
+      variant=${rest%%:*}
+      if [ "${#RIG_QUERY_ITEMS[@]}" -eq 0 ] ||
+        ! rig_array_contains "$variant" "${RIG_QUERY_ITEMS[@]}"; then
+        RIG_QUERY_ITEMS[${#RIG_QUERY_ITEMS[@]}]=$variant
+      fi
+      ;;
+    esac
+    field_index=$((field_index + 1))
+  done
+  rig_sort_query_items
+}
+
+rig_synthesise_binding_fields() {
+  local tool_index binding_index prefix field_index field_end key value target
+
+  tool_index=$1
+  binding_index=$2
+  prefix=$3
+  field_index=${RIG_SECTION_FIELD_STARTS[$tool_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$tool_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    key=${RIG_FIELD_KEYS[$field_index]}
+    value=${RIG_FIELD_VALUES[$field_index]}
+    target=
+    case "$key" in
+      "$prefix"install-kind) target=kind ;;
+      "$prefix"install-locator) target=locator ;;
+      "$prefix"install-destination) target=destination ;;
+      "$prefix"install-checksum) target=checksum ;;
+      "$prefix"install-platform) target=platform ;;
+      "$prefix"platform) [ -z "$prefix" ] || target=platform ;;
+      "$prefix"install-argument) target=argument ;;
+    esac
+    [ -z "$target" ] ||
+      rig_add_field "$binding_index" "$target" "$value" '<derived install>' 0 || return
+    field_index=$((field_index + 1))
+  done
+}
+
 rig_synthesise_bindings() {
-  local original_count index tool_id tool_section provider binding_index field_index field_end key value
+  local original_count index tool_id tool_section provider binding_index variant variant_key
+  local variant_index
+  local -a variants
 
   original_count=${#RIG_SECTION_NAMES[@]}
   index=0
@@ -895,34 +1046,27 @@ rig_synthesise_bindings() {
       if rig_get_value "$tool_section" install-provider; then
         provider=$RIG_VALUE
         rig_valid_id "$provider" || rig_fail "[$tool_section] has invalid install.provider '$provider'" || return
-      rig_add_derived_binding_section "$tool_id" "$provider" || return
+        rig_add_derived_binding_section "$tool_id" "$provider" || return
         binding_index=$RIG_INDEX
-
-        if rig_get_value "$tool_section" install-kind; then
-          rig_add_field "$binding_index" kind "$RIG_VALUE" '<derived install>' 0 || return
-        fi
-        if rig_get_value "$tool_section" install-locator; then
-          rig_add_field "$binding_index" locator "$RIG_VALUE" '<derived install>' 0 || return
-        fi
-        if rig_get_value "$tool_section" install-destination; then
-          rig_add_field "$binding_index" destination "$RIG_VALUE" '<derived install>' 0 || return
-        fi
-        if rig_get_value "$tool_section" install-checksum; then
-          rig_add_field "$binding_index" checksum "$RIG_VALUE" '<derived install>' 0 || return
-        fi
-
-        field_index=${RIG_SECTION_FIELD_STARTS[$index]}
-        field_end=${RIG_SECTION_FIELD_ENDS[$index]}
-        while [ "$field_index" -lt "$field_end" ]; do
-          key=${RIG_FIELD_KEYS[$field_index]}
-          value=${RIG_FIELD_VALUES[$field_index]}
-          case "$key" in
-            install-platform) rig_add_field "$binding_index" platform "$value" '<derived install>' 0 || return ;;
-            install-argument) rig_add_field "$binding_index" argument "$value" '<derived install>' 0 || return ;;
-          esac
-          field_index=$((field_index + 1))
-        done
+        rig_synthesise_binding_fields "$index" "$binding_index" '' || return
       fi
+
+      rig_collect_tool_variants "$index"
+      variants=("${RIG_QUERY_ITEMS[@]+"${RIG_QUERY_ITEMS[@]}"}")
+      variant_index=0
+      while [ "$variant_index" -lt "${#variants[@]}" ]; do
+        variant=${variants[$variant_index]}
+        variant_key=variant:$variant:
+        if rig_get_value "$tool_section" "${variant_key}install-provider"; then
+          provider=$RIG_VALUE
+          rig_valid_id "$provider" ||
+            rig_fail "[$tool_section] variant '$variant' has invalid install.provider '$provider'" || return
+          rig_add_derived_binding_section "$tool_id" "$provider" "$variant" || return
+          binding_index=$RIG_INDEX
+          rig_synthesise_binding_fields "$index" "$binding_index" "$variant_key" || return
+        fi
+        variant_index=$((variant_index + 1))
+      done
     fi
     index=$((index + 1))
   done
@@ -1094,6 +1238,63 @@ rig_tool_cycle_visit() {
   rig_visit_set "$tool" visited
 }
 
+rig_resource_reference() {
+  local reference kind id
+
+  reference=$1
+  case "$reference" in *:*) ;; *) return 1 ;; esac
+  kind=${reference%%:*}
+  id=${reference#*:}
+  case "$kind" in service|scheduled-job|setting|dock) ;; *) return 1 ;; esac
+  rig_valid_id "$id" || return 1
+  rig_reference_exists "$kind" "$id" || return 1
+  RIG_VALUE=$kind.$id
+}
+
+rig_validate_resource_dependencies() {
+  local section_name section_index field_index field_end reference
+
+  section_name=$1
+  section_index=$2
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = resource-dependency ]; then
+      reference=${RIG_FIELD_VALUES[$field_index]}
+      rig_resource_reference "$reference" ||
+        rig_fail "[$section_name] depends-on references unknown resource '$reference'" || return
+    fi
+    field_index=$((field_index + 1))
+  done
+}
+
+rig_resource_cycle_visit() {
+  local section_name section_index field_index field_end reference child state
+
+  section_name=$1
+  if rig_visit_get "$section_name"; then
+    state=$RIG_VALUE
+    [ "$state" != visiting ] ||
+      rig_fail "resource dependency cycle includes '$section_name'" || return
+    [ "$state" != visited ] || return 0
+  fi
+  rig_visit_set "$section_name" visiting
+  rig_section_index "$section_name" || return 2
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = resource-dependency ]; then
+      reference=${RIG_FIELD_VALUES[$field_index]}
+      rig_resource_reference "$reference" || return 2
+      child=$RIG_VALUE
+      rig_resource_cycle_visit "$child" || return
+    fi
+    field_index=$((field_index + 1))
+  done
+  rig_visit_set "$section_name" visited
+}
+
 rig_validate_cycles() {
   local index
 
@@ -1114,6 +1315,17 @@ rig_validate_cycles() {
     if [ "${RIG_SECTION_TYPES[$index]}" = tool ]; then
       rig_tool_cycle_visit "${RIG_SECTION_IDS[$index]}" || return
     fi
+    index=$((index + 1))
+  done
+
+  RIG_VISIT_NAMES=()
+  RIG_VISIT_STATES=()
+  index=0
+  while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+    case "${RIG_SECTION_TYPES[$index]}" in service|scheduled-job|setting|dock)
+      rig_resource_cycle_visit "${RIG_SECTION_NAMES[$index]}" || return
+      ;;
+    esac
     index=$((index + 1))
   done
 }
@@ -1557,6 +1769,130 @@ rig_validate_dock_item() {
   esac
 }
 
+rig_variant_supports_platform() {
+  local section_name variant platform section_index field_index field_end key
+
+  section_name=$1
+  variant=$2
+  platform=$3
+  rig_section_index "$section_name" || return 1
+  section_index=$RIG_INDEX
+  key=variant:$variant:platform
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = "$key" ] && {
+      [ "${RIG_FIELD_VALUES[$field_index]}" = any ] ||
+        [ "${RIG_FIELD_VALUES[$field_index]}" = "$platform" ];
+    }; then
+      return 0
+    fi
+    field_index=$((field_index + 1))
+  done
+  return 1
+}
+
+rig_select_compatible_variant() {
+  local section_name platform section_index variant index matches selected
+  local -a variants
+
+  section_name=$1
+  platform=$2
+  rig_section_index "$section_name" || return 1
+  section_index=$RIG_INDEX
+  rig_collect_tool_variants "$section_index"
+  variants=("${RIG_QUERY_ITEMS[@]+"${RIG_QUERY_ITEMS[@]}"}")
+  [ "${#variants[@]}" -gt 0 ] || { RIG_VALUE=; return 0; }
+  matches=0
+  selected=
+  index=0
+  while [ "$index" -lt "${#variants[@]}" ]; do
+    variant=${variants[$index]}
+    if rig_variant_supports_platform "$section_name" "$variant" "$platform"; then
+      matches=$((matches + 1))
+      selected=$variant
+    fi
+    index=$((index + 1))
+  done
+  [ "$matches" -ne 0 ] ||
+    rig_fail "[$section_name] has no variant for platform '$platform'" || return
+  [ "$matches" -eq 1 ] ||
+    rig_fail "[$section_name] has ambiguous variants for platform '$platform'" || return
+  RIG_VALUE=$selected
+}
+
+rig_validate_tool_variants() {
+  local section_name section_index variant index field_index field_end key field
+  local install_fields artifact_count platform_count variant_installs tool_platform matches
+  local -a variants
+
+  section_name=$1
+  section_index=$2
+  rig_collect_tool_variants "$section_index"
+  variants=("${RIG_QUERY_ITEMS[@]+"${RIG_QUERY_ITEMS[@]}"}")
+  [ "${#variants[@]}" -gt 0 ] || return 0
+  variant_installs=0
+  index=0
+  while [ "$index" -lt "${#variants[@]}" ]; do
+    variant=${variants[$index]}
+    platform_count=0
+    artifact_count=0
+    install_fields=0
+    field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+    field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+    while [ "$field_index" -lt "$field_end" ]; do
+      key=${RIG_FIELD_KEYS[$field_index]}
+      case "$key" in variant:"$variant":*)
+        field=${key#variant:"$variant":}
+        case "$field" in
+          platform) platform_count=$((platform_count + 1)) ;;
+          artifact) artifact_count=$((artifact_count + 1)) ;;
+          install-*) install_fields=$((install_fields + 1)) ;;
+        esac
+        ;;
+      esac
+      field_index=$((field_index + 1))
+    done
+    [ "$platform_count" -gt 0 ] ||
+      rig_fail "[$section_name] variant '$variant' requires field 'platforms'" || return
+    if rig_get_value "$section_name" "variant:$variant:install-provider"; then
+      variant_installs=$((variant_installs + 1))
+      rig_get_value "$section_name" "variant:$variant:install-kind" ||
+        rig_fail "[$section_name] variant '$variant' requires install.kind" || return
+      rig_get_value "$section_name" "variant:$variant:install-locator" ||
+        rig_fail "[$section_name] variant '$variant' requires install.locator" || return
+    elif [ "$install_fields" -gt 0 ]; then
+      rig_fail "[$section_name] variant '$variant' install metadata requires install.provider" || return
+    fi
+    [ "$artifact_count" -gt 0 ] || [ "$install_fields" -gt 0 ] ||
+      rig_fail "[$section_name] variant '$variant' has no installation or artifacts" || return
+    index=$((index + 1))
+  done
+  if [ "$variant_installs" -gt 0 ] && rig_get_value "$section_name" install-provider; then
+    rig_fail "[$section_name] cannot combine install.* with variant installations" || return
+  fi
+
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = platform ]; then
+      tool_platform=${RIG_FIELD_VALUES[$field_index]}
+      matches=0
+      index=0
+      while [ "$index" -lt "${#variants[@]}" ]; do
+        rig_variant_supports_platform "$section_name" "${variants[$index]}" "$tool_platform" &&
+          matches=$((matches + 1))
+        index=$((index + 1))
+      done
+      [ "$matches" -ne 0 ] ||
+        rig_fail "[$section_name] has no variant for declared platform '$tool_platform'" || return
+      [ "$matches" -eq 1 ] ||
+        rig_fail "[$section_name] has ambiguous variants for declared platform '$tool_platform'" || return
+    fi
+    field_index=$((field_index + 1))
+  done
+}
+
 rig_validate_model() {
   local index section_name section_type section_id secondary_id adapter provider profile
   local field_index field_end
@@ -1605,6 +1941,7 @@ rig_validate_model() {
           rig_fail "[$section_name] install metadata requires install.provider" || return
         fi
       fi
+      rig_validate_tool_variants "$section_name" "$index" || return
       rig_validate_references_for_field "$index" requires tool || return
         rig_validate_references_for_field "$index" related tool || return
         rig_validate_references_for_field "$index" alternative tool || return
@@ -1630,14 +1967,17 @@ rig_validate_model() {
       service|scheduled-job)
         rig_validate_resource "$section_name" "$section_type" || return
         rig_validate_references_for_field "$index" member-profile profile || return
+        rig_validate_resource_dependencies "$section_name" "$index" || return
         ;;
       setting)
         rig_validate_setting "$section_name" || return
         rig_validate_references_for_field "$index" member-profile profile || return
+        rig_validate_resource_dependencies "$section_name" "$index" || return
         ;;
       dock)
         rig_validate_dock "$section_name" || return
         rig_validate_references_for_field "$index" member-profile profile || return
+        rig_validate_resource_dependencies "$section_name" "$index" || return
         ;;
       dock-item) rig_validate_dock_item "$section_name" || return ;;
     provider)
@@ -1873,7 +2213,7 @@ rig_resource_supports_platform() {
 }
 
 rig_select_resource() {
-  local kind resource platform section_name section_index field_index field_end tool
+  local kind resource platform section_name section_index field_index field_end tool reference dependency
 
   kind=$1
   resource=$2
@@ -1885,37 +2225,79 @@ rig_select_resource() {
     rig_array_contains "$section_name" "${RIG_SELECTED_RESOURCE_SECTIONS[@]}"; then
     return 0
   fi
-  RIG_SELECTED_RESOURCE_SECTIONS[${#RIG_SELECTED_RESOURCE_SECTIONS[@]}]=$section_name
   rig_section_index "$section_name" || return 2
   section_index=$RIG_INDEX
   field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
   field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
   while [ "$field_index" -lt "$field_end" ]; do
-    if [ "${RIG_FIELD_KEYS[$field_index]}" = requires ]; then
-      tool=${RIG_FIELD_VALUES[$field_index]}
-      rig_select_tool "$tool" "$platform" "$section_name" || return
+    case "${RIG_FIELD_KEYS[$field_index]}" in
+      requires)
+        tool=${RIG_FIELD_VALUES[$field_index]}
+        rig_select_tool "$tool" "$platform" "$section_name" || return
+        ;;
+      resource-dependency)
+        reference=${RIG_FIELD_VALUES[$field_index]}
+        rig_resource_reference "$reference" || return 2
+        dependency=$RIG_VALUE
+        rig_select_resource "${dependency%%.*}" "${dependency#*.}" "$platform" || return
+        ;;
+    esac
+    field_index=$((field_index + 1))
+  done
+  RIG_SELECTED_RESOURCE_SECTIONS[${#RIG_SELECTED_RESOURCE_SECTIONS[@]}]=$section_name
+}
+
+rig_resource_dependencies_selected() {
+  local section_name section_index field_index field_end reference dependency
+
+  section_name=$1
+  shift
+  rig_section_index "$section_name" || return 2
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = resource-dependency ]; then
+      reference=${RIG_FIELD_VALUES[$field_index]}
+      rig_resource_reference "$reference" || return 2
+      dependency=$RIG_VALUE
+      [ "$#" -gt 0 ] && rig_array_contains "$dependency" "$@" || return 1
     fi
     field_index=$((field_index + 1))
   done
 }
 
 rig_sort_selected_resources() {
-  local index scan value previous
+  local candidate best index remaining_index
   local LC_ALL=C
+  local -a remaining ordered next
 
-  index=1
-  while [ "$index" -lt "${#RIG_SELECTED_RESOURCE_SECTIONS[@]}" ]; do
-    value=${RIG_SELECTED_RESOURCE_SECTIONS[$index]}
-    scan=$index
-    while [ "$scan" -gt 0 ]; do
-      previous=${RIG_SELECTED_RESOURCE_SECTIONS[$((scan - 1))]}
-      [[ "$value" < "$previous" ]] || break
-      RIG_SELECTED_RESOURCE_SECTIONS[$scan]=$previous
-      scan=$((scan - 1))
+  remaining=("${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}")
+  ordered=()
+  while [ "${#remaining[@]}" -gt 0 ]; do
+    best=
+    index=0
+    while [ "$index" -lt "${#remaining[@]}" ]; do
+      candidate=${remaining[$index]}
+      if rig_resource_dependencies_selected "$candidate" "${ordered[@]+"${ordered[@]}"}"; then
+        if [ -z "$best" ] || [[ "$candidate" < "$best" ]]; then
+          best=$candidate
+        fi
+      fi
+      index=$((index + 1))
     done
-    RIG_SELECTED_RESOURCE_SECTIONS[$scan]=$value
-    index=$((index + 1))
+    [ -n "$best" ] || rig_fail 'resource dependency graph cannot be ordered' || return
+    ordered[${#ordered[@]}]=$best
+    next=()
+    remaining_index=0
+    while [ "$remaining_index" -lt "${#remaining[@]}" ]; do
+      candidate=${remaining[$remaining_index]}
+      [ "$candidate" = "$best" ] || next[${#next[@]}]=$candidate
+      remaining_index=$((remaining_index + 1))
+    done
+    remaining=("${next[@]+"${next[@]}"}")
   done
+  RIG_SELECTED_RESOURCE_SECTIONS=("${ordered[@]+"${ordered[@]}"}")
 }
 
 rig_activate_profile() {
@@ -2141,6 +2523,24 @@ rig_sort_selected_tools() {
   done
 }
 
+rig_select_tool_variants() {
+  local platform index tool
+
+  platform=$1
+  RIG_SELECTED_VARIANTS=()
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
+    tool=${RIG_SELECTED_TOOLS[$index]}
+    if [ "$RIG_PUBLICATION_PLATFORM_NEUTRAL" -eq 1 ]; then
+      RIG_SELECTED_VARIANTS[$index]=
+    else
+      rig_select_compatible_variant "tool.$tool" "$platform" || return
+      RIG_SELECTED_VARIANTS[$index]=$RIG_VALUE
+    fi
+    index=$((index + 1))
+  done
+}
+
 rig_binding_supports_platform() {
   local section_index platform field_index field_end declared
 
@@ -2165,12 +2565,14 @@ rig_binding_supports_platform() {
 
 rig_select_bindings() {
   local platform tool_index tool section_index total matches binding_name
+  local selected_variant binding_variant variant_install compatible_variant
 
   platform=$1
   RIG_SELECTED_BINDINGS=()
   tool_index=0
   while [ "$tool_index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
     tool=${RIG_SELECTED_TOOLS[$tool_index]}
+    selected_variant=${RIG_SELECTED_VARIANTS[$tool_index]:-}
     section_index=0
     total=0
     matches=0
@@ -2178,6 +2580,17 @@ rig_select_bindings() {
     while [ "$section_index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
       if [ "${RIG_SECTION_TYPES[$section_index]}" = binding ] &&
         [ "${RIG_SECTION_IDS[$section_index]}" = "$tool" ]; then
+        compatible_variant=1
+        if rig_get_value "${RIG_SECTION_NAMES[$section_index]}" variant; then
+          binding_variant=$RIG_VALUE
+          [ "$binding_variant" = "$selected_variant" ] || compatible_variant=0
+        elif [ -n "$selected_variant" ]; then
+          variant_install=variant:$selected_variant:install-provider
+          if rig_get_value "tool.$tool" "$variant_install"; then
+            compatible_variant=0
+          fi
+        fi
+        [ "$compatible_variant" -eq 1 ] || { section_index=$((section_index + 1)); continue; }
         total=$((total + 1))
         if rig_binding_supports_platform "$section_index" "$platform"; then
           matches=$((matches + 1))
@@ -2206,6 +2619,7 @@ rig_resolve_profile() {
   platform=${2:-}
   RIG_SELECTED_TOOLS=()
   RIG_SELECTED_BINDINGS=()
+  RIG_SELECTED_VARIANTS=()
   RIG_SELECTED_RESOURCE_SECTIONS=()
   RIG_ACTIVE_PROFILES=()
   RIG_RESOLVED_PROFILE=
@@ -2225,6 +2639,7 @@ rig_resolve_profile() {
     rig_select_central_profile "$profile" "$platform" || return
   fi
   rig_sort_selected_tools
+  rig_select_tool_variants "$platform" || return
   rig_sort_selected_resources
   rig_validate_selected_native_targets || return
   rig_profile_kind "$profile" || return
@@ -2257,7 +2672,7 @@ rig_resolve_bindings() {
 }
 
 rig_dump_resolution() {
-  local index binding provider
+  local index binding provider section_index
 
   printf 'profile=%s\nplatform=%s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   index=0
@@ -2265,7 +2680,9 @@ rig_dump_resolution() {
     printf 'tool=%s\n' "${RIG_SELECTED_TOOLS[$index]}"
     binding=${RIG_SELECTED_BINDINGS[$index]:-}
     if [ -n "$binding" ]; then
-      provider=${binding##*.}
+      rig_section_index "$binding" || return 2
+      section_index=$RIG_INDEX
+      provider=${RIG_SECTION_SECONDARY_IDS[$section_index]}
       printf 'binding=%s:%s\n' "${RIG_SELECTED_TOOLS[$index]}" "$provider"
     fi
     index=$((index + 1))
@@ -2444,7 +2861,7 @@ rig_prepare_provider_invocation() {
 }
 
 rig_append_resource_fields() {
-  local section_name section_index section_type field_index field_end key
+  local section_name section_index section_type field_index field_end key output_key
   local restart_policy start_policy run_policy priority
 
   section_name=$1
@@ -2459,9 +2876,11 @@ rig_append_resource_fields() {
   field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
   while [ "$field_index" -lt "$field_end" ]; do
     key=${RIG_FIELD_KEYS[$field_index]}
+    output_key=$key
+    [ "$key" != resource-dependency ] || output_key=depends-on
     case "$key" in
       provider|locator) ;;
-      *) RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]="$key=${RIG_FIELD_VALUES[$field_index]}" ;;
+      *) RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]="$output_key=${RIG_FIELD_VALUES[$field_index]}" ;;
     esac
     case "$key" in
       restart-policy) restart_policy=1 ;;
@@ -3898,8 +4317,24 @@ rig_artifact_detail() {
   RIG_VALUE=artifact-$kind:$identity
 }
 
+rig_selected_variant_for_tool() {
+  local tool index
+
+  tool=$1
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
+    if [ "${RIG_SELECTED_TOOLS[$index]}" = "$tool" ]; then
+      RIG_VALUE=${RIG_SELECTED_VARIANTS[$index]:-}
+      return 0
+    fi
+    index=$((index + 1))
+  done
+  RIG_VALUE=
+  return 1
+}
+
 rig_observe_tool_artifacts() {
-  local tool section_name section_index field_index field_end declared artifact
+  local tool section_name section_index field_index field_end declared artifact variant artifact_key
   local state detail rank candidate_state candidate_detail candidate_rank info_plist
   local macos_dir app_exec app_exec_found
 
@@ -3907,13 +4342,18 @@ rig_observe_tool_artifacts() {
   section_name=tool.$tool
   rig_section_index "$section_name" || return 2
   section_index=$RIG_INDEX
+  rig_selected_variant_for_tool "$tool" || true
+  variant=$RIG_VALUE
+  artifact_key=variant:$variant:artifact
   field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
   field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
   state=present
   detail=-
   rank=0
   while [ "$field_index" -lt "$field_end" ]; do
-    if [ "${RIG_FIELD_KEYS[$field_index]}" = artifact ]; then
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = artifact ] || {
+      [ -n "$variant" ] && [ "${RIG_FIELD_KEYS[$field_index]}" = "$artifact_key" ];
+    }; then
       declared=${RIG_FIELD_VALUES[$field_index]}
       rig_normalize_artifact_identity "$declared"
       artifact=$RIG_VALUE
@@ -4126,7 +4566,7 @@ rig_binding_declares_locator() {
     # so it matches whichever provider observed it. It is declared on the tool
     # because a catalogue-only tool has no installation metadata to carry it.
     if [ "${RIG_SECTION_TYPES[$index]}" = tool ] &&
-      rig_collect_field_values "${RIG_SECTION_NAMES[$index]}" artifact; then
+      rig_collect_all_tool_artifacts "${RIG_SECTION_NAMES[$index]}"; then
       artifact_index=0
       while [ "$artifact_index" -lt "${#RIG_QUERY_ITEMS[@]}" ]; do
         rig_normalize_artifact_identity "${RIG_QUERY_ITEMS[$artifact_index]}" || return
@@ -4471,9 +4911,14 @@ rig_observe_resource_plan() {
   index=0
   while [ "$index" -lt "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" ]; do
     section_name=${RIG_RESOURCE_PLAN_SECTIONS[$index]}
-    rig_observe_resource "$section_name" || return
-    state=$RIG_OBSERVATION
-    detail=$RIG_OBSERVATION_DETAIL
+    if rig_resource_blocker "$section_name"; then
+      state=unknown
+      detail=blocked-by:$RIG_VALUE
+    else
+      rig_observe_resource "$section_name" || return
+      state=$RIG_OBSERVATION
+      detail=$RIG_OBSERVATION_DETAIL
+    fi
     RIG_RESOURCE_PLAN_STATES[$index]=$state
     RIG_RESOURCE_PLAN_DETAILS[$index]=$detail
     case "$state" in
@@ -4873,8 +5318,24 @@ rig_preflight_apply() {
   fi
 }
 
+rig_resource_plan_index() {
+  local wanted index
+
+  wanted=$1
+  index=0
+  while [ "$index" -lt "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" ]; do
+    if [ "${RIG_RESOURCE_PLAN_SECTIONS[$index]}" = "$wanted" ]; then
+      RIG_INDEX=$index
+      return 0
+    fi
+    index=$((index + 1))
+  done
+  RIG_INDEX=
+  return 1
+}
+
 rig_resource_blocker() {
-  local section_name section_index field_index field_end tool
+  local section_name section_index field_index field_end tool reference dependency dependency_index
 
   section_name=$1
   rig_section_index "$section_name" || return 2
@@ -4885,8 +5346,18 @@ rig_resource_blocker() {
     if [ "${RIG_FIELD_KEYS[$field_index]}" = requires ]; then
       tool=${RIG_FIELD_VALUES[$field_index]}
       if rig_plan_index "$tool"; then
-        case "${RIG_PLAN_RESULTS[$RIG_INDEX]:-}" in completed|planned|neutral) ;;
+        case "${RIG_PLAN_RESULTS[$RIG_INDEX]:-}" in completed|planned|neutral|observed) ;;
           *) RIG_VALUE=$tool; return 0 ;;
+        esac
+      fi
+    elif [ "${RIG_FIELD_KEYS[$field_index]}" = resource-dependency ]; then
+      reference=${RIG_FIELD_VALUES[$field_index]}
+      rig_resource_reference "$reference" || return 2
+      dependency=$RIG_VALUE
+      if rig_resource_plan_index "$dependency"; then
+        dependency_index=$RIG_INDEX
+        case "${RIG_RESOURCE_PLAN_RESULTS[$dependency_index]:-}" in completed|planned|observed) ;;
+          *) RIG_VALUE=$reference; return 0 ;;
         esac
       fi
     fi
@@ -5876,6 +6347,8 @@ rig_count_config_fragments() {
 
 rig_command_diag() {
   local platform root_file root_display fragment_count config_status schema default_profile exit_code
+  local index key profiles tools resources variants variant rest
+  local -a seen_variants
 
   if [ "$#" -eq 1 ]; then
     case "$1" in
@@ -5896,6 +6369,11 @@ rig_command_diag() {
   config_status=missing
   schema=
   default_profile=
+  profiles=0
+  tools=0
+  resources=0
+  variants=0
+  seen_variants=()
   exit_code=1
   if [ -e "$root_file" ] || [ "$fragment_count" -gt 0 ]; then
     if rig_load_config 2>/dev/null; then
@@ -5904,6 +6382,30 @@ rig_command_diag() {
       schema=$RIG_VALUE
       rig_get_value rig default-profile || return 1
       default_profile=$RIG_VALUE
+      index=0
+      while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+        case "${RIG_SECTION_TYPES[$index]}" in
+          profile) profiles=$((profiles + 1)) ;;
+          tool) tools=$((tools + 1)) ;;
+          service|scheduled-job|setting|dock) resources=$((resources + 1)) ;;
+        esac
+        index=$((index + 1))
+      done
+      index=0
+      while [ "$index" -lt "${#RIG_FIELD_KEYS[@]}" ]; do
+        key=${RIG_FIELD_KEYS[$index]}
+        case "$key" in variant:*:*)
+          rest=${key#variant:}
+          variant=${RIG_FIELD_SECTIONS[$index]}:${rest%%:*}
+          if [ "${#seen_variants[@]}" -eq 0 ] ||
+            ! rig_array_contains "$variant" "${seen_variants[@]}"; then
+            seen_variants[${#seen_variants[@]}]=$variant
+            variants=$((variants + 1))
+          fi
+          ;;
+        esac
+        index=$((index + 1))
+      done
       exit_code=0
     else
       config_status=invalid
@@ -5917,7 +6419,10 @@ rig_command_diag() {
   printf 'Configuration:\n  Root config: %s\n  Fragment count: %s\n  Status: %s\n' \
     "$root_display" "$fragment_count" "$config_status"
   if [ "$config_status" = valid ]; then
-    printf '  Schema: %s\n  Default profile: %s\n' "$schema" "$default_profile"
+    printf '  Schema: %s\n  Default profile: %s\n  Selection mode: %s\n' \
+      "$schema" "$default_profile" "$RIG_PROFILE_SELECTION_MODE"
+    printf '  Profiles: %s\n  Tools: %s\n  Managed resources: %s\n  Tool variants: %s\n' \
+      "$profiles" "$tools" "$resources" "$variants"
   fi
   return "$exit_code"
 }
@@ -5974,6 +6479,48 @@ rig_collect_field_values() {
     field_index=$((field_index + 1))
   done
   rig_sort_query_items
+}
+
+rig_collect_all_tool_artifacts() {
+  local section_name section_index field_index field_end key
+
+  section_name=$1
+  rig_section_index "$section_name" || return 1
+  section_index=$RIG_INDEX
+  RIG_QUERY_ITEMS=()
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    key=${RIG_FIELD_KEYS[$field_index]}
+    case "$key" in artifact|variant:*:artifact)
+      RIG_QUERY_ITEMS[${#RIG_QUERY_ITEMS[@]}]=${RIG_FIELD_VALUES[$field_index]}
+      ;;
+    esac
+    field_index=$((field_index + 1))
+  done
+}
+
+rig_collect_tool_artifacts() {
+  local tool platform section_name section_index field_index field_end variant variant_key key
+
+  tool=$1
+  platform=$2
+  section_name=tool.$tool
+  rig_select_compatible_variant "$section_name" "$platform" || return
+  variant=$RIG_VALUE
+  variant_key=variant:$variant:artifact
+  rig_section_index "$section_name" || return 2
+  section_index=$RIG_INDEX
+  RIG_QUERY_ITEMS=()
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    key=${RIG_FIELD_KEYS[$field_index]}
+    if [ "$key" = artifact ] || { [ -n "$variant" ] && [ "$key" = "$variant_key" ]; }; then
+      RIG_QUERY_ITEMS[${#RIG_QUERY_ITEMS[@]}]=${RIG_FIELD_VALUES[$field_index]}
+    fi
+    field_index=$((field_index + 1))
+  done
 }
 
 rig_join_query_items() {
@@ -6589,6 +7136,7 @@ rig_explain_resource() {
   while [ "$field_index" -lt "$field_end" ]; do
     key=${RIG_FIELD_KEYS[$field_index]}
     value=${RIG_FIELD_VALUES[$field_index]}
+    [ "$key" != resource-dependency ] || key=depends-on
     printf '%s=%s\n' "$key" "$value"
     field_index=$((field_index + 1))
   done
@@ -6649,7 +7197,7 @@ rig_command_explain() {
   rig_collect_field_values "tool.$tool" alternative
   rig_join_query_items
   alternatives=$RIG_VALUE
-  rig_collect_field_values "tool.$tool" artifact
+  rig_collect_tool_artifacts "$tool" "$platform" || return
   rig_join_query_items
   artifacts=$RIG_VALUE
     rig_collect_profile_memberships "$tool"

@@ -40,6 +40,8 @@ Inspection comes before mutation. Rig never turns a read-only declaration query 
 
 Generated paths stay with the tool whose capability they expose. Their `artifacts` paths make them visible to `explain`, `status`, and `doctor`; they are not separate tools. Rig observes those paths, while their native owner remains responsible for creating, updating, and removing them.
 
+One catalogue tool can use bounded `variant.ID.*` declarations when its installation or artifacts differ by platform. Managed resources can use qualified `depends-on` references when their reconciliation order matters. Both remain declarative: variants choose data, dependencies order known resources, and neither introduces arbitrary commands.
+
 ## Choose a guide
 
 - [Get started](getting-started.md) — install Rig, create a small configuration, understand it, check a machine, and preview the first application.

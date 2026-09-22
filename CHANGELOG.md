@@ -49,6 +49,10 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - First-class `service` and `scheduled-job` declarations selected by profiles, with literal program and environment arrays, service policies, calendar or interval schedules, desired state, and tool dependencies.
 - Source configuration rejects the superseded `[binding.*]` table shape; one tool table is the sole public home for installation metadata.
 - Standard TOML-compatible `rig.toml` and `conf.d/*.toml` sources, with a dependency-free schema subset, quoted strings, string arrays, inline comments, and model-wide fail-closed validation.
+- Bounded multiline basic-string arrays with comments and trailing commas, while split strings, unsupported values, and unterminated arrays still fail closed.
+- One logical tool may declare deterministic `variant.ID.*` platform installations and artifacts; exactly one variant matches each declared platform and public exports omit private variant data.
+- Managed resources support qualified `depends-on` graphs with missing-reference and cycle validation, deterministic topological order, and transitive failure blocking.
+- `rig diag` summarises profile-selection mode and model counts for profiles, tools, managed resources, and platform variants.
 - Read-only catalogue queries that do not invoke providers.
 - Human-readable `rig show` profile metadata and bounded-width, aligned selected-tool tables.
 - Compact top-level help aligns command names and descriptions while directing detailed syntax to each command's `--help`.

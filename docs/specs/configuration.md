@@ -36,11 +36,11 @@ _Evidence:_ `rig_load_config` scopes discovery and ordering under `LC_ALL=C`; `t
 
 ### RIG-CONF-004 — Inert bounded TOML
 
-Rig MUST accept schema 1 tables, bare keys, decimal integer schema value, single-line basic strings, single-line arrays of basic strings, blank lines, and `#` comments without sourcing files, evaluating commands, interpreting shell syntax, or performing general environment expansion. Every accepted source MUST be valid TOML. Rig MUST reject unsupported TOML types and syntax before returning a resolved rig.
+Rig MUST accept schema 1 tables, bare keys, decimal integer schema value, single-line basic strings, bounded single-line or multiline arrays of basic strings, blank lines, and `#` comments without sourcing files, evaluating commands, interpreting shell syntax, or performing general environment expansion. Every accepted source MUST be valid TOML. Rig MUST reject unsupported TOML types and syntax before returning a resolved rig.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests validate representative Rig files with a general TOML reader, prove shell-significant text remains inert, and reject literal strings, multiline arrays, non-string array members, floats, and unsupported escapes.
+_Verify:_ Bats tests validate representative Rig files with a general TOML reader, prove shell-significant text remains inert, and reject literal strings, unterminated arrays, basic strings split across lines, non-string array members, floats, and unsupported escapes.
 
 _Evidence:_ `rig_parse_file` and its `rig_toml_*` helpers implement the bounded parser without `eval` or external commands; `tests/rig.bats` exercises interoperability, inert values, comments, escapes, and rejection.
 
@@ -62,7 +62,7 @@ _Conformance:_ conforming
 
 _Verify:_ Bats tests load platform, relationship, profile, tool, capability, argument, artifact, and allowed-argument arrays containing spaces, commas, and shell-significant text and assert exact item boundaries.
 
-_Evidence:_ `rig_toml_parse_array` decodes one basic string at a time into the existing ordered field model; `tests/rig.bats` inspects values by occurrence and provider argument boundaries.
+_Evidence:_ `rig_toml_array_complete` and `rig_toml_parse_array` decode one basic string at a time into the existing ordered field model; `tests/rig.bats` inspects values by occurrence and provider argument boundaries.
 
 ### RIG-CONF-007 — Bounded path expansion
 
@@ -98,7 +98,7 @@ _Evidence:_ `rig_validate_model` validates root fields and references; bootstrap
 
 ### RIG-CONF-010 — Catalogue fields
 
-Schema 1 category tables MUST require string `name` and `purpose`. Tool tables MUST require string `name`, `category`, `purpose`, and `rationale`, MUST require a non-empty `platforms` string array, and MAY contain `requires`, `related`, `alternatives`, and `artifacts` string arrays. A materialised tool MUST co-locate string `install.provider`, `install.kind`, and `install.locator`; it MAY contain string `install.destination` and `install.checksum` and string arrays `install.platforms` and `install.arguments`. `install.provider` MUST name a built-in provider identity or an explicitly declared external provider. A tool without `install.provider` is catalogue-only and MUST NOT contain any other `install.*` field.
+Schema 1 category tables MUST require string `name` and `purpose`. Tool tables MUST require string `name`, `category`, `purpose`, and `rationale`, MUST require a non-empty `platforms` string array, and MAY contain `requires`, `related`, `alternatives`, and `artifacts` string arrays. A materialised non-variant tool MUST co-locate string `install.provider`, `install.kind`, and `install.locator`; it MAY contain string `install.destination` and `install.checksum` and string arrays `install.platforms` and `install.arguments`. `install.provider` MUST name a built-in provider identity or an explicitly declared external provider. A tool without `install.provider` is catalogue-only and MUST NOT contain any other `install.*` field.
 
 _Conformance:_ conforming
 
@@ -207,3 +207,25 @@ _Conformance:_ conforming
 _Verify:_ Bats resolves a non-`default` configured default, explicit membership, explicit inheritance, an empty membership, and invalid mixed or unsafe view declarations.
 
 _Evidence:_ `rig_detect_profile_selection_mode`, `rig_item_declares_profile`, `rig_activate_profile`, and `rig_validate_model` enforce the schema; `tests/rig-profile-authority.bats` covers its accepted and rejected forms.
+
+### RIG-CONF-021 — Platform-specific tool variants
+
+A tool MAY declare bounded dotted `variant.ID.*` fields beneath its single `[tool.ID]` table. Every variant MUST have a non-empty `variant.ID.platforms` string array and at least one installation or artifact field. Installation variants MUST contain `variant.ID.install.provider`, `variant.ID.install.kind`, and `variant.ID.install.locator`; they MAY contain the same bounded destination, checksum, and arguments fields as a non-variant installation. A variant MAY contain `variant.ID.artifacts`. Variant identifiers MUST match normal Rig identifiers.
+
+Every platform declared by the tool MUST match exactly one variant. Rig MUST reject zero or multiple variant matches, partial variant installation metadata, and a tool combining a non-variant `install.*` declaration with variant installations. Platform-neutral `artifacts` MAY coexist with selected variant artifacts. Variant installation and artifact values MUST remain private and MUST NOT enter the public publication projection.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats tests select distinct macOS and Linux installations and artifacts beneath one tool, reject zero and multiple matches, and inspect exported JSON for absence of variant materialisation data.
+
+_Evidence:_ `rig_toml_variant_field`, `rig_validate_tool_variants`, `rig_select_compatible_variant`, and `rig_synthesise_bindings` implement the bounded representation; `tests/rig-human-config.bats` covers selection, rejection, and publication safety.
+
+### RIG-CONF-022 — Qualified resource dependencies
+
+Service, scheduled-job, setting, and Dock declarations MAY contain a `depends-on` string array. Every value MUST use the qualified form `service:ID`, `scheduled-job:ID`, `setting:ID`, or `dock:ID` and MUST name an existing declaration. Rig MUST reject missing endpoints and dependency cycles before provider observation or mutation. The field declares ordering only; it MUST NOT contain commands, conditions, or provider operations.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats tests accept dependencies across resource kinds and reject unqualified, unknown, and cyclic graphs before provider work.
+
+_Evidence:_ `rig_resource_reference`, `rig_validate_resource_dependencies`, and `rig_resource_cycle_visit` validate the graph; `tests/rig-human-config.bats` covers qualified references, missing endpoints, and cycles.
