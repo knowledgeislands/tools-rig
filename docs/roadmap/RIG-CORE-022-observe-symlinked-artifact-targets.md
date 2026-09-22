@@ -3,13 +3,13 @@ id: RIG-CORE-022
 title: Observe symlinked artifact targets
 area: CORE
 theme: orchestration
-horizon: next
-status: draft
+horizon: now
+status: ready
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 0603938d0c8041b3409193706aaac84d834ae9c1
 created_at: 2026-09-22T00:00:00Z
-updated_at: 2026-09-22T00:00:00Z
+updated_at: 2026-09-22T22:23:05Z
 ---
 
 # Observe Symlinked Artifact Targets
@@ -38,6 +38,8 @@ This work changes how a declared artifact that is a symlink is observed and what
 
 A repository-side check enumerating `/usr/local/bin` and resolving each link was written in `krisb/dotfiles` and then removed, on the grounds that a general defect in Rig should not acquire a local answer. It could report a dangling link, but never a command line that was never created, because that expectation has nowhere to live but the artifact list. That workstation now leaves the surface unobserved until this lands.
 
+The approved implementation follows at most 40 declared leaf-link hops with the native `readlink` already used elsewhere by Rig. Relative targets resolve from the link's containing directory. A missing resolved target is `missing`; a target that resolves to a damaged application is `drifted`; a cycle or unreadable link is `unavailable`; and existing non-file, non-directory targets remain unavailable. Resolution is not constrained to the link's parent root because the artifact declaration explicitly names the trusted expectation, but the resolved target must independently pass the existing artifact checks before it can be `present`. ADR-RIG-007 records this revised evidence boundary.
+
 ## Steps
 
 - [ ] Resolve a declared artifact that is a symlink to its target, bounding the resolution against cycles and an unreadable path.
@@ -47,6 +49,10 @@ A repository-side check enumerating `/usr/local/bin` and resolving each link was
 - [ ] Decide and document whether a resolved target is constrained to any root, and if so express it as an observation rather than a refusal.
 - [ ] Add fixtures for a link into a healthy bundle, a dangling link, a link into a damaged bundle, and a cyclic link.
 - [ ] Align the user command guide, the state Specification, the manual, and the changelog with the revised artifact contract.
+
+## Delegation
+
+No delegation is planned. Symlink resolution, artifact classification, adversarial fixtures, Decision Record, and consumer documentation form one tightly coupled safety change.
 
 ## Files touched
 
@@ -69,7 +75,7 @@ No delivery dependency. Sibling to `RIG-CORE-021`: both exist because a local re
 
 ### Decision Records
 
-Consider one. Refusing symlinks was a deliberate position about what counts as evidence of an install, and resolving them revises that position rather than fixing an oversight — which is the kind of change a Decision Record exists to carry.
+Add ADR-RIG-007 to record why a declared artifact link is trusted as an expectation but its resolved target must still provide the installation evidence.
 
 ### Specifications
 

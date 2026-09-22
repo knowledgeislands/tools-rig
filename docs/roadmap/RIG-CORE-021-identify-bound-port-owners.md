@@ -3,13 +3,13 @@ id: RIG-CORE-021
 title: Identify bound port owners
 area: CORE
 theme: orchestration
-horizon: next
-status: draft
+horizon: now
+status: ready
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 0603938d0c8041b3409193706aaac84d834ae9c1
 created_at: 2026-09-22T07:55:00Z
-updated_at: 2026-09-22T07:55:00Z
+updated_at: 2026-09-22T22:23:05Z
 ---
 
 ## Goal
@@ -39,6 +39,8 @@ The pid is therefore already available at the point of comparison, which is what
 
 A repository-side check comparing each listener's full argv against the owner's declared `program` was written in `krisb/dotfiles` and then removed, on the grounds that a general defect in Rig should not acquire a local answer. That workstation therefore reads both `conflicting` findings as known false positives until this lands, which is the cost this work removes.
 
+The approved implementation takes one additional macOS `ps` snapshot after `lsof`, joins full command lines to the already captured PIDs, and never invokes `ps` once per port. Service and scheduled-job ownership matches the home-expanded first `program` value as a complete argv token. Tool ownership matches the selected installation locator after removing package extras, either as a command token or path component. An exact executable-name match remains positive fallback evidence; a different executable name without readable argv is `unknown` rather than `conflicting`. Only a readable command line that positively identifies a different process is `conflicting`.
+
 ## Steps
 
 - [ ] Capture each listener's full command line alongside its pid during observation, preferring a single additional bounded call over a per-port invocation.
@@ -48,6 +50,10 @@ A repository-side check comparing each listener's full argv against the owner's 
 - [ ] Keep the check working where command-line observation is unavailable or refused, degrading to an explicit unavailable observation rather than a false pass.
 - [ ] Add fixtures for an interpreted listener matching its declared program, a genuinely foreign occupant, and an unidentifiable listener.
 - [ ] Align the user command guide, the state Specification, the manual, and the changelog with the revised detail contract.
+
+## Delegation
+
+No delegation is planned. Listener capture, owner resolution, state classification, tests, and documentation are tightly coupled around one observation contract.
 
 ## Files touched
 
