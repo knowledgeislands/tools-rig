@@ -6,6 +6,10 @@ setup() {
   CONFIG_HOME=$BATS_TEST_TMPDIR/config-$BATS_TEST_NUMBER
   TEST_HOME=$BATS_TEST_TMPDIR/home-$BATS_TEST_NUMBER
   mkdir -p "$CONFIG_HOME/conf.d" "$TEST_HOME"
+  DEFAULT_LSOF=$BATS_TEST_TMPDIR/default-lsof-$BATS_TEST_NUMBER
+  printf '%s\n' '#!/usr/bin/env bash' 'exit 0' >"$DEFAULT_LSOF"
+  chmod +x "$DEFAULT_LSOF"
+  export RIG_LSOF_COMMAND=$DEFAULT_LSOF
   source "$BATS_TEST_DIRNAME/helpers/large-catalogue-fixture.bash"
 }
 
@@ -124,6 +128,87 @@ bootstrap-profile = "bootstrap"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstra
     '[profile.bootstrap]' \
     'tools = ["app"]' >>"$CONFIG_HOME/bootstrap.toml"
   mv "$CONFIG_HOME/bootstrap.toml" "$CONFIG_HOME/rig.toml"
+}
+
+write_port_fixture() {
+  PORT_LSOF=$BATS_TEST_TMPDIR/lsof-$BATS_TEST_NUMBER
+  PORT_LSOF_LOG=$BATS_TEST_TMPDIR/lsof-log-$BATS_TEST_NUMBER
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'printf "%s\n" "$*" >>"$RIG_TEST_LSOF_LOG"' \
+    'printf "%s" "${RIG_TEST_LSOF_OUTPUT:-}"' \
+    'exit "${RIG_TEST_LSOF_EXIT:-0}"' >"$PORT_LSOF"
+  chmod +x "$PORT_LSOF"
+  printf '%s\n' \
+    '[rig]' \
+    'schema = 1' \
+    'default-profile = "default"' \
+    '[category.core]' \
+    'name = "Core"' \
+    'purpose = "Port fixtures"' \
+    '[tool.alpha]' \
+    'name = "Alpha"' \
+    'category = "core"' \
+    'purpose = "Own fixture listeners"' \
+    'rationale = "It gives listener observations a stable owner"' \
+    'platforms = ["any"]' \
+    'profiles = ["default", "public"]' \
+    '[profile.default]' \
+    'name = "Default"' \
+    'purpose = "Private machine intent"' \
+    '[profile.public]' \
+    'name = "Public"' \
+    'purpose = "Public catalogue view"' \
+    'kind = "view"' \
+    '[port.required-api]' \
+    'name = "Required API"' \
+    'purpose = "Keep the private API available"' \
+    'rationale = "Local tools rely on its stable address"' \
+    'protocol = "tcp"' \
+    'port = 4101' \
+    'scope = "loopback"' \
+    'mode = "required"' \
+    'owner = "tool:alpha"' \
+    'profiles = ["default", "public"]' \
+    '[port.on-demand-api]' \
+    'name = "On-demand API"' \
+    'purpose = "Reserve a private development endpoint"' \
+    'rationale = "Projects can use one predictable local address"' \
+    'protocol = "tcp"' \
+    'port = 4102' \
+    'scope = "loopback"' \
+    'mode = "on-demand"' \
+    'owner = "tool:alpha"' \
+    'profiles = ["default"]' \
+    '[port.allocated-api]' \
+    'name = "Allocated API"' \
+    'purpose = "Allocate a future private endpoint"' \
+    'rationale = "The allocation prevents local planning collisions"' \
+    'protocol = "tcp"' \
+    'port = 4103' \
+    'scope = "loopback"' \
+    'mode = "allocated"' \
+    'owner = "tool:alpha"' \
+    'profiles = ["default"]' \
+    '[port.free-allocation]' \
+    'name = "Free allocation"' \
+    'purpose = "Keep another endpoint available"' \
+    'rationale = "Absence is healthy until its owner needs it"' \
+    'protocol = "tcp"' \
+    'port = 4104' \
+    'scope = "all-interfaces"' \
+    'mode = "allocated"' \
+    'owner = "tool:alpha"' \
+    'profiles = ["default"]' \
+    '[publication.site]' \
+    'profile = "public"' \
+    'title = "Public Rig"' \
+    'base-url = "https://rig.example"' \
+    'publisher = "publisher"' \
+    '[provider.publisher]' \
+    'adapter = "custom"' \
+    "executable = \"$PORT_LSOF\"" \
+    'capabilities = ["publish"]' >"$CONFIG_HOME/rig.toml"
 }
 
 run_loader() {
@@ -287,7 +372,7 @@ write_query_config() {
   for synopsis in \
     'show [--profile NAME]' \
     'list [--category ID] [--profile NAME]' \
-    'explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID' \
+    'explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID' \
     'status [--profile NAME] [--unmanaged]' \
     'doctor [--profile NAME]' \
     'apply [--profile NAME] [--scope tools|resources|all] [--dry-run]' \
@@ -528,7 +613,7 @@ write_query_config() {
     XDG_DATA_HOME= XDG_STATE_HOME= XDG_CACHE_HOME= RIG_PLATFORM=fixture "$RIG" diag
 
   [ "$status" -eq 0 ]
-  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.2.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.toml\n  Fragment count: 2\n  Status: valid\n  Schema: 1\n  Default profile: default\n  Selection mode: central\n  Profiles: 1\n  Tools: 1\n  Managed resources: 0\n  Tool variants: 0' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]
+  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.2.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.toml\n  Fragment count: 2\n  Status: valid\n  Schema: 1\n  Default profile: default\n  Selection mode: central\n  Profiles: 1\n  Tools: 1\n  Managed resources: 0\n  Ports: 0\n  Tool variants: 0' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]
 }
 
 @test "diag accepts fragment-only configuration and reports the optional root absent" {
@@ -780,7 +865,7 @@ write_query_config() {
 
     run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" explain "$flag"
     [ "$status" -eq 0 ]
-  [ "$output" = "Usage: rig explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID" ]
+    [ "$output" = "Usage: rig explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID" ]
   done
 }
 
@@ -4145,6 +4230,162 @@ install.locator = "base"
 
   [ "$status" -eq 1 ]
   [[ "$output" == *'Unmanaged: 0'* ]] || false
+}
+
+@test "private port declarations validate bounded identity intent and conflicts" {
+  write_port_fixture
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" show
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'Ports: 4\nID\tNAME\tPORT\tSCOPE\tMODE\tOWNER'* ]] || false
+
+  sed \
+    -e '/^profiles = /d' \
+    -e '/purpose = "Private machine intent"/a\
+tools = ["alpha"]\
+ports = ["required-api", "on-demand-api", "allocated-api", "free-allocation"]' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/central.toml"
+  mv "$CONFIG_HOME/central.toml" "$CONFIG_HOME/rig.toml"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" show
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'Ports: 4\n'* ]] || false
+
+  write_port_fixture
+
+  sed 's/protocol = "tcp"/protocol = "udp"/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/invalid.toml"
+  mv "$CONFIG_HOME/invalid.toml" "$CONFIG_HOME/rig.toml"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" show
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"protocol must be 'tcp'"* ]] || false
+
+  write_port_fixture
+  sed 's/port = 4101/port = 65536/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/invalid.toml"
+  mv "$CONFIG_HOME/invalid.toml" "$CONFIG_HOME/rig.toml"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" show
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'port must be between 1 and 65535'* ]] || false
+
+  write_port_fixture
+  sed 's/owner = "tool:alpha"/owner = "alpha"/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/invalid.toml"
+  mv "$CONFIG_HOME/invalid.toml" "$CONFIG_HOME/rig.toml"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" show
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'owner must be a qualified declaration reference'* ]] || false
+
+  write_port_fixture
+  sed 's/port = 4102/port = 4101/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/invalid.toml"
+  mv "$CONFIG_HOME/invalid.toml" "$CONFIG_HOME/rig.toml"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" show
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"conflicts with [port."* ]] || false
+}
+
+@test "port queries are inert and explain item-owned private intent" {
+  write_port_fixture
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" \
+    "$RIG" explain port:required-api
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'Resource: port:required-api\nKind: port\nID: required-api\nProfiles: default, public'* ]] || false
+  [[ "$output" == *$'protocol=tcp\nport=4101\nscope=loopback\nmode=required\nowner=tool:alpha'* ]] || false
+  [ ! -e "$PORT_LSOF_LOG" ]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" "$RIG" show
+  [ "$status" -eq 0 ]
+  [[ "$output" == *$'required-api\tRequired API\t4101\tloopback\trequired\ttool:alpha'* ]] || false
+  [ ! -e "$PORT_LSOF_LOG" ]
+}
+
+@test "status observes private ports once and reports mode scope owner and unmanaged listeners" {
+  write_port_fixture
+  listener_output=$'p101\ncalpha\nn127.0.0.1:4101 (LISTEN)\np102\ncalpha\nn*:4102 (LISTEN)\np103\ncforeign\nn127.0.0.1:4103 (LISTEN)\np104\ncdynamic\nn127.0.0.1:4999 (LISTEN)\n'
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" \
+    RIG_TEST_LSOF_OUTPUT="$listener_output" "$RIG" status --unmanaged
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'required-api\t4101\ttcp\trequired\ttool:alpha\tpresent\tlistening:loopback;owner:alpha'* ]] || false
+  [[ "$output" == *$'on-demand-api\t4102\ttcp\ton-demand\ttool:alpha\tdrifted\tscope:all-interfaces;expected:loopback'* ]] || false
+  [[ "$output" == *$'allocated-api\t4103\ttcp\tallocated\ttool:alpha\tconflicting\towner:foreign;expected:alpha'* ]] || false
+  [[ "$output" == *$'free-allocation\t4104\ttcp\tallocated\ttool:alpha\tpresent\tavailable:allocated'* ]] || false
+  [[ "$output" == *$'4999\ttcp\tloopback\tunmanaged\towner:dynamic;pid:104'* ]] || false
+  [ "$(wc -l <"$PORT_LSOF_LOG")" -eq 1 ]
+  [[ "$(<"$PORT_LSOF_LOG")" == *'-nP -iTCP -sTCP:LISTEN -Fpcn'* ]] || false
+}
+
+@test "port absence and unavailable observation preserve mode and platform semantics" {
+  write_port_fixture
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" "$RIG" status
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'required-api\t4101\ttcp\trequired\ttool:alpha\tmissing\tnot-listening'* ]] || false
+  [[ "$output" == *$'on-demand-api\t4102\ttcp\ton-demand\ttool:alpha\tpresent\tavailable:on-demand'* ]] || false
+  [[ "$output" == *$'allocated-api\t4103\ttcp\tallocated\ttool:alpha\tpresent\tavailable:allocated'* ]] || false
+
+  listener_output=$'p101\nn[::1]:4101 (LISTEN)\np103\nn127.0.0.1:4103 (LISTEN)\np104\ncalpha\nn127.0.0.1:4104 (LISTEN)\n'
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" \
+    RIG_TEST_LSOF_OUTPUT="$listener_output" "$RIG" status
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'required-api\t4101\ttcp\trequired\ttool:alpha\tunknown\towner-unavailable'* ]] || false
+  [[ "$output" == *$'allocated-api\t4103\ttcp\tallocated\ttool:alpha\tpresent\toccupied:owner-unverified'* ]] || false
+  [[ "$output" == *$'free-allocation\t4104\ttcp\tallocated\ttool:alpha\tdrifted\tscope:loopback;expected:all-interfaces'* ]] || false
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" RIG_TEST_LSOF_EXIT=7 "$RIG" status
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'required-api\t4101\ttcp\trequired\ttool:alpha\tunavailable\tlistener-observation-unavailable'* ]] || false
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" \
+    RIG_TEST_LSOF_OUTPUT=$'p1\ncalpha\nngarbage\n' "$RIG" status
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'required-api\t4101\ttcp\trequired\ttool:alpha\tunavailable\tlistener-observation-unavailable'* ]] || false
+
+  rm -f "$PORT_LSOF_LOG"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=linux \
+    RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" "$RIG" status
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'required-api\t4101\ttcp\trequired\ttool:alpha\tunavailable\tunsupported-platform'* ]] || false
+  [ ! -e "$PORT_LSOF_LOG" ]
+}
+
+@test "doctor synthesizes private port findings without socket mutation" {
+  write_port_fixture
+  listener_output=$'p101\ncalpha\nn127.0.0.1:4101 (LISTEN)\np102\ncforeign\nn127.0.0.1:4103 (LISTEN)\n'
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" \
+    RIG_TEST_LSOF_OUTPUT="$listener_output" "$RIG" doctor
+  [ "$status" -eq 1 ]
+  [[ "$output" == *'Port findings:'* ]] || false
+  [[ "$output" == *'port.allocated-api: conflicting (owner:foreign;expected:alpha); owner=tool:alpha; action=stop-or-reconfigure-occupant'* ]] || false
+  [[ "$output" != *'port.on-demand-api:'* ]] || false
+  [ "$(wc -l <"$PORT_LSOF_LOG")" -eq 1 ]
+}
+
+@test "ports never enter public data or mutating plans" {
+  write_port_fixture
+  output_dir=$BATS_TEST_TMPDIR/port-export-$BATS_TEST_NUMBER
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" \
+    "$RIG" export site --output "$output_dir"
+  [ "$status" -eq 0 ]
+  grep -Fq '"id": "alpha"' "$output_dir/rig.json"
+  ! grep -Eq 'required-api|4101|private API|tool:alpha|"port"' "$output_dir/rig.json"
+  [ ! -e "$PORT_LSOF_LOG" ]
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" \
+    "$RIG" apply --dry-run
+  [ "$status" -eq 0 ]
+  [[ "$output" != *'required-api'* ]] || false
+  [[ "$output" != *$'4101'* ]] || false
+  [ ! -e "$PORT_LSOF_LOG" ]
 }
 
 @test "artifact comparison expands only supported leading home prefixes" {

@@ -140,3 +140,13 @@ _Conformance:_ conforming
 _Verify:_ Bats exports an explicit public view and rejects complete-profile publication, complete inheritance, implicit default disclosure, and an unlisted dependency.
 
 _Evidence:_ publication validation, `rig_validate_view_closure`, and item-owned profile resolution enforce the boundary; publication and profile-authority Bats cover safe selection and rejection.
+
+### RIG-PUB-010 — Absolute private-port exclusion
+
+Every public projection MUST exclude port declarations, numbers, scopes, modes, owners, listener observations, process details, and unmanaged listener inventory regardless of publication-view membership.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats assigns a declaration containing unique private markers to a publication view, exports it, and scans the complete output tree for every marker.
+
+_Evidence:_ `rig_render_publication_json` has a fixed tool-and-category allow-list; the private-port publication test proves no port field or marker enters `rig.json`.

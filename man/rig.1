@@ -14,7 +14,7 @@ rig \- describe and manage a personal working setup
 .RI [ \-\-profile " NAME" ]
 .br
 .B rig explain
-.I TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID
+.I TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID
 .br
 .B rig status
 .RI [ \-\-profile " NAME" ]
@@ -177,11 +177,13 @@ Narrow the list to tools in the declared category.
 Narrow the list to tools selected by the resolved profile.
 The category and profile filters may be combined.
 .TP
-.BI "rig explain " TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID
+.BI "rig explain " TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID
 Show a tool's identity and installation metadata, or a qualified operational
 resource's purpose, rationale, native ownership, desired values, policies,
 tool dependencies, and profile membership. Dock explanations include ordered
-item details. Tool explanations include declared artifacts.
+item details. Tool explanations include declared artifacts. Port explanations
+include TCP number, bind scope, mode, qualified owner, purpose, rationale, and
+profile membership.
 .TP
 .B rig status
 Compare every tool and operational resource in the resolved default profile
@@ -192,6 +194,9 @@ neutral unavailable rows; stale resource receipts are pending retirement.
 Compare a named resolved profile without changing the configured default.
 .TP
 .B rig status \-\-unmanaged
+On macOS, also report read-only TCP listener observations whose port is not
+declared. Listener inventory is private and informational; it never opens,
+reserves, closes, or kills a socket.
 Additionally ask each selected inventory source to enumerate its native
 domain, and report each observed identity that no tool installation declares.
 Built-in inventory needs no configuration declaration; external inventory
@@ -635,6 +640,39 @@ and
 .B display
 semantics. Profiles select settings and Dock layouts through their respective
 arrays; Dock items are selected only by a Dock layout.
+.PP
+.B [port.ID]
+declares one private TCP allocation. It requires
+.BR name ,
+.BR purpose ,
+.BR rationale ,
+.BR "protocol = \(dqtcp\(dq" ,
+a decimal
+.B port
+from 1 through 65535,
+.B scope
+set to
+.B loopback
+or
+.BR all-interfaces ,
+.B mode
+set to
+.BR required ,
+.BR on-demand ,
+or
+.BR allocated ,
+and an
+.B owner
+qualified as
+.BR tool:ID ,
+.BR service:ID ,
+or
+.BR scheduled-job:ID .
+It accepts item-owned
+.B profiles
+membership. Omitted membership selects the configured default profile; an
+empty array selects no profile. Port declarations are observation-only and
+never enter apply, receipt, or public projection data.
 .PP
 Provider identities built into Rig need no
 .B [provider.ID]

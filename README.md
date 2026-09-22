@@ -1,6 +1,6 @@
 # Rig
 
-Rig helps you describe the tools and managed resources that make up your working setup, explain why each one belongs, and see whether the setup you expect is present on a machine.
+Rig helps you describe the tools, managed resources, and private port allocations that make up your working setup, explain why each one belongs, and see whether the setup you expect is present on a machine.
 
 Instead of treating a Brewfile, dotfiles repository, language tool manager, and download scripts as separate answers to “what is my setup?”, Rig gives them one catalogue and one set of profiles. Those native systems still install and configure their own tools; Rig describes the whole and coordinates them.
 
@@ -20,6 +20,7 @@ Instead of treating a Brewfile, dotfiles repository, language tool manager, and 
 - A **profile** selects catalogue tools and managed resources for a machine, role, or context. One `default` profile is enough unless two contexts genuinely select different intent.
 - A **provider** is the native system that owns a declaration, such as Homebrew, uv, mise, npm, chezmoi, launchd, or macOS defaults. Rig knows its built-in providers; ordinary configuration does not register their adapters or capabilities.
 - **State** compares the selected profile with what providers observe on the current machine.
+- A **private port allocation** records stable TCP intent, expected bind scope, lifecycle mode, and the tool or service that owns it. Rig observes listeners but never opens, reserves, closes, or kills sockets.
 - A **publication** exports one deliberately public profile as data that a website such as `rig.midnight.ninja` can render.
 
 Rig is therefore a manager of managers. It does not replace package-manager manifests, chezmoi source state, provider credentials, or native configuration.
@@ -160,9 +161,9 @@ Managed resources can declare deterministic ordering with qualified dependencies
 - `rig` shows top-level help.
 - `rig show [--profile NAME]` describes the default or named resolved profile.
 - `rig list [--category ID] [--profile NAME]` lists catalogue tools, optionally filtered by category and profile.
-- `rig explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID` explains one tool or qualified managed resource.
-- `rig status [--profile NAME] [--unmanaged]` compares selected tools and resources with provider observations and can report undeclared tool identities.
-- `rig doctor [--profile NAME]` gives a compact health assessment for configuration, paths, providers, selected tools, and selected resources.
+- `rig explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID` explains one tool, qualified managed resource, or private port allocation.
+- `rig status [--profile NAME] [--unmanaged]` compares selected tools, resources, and private ports with read-only observations and can report undeclared tool identities and TCP listeners.
+- `rig doctor [--profile NAME]` gives a compact health assessment for configuration, paths, providers, selected tools, selected resources, and private ports.
 - `rig apply [--profile NAME] [--scope tools|resources|all] [--dry-run]` previews or materialises the resolved tool and resource plan.
 - `rig bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]` previews or runs the native bootstrap lifecycle for the configured bootstrap profile.
 - `rig update [--profile NAME] [--dry-run]` advances selected Homebrew, uv, mise, and npm tools through their native managers.
@@ -184,7 +185,7 @@ Rig-cache cleanup is deliberately separate from provider maintenance. Retained p
 
 Rig configuration is inert TOML; Rig never sources it as shell code. Built-in operations are fixed by Rig, while external operations require an explicit `adapter = "custom"` declaration and allow-list. A custom executable is either named directly or resolved at the exact `${RIG_DATA_HOME}/providers/ID` path. Literal argument boundaries are preserved, and read-only inspection remains separate from mutation and publication.
 
-Personal catalogue data, host-specific paths, credentials, provider-native state, and observed machine state belong in private configuration or their native systems. A public export contains only the selected public profile's allow-listed catalogue data.
+Personal catalogue data, host-specific paths, credentials, provider-native state, and observed machine state belong in private configuration or their native systems. A public export contains only the selected public profile's allow-listed catalogue data. Port declarations and listener observations are always private and never enter `rig.json`.
 
 Rig resolves only documented whole-value home forms for typed string settings and Dock paths; configuration remains inert and queries retain authored values. Application completes preflight before mutation: shared safety failures reject the plan, while a resource-local environmental finding fails only that resource and leaves independent work available. Any selected resource failure blocks retirement and receipt replacement.
 

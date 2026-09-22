@@ -229,3 +229,13 @@ _Conformance:_ conforming
 _Verify:_ Bats tests accept dependencies across resource kinds and reject unqualified, unknown, and cyclic graphs before provider work.
 
 _Evidence:_ `rig_resource_reference`, `rig_validate_resource_dependencies`, and `rig_resource_cycle_visit` validate the graph; `tests/rig-human-config.bats` covers qualified references, missing endpoints, and cycles.
+
+### RIG-CONF-023 — Private port declarations
+
+Schema 1 MUST accept `[port.ID]` with required string `name`, `purpose`, `rationale`, `protocol`, `scope`, `mode`, and qualified `owner`, required decimal integer `port`, and optional item-owned `profiles`. Protocol MUST be `tcp`; port MUST be from 1 through 65535; scope MUST be `loopback` or `all-interfaces`; mode MUST be `required`, `on-demand`, or `allocated`; owner MUST name an existing `tool:ID`, `service:ID`, or `scheduled-job:ID`. A resolved profile MUST reject two selected declarations for the same protocol and number.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats accepts the complete declaration, item-owned membership and central `ports` compatibility, then rejects missing fields, invalid integer ranges and enums, unqualified or unsupported owners, unknown references, and selected collisions.
+
+_Evidence:_ `rig_toml_field`, `rig_validate_port`, `rig_select_port`, and `rig_validate_selected_ports` implement the contract; private-port tests cover accepted, rejected, and conflicting forms.

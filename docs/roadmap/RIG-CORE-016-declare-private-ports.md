@@ -4,12 +4,12 @@ title: Declare private ports
 area: CORE
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 5e5e2a574516aac249d9824cdfe5f1e1b3e7499a
 created_at: 2026-09-21T17:54:55Z
-updated_at: 2026-09-21T23:43:26Z
+updated_at: 2026-09-22T01:35:43Z
 ---
 
 ## Goal
@@ -34,11 +34,11 @@ Rig has no port declaration, profile membership, listener observation, query, he
 
 ## Steps
 
-- [ ] Decide the human term, declaration shape, required versus on-demand semantics, owner relationship, state mapping, and publication exclusion.
-- [ ] Record durable rationale and accepted behaviour in the owning Decision Records and Specifications.
-- [ ] Extend schema, profile resolution, queries, status, doctor, and built-in read-only listener observation.
-- [ ] Add deterministic fixtures for loopback, all-interface, absent, conflicting, unavailable, and unmanaged listeners without opening real sockets during tests.
-- [ ] Align help, manual, completion, changelog, README, user guides, and the private-config migration contract.
+- [x] Decide the human term, declaration shape, required versus on-demand semantics, owner relationship, state mapping, and publication exclusion.
+- [x] Record durable rationale and accepted behaviour in the owning Decision Records and Specifications.
+- [x] Extend schema, profile resolution, queries, status, doctor, and built-in read-only listener observation.
+- [x] Add deterministic fixtures for loopback, all-interface, absent, conflicting, unavailable, and unmanaged listeners without opening real sockets during tests.
+- [x] Align help, manual, completion, changelog, README, user guides, and the private-config migration contract.
 
 ## Files touched
 
@@ -69,6 +69,40 @@ Teach when to declare a stable port, how required and on-demand expectations dif
 ### Roadmap
 
 The personal-config migration remains separate from this portable implementation item.
+
+## Review
+
+### Delivered
+
+Delivered the approved private-port boundary from immutable baseline `5e5e2a574516aac249d9824cdfe5f1e1b3e7499a`. Rig now models selected observation-only `[port.ID]` declarations without turning ports into managed resources, apply work, receipts, or public data. Personal port declarations and dotfiles migration remain excluded for `RIG-MIG-007`.
+
+### Summary of changes
+
+- Added schema-1 TCP declarations with numeric range, exact bind scope, required, on-demand, and allocated modes, qualified tool, service, or scheduled-job owners, item-owned profile membership, central-profile compatibility, and selected-port conflict detection.
+- Added cached read-only macOS `lsof -F` observation, least-safe scope aggregation, owner comparison, status and doctor findings, and informational unmanaged-listener inventory with unavailable fallback on unsupported or failed observation.
+- Added inert show and qualified explain output, distinct mode semantics, and categorical exclusion from apply plans, reconciliation receipts, and every public projection.
+- Added deterministic command fakes that never open real sockets and aligned Decision Records, Specifications, guides, README, manual, help, completions, changelog, and diagnostics.
+
+### Verification
+
+- `ki repo audit --repo .` — PASS, 16 selected skills.
+- `shellcheck bin/rig install.sh` — PASS.
+- `bats tests/` — PASS, 205 tests.
+- `mandoc -T lint man/rig.1` — PASS.
+- `rumdl check README.md CHANGELOG.md docs/decisions/ docs/specs/ docs/guides/ docs/roadmap/RIG-CORE-016-declare-private-ports.md` — PASS, 33 files.
+- `git diff --check` — PASS.
+
+### Outstanding concerns
+
+None within the approved portable boundary. Linux listener observation and personal declaration migration remain explicit future work rather than hidden partial support.
+
+### Post-change review
+
+The delivered model answers which stable ports are allocated, who owns them, whether they should be continuously present, and whether their observed scope or occupant conflicts with intent. Ports remain separate from materialised operational resources, so apply and receipt authority did not expand. The cached observation and fail-closed unknown or unavailable outcomes avoid false absence or ownership claims, while the fixed publication allow-list preserves the private-information boundary. The item is ready for human acceptance.
+
+### Mini recap
+
+Rig gained a human-readable private TCP declaration, profile-aware inert queries, one bounded macOS observation source, state and doctor synthesis, and optional unmanaged listener discovery. Verification covers the complete accepted behavior without real sockets. Durable learning landed in the existing product, configuration, publication, and operational-resource Decision Records; configuration, query, state, orchestration, and publication Specifications; and the user resource guide. Personal values route to `RIG-MIG-007` after acceptance.
 
 ## Discussion
 

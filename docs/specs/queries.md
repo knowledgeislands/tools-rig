@@ -63,3 +63,13 @@ _Conformance:_ conforming
 _Verify:_ Bats tests compare selected resource sections and complete qualified explanations while provider markers and an isolated state directory remain untouched.
 
 _Evidence:_ `rig_explain_resource` expands Dock item identities and their ordered kind, path, view, and display fields without dispatching providers; `dock explanation expands ordered semantic item details` covers the complete projection.
+
+### RIG-QUERY-007 — Private port disclosure
+
+`rig show` MUST list every private port selected by the resolved profile with identity, name, number, scope, mode, and qualified owner; `rig explain port:ID` MUST report its complete authored intent and profile membership. Both commands MUST remain inert and MUST NOT inspect listeners or mutate sockets.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats invokes both queries with a recording listener command and asserts deterministic content and no command invocation.
+
+_Evidence:_ `rig_print_profile_ports`, `rig_explain_resource`, and the private-port query test implement and verify the contract.

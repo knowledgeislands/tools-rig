@@ -30,6 +30,8 @@ Built-in provider identifiers resolve without a `[provider.ID]` table. Rig owns 
 
 The parser never sources files, evaluates commands, interprets shell syntax, or performs general environment expansion. Documented path fields may expand exact whole-value `~`, `~/...`, `$HOME`, and `$HOME/...` forms. Typed string resources may additionally expand exact `file://$HOME` and `file://$HOME/...` forms. All other dollar signs, substitutions, glob characters, separators, variable names, unsupported tilde forms, and embedded variables remain inert data. Queries preserve the authored declaration; observation, validation, preview, and application use the same bounded runtime value.
 
+A `[port.ID]` table records one private TCP number, expected bind scope, required, on-demand, or allocated mode, qualified owner, and item-owned profile membership. It remains inert data and introduces no socket mutation.
+
 ## Consequences
 
 Rig configuration works with standard TOML-aware editors while remaining small enough for a dependency-free Bash parser. A valid TOML document may still be unsupported by the schema, and diagnostics distinguish unsupported syntax from unknown declarative fields.

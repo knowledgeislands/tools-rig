@@ -322,3 +322,13 @@ _Conformance:_ conforming
 _Verify:_ Bats selects a cross-kind dependency chain in declaration-independent order, injects a dependency failure, and checks that only transitive dependants are blocked.
 
 _Evidence:_ `rig_select_resource`, `rig_sort_selected_resources`, `rig_resource_blocker`, and `rig_observe_resource_plan` implement closure, order, and propagation; `tests/rig-human-config.bats` covers the graph.
+
+### RIG-ORCH-031 — Read-only macOS listener observation
+
+On macOS, Rig MUST inspect selected private TCP allocations through one cached built-in listener snapshot for each command, MUST aggregate IPv4 and IPv6 records to the least-safe observed scope, and MUST optionally report undeclared listeners through `rig status --unmanaged`. On other platforms or when the native source fails, Rig MUST report observation unavailable. Rig MUST NOT open, reserve, close, kill, or otherwise mutate a socket, and port declarations MUST NOT enter apply plans or reconciliation receipts.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats uses a deterministic `lsof -F` fake, asserts one exact read-only invocation across selected and unmanaged reporting, proves no real sockets are opened, and verifies apply and dry-run omit ports.
+
+_Evidence:_ `rig_load_listeners`, `rig_print_unmanaged_listeners`, and private-port tests implement the bounded built-in source and no-mutation boundary.

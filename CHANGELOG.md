@@ -11,7 +11,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - `rig`
 - `rig show [--profile NAME]`
 - `rig list [--category ID] [--profile NAME]`
-- `rig explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID`
+- `rig explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID`
 - `rig status [--profile NAME] [--unmanaged]`
 - `rig doctor [--profile NAME]`
 - `rig apply [--profile NAME] [--scope tools|resources|all] [--dry-run]`
@@ -47,6 +47,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - Explicit Homebrew manifest capture through a declared safe provider-native path, without configuration-defined commands or lifecycle capability grants.
 - First-class typed macOS settings and semantic Dock layouts, built-in launchd reconciliation, and built-in application-bundle inventory selected as parts of a workstation profile rather than hidden behind a workstation provider.
 - First-class `service` and `scheduled-job` declarations selected by profiles, with literal program and environment arrays, service policies, calendar or interval schedules, desired state, and tool dependencies.
+- Private TCP port declarations with qualified owners, required, on-demand, and allocated modes, read-only macOS listener observation, unmanaged-listener reporting, and absolute exclusion from public exports.
 - Source configuration rejects the superseded `[binding.*]` table shape; one tool table is the sole public home for installation metadata.
 - Standard TOML-compatible `rig.toml` and `conf.d/*.toml` sources, with a dependency-free schema subset, quoted strings, string arrays, inline comments, and model-wide fail-closed validation.
 - Bounded multiline basic-string arrays with comments and trailing commas, while split strings, unsupported values, and unterminated arrays still fail closed.

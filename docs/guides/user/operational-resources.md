@@ -1,8 +1,37 @@
-# Manage services, jobs, settings, and layouts
+# Manage resources and private ports with Rig
 
 Rig treats operational resources and stable machine policy as part of the selected working setup. Put the desired state in private Rig configuration, select it from a profile, inspect it without execution, and review the complete plan before applying it.
 
 Built-in providers such as `launchd`, `macos-defaults`, and `macos-dock` need no provider table, adapter name, capability list, or executable protocol configuration.
+
+## Declare a private port
+
+Declare a port when its number is durable personal machine intent rather than an ephemeral application choice:
+
+```toml
+[port.example-api]
+name = "Example API"
+purpose = "Keep the local example endpoint predictable"
+rationale = "Several development tools connect to the same private endpoint"
+protocol = "tcp"
+port = 3333
+scope = "loopback"
+mode = "required"
+owner = "service:example-daemon"
+profiles = ["workstation"]
+```
+
+The first schema supports TCP ports from 1 through 65535. Use `scope = "loopback"` when the listener must not be reachable through normal network interfaces; use `scope = "all-interfaces"` only when broader binding is deliberate.
+
+Choose the mode according to the intended lifecycle:
+
+- `required` means the selected owner should be listening continuously; absence is a finding.
+- `on-demand` means absence is healthy, but an active listener must have the expected scope and owner.
+- `allocated` reserves the number for planning. Absence is healthy; a positively different occupant is a conflict.
+
+The owner must be qualified as `tool:ID`, `service:ID`, or `scheduled-job:ID`. On macOS, `rig status` and `rig doctor` inspect listeners through the built-in read-only source. If process ownership is inaccessible, Rig reports unknown rather than claiming drift. `rig status --unmanaged` can also show listeners whose number has no declaration.
+
+Port declarations are private even if they are accidentally assigned to a publication view. Rig never includes their identities, numbers, owners, observations, or unmanaged listener details in public data. Rig also never opens, reserves, closes, or kills a socket; the declared owner retains its lifecycle.
 
 ## Declare a service
 

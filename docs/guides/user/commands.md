@@ -8,7 +8,7 @@ These commands parse configuration and never invoke providers:
 
 - `rig show [--profile NAME]` — describe the resolved default or named profile in a readable tool table.
 - `rig list [--category ID] [--profile NAME]` — list declared tools, optionally restricted by category and resolved profile.
-- `rig explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID` — show one tool or qualified managed resource's complete declaration and profile membership.
+- `rig explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID` — show one tool, qualified managed resource, or private port allocation with complete declaration and profile membership.
 - `rig diag` — report the running Rig version, executable, Bash, platform, XDG paths, configuration sources, validity, profile-selection mode, and model counts.
 
 Use `show` for the whole selected setup, `list` to browse, `explain` for one tool, and `diag` when Rig itself cannot find or parse what you expect.
@@ -17,8 +17,8 @@ Use `show` for the whole selected setup, `list` to browse, `explain` for one too
 
 These commands may invoke only built-in observation operations or explicitly allowed observations for selected external providers:
 
-- `rig doctor [--profile NAME]` — give a compact health answer and actionable findings.
-- `rig status [--profile NAME] [--unmanaged]` — show the full expected-versus-observed comparison for tools and resources.
+- `rig doctor [--profile NAME]` — give a compact health answer and actionable findings for tools, resources, and private ports.
+- `rig status [--profile NAME] [--unmanaged]` — show the full expected-versus-observed comparison and optionally inventory undeclared tools and TCP listeners.
 
 `status --unmanaged` additionally uses built-in inventory sources and explicitly allowed external inventory operations to find identities that no catalogue installation declares. Those rows are informational and do not make an otherwise healthy status fail.
 

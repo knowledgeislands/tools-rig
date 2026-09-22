@@ -24,6 +24,7 @@ RIG_SELECTED_TOOLS=()
 RIG_SELECTED_BINDINGS=()
 RIG_SELECTED_VARIANTS=()
 RIG_SELECTED_RESOURCE_SECTIONS=()
+RIG_SELECTED_PORTS=()
 RIG_ACTIVE_PROFILES=()
 RIG_PLAN_TOOLS=()
 RIG_PLAN_BINDINGS=()
@@ -47,6 +48,12 @@ RIG_QUERY_ITEMS=()
 RIG_DECLARED_FIELDS=()
 RIG_CLEAN_PATHS=()
 RIG_CLEAN_STATES=()
+RIG_PORT_STATES=()
+RIG_PORT_DETAILS=()
+RIG_LISTENER_PORTS=()
+RIG_LISTENER_SCOPES=()
+RIG_LISTENER_COMMANDS=()
+RIG_LISTENER_PIDS=()
 RIG_VALUE=
 RIG_INDEX=
 RIG_COUNT=0
@@ -70,6 +77,7 @@ RIG_PROFILE_SELECTION_MODE=
 RIG_RESOLVED_PROFILE_KIND=
 RIG_RECONCILIATION_LOCK=
 RIG_RECONCILIATION_LOCK_ACQUIRED=0
+RIG_LISTENER_OBSERVATION_AVAILABLE=0
 
 print_help() {
   printf '%s\n' \
@@ -84,7 +92,7 @@ print_help() {
     'Commands:' \
     '  show        Describe a resolved profile.' \
     '  list        Browse declared catalogue tools.' \
-    '  explain     Explain a declared tool or managed resource.' \
+    '  explain     Explain a declared tool, resource, or private port.' \
     '  status      Compare expected and observed state.' \
     '  doctor      Check whether Rig can operate.' \
     '  apply       Materialise a resolved profile.' \
@@ -202,7 +210,7 @@ print_zsh_completion() {
     '  commands=(' \
     "    'show:describe a resolved profile'" \
     "    'list:browse declared catalogue tools'" \
-    "    'explain:explain a declared tool or managed resource'" \
+    "    'explain:explain a declared tool, resource, or private port'" \
     "    'status:compare expected and observed state'" \
     "    'doctor:check whether Rig can operate'" \
     "    'apply:materialise a resolved profile'" \
@@ -225,7 +233,7 @@ print_zsh_completion() {
     '      case $words[2] in' \
     "        show) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select a profile]:profile name:' ;;" \
     "        list) _arguments '(-h --help)'{-h,--help}'[show command help]' '--category[select a category]:category id:' '--profile[select a profile]:profile name:' ;;" \
-    "        explain) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:tool or qualified resource:' ;;" \
+    "        explain) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:tool, qualified resource, or private port:' ;;" \
     "        status) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--unmanaged[report observed items no tool installation declares]' ;;" \
     "        doctor) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' ;;" \
     "        apply) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--scope[select plan scope]:scope:(tools resources all)' '--dry-run[print plan without invoking providers]' ;;" \
@@ -263,6 +271,7 @@ rig_model_reset() {
   RIG_SELECTED_BINDINGS=()
   RIG_SELECTED_VARIANTS=()
   RIG_SELECTED_RESOURCE_SECTIONS=()
+  RIG_SELECTED_PORTS=()
   RIG_ACTIVE_PROFILES=()
   RIG_PLAN_TOOLS=()
   RIG_PLAN_BINDINGS=()
@@ -284,6 +293,12 @@ rig_model_reset() {
   RIG_VISIT_STATES=()
   RIG_QUERY_ITEMS=()
   RIG_DECLARED_FIELDS=()
+  RIG_PORT_STATES=()
+  RIG_PORT_DETAILS=()
+  RIG_LISTENER_PORTS=()
+  RIG_LISTENER_SCOPES=()
+  RIG_LISTENER_COMMANDS=()
+  RIG_LISTENER_PIDS=()
   RIG_VALUE=
   RIG_INDEX=
   RIG_COUNT=0
@@ -293,6 +308,7 @@ rig_model_reset() {
   RIG_RESOLVED_PROFILE_KIND=
   RIG_PROFILE_SELECTION_MODE=
   RIG_PUBLICATION_PLATFORM_NEUTRAL=0
+  RIG_LISTENER_OBSERVATION_AVAILABLE=0
 }
 
 rig_trim() {
@@ -367,7 +383,7 @@ rig_parse_section_identity() {
   fi
 
   case "$name" in
-    category.*|tool.*|profile.*|provider.*|publication.*|service.*|scheduled-job.*|setting.*|dock.*|dock-item.*)
+    category.*|tool.*|profile.*|provider.*|publication.*|service.*|scheduled-job.*|setting.*|dock.*|dock-item.*|port.*)
       RIG_SECTION_TYPE=${name%%.*}
       rest=${name#*.}
       rig_valid_id "$rest" || return 1
@@ -468,6 +484,7 @@ rig_field_kind() {
     setting:key|setting:value-type|setting:value|\
     dock:name|dock:purpose|dock:rationale|dock:provider|\
     dock-item:kind|dock-item:path|dock-item:view|dock-item:display|\
+    port:name|port:purpose|port:rationale|port:protocol|port:port|port:scope|port:mode|port:owner|\
     action:mode|action:description|action:argument-policy)
       RIG_FIELD_KIND=scalar
       ;;
@@ -475,7 +492,7 @@ rig_field_kind() {
     tool:variant:*:platform|tool:variant:*:artifact|tool:variant:*:install-argument|\
     tool:install-platform|tool:install-argument|\
     profile:profile|profile:inherit|profile:tool|profile:service|profile:scheduled-job|\
-    profile:setting|profile:dock|\
+    profile:setting|profile:dock|profile:port|\
     provider:argument|provider:capability|provider:autoupdate-option|\
     binding:platform|binding:argument|\
     service:platform|service:requires|service:program|service:environment|service:member-profile|\
@@ -485,6 +502,7 @@ rig_field_kind() {
     scheduled-job:resource-dependency|\
     setting:platform|setting:requires|setting:member-profile|setting:resource-dependency|\
     dock:platform|dock:requires|dock:item|dock:member-profile|dock:resource-dependency|\
+    port:member-profile|\
     action:platform|action:argument|action:allow-argument|action:resource-kind)
       RIG_FIELD_KIND=repeatable
       ;;
@@ -548,12 +566,17 @@ rig_toml_field() {
     setting:key|setting:value-type|setting:value|\
     dock:name|dock:purpose|dock:rationale|dock:provider|\
     dock-item:kind|dock-item:path|dock-item:view|dock-item:display|\
+    port:name|port:purpose|port:rationale|port:protocol|port:scope|port:mode|port:owner|\
     action:mode|action:description|action:argument-policy)
       RIG_TOML_FIELD_KEY=$key
       RIG_TOML_FIELD_TYPE=string
       ;;
     provider:autoupdate-interval)
       RIG_TOML_FIELD_KEY=autoupdate-interval
+      RIG_TOML_FIELD_TYPE=integer
+      ;;
+    port:port)
+      RIG_TOML_FIELD_KEY=port
       RIG_TOML_FIELD_TYPE=integer
       ;;
     tool:install.provider) RIG_TOML_FIELD_KEY=install-provider; RIG_TOML_FIELD_TYPE=string ;;
@@ -576,11 +599,13 @@ rig_toml_field() {
     profile:scheduled-jobs) RIG_TOML_FIELD_KEY=scheduled-job ; RIG_TOML_FIELD_TYPE=array ;;
     profile:settings) RIG_TOML_FIELD_KEY=setting ; RIG_TOML_FIELD_TYPE=array ;;
     profile:docks) RIG_TOML_FIELD_KEY=dock ; RIG_TOML_FIELD_TYPE=array ;;
+    profile:ports) RIG_TOML_FIELD_KEY=port ; RIG_TOML_FIELD_TYPE=array ;;
     service:platforms|scheduled-job:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
     service:profiles|scheduled-job:profiles|setting:profiles|dock:profiles)
       RIG_TOML_FIELD_KEY=member-profile
       RIG_TOML_FIELD_TYPE=array
       ;;
+    port:profiles) RIG_TOML_FIELD_KEY=member-profile ; RIG_TOML_FIELD_TYPE=array ;;
     service:requires|scheduled-job:requires) RIG_TOML_FIELD_KEY=requires ; RIG_TOML_FIELD_TYPE=array ;;
     service:depends-on|scheduled-job:depends-on|setting:depends-on|dock:depends-on)
       RIG_TOML_FIELD_KEY='resource-dependency'
@@ -1162,11 +1187,12 @@ rig_detect_profile_selection_mode() {
           rig_field_declared "$section_name" service ||
           rig_field_declared "$section_name" scheduled-job ||
           rig_field_declared "$section_name" setting ||
-          rig_field_declared "$section_name" dock; then
+          rig_field_declared "$section_name" dock ||
+          rig_field_declared "$section_name" port; then
           central=1
         fi
         ;;
-      tool|service|scheduled-job|setting|dock)
+      tool|service|scheduled-job|setting|dock|port)
         if rig_field_declared "$section_name" member-profile; then
           item=1
         fi
@@ -1769,6 +1795,42 @@ rig_validate_dock_item() {
   esac
 }
 
+rig_validate_port() {
+  local section_name section_index number owner kind id
+
+  section_name=$1
+  section_index=$2
+  rig_require_field "$section_name" name || return
+  rig_require_field "$section_name" purpose || return
+  rig_require_field "$section_name" rationale || return
+  rig_require_field "$section_name" protocol || return
+  [ "$RIG_VALUE" = tcp ] || rig_fail "[$section_name] protocol must be 'tcp'" || return
+  rig_require_field "$section_name" port || return
+  number=$RIG_VALUE
+  case "$number" in ''|*[!0-9]*) rig_fail "[$section_name] port must be a decimal integer" || return ;; esac
+  [ "$number" -ge 1 ] && [ "$number" -le 65535 ] ||
+    rig_fail "[$section_name] port must be between 1 and 65535" || return
+  rig_require_field "$section_name" scope || return
+  case "$RIG_VALUE" in loopback|all-interfaces) ;; *)
+    rig_fail "[$section_name] scope must be 'loopback' or 'all-interfaces'" || return ;;
+  esac
+  rig_require_field "$section_name" mode || return
+  case "$RIG_VALUE" in required|on-demand|allocated) ;; *)
+    rig_fail "[$section_name] mode must be 'required', 'on-demand', or 'allocated'" || return ;;
+  esac
+  rig_require_field "$section_name" owner || return
+  owner=$RIG_VALUE
+  case "$owner" in *:*) kind=${owner%%:*}; id=${owner#*:} ;; *)
+    rig_fail "[$section_name] owner must be a qualified declaration reference" || return ;;
+  esac
+  case "$kind" in tool|service|scheduled-job) ;; *)
+    rig_fail "[$section_name] owner has unsupported kind '$kind'" || return ;;
+  esac
+  rig_valid_id "$id" && rig_reference_exists "$kind" "$id" ||
+    rig_fail "[$section_name] owner references unknown declaration '$owner'" || return
+  rig_validate_references_for_field "$section_index" member-profile profile
+}
+
 rig_variant_supports_platform() {
   local section_name variant platform section_index field_index field_end key
 
@@ -1955,6 +2017,7 @@ rig_validate_model() {
         rig_validate_references_for_field "$index" scheduled-job scheduled-job || return
         rig_validate_references_for_field "$index" setting setting || return
         rig_validate_references_for_field "$index" dock dock || return
+        rig_validate_references_for_field "$index" port port || return
         if rig_field_declared "$section_name" profile &&
           rig_field_declared "$section_name" inherit; then
           rig_fail "[$section_name] cannot combine 'profiles' with 'inherits'" || return
@@ -1980,6 +2043,7 @@ rig_validate_model() {
         rig_validate_resource_dependencies "$section_name" "$index" || return
         ;;
       dock-item) rig_validate_dock_item "$section_name" || return ;;
+      port) rig_validate_port "$section_name" "$index" || return ;;
     provider)
       if rig_get_value "$section_name" command; then
         rig_fail "[$section_name] field 'command' is not supported" || return
@@ -2247,6 +2311,61 @@ rig_select_resource() {
   RIG_SELECTED_RESOURCE_SECTIONS[${#RIG_SELECTED_RESOURCE_SECTIONS[@]}]=$section_name
 }
 
+rig_select_port() {
+  local port
+
+  port=$1
+  rig_section_index "port.$port" || rig_fail "unknown port '$port'" || return
+  if [ "${#RIG_SELECTED_PORTS[@]}" -eq 0 ] ||
+    ! rig_array_contains "$port" "${RIG_SELECTED_PORTS[@]}"; then
+    RIG_SELECTED_PORTS[${#RIG_SELECTED_PORTS[@]}]=$port
+  fi
+}
+
+rig_validate_selected_ports() {
+  local index scan port other number other_number protocol other_protocol
+
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_PORTS[@]}" ]; do
+    port=${RIG_SELECTED_PORTS[$index]}
+    rig_get_value "port.$port" protocol || return 2
+    protocol=$RIG_VALUE
+    rig_get_value "port.$port" port || return 2
+    number=$RIG_VALUE
+    scan=$((index + 1))
+    while [ "$scan" -lt "${#RIG_SELECTED_PORTS[@]}" ]; do
+      other=${RIG_SELECTED_PORTS[$scan]}
+      rig_get_value "port.$other" protocol || return 2
+      other_protocol=$RIG_VALUE
+      rig_get_value "port.$other" port || return 2
+      other_number=$RIG_VALUE
+      [ "$protocol:$number" != "$other_protocol:$other_number" ] ||
+        rig_fail "[port.$other] conflicts with [port.$port] at '$protocol:$number'" || return
+      scan=$((scan + 1))
+    done
+    index=$((index + 1))
+  done
+}
+
+rig_sort_selected_ports() {
+  local index scan value previous
+  local LC_ALL=C
+
+  index=1
+  while [ "$index" -lt "${#RIG_SELECTED_PORTS[@]}" ]; do
+    value=${RIG_SELECTED_PORTS[$index]}
+    scan=$index
+    while [ "$scan" -gt 0 ]; do
+      previous=${RIG_SELECTED_PORTS[$((scan - 1))]}
+      [[ "$value" < "$previous" ]] || break
+      RIG_SELECTED_PORTS[$scan]=$previous
+      scan=$((scan - 1))
+    done
+    RIG_SELECTED_PORTS[$scan]=$value
+    index=$((index + 1))
+  done
+}
+
 rig_resource_dependencies_selected() {
   local section_name section_index field_index field_end reference dependency
 
@@ -2383,12 +2502,13 @@ rig_select_item_memberships() {
     section_type=${RIG_SECTION_TYPES[$index]}
     section_name=${RIG_SECTION_NAMES[$index]}
     section_id=${RIG_SECTION_IDS[$index]}
-    case "$section_type" in tool|service|scheduled-job|setting|dock) ;; *)
+    case "$section_type" in tool|service|scheduled-job|setting|dock|port) ;; *)
       index=$((index + 1)); continue ;;
     esac
     if rig_item_selected_by_active_profiles "$section_name"; then
       case "$section_type" in
         tool) rig_select_tool "$section_id" "$platform" || return ;;
+        port) rig_select_port "$section_id" || return ;;
         *) rig_select_resource "$section_type" "$section_id" "$platform" || return ;;
       esac
     fi
@@ -2416,6 +2536,7 @@ rig_select_central_profile() {
         scheduled-job) rig_select_resource scheduled-job "$target" "$platform" || return ;;
         setting) rig_select_resource setting "$target" "$platform" || return ;;
         dock) rig_select_resource dock "$target" "$platform" || return ;;
+        port) rig_select_port "$target" || return ;;
       esac
     fi
     field_index=$((field_index + 1))
@@ -2621,6 +2742,7 @@ rig_resolve_profile() {
   RIG_SELECTED_BINDINGS=()
   RIG_SELECTED_VARIANTS=()
   RIG_SELECTED_RESOURCE_SECTIONS=()
+  RIG_SELECTED_PORTS=()
   RIG_ACTIVE_PROFILES=()
   RIG_RESOLVED_PROFILE=
   RIG_RESOLVED_PLATFORM=
@@ -2641,7 +2763,9 @@ rig_resolve_profile() {
   rig_sort_selected_tools
   rig_select_tool_variants "$platform" || return
   rig_sort_selected_resources
+  rig_sort_selected_ports
   rig_validate_selected_native_targets || return
+  rig_validate_selected_ports || return
   rig_profile_kind "$profile" || return
   RIG_RESOLVED_PROFILE_KIND=$RIG_VALUE
   if [ "$RIG_RESOLVED_PROFILE_KIND" = view ]; then
@@ -4929,6 +5053,286 @@ rig_observe_resource_plan() {
   done
 }
 
+rig_lsof_command() {
+  if [ -n "${RIG_LSOF_COMMAND:-}" ]; then
+    [ -x "$RIG_LSOF_COMMAND" ] || return 1
+    RIG_VALUE=$RIG_LSOF_COMMAND
+    return 0
+  fi
+  RIG_VALUE=$(command -v lsof 2>/dev/null) || return 1
+  [ -n "$RIG_VALUE" ]
+}
+
+rig_listener_scope() {
+  local endpoint address port
+
+  endpoint=$1
+  endpoint=${endpoint% (LISTEN)}
+  port=${endpoint##*:}
+  case "$port" in ''|*[!0-9]*) return 1 ;; esac
+  address=${endpoint%:*}
+  case "$address" in
+    127.*|localhost|'[::1]'|::1) RIG_VALUE=loopback ;;
+    *) RIG_VALUE=all-interfaces ;;
+  esac
+  RIG_LISTENER_NUMBER=$port
+}
+
+rig_load_listeners() {
+  local platform command output rc line pid process parsed malformed
+
+  [ "$RIG_LISTENER_OBSERVATION_AVAILABLE" -eq 0 ] || return 0
+  RIG_LISTENER_PORTS=()
+  RIG_LISTENER_SCOPES=()
+  RIG_LISTENER_COMMANDS=()
+  RIG_LISTENER_PIDS=()
+  platform=$RIG_RESOLVED_PLATFORM
+  [ "$platform" = macos ] || { RIG_LISTENER_OBSERVATION_AVAILABLE=-1; return 0; }
+  if ! rig_lsof_command; then
+    RIG_LISTENER_OBSERVATION_AVAILABLE=-1
+    return 0
+  fi
+  command=$RIG_VALUE
+  output=$("$command" -nP -iTCP -sTCP:LISTEN -Fpcn 2>/dev/null)
+  rc=$?
+  if [ "$rc" -ne 0 ]; then
+    RIG_LISTENER_OBSERVATION_AVAILABLE=-1
+    return 0
+  fi
+  pid=
+  process=
+  parsed=0
+  malformed=0
+  while IFS= read -r line; do
+    case "$line" in
+      p*) pid=${line#p}; process= ;;
+      c*) process=${line#c} ;;
+      n*)
+        if rig_listener_scope "${line#n}"; then
+          RIG_LISTENER_PORTS[${#RIG_LISTENER_PORTS[@]}]=$RIG_LISTENER_NUMBER
+          RIG_LISTENER_SCOPES[${#RIG_LISTENER_SCOPES[@]}]=$RIG_VALUE
+          RIG_LISTENER_COMMANDS[${#RIG_LISTENER_COMMANDS[@]}]=$process
+          RIG_LISTENER_PIDS[${#RIG_LISTENER_PIDS[@]}]=$pid
+          parsed=$((parsed + 1))
+        else
+          malformed=1
+        fi
+        ;;
+    esac
+  done <<< "$output"
+  if [ "$malformed" -eq 1 ]; then
+    RIG_LISTENER_OBSERVATION_AVAILABLE=-1
+    RIG_LISTENER_PORTS=()
+    RIG_LISTENER_SCOPES=()
+    RIG_LISTENER_COMMANDS=()
+    RIG_LISTENER_PIDS=()
+    return 0
+  fi
+  RIG_LISTENER_OBSERVATION_AVAILABLE=1
+}
+
+rig_expected_owner_command() {
+  local owner kind id section_name section_index field_index field_end value index binding
+
+  owner=$1
+  kind=${owner%%:*}
+  id=${owner#*:}
+  case "$kind" in
+    service|scheduled-job)
+      section_name=$kind.$id
+      rig_section_index "$section_name" || return 1
+      section_index=$RIG_INDEX
+      field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+      field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+      while [ "$field_index" -lt "$field_end" ]; do
+        if [ "${RIG_FIELD_KEYS[$field_index]}" = program ]; then
+          value=${RIG_FIELD_VALUES[$field_index]}
+          RIG_VALUE=${value##*/}
+          return 0
+        fi
+        field_index=$((field_index + 1))
+      done
+      ;;
+    tool)
+      index=0
+      while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
+        if [ "${RIG_PLAN_TOOLS[$index]}" = "$id" ]; then
+          binding=${RIG_PLAN_BINDINGS[$index]}
+          if [ -n "$binding" ] && rig_get_value "$binding" locator; then
+            value=$RIG_VALUE
+            value=${value##*/}
+            RIG_VALUE=${value##*:}
+            return 0
+          fi
+          break
+        fi
+        index=$((index + 1))
+      done
+      RIG_VALUE=$id
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+rig_observe_ports() {
+  local index port section_name number expected_scope mode owner expected_command
+  local listener_index found actual_scope observed_command command_conflict state detail
+
+  RIG_PORT_STATES=()
+  RIG_PORT_DETAILS=()
+  rig_load_listeners || return
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_PORTS[@]}" ]; do
+    port=${RIG_SELECTED_PORTS[$index]}
+    section_name=port.$port
+    if [ "$RIG_LISTENER_OBSERVATION_AVAILABLE" -ne 1 ]; then
+      RIG_PORT_STATES[$index]=unavailable
+      RIG_PORT_DETAILS[$index]=$([ "$RIG_RESOLVED_PLATFORM" = macos ] && printf listener-observation-unavailable || printf unsupported-platform)
+      index=$((index + 1))
+      continue
+    fi
+    rig_get_value "$section_name" port || return 2
+    number=$RIG_VALUE
+    rig_get_value "$section_name" scope || return 2
+    expected_scope=$RIG_VALUE
+    rig_get_value "$section_name" mode || return 2
+    mode=$RIG_VALUE
+    rig_get_value "$section_name" owner || return 2
+    owner=$RIG_VALUE
+    rig_expected_owner_command "$owner" || return 2
+    expected_command=$RIG_VALUE
+    found=0
+    actual_scope=loopback
+    observed_command=
+    command_conflict=0
+    listener_index=0
+    while [ "$listener_index" -lt "${#RIG_LISTENER_PORTS[@]}" ]; do
+      if [ "${RIG_LISTENER_PORTS[$listener_index]}" = "$number" ]; then
+        found=$((found + 1))
+        [ "${RIG_LISTENER_SCOPES[$listener_index]}" != all-interfaces ] || actual_scope=all-interfaces
+        if [ -n "${RIG_LISTENER_COMMANDS[$listener_index]}" ]; then
+          if [ -n "$observed_command" ] &&
+            [ "$observed_command" != "${RIG_LISTENER_COMMANDS[$listener_index]}" ]; then
+            command_conflict=1
+          fi
+          observed_command=${RIG_LISTENER_COMMANDS[$listener_index]}
+        fi
+      fi
+      listener_index=$((listener_index + 1))
+    done
+    if [ "$found" -eq 0 ]; then
+      if [ "$mode" = required ]; then
+        state=missing
+        detail=not-listening
+      else
+        state=present
+        detail=available:$mode
+      fi
+    elif [ "$actual_scope" != "$expected_scope" ]; then
+      state=drifted
+      detail="scope:$actual_scope;expected:$expected_scope"
+    elif [ "$command_conflict" -eq 1 ]; then
+      state=conflicting
+      detail=multiple-owners
+    elif [ -z "$observed_command" ]; then
+      if [ "$mode" = allocated ]; then
+        state=present
+        detail='occupied:owner-unverified'
+      else
+        state=unknown
+        detail='owner-unavailable'
+      fi
+    elif [ "$observed_command" != "$expected_command" ]; then
+      state=conflicting
+      detail="owner:$observed_command;expected:$expected_command"
+    else
+      state=present
+      detail="listening:$actual_scope;owner:$observed_command"
+    fi
+    RIG_PORT_STATES[$index]=$state
+    RIG_PORT_DETAILS[$index]=$detail
+    index=$((index + 1))
+  done
+}
+
+rig_print_port_status() {
+  local index port section_name number mode owner state detail unhealthy
+
+  printf '\nPORT\tNUMBER\tPROTOCOL\tMODE\tOWNER\tSTATE\tDETAIL\n'
+  unhealthy=0
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_PORTS[@]}" ]; do
+    port=${RIG_SELECTED_PORTS[$index]}
+    section_name=port.$port
+    rig_get_value "$section_name" port || return 2
+    number=$RIG_VALUE
+    rig_get_value "$section_name" mode || return 2
+    mode=$RIG_VALUE
+    rig_get_value "$section_name" owner || return 2
+    owner=$RIG_VALUE
+    state=${RIG_PORT_STATES[$index]}
+    detail=${RIG_PORT_DETAILS[$index]}
+    [ "$state" = present ] || unhealthy=$((unhealthy + 1))
+    printf '%s\t%s\ttcp\t%s\t%s\t%s\t%s\n' "$port" "$number" "$mode" "$owner" "$state" "$detail"
+    index=$((index + 1))
+  done
+  printf 'Port summary: selected=%s unhealthy=%s\n' "${#RIG_SELECTED_PORTS[@]}" "$unhealthy"
+  RIG_COUNT=$unhealthy
+}
+
+rig_port_number_declared() {
+  local number index section_name
+
+  number=$1
+  index=0
+  while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+    if [ "${RIG_SECTION_TYPES[$index]}" = port ]; then
+      section_name=${RIG_SECTION_NAMES[$index]}
+      if rig_get_value "$section_name" port && [ "$RIG_VALUE" = "$number" ]; then
+        return 0
+      fi
+    fi
+    index=$((index + 1))
+  done
+  return 1
+}
+
+rig_print_unmanaged_listeners() {
+  local index number row port scope command pid count
+
+  rig_load_listeners || return
+  printf '\nLISTENER\tPROTOCOL\tSCOPE\tSTATE\tDETAIL\n'
+  if [ "$RIG_LISTENER_OBSERVATION_AVAILABLE" -ne 1 ]; then
+    printf '%s\ttcp\t-\tunavailable\t%s\n' - \
+      "$([ "$RIG_RESOLVED_PLATFORM" = macos ] && printf listener-observation-unavailable || printf unsupported-platform)"
+    printf 'Unmanaged listeners: unavailable\n'
+    return 0
+  fi
+  RIG_QUERY_ITEMS=()
+  index=0
+  while [ "$index" -lt "${#RIG_LISTENER_PORTS[@]}" ]; do
+    number=${RIG_LISTENER_PORTS[$index]}
+    if ! rig_port_number_declared "$number"; then
+      RIG_QUERY_ITEMS[${#RIG_QUERY_ITEMS[@]}]="$number"$'\t'"${RIG_LISTENER_SCOPES[$index]}"$'\t'"${RIG_LISTENER_COMMANDS[$index]}"$'\t'"${RIG_LISTENER_PIDS[$index]}"
+    fi
+    index=$((index + 1))
+  done
+  rig_sort_query_items
+  count=0
+  for row in "${RIG_QUERY_ITEMS[@]+"${RIG_QUERY_ITEMS[@]}"}"; do
+    port=${row%%$'\t'*}
+    row=${row#*$'\t'}
+    scope=${row%%$'\t'*}
+    row=${row#*$'\t'}
+    command=${row%%$'\t'*}
+    pid=${row#*$'\t'}
+    printf '%s\ttcp\t%s\tunmanaged\towner:%s;pid:%s\n' "$port" "$scope" "${command:--}" "${pid:--}"
+    count=$((count + 1))
+  done
+  printf 'Unmanaged listeners: %s\n' "$count"
+}
+
 rig_print_resource_status() {
   local index section_name section_index kind id provider state detail unhealthy
 
@@ -4999,6 +5403,9 @@ rig_command_status() {
     [ "${#RIG_STALE_RESOURCE_IDS[@]}" -gt 0 ]; then
     rig_observe_resource_plan || return
   fi
+  if [ "${#RIG_SELECTED_PORTS[@]}" -gt 0 ]; then
+    rig_observe_ports || return
+  fi
   printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   printf 'TOOL\tPROVIDER\tSTATE\tDETAIL\n'
   unhealthy=0
@@ -5035,6 +5442,10 @@ rig_command_status() {
     rig_print_resource_status || return
     [ "$RIG_COUNT" -eq 0 ] || unhealthy=$((unhealthy + RIG_COUNT))
   fi
+  if [ "${#RIG_SELECTED_PORTS[@]}" -gt 0 ]; then
+    rig_print_port_status || return
+    [ "$RIG_COUNT" -eq 0 ] || unhealthy=$((unhealthy + RIG_COUNT))
+  fi
   if [ "$unmanaged_requested" -eq 1 ]; then
     rig_collect_unmanaged || return
     printf '\nIDENTITY\tPROVIDER\tSTATE\tDETAIL\n'
@@ -5052,6 +5463,7 @@ rig_command_status() {
       index=$((index + 1))
     done
     printf 'Unmanaged: %s\n' "${#RIG_UNMANAGED_IDENTITIES[@]}"
+    rig_print_unmanaged_listeners || return
   fi
   [ "$unhealthy" -eq 0 ]
 }
@@ -5194,7 +5606,8 @@ rig_observe_plan() {
 }
 
 rig_command_doctor() {
-  local profile findings incompatible xdg_findings tool_findings resource_findings index section_name state detail
+  local profile findings incompatible xdg_findings tool_findings resource_findings port_findings
+  local index section_name state detail port owner action
 
   profile=
   case "$#" in
@@ -5242,6 +5655,30 @@ rig_command_doctor() {
     index=$((index + 1))
   done
   resource_findings=${resource_findings%$'\n'}
+  port_findings=
+  if [ "${#RIG_SELECTED_PORTS[@]}" -gt 0 ]; then
+    rig_observe_ports || return
+    index=0
+    while [ "$index" -lt "${#RIG_SELECTED_PORTS[@]}" ]; do
+      port=${RIG_SELECTED_PORTS[$index]}
+      state=${RIG_PORT_STATES[$index]}
+      detail=${RIG_PORT_DETAILS[$index]}
+      if [ "$state" != present ]; then
+        rig_get_value "port.$port" owner || return 2
+        owner=$RIG_VALUE
+        case "$state" in
+          missing) action=start-owner ;;
+          drifted) action=correct-listener-scope ;;
+          conflicting) action=stop-or-reconfigure-occupant ;;
+          *) action=inspect-listener-observation ;;
+        esac
+        port_findings="${port_findings}  port.${port}: ${state} (${detail}); owner=${owner}; action=${action}"$'\n'
+        findings=$((findings + 1))
+      fi
+      index=$((index + 1))
+    done
+    port_findings=${port_findings%$'\n'}
+  fi
   xdg_findings=$(rig_doctor_path_finding config "$RIG_DIAG_CONFIG_HOME"; \
     rig_doctor_path_finding data "$RIG_DIAG_DATA_HOME"; \
     rig_doctor_path_finding state "$RIG_DIAG_STATE_HOME"; \
@@ -5261,6 +5698,9 @@ rig_command_doctor() {
   fi
   if [ -n "$resource_findings" ]; then
     printf 'Resource findings:\n%s\n' "$resource_findings"
+  fi
+  if [ -n "$port_findings" ]; then
+    printf 'Port findings:\n%s\n' "$port_findings"
   fi
   rig_doctor_incompatible_tools "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   incompatible=$RIG_COUNT
@@ -6347,7 +6787,7 @@ rig_count_config_fragments() {
 
 rig_command_diag() {
   local platform root_file root_display fragment_count config_status schema default_profile exit_code
-  local index key profiles tools resources variants variant rest
+  local index key profiles tools resources ports variants variant rest
   local -a seen_variants
 
   if [ "$#" -eq 1 ]; then
@@ -6372,6 +6812,7 @@ rig_command_diag() {
   profiles=0
   tools=0
   resources=0
+  ports=0
   variants=0
   seen_variants=()
   exit_code=1
@@ -6388,6 +6829,7 @@ rig_command_diag() {
           profile) profiles=$((profiles + 1)) ;;
           tool) tools=$((tools + 1)) ;;
           service|scheduled-job|setting|dock) resources=$((resources + 1)) ;;
+          port) ports=$((ports + 1)) ;;
         esac
         index=$((index + 1))
       done
@@ -6421,8 +6863,8 @@ rig_command_diag() {
   if [ "$config_status" = valid ]; then
     printf '  Schema: %s\n  Default profile: %s\n  Selection mode: %s\n' \
       "$schema" "$default_profile" "$RIG_PROFILE_SELECTION_MODE"
-    printf '  Profiles: %s\n  Tools: %s\n  Managed resources: %s\n  Tool variants: %s\n' \
-      "$profiles" "$tools" "$resources" "$variants"
+    printf '  Profiles: %s\n  Tools: %s\n  Managed resources: %s\n  Ports: %s\n  Tool variants: %s\n' \
+      "$profiles" "$tools" "$resources" "$ports" "$variants"
   fi
   return "$exit_code"
 }
@@ -6921,6 +7363,28 @@ rig_print_profile_resource_tables() {
   done
 }
 
+rig_print_profile_ports() {
+  local port section_name name number scope mode owner
+
+  printf '\nPorts: %s\n' "${#RIG_SELECTED_PORTS[@]}"
+  [ "${#RIG_SELECTED_PORTS[@]}" -gt 0 ] || return 0
+  printf 'ID\tNAME\tPORT\tSCOPE\tMODE\tOWNER\n'
+  for port in "${RIG_SELECTED_PORTS[@]+"${RIG_SELECTED_PORTS[@]}"}"; do
+    section_name=port.$port
+    rig_get_value "$section_name" name || return 2
+    name=$RIG_VALUE
+    rig_get_value "$section_name" port || return 2
+    number=$RIG_VALUE
+    rig_get_value "$section_name" scope || return 2
+    scope=$RIG_VALUE
+    rig_get_value "$section_name" mode || return 2
+    mode=$RIG_VALUE
+    rig_get_value "$section_name" owner || return 2
+    owner=$RIG_VALUE
+    printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$port" "$name" "$number" "$scope" "$mode" "$owner"
+  done
+}
+
 rig_command_show() {
   local profile platform
 
@@ -6950,6 +7414,9 @@ rig_command_show() {
   rig_print_profile_tool_table
   if [ "${#RIG_SELECTED_RESOURCE_SECTIONS[@]}" -gt 0 ]; then
     rig_print_profile_resource_tables
+  fi
+  if [ "${#RIG_SELECTED_PORTS[@]}" -gt 0 ]; then
+    rig_print_profile_ports
   fi
 }
 
@@ -7053,7 +7520,7 @@ rig_profile_contains_resource() {
       target=${RIG_FIELD_VALUES[$field_index]}
       case "$key" in
         profile|inherit) rig_profile_contains_resource "$target" "$wanted" && return 0 ;;
-        service|scheduled-job|setting|dock) [ "$key.$target" = "$wanted" ] && return 0 ;;
+        service|scheduled-job|setting|dock|port) [ "$key.$target" = "$wanted" ] && return 0 ;;
       esac
     fi
     field_index=$((field_index + 1))
@@ -7121,7 +7588,7 @@ rig_explain_resource() {
   id=${target#*:}
   [ "$target" != "$id" ] && rig_valid_id "$id" ||
     rig_fail "unknown resource '$target'" || return
-  case "$kind" in service|scheduled-job|setting|dock) ;; *)
+  case "$kind" in service|scheduled-job|setting|dock|port) ;; *)
     rig_fail "unknown resource '$target'" || return ;;
   esac
   section_name=$kind.$id
@@ -7158,14 +7625,14 @@ rig_command_explain() {
 
   if [ "$#" -eq 1 ]; then
     case "$1" in
-      -h|--help) printf '%s\n' 'Usage: rig explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID'; return ;;
+      -h|--help) printf '%s\n' 'Usage: rig explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID'; return ;;
     esac
   fi
-  [ "$#" -eq 1 ] || syntax_error 'usage: rig explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID' || return
+  [ "$#" -eq 1 ] || syntax_error 'usage: rig explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID' || return
   tool=$1
   rig_load_config || return
   case "$tool" in
-    service:*|scheduled-job:*|setting:*|dock:*) rig_explain_resource "$tool"; return ;;
+    service:*|scheduled-job:*|setting:*|dock:*|port:*) rig_explain_resource "$tool"; return ;;
   esac
   rig_valid_id "$tool" && rig_section_index "tool.$tool" ||
     rig_fail "unknown tool '$tool'" || return

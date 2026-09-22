@@ -257,3 +257,13 @@ _Conformance:_ conforming
 _Verify:_ Bats supplies live and non-existent owner PIDs, asserts no provider call and retained lock, then completes reconciliation and asserts lock cleanup plus receipt installation.
 
 _Evidence:_ `rig_acquire_reconciliation_lock`, signal traps, `rig_release_reconciliation_lock`, and deferred receipt loading implement the boundary; `tests/rig-profile-authority.bats` covers contention and success.
+
+### RIG-STATE-026 — Private port expected-versus-observed state
+
+For a selected private TCP port, Rig MUST report a required absent listener as `missing`; MUST treat absent on-demand and allocated ports as healthy availability; MUST report a listener with a different bind scope as `drifted`; MUST report positively different ownership as `conflicting`; and MUST report inaccessible ownership or observation as `unknown` or `unavailable` rather than infer absence, drift, or ownership. Allocated occupancy with no positively different owner MUST remain informational.
+
+_Conformance:_ conforming
+
+_Verify:_ Deterministic Bats command fakes emit no listener, loopback, IPv4 and IPv6 wildcard, matching owner, different owner, missing command, malformed output, and native failure records without opening real sockets.
+
+_Evidence:_ `rig_load_listeners` and `rig_observe_ports` normalise one cached observation; private-port status and doctor tests verify every mode and outcome.

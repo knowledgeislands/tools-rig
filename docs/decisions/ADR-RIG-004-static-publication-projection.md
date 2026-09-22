@@ -26,6 +26,8 @@ The projection is platform-neutral: profile membership records public intent, wh
 
 The local catalogue remains canonical. A published file is never authority for private configuration or observed machine state. Rebuilding from the same schema version, resolved public profile, and publication configuration produces byte-equivalent data regardless of declaration order or publishing host platform.
 
+Port declarations, port numbers, qualified owners, listener observations, and unmanaged listener inventory are categorically private. They never enter a public projection, even when a port is assigned to the publication view.
+
 ## Consequences
 
 A person can inspect or validate `rig.json` before disclosure, and a website can render it without reading private Rig configuration. The same artifact can support a personal server, Cloudflare, GitHub, or another site without adding a hosting or presentation dependency to Rig core.

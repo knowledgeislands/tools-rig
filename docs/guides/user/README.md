@@ -19,6 +19,7 @@ Rig is useful when you want durable answers to questions such as:
 
 - **Catalogue** — the complete description of tools you care about. Each entry can record category, purpose, rationale, relationships, supported platforms, and installation metadata.
 - **Managed resource** — a service, scheduled job, typed setting, or semantic layout whose identity, intent, and desired state Rig declares while a provider owns native projection and operation.
+- **Private port** — stable TCP allocation whose number, expected bind scope, lifecycle mode, and qualified tool or service owner Rig records and observes without controlling sockets.
 - **Profile** — complete machine or role intent, or a non-appliable view. Selectable declarations own direct membership; omission means the configured default, and profiles inherit shared intent explicitly. A workstation is a complete profile, not a provider.
 - **Provider** — a native system that already owns installation or state. Built-in providers such as Homebrew and launchd need no adapter or capability declarations; external providers are explicit trust boundaries.
 - **State** — the comparison between a resolved profile and provider observations on the current machine.
@@ -49,7 +50,7 @@ One catalogue tool can use bounded `variant.ID.*` declarations when its installa
 - [Use commands](commands.md) — choose the right command and understand whether it reads declarations, observes providers, mutates state, or publishes data.
 - [Publish a rig](publishing.md) — choose a safe public profile, inspect its versioned JSON, and hand it to a trusted publisher.
 - [Run external provider actions](provider-actions.md) — expose bounded host-specific operations only when no built-in declarative integration fits.
-- [Manage resources](operational-resources.md) — declare services, scheduled jobs, typed settings, and Dock layouts and preview their desired state.
+- [Manage resources and private ports](operational-resources.md) — declare services, jobs, settings, layouts, and stable TCP intent, then inspect or preview their state.
 
 For the exhaustive configuration grammar, environment variables, built-in provider matrix, extension protocol, and exit-status contract, use `man rig`. Specifications are maintained for implementers and verification; most users should start with these guides.
 

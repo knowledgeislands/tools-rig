@@ -22,7 +22,7 @@ Rig is the declarative description and manager of a person's working setup. Its 
 
 Tools and managed resources declare the profiles to which they belong. An omitted membership belongs to the configured default profile; an explicitly empty membership belongs nowhere. Profiles describe identity, purpose, explicit inheritance, and whether they are complete appliable intent or a non-appliable view. This item-owned model keeps selection beside each declaration while preventing new private declarations from entering public or minimal views implicitly.
 
-Services, scheduled jobs, typed machine settings, and semantic layouts are first-class declarations rather than hidden provider policy. A workstation is therefore a complete profile assembled from those declarations, not a provider or synthetic catalogue tool.
+Services, scheduled jobs, typed machine settings, semantic layouts, and private port allocations are first-class declarations rather than hidden provider policy. A workstation is therefore a complete profile assembled from those declarations, not a provider or synthetic catalogue tool. Ports describe stable private TCP intent and ownership; Rig observes them but never materialises sockets.
 
 Providers are independently existing native authorities such as Homebrew, uv, mise, npm, chezmoi, launchd, macOS defaults, and direct downloads. Rig recognises its built-in providers and their supported operations without requiring adapter or capability declarations. A provider table is needed only to configure an optional built-in detail or explicitly trust an external extension.
 

@@ -26,6 +26,8 @@ A workstation is a complete profile resolving its applications, command-line too
 
 Rig stores minimal successful-application receipts only for services and scheduled jobs whose safe retirement requires former identity and locator evidence. Deselecting one of those resources from the next complete profile schedules retirement. Deselecting a package, artifact, setting, Dock layout, port, or skill is non-destructive unless a separate explicit cleanup contract applies. A non-appliable view neither reads retirement ownership into its result nor writes a receipt. Receipts are not observed state and cannot recreate a declaration. Built-in and external providers receive the same resolved intent, but only an external provider crosses the versioned executable protocol boundary.
 
+Private TCP allocations use qualified tool, service, or scheduled-job ownership and required, on-demand, or allocated semantics. `rig show` and qualified `rig explain` expose their intent; `rig status` and `rig doctor` perform built-in read-only listener observation on macOS. Ports never enter apply plans or receipts, and Rig never opens, reserves, closes, or kills sockets.
+
 ## Consequences
 
 Rig configuration is the sole declaration authority for the selected workstation shape, while native managers retain projection, observation, activation, and retirement mechanics. Deferred execution and machine policy are visible before mutation.
