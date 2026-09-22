@@ -75,20 +75,21 @@ Any unknown personal rationale remains an explicit user-review follow-up rather 
 
 ### Delivered
 
-Delivered the approved personal Rig migration from tools-rig baseline `9bb2a753281f94a2e91ff65ca71995a3db787b2e` in dotfiles commit `ed15c68f4fb6b403a6db686a5d55317eced2069e`. The change edits only chezmoi sources and their source-level test; it does not apply home targets, publish the public projection, deploy the website, or push either repository.
+Delivered the approved personal Rig migration from tools-rig baseline `9bb2a753281f94a2e91ff65ca71995a3db787b2e` in dotfiles commits `ed15c68f4fb6b403a6db686a5d55317eced2069e` and `b0c5430`. The change edits only chezmoi sources and their source-level test; it does not apply home targets, publish the public projection, deploy the website, or push either repository.
 
 ### Summary of changes
 
 - Replaced the central default-profile member arrays with item-owned membership: ordinary declarations use implicit default membership, while `chatgpt-current`, `rekordbox`, and `tigervnc` retain explicit `profiles = []` catalogue-only intent.
 - Moved complete and public view declarations into discoverable `90-profiles.toml`, removed the redundant `bootstrap-profile`, and added the trusted `midnight-ninja` publisher boundary plus `rig.midnight.ninja` publication.
 - Added private loopback port intent for required MCP bridge port 3333 and on-demand Headroom port 8787. Port 1675 remains undeclared because no catalogue owner or stable intent was established.
-- Added the npm-managed Skills CLI tool and the one reviewed global skill with known provenance, Caveman. The declaration uses the native `skills` executable contract and never falls back to `npx`.
+- Added the npm-managed Skills CLI tool and the one reviewed global skill with native GitHub provenance, Caveman, across its five inventoried runtimes. The declaration uses the native `skills` executable contract and never falls back to `npx`; it deliberately omits a catalogue dependency so the public capability view need not disclose the npm, Node.js, and mise materialisation chain. Fifteen local-source inventory entries remain with their existing owners rather than receiving inferred authority.
 - Converted generic application and macOS-setting rationales into explicit `Review needed` text. Only the known Rig, profile, publication, port, and skill intent was curated; no personal preference was invented.
 - Updated the dotfiles catalogue test for implicit membership, excluded items, ports, skill authority, and the public publication boundary.
 
 ### Verification
 
 - `node --test tests/*.test.mjs` in the dotfiles repository: 33 passed, 0 failed.
+- `npx --yes skills list --global --json`: confirmed 16 native global entries; only Caveman reports a remote source (`JuliusBrussee/caveman`) and all five declared runtimes.
 - `chezmoi cat` byte comparison for all nine rendered Rig files: matched their source content.
 - `chezmoi diff`: passed and reported only the seven pending `.config/rig/**` target changes.
 - `rig show` for the default and public profiles: passed; the public view contains only `rig` and `skill:caveman`.
@@ -101,6 +102,7 @@ Delivered the approved personal Rig migration from tools-rig baseline `9bb2a7532
 
 - The seven rendered Rig target changes remain unapplied pending explicit review and approval.
 - The `skills` executable is not currently installed, so Caveman remains honestly unavailable to Rig until the native manager is materialised.
+- Fifteen additional global skill inventory entries remain undeclared because they report local or blank source provenance; assigning Skills CLI, KI, plugin, or runtime authority without owner evidence would be unsafe.
 - The custom `midnight-ninja` publisher executable is intentionally absent; export is available, but publication and website deployment remain outside this item.
 - Eighty-six application and thirty-five macOS-setting `Review needed` rationales remain for personal curation.
 
