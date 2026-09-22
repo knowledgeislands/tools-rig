@@ -36,6 +36,16 @@ setup() {
     'display = "folder"' >"$CONFIG_HOME/rig.toml"
 }
 
+output_has_table_row() {
+  local expected
+
+  expected=$1
+  printf '%s\n' "$output" | awk -v expected="$expected" '
+    { gsub(/  +/, "\t"); if ($0 == expected) found = 1 }
+    END { exit !found }
+  '
+}
+
 run_rig() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" \
@@ -64,8 +74,8 @@ run_rig() {
     "$TEST_HOME/Applications/Alpha.app" "$TEST_HOME/Documents" >"$DOCK_STATE"
   run_rig status
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'main\tdock\tmacos-dock\tpresent\t-'* ]]
-  [[ "$output" == *$'dark-mode\tsetting\tmacos-defaults\tpresent\t-'* ]]
+  output_has_table_row $'main\tdock\tmacos-dock\tpresent\t-'
+  output_has_table_row $'dark-mode\tsetting\tmacos-defaults\tpresent\t-'
   : >"$MACOS_LOG"
   run_rig apply --scope resources
   [ "$status" -eq 0 ]
@@ -110,9 +120,9 @@ run_rig() {
 
   run_rig status
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'capture-path\tsetting\tmacos-defaults\tpresent\t-'* ]]
-  [[ "$output" == *$'home-url\tsetting\tmacos-defaults\tpresent\t-'* ]]
-  [[ "$output" == *$'literal\tsetting\tmacos-defaults\tpresent\t-'* ]]
+  output_has_table_row $'capture-path\tsetting\tmacos-defaults\tpresent\t-'
+  output_has_table_row $'home-url\tsetting\tmacos-defaults\tpresent\t-'
+  output_has_table_row $'literal\tsetting\tmacos-defaults\tpresent\t-'
 
   : >"$MACOS_LOG"
   run_rig apply --scope resources
@@ -173,6 +183,6 @@ run_rig() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_APPLICATION_ROOTS="$APP_ROOT" RIG_PLUTIL="$PLUTIL_FAKE" "$RIG" status --unmanaged
   [ "$status" -eq 0 ]
-  [[ "$output" == *$APP_ROOT'/Native.app\tmacos-applications\tunmanaged\tnative'* ]]
+  [[ "$output" == *'/Native.app'*'macos-applications'*'unmanaged'*'native'* ]]
   [[ "$output" != *'Mobile.app'* ]]
 }

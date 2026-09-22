@@ -4,12 +4,12 @@ title: Render readable status tables
 area: CLI
 theme: cli
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: 55130abbe1307d425a1b5de7e9b2d2cf9d1a33c1
 created_at: 2026-09-22T06:43:59Z
-updated_at: 2026-09-22T06:43:59Z
+updated_at: 2026-09-22T07:13:37Z
 ---
 
 ## Goal
@@ -32,12 +32,12 @@ The approved design uses Bash-native dynamic column widths capped per table, two
 
 ## Steps
 
-- [ ] Add a reusable Bash 3.2-compatible bounded table renderer with no external command dependency.
-- [ ] Convert tool, skill, resource, port, listener, and unmanaged status sections to aligned tables.
-- [ ] Preserve summaries, row order, health accounting, exit status, stdout determinism, and provider invocation counts.
-- [ ] Add long-value fixtures proving bounded rows, aligned columns, ellipsis, and readable section separation.
-- [ ] Align the user command guide, manual, changelog, and public-surface tests.
-- [ ] Run the complete repository verification gate and keep the v0.3.0 candidate aligned.
+- [x] Add a reusable Bash 3.2-compatible bounded table renderer with no external command dependency.
+- [x] Convert tool, skill, resource, port, listener, and unmanaged status sections to aligned tables.
+- [x] Preserve summaries, row order, health accounting, exit status, stdout determinism, and provider invocation counts.
+- [x] Add long-value fixtures proving bounded rows, aligned columns, ellipsis, and readable section separation.
+- [x] Align the user command guide, manual, changelog, and public-surface tests.
+- [x] Run the complete repository verification gate and keep the v0.3.0 candidate aligned.
 
 ## Files touched
 
@@ -72,6 +72,40 @@ Show the table shape and direct automation to the future machine-readable projec
 ### Roadmap
 
 Keep the human table work separate from `RIG-CLI-010` and record delivery evidence here.
+
+## Review
+
+### Delivered
+
+All human `rig status` sections now share a Bash-native table renderer with adaptive widths, two-space gutters, header rules, deterministic ellipsis, and a 120-character ceiling. Unmanaged path identities use middle ellipsis so their identifying tail remains visible.
+
+### Summary of changes
+
+The tool, skill, managed-resource, private-port, unmanaged-identity, unmanaged-listener, and unmanaged-skill views now buffer rows before rendering aligned columns. Existing ordering, state vocabulary, summaries, health accounting, exit statuses, and provider behaviour remain unchanged. Tests now assert semantic table rows rather than the retired tab-delimited presentation.
+
+### Verification
+
+- `ki repo audit --repo .`
+- `shellcheck bin/rig install.sh src/rig/*.bash scripts/assemble-rig scripts/benchmark-rig scripts/smoke-native-providers`
+- `bash -n bin/rig install.sh src/rig/*.bash scripts/assemble-rig scripts/benchmark-rig scripts/smoke-native-providers`
+- `scripts/assemble-rig --check`
+- `scripts/benchmark-rig`
+- `scripts/smoke-native-providers`
+- `bats tests/` — 224 tests passed
+- `mandoc -T lint man/rig.1`
+- `git diff --check`
+
+### Outstanding concerns
+
+The human table remains intentionally unsuitable for automation. `RIG-CLI-010` remains the owner of a future machine-readable status projection.
+
+### Post-change review
+
+The implementation adds no runtime dependency and remains compatible with the assembled Bash 3.2 executable. Help and completion surfaces require no textual change because no command, option, or argument changed; the guide, Specification, manual, changelog, and tests describe the new output contract.
+
+### Mini recap
+
+Large status reports are now consistently aligned and bounded without altering what Rig observes or how it classifies machine state.
 
 ## Discussion
 

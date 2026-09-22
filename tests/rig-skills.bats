@@ -28,6 +28,16 @@ setup() {
   export PATH="$BIN:$PATH"
 }
 
+output_has_table_row() {
+  local expected
+
+  expected=$1
+  printf '%s\n' "$output" | awk -v expected="$expected" '
+    { gsub(/  +/, "\t"); if ($0 == expected) found = 1 }
+    END { exit !found }
+  '
+}
+
 write_skill_config() {
   printf '%s\n' \
     '[rig]' \
@@ -104,24 +114,24 @@ write_skill_config() {
   printf '%s\n' '[{"name":"caveman","scope":"global","source":"JuliusBrussee/caveman","agents":["Claude Code","Codex"]}]' >"$SKILLS_JSON"
   run "$RIG" status
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'caveman\tskills-cli\tpresent\tverified-source-and-runtimes'* ]]
+  output_has_table_row $'caveman\tskills-cli\tpresent\tverified-source-and-runtimes'
 
   printf '%s\n' '{not-json' >"$SKILLS_JSON"
   run "$RIG" status
   [ "$status" -eq 1 ]
-  [[ "$output" == *$'caveman\tskills-cli\tunavailable\tmalformed-json'* ]]
+  output_has_table_row $'caveman\tskills-cli\tunavailable\tmalformed-json'
 
   export RIG_TEST_SKILLS_EXIT=7
   printf '%s\n' '[]' >"$SKILLS_JSON"
   run "$RIG" status
   [ "$status" -eq 1 ]
-  [[ "$output" == *$'caveman\tskills-cli\tunavailable\tcommand-failed'* ]]
+  output_has_table_row $'caveman\tskills-cli\tunavailable\texit:7'
 
   unset RIG_TEST_SKILLS_EXIT
   rm "$BIN/skills"
   run "$RIG" status
   [ "$status" -eq 1 ]
-  [[ "$output" == *$'caveman\tskills-cli\tunavailable\texecutable-unavailable'* ]]
+  output_has_table_row $'caveman\tskills-cli\tunavailable\texecutable-unavailable'
 }
 
 @test "KI authority is reported unavailable and never invoked" {
@@ -137,7 +147,7 @@ write_skill_config() {
 
   run "$RIG" status
   [ "$status" -eq 1 ]
-  [[ "$output" == *$'caveman\tki\tunavailable\tinventory-unavailable'* ]]
+  output_has_table_row $'caveman\tki\tunavailable\tinventory-unavailable'
   [ ! -e "$RIG_TEST_KI_LOG" ]
 
   run "$RIG" apply --scope skills --dry-run

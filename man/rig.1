@@ -200,6 +200,12 @@ Compare every tool, user-level skill, and operational resource in the
 resolved default profile
 with its selected native observation. Catalogue-only tools are reported as
 neutral unavailable rows; stale resource receipts are pending retirement.
+Human output uses aligned, ruled tables with two-space column gutters.
+Rows are bounded to 120 characters and visibly abbreviate unusually long
+values with
+.BR ... ;
+path-like unmanaged identities retain leading and trailing context.
+The spacing is not a machine-readable interface.
 .TP
 .BI "rig status \-\-profile " NAME
 Compare a named resolved profile without changing the configured default.

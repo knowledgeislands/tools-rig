@@ -4,7 +4,9 @@ All notable changes to `rig` are documented here. Dated `0.x` entries record imm
 
 ## [Unreleased]
 
-No unreleased changes.
+### Changed
+
+- `rig status` now renders every expected, observed, and unmanaged section as an aligned human-readable table bounded to 120 characters, with deterministic visible ellipsis and useful path-tail context.
 
 ## [0.3.0] — 2026-09-22
 

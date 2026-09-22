@@ -24,11 +24,21 @@ setup() {
     '[provider.uv]' "executable = \"$UV_FAKE\"" >"$CONFIG_HOME/rig.toml"
 }
 
+output_has_table_row() {
+  local expected
+
+  expected=$1
+  printf '%s\n' "$output" | awk -v expected="$expected" '
+    { gsub(/  +/, "\t"); if ($0 == expected) found = 1 }
+    END { exit !found }
+  '
+}
+
 @test "uv extras locator observes base distribution as present" {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     UV_LOG="$UV_LOG" "$RIG" status
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'headroom\tuv\tpresent\t-'* ]]
+  output_has_table_row $'headroom\tuv\tpresent\t-'
   grep -F 'CALL <tool> <list>' "$UV_LOG"
 }
 

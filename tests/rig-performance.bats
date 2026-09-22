@@ -8,6 +8,16 @@ setup() {
   source "$BATS_TEST_DIRNAME/helpers/large-catalogue-fixture.bash"
 }
 
+output_has_table_row() {
+  local expected
+
+  expected=$1
+  printf '%s\n' "$output" | awk -v expected="$expected" '
+    { gsub(/  +/, "\t"); if ($0 == expected) found = 1 }
+    END { exit !found }
+  '
+}
+
 @test "representative catalogue stays within the portable query guard" {
   run env RIG_BENCHMARK_BUDGET_SECONDS=5 "$BATS_TEST_DIRNAME/../scripts/benchmark-rig"
 
@@ -61,8 +71,8 @@ setup() {
     RIG_TEST_LOG="$invocation_log" "$RIG" status
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'ruff\tuv\tpresent\t-'* ]] || false
-  [[ "$output" == *$'black\tuv\tpresent\t-'* ]] || false
+  output_has_table_row $'ruff\tuv\tpresent\t-'
+  output_has_table_row $'black\tuv\tpresent\t-'
   [ "$(wc -l <"$invocation_log" | tr -d ' ')" -eq 1 ]
   [ "$(cat "$invocation_log")" = "tool list" ]
 }

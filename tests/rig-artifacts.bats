@@ -14,6 +14,16 @@ setup() {
   chmod +x "$PROVIDER"
 }
 
+output_has_table_row() {
+  local expected
+
+  expected=$1
+  printf '%s\n' "$output" | awk -v expected="$expected" '
+    { gsub(/  +/, "\t"); if ($0 == expected) found = 1 }
+    END { exit !found }
+  '
+}
+
 write_artifact_config() {
   local artifacts installation
 
@@ -50,7 +60,7 @@ run_status() {
 
   run_status
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'subject\tfixture\tpresent\t-'* ]]
+  output_has_table_row $'subject\tfixture\tpresent\t-'
 }
 
 @test "missing artifact refines provider present state to missing" {
@@ -58,7 +68,7 @@ run_status() {
 
   run_status
   [ "$status" -ne 0 ]
-  [[ "$output" == *$'subject\tfixture\tmissing\tartifact-missing:~/Applications/Missing.app'* ]]
+  output_has_table_row $'subject\tfixture\tmissing\tartifact-missing:~/Applications/Missing.app'
 }
 
 @test "app directory without readable Info plist is drifted" {
@@ -67,7 +77,7 @@ run_status() {
 
   run_status
   [ "$status" -ne 0 ]
-  [[ "$output" == *$'subject\tfixture\tdrifted\tartifact-damaged-app:$HOME/Applications/Damaged.app'* ]]
+  output_has_table_row $'subject\tfixture\tdrifted\tartifact-damaged-app:$HOME/Applications/Damaged.app'
 }
 
 @test "unsafe artifact target refines provider present state to unavailable" {
@@ -77,7 +87,7 @@ run_status() {
 
   run_status
   [ "$status" -ne 0 ]
-  [[ "$output" == *$'subject\tfixture\tunavailable\tartifact-unsafe:~/link'* ]]
+  output_has_table_row $'subject\tfixture\tunavailable\tartifact-unsafe:~/link'
 }
 
 @test "artifact expansion is limited to documented leading home forms" {
@@ -87,7 +97,7 @@ run_status() {
 
   run_status
   [ "$status" -ne 0 ]
-  [[ "$output" == *$'subject\tfixture\tmissing\tartifact-missing:prefix-$HOME/data/marker'* ]]
+  output_has_table_row $'subject\tfixture\tmissing\tartifact-missing:prefix-$HOME/data/marker'
 }
 
 @test "catalogue-only tools do not receive artifact health state" {
@@ -95,7 +105,7 @@ run_status() {
 
   run_status
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'subject\t-\tunavailable\tcatalogue-only'* ]]
+  output_has_table_row $'subject\t-\tunavailable\tcatalogue-only'
   [[ "$output" != *'artifact-missing'* ]]
 }
 
@@ -108,12 +118,12 @@ run_status() {
   run_status
 
   [ "$status" -ne 0 ]
-  [[ "$output" == *$'subject\tfixture\tdrifted\tartifact-damaged-app:$HOME/Applications/Nested.app'* ]]
+  output_has_table_row $'subject\tfixture\tdrifted\tartifact-damaged-app:$HOME/Applications/Nested.app'
 
   : >"$TEST_HOME/Applications/Nested.app/Contents/MacOS/Nested"
   chmod +x "$TEST_HOME/Applications/Nested.app/Contents/MacOS/Nested"
   run_status
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'subject\tfixture\tpresent\t-'* ]]
+  output_has_table_row $'subject\tfixture\tpresent\t-'
 }

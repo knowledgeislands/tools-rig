@@ -56,11 +56,11 @@ _Evidence:_ `tests/rig.bats` covers a neutral catalogue-only row in an otherwise
 
 ### RIG-STATE-009 — Deterministic status report
 
-`rig status` MUST print `TOOL`, `PROVIDER`, `STATE`, and `DETAIL` columns in stable dependency order followed by fixed-order summary counters.
+`rig status` MUST print `TOOL`, `PROVIDER`, `STATE`, and `DETAIL` columns in stable dependency order followed by fixed-order summary counters. Every human status section MUST use aligned columns, a header rule, and two-space gutters; MUST remain at most 120 characters wide; and MUST mark bounded values with deterministic `...` ellipsis. Path-like unmanaged identities SHOULD preserve useful leading and trailing context when bounded. This human layout MUST NOT be treated as a machine-readable contract.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats compares exact status output for a dependency graph whose lexical order differs from its execution order.
+_Verify:_ Bats compares exact status output for a dependency graph whose lexical order differs from its execution order, exercises every status section, and bounds deliberately long rows to 120 characters with visible ellipsis.
 
 _Evidence:_ `rig_build_plan` provides stable dependency order and `rig_command_status` owns the exact table and summary.
 

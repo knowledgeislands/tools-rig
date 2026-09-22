@@ -659,6 +659,112 @@ rig_ellipsize() {
   RIG_VALUE=${value:0:prefix_width}...
 }
 
+rig_ellipsize_middle() {
+  local value width content_width prefix_width suffix_width suffix_offset
+
+  value=$1
+  width=$2
+  if [ "${#value}" -le "$width" ]; then
+    RIG_VALUE=$value
+    return
+  fi
+
+  content_width=$((width - 3))
+  prefix_width=$(((content_width + 1) / 2))
+  suffix_width=$((content_width - prefix_width))
+  suffix_offset=$((${#value} - suffix_width))
+  RIG_VALUE=${value:0:prefix_width}...${value:$suffix_offset:$suffix_width}
+}
+
+rig_table_reset() {
+  RIG_TABLE_HEADERS=()
+  RIG_TABLE_MAX_WIDTHS=()
+  RIG_TABLE_WIDTHS=()
+  RIG_TABLE_ELLIPSIS=()
+  RIG_TABLE_CELLS=()
+  RIG_TABLE_ROW_COUNT=0
+}
+
+rig_table_add_column() {
+  local header maximum ellipsis index width
+
+  header=$1
+  maximum=$2
+  ellipsis=${3:-end}
+  index=${#RIG_TABLE_HEADERS[@]}
+  width=${#header}
+  [ "$width" -le "$maximum" ] || width=$maximum
+  RIG_TABLE_HEADERS[$index]=$header
+  RIG_TABLE_MAX_WIDTHS[$index]=$maximum
+  RIG_TABLE_WIDTHS[$index]=$width
+  RIG_TABLE_ELLIPSIS[$index]=$ellipsis
+}
+
+rig_table_add_row() {
+  local index cell width maximum
+
+  [ "$#" -eq "${#RIG_TABLE_HEADERS[@]}" ] || return 2
+  index=0
+  for cell in "$@"; do
+    RIG_TABLE_CELLS[${#RIG_TABLE_CELLS[@]}]=$cell
+    width=${#cell}
+    maximum=${RIG_TABLE_MAX_WIDTHS[$index]}
+    [ "$width" -le "$maximum" ] || width=$maximum
+    [ "$width" -le "${RIG_TABLE_WIDTHS[$index]}" ] || RIG_TABLE_WIDTHS[$index]=$width
+    index=$((index + 1))
+  done
+  RIG_TABLE_ROW_COUNT=$((RIG_TABLE_ROW_COUNT + 1))
+}
+
+rig_table_print_row() {
+  local offset index cell width
+
+  offset=$1
+  index=0
+  while [ "$index" -lt "${#RIG_TABLE_HEADERS[@]}" ]; do
+    if [ "$offset" -lt 0 ]; then
+      cell=${RIG_TABLE_HEADERS[$index]}
+    else
+      cell=${RIG_TABLE_CELLS[$((offset + index))]}
+    fi
+    width=${RIG_TABLE_WIDTHS[$index]}
+    if [ "${RIG_TABLE_ELLIPSIS[$index]}" = middle ]; then
+      rig_ellipsize_middle "$cell" "$width"
+    else
+      rig_ellipsize "$cell" "$width"
+    fi
+    [ "$index" -eq 0 ] || printf '  '
+    if [ "$index" -eq $((${#RIG_TABLE_HEADERS[@]} - 1)) ]; then
+      printf '%s' "$RIG_VALUE"
+    else
+      printf '%-*s' "$width" "$RIG_VALUE"
+    fi
+    index=$((index + 1))
+  done
+  printf '\n'
+}
+
+rig_table_print() {
+  local index offset
+
+  rig_table_print_row -1
+  index=0
+  while [ "$index" -lt "${#RIG_TABLE_HEADERS[@]}" ]; do
+    [ "$index" -eq 0 ] || printf '  '
+    rig_repeat_character - "${RIG_TABLE_WIDTHS[$index]}"
+    printf '%s' "$RIG_VALUE"
+    index=$((index + 1))
+  done
+  printf '\n'
+  offset=0
+  index=0
+  while [ "$index" -lt "$RIG_TABLE_ROW_COUNT" ]; do
+    rig_table_print_row "$offset"
+    offset=$((offset + ${#RIG_TABLE_HEADERS[@]}))
+    index=$((index + 1))
+  done
+}
+
 rig_print_profile_tool_table() {
   local index tool name category purpose
   local display_tool display_name display_category display_purpose

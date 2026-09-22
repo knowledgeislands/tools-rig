@@ -42,6 +42,8 @@ These commands are read-only, but may invoke built-in observations or observatio
 - `rig doctor [--profile NAME]` gives a compact health answer and actionable findings.
 - `rig status [--profile NAME] [--unmanaged]` gives the detailed expected-versus-observed comparison. `--unmanaged` also asks supported inventory sources for undeclared tools, skills, or listeners.
 
+Status groups tools, skills, managed resources, private ports, and unmanaged observations into aligned tables. Columns grow to fit ordinary values but each table remains within 120 characters; unusually long values use a visible `...` marker, with paths retaining both their beginning and identifying tail where useful. The display is for people rather than scripts: use `rig explain ID` for the complete declaration, and do not parse spacing as a machine interface.
+
 Neither command applies changes. A healthy `doctor` is a concise confidence check; `status` is the diagnostic detail behind it.
 
 ## Preview and reconcile
