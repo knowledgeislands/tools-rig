@@ -130,9 +130,7 @@ boundary.
 .SH INSTALLATION
 \&
 .PP
-Install the
-.B v0.2.0
-public preview:
+Install the latest immutable release discovered by the installer:
 .PP
 .nf
 curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.2.0/install.sh | bash
@@ -143,6 +141,14 @@ Pin an exact release explicitly:
 .nf
 curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.2.0/install.sh | bash -s -- v0.2.0
 .fi
+.PP
+The URL above is the latest documented immutable release. It does not contain
+changes listed under
+.B Unreleased
+in a newer development checkout. From a local checkout, run
+.B ./install.sh \-\-link
+to link both the executable and manual; the linked executable reports a
+development version marker until a release candidate is explicitly selected.
 .PP
 The installer writes the executable to
 .I ~/.local/bin
@@ -397,7 +403,7 @@ autoload -Uz compinit && compinit
 Show command help.
 .TP
 .BR \-V , " \-\-version"
-Print the Rig version.
+Print the Rig release or development version.
 .SH CONFIGURATION
 \&
 .PP

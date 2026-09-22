@@ -4,12 +4,12 @@ title: Align next preview
 area: DIST
 theme: distribution
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: da0ddd42bd0aa10d684af7f8f4e3cbdc970368d7
 created_at: 2026-09-21T23:35:16Z
-updated_at: 2026-09-21T23:43:26Z
+updated_at: 2026-09-22T04:56:20Z
 ---
 
 ## Goal
@@ -30,12 +30,12 @@ The development checkout still identifies as `0.2.0` despite substantial post-ta
 
 ## Steps
 
-- [ ] Replace the premature `1.0.0` development heading with `Unreleased` and keep released `0.x` history intact.
-- [ ] Make development-version output distinguishable from the last immutable release without choosing or publishing a release tag.
-- [ ] Separate README instructions for the latest release from local linked development and avoid claiming unreleased commands for `v0.2.0`.
-- [ ] Align executable version, help, manual, completions, changelog, installer fixtures, and release guide around one candidate-version procedure.
-- [ ] Add or record clean installation, staged bootstrap, selected native adapter, public export, and release-diff smoke evidence.
-- [ ] Prepare the formula and website handoff checklist using a future exact tag and checksum placeholder; do not execute either handoff.
+- [x] Replace the premature `1.0.0` development heading with `Unreleased` and keep released `0.x` history intact.
+- [x] Make development-version output distinguishable from the last immutable release without choosing or publishing a release tag.
+- [x] Separate README instructions for the latest release from local linked development and avoid claiming unreleased commands for `v0.2.0`.
+- [x] Align executable version, help, manual, completions, changelog, installer fixtures, and release guide around one candidate-version procedure.
+- [x] Add or record clean installation, staged bootstrap, selected native adapter, public export, and release-diff smoke evidence.
+- [x] Prepare the formula and website handoff checklist using a future exact tag and checksum placeholder; do not execute either handoff.
 
 ## Files touched
 
@@ -70,6 +70,44 @@ Strengthen the releasing guide with candidate-version, clean-install, native-smo
 ### Roadmap
 
 A future release action is not implied by this item and should be created only when the user explicitly requests the concrete tag and publication.
+
+## Review
+
+### Delivered
+
+A local post-v0.2.0 development candidate now identifies itself as `0.2.0+dev` without choosing the next preview. The changelog uses `Unreleased`, immutable v0.1.0 and v0.2.0 history remains intact, and release-facing surfaces distinguish v0.2.0 installation from linked development. No tag, push, GitHub release, tap change, website deployment, personal apply, or other external mutation occurred.
+
+### Summary of changes
+
+- Changed the sole authored version marker and assembled payload to `0.2.0+dev`; aligned top-level help, Zsh completion text, diagnostics fixtures, and sourceability fixtures.
+- Aligned README, getting-started guide, manual, installer help, changelog, portability specification, and releasing guide around immutable v0.2.0 versus local linked development.
+- Added exact-final-version validation to the release-tag workflow and Bats assertions covering version-bearing release surfaces and the disposable linked executable.
+- Reviewed the complete candidate diff from `v0.2.0`: 72 committed changes plus this item, 81 files, 26,965 insertions, and 3,764 deletions, excluding the coordinator-owned batch ledger.
+
+### Verification
+
+- `rumdl check CHANGELOG.md README.md docs/guides/developer/releasing.md docs/guides/user/getting-started.md docs/specs/portability.md`
+- `shellcheck bin/rig install.sh src/rig/*.bash scripts/assemble-rig scripts/benchmark-rig scripts/smoke-native-providers`
+- `bash -n bin/rig install.sh src/rig/*.bash scripts/assemble-rig scripts/benchmark-rig scripts/smoke-native-providers`
+- `scripts/assemble-rig --check`
+- `scripts/benchmark-rig` — diag 1s, show 2s, list 2s, status 5s; all within portable guards.
+- `scripts/smoke-native-providers` — Homebrew, uv, mise, npm, chezmoi, and mas read-only probes passed.
+- `bats tests/` — 222 tests passed, including isolated release-installer, public-export, and staged-bootstrap coverage.
+- Disposable `./install.sh --link` prefix — executable and manual symlinks, `rig 0.2.0+dev`, Bash completion, Zsh completion, and manual lint passed.
+- `mandoc -T lint man/rig.1` and rendered-manual inspection passed.
+- `git diff --check v0.2.0 -- . ':(exclude)+/_BATCHES/RIG-BATCH-006.md'` passed.
+
+### Outstanding concerns
+
+The next exact `0.x` version remains deliberately unselected. A later, explicitly authorised release must replace the development marker, date the changelog entry, update immutable examples, rerun the full candidate gate, and separately obtain authority for tag, push, GitHub release, tap, and website actions. This item leaves the candidate uncommitted for coordinator review as required by the active batch.
+
+### Post-change review
+
+The candidate is internally consistent and preserves the release authority boundary. `0.2.0+dev` is valid SemVer build metadata, remains visibly different from the immutable v0.2.0 executable, and avoids implying that v0.3.0 is already selected. Native package managers were observed only through bounded read-only smoke operations; public export remained offline and privacy-filtered.
+
+### Mini recap
+
+Development truth, immutable-install truth, command surfaces, release procedure, and verification evidence now agree. The candidate is ready for human review; publication work is explicitly deferred.
 
 ## Discussion
 

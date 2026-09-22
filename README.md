@@ -24,9 +24,28 @@ Rig coordinates native systems rather than replacing them. Homebrew, uv, mise, n
 
 That makes Rig a manager of managers beneath a catalogue people can read.
 
+## Install
+
+Rig is a pre-v1 public preview. The latest immutable release is `v0.2.0`:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.2.0/install.sh | bash -s -- v0.2.0
+```
+
+That command installs the released `0.2.0` contract. It does not include changes described under `Unreleased` in this development checkout.
+
+To use the current checkout while developing or evaluating those changes, link both the executable and manual:
+
+```sh
+./install.sh --link
+rig --version # rig 0.2.0+dev
+```
+
+The development marker identifies an untagged checkout; it is not a promised next release number.
+
 ## Start here
 
-Rig is a pre-v1 public preview. Follow [Get started with Rig](docs/guides/user/getting-started.md) to install the current preview, write a small human-readable configuration, inspect it, check the machine, and preview the first application.
+Follow [Get started with Rig](docs/guides/user/getting-started.md) to write a small human-readable configuration, inspect it, check the machine, and preview the first application.
 
 The [user-guide journey](docs/guides/user/README.md) then introduces profiles, machine resources, user-level skills, provider boundaries, and publication in stages. Use `man rig` for the exhaustive command and configuration reference.
 

@@ -90,6 +90,8 @@ _Evidence:_ `bin/rig` implements skill parsing and state in Bash; `tests/rig-ski
 
 ### RIG-PORT-009 — Deterministic authored assembly
 
+Between immutable releases, `RIG_VERSION` MUST carry a development marker that distinguishes the checkout from the latest tag without selecting the next release number. Release verification MUST reject non-final tags and check an exact final `vX.Y.Z` tag against the assembled runtime version. Bats release-surface assertions MUST cover development-versus-release documentation, while `.github/workflows/ci.yml` provides final-tag evidence.
+
 Rig's authored Bash modules MUST assemble byte-for-byte into the committed `bin/rig`. `src/rig/00-runtime.bash` MUST own the sole authored `RIG_VERSION`, assembly MUST copy it into the single installed executable, and release verification MUST check the assembled runtime version. Every authored module and assembled output MUST parse under macOS Bash 3.2 and pass ShellCheck without introducing a runtime module loader.
 
 _Conformance:_ conforming

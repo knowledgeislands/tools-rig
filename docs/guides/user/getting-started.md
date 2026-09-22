@@ -4,7 +4,7 @@ This guide takes you from no Rig installation to a readable catalogue, a machine
 
 ## Install the public preview
 
-Install the current `v0.2.0` preview:
+Install the latest immutable release, currently `v0.2.0`:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.2.0/install.sh | bash
@@ -25,7 +25,9 @@ rig --version
 man rig
 ```
 
-For a local checkout, use `./install.sh --link`. It links the executable and manual so subsequent repository changes are visible without reinstalling.
+The released command reports `rig 0.2.0`. It does not include behaviour documented under `Unreleased` in a later development checkout.
+
+For a local checkout, use `./install.sh --link`. It links the executable and manual so subsequent repository changes are visible without reinstalling. The current checkout reports `rig 0.2.0+dev`; that marker means development after the latest immutable release and does not choose the next preview number.
 
 ## Create a small catalogue
 

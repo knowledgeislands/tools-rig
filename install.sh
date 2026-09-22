@@ -22,7 +22,7 @@ usage() {
   printf '%s\n' \
     'Usage: ./install.sh [vX.Y.Z|--link]' \
     '' \
-    'Install the latest released Rig, pin an exact release, or link a local checkout.'
+    'Install the latest immutable Rig release, pin an exact release, or link this development checkout.'
 }
 
 if [ "$#" -gt 1 ]; then

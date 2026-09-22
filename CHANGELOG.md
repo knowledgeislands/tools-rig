@@ -1,10 +1,10 @@
 # Changelog
 
-All notable changes to `rig` are documented here. This changelog records the evolving v1 release baseline; tags and commit history remain the record of the pre-v1 run-up.
+All notable changes to `rig` are documented here. Dated `0.x` entries record immutable public previews; the development checkout accumulates only under `Unreleased` until another preview is explicitly selected.
 
-## [1.0.0] — in progress
+## [Unreleased]
 
-Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving baseline; dated 0.x entries record public preview snapshots.
+These changes are available from a linked development checkout and are not yet an immutable release.
 
 ### Shipped commands
 
@@ -29,6 +29,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 
 ### Behaviours
 
+- Honest `0.2.0+dev` runtime identity for post-v0.2.0 development, with final `vX.Y.Z` release tags rejected unless they match an exact final executable version.
 - First-class user-level skill declarations with human meaning, reviewed provenance, native authority, intended runtimes, item-owned profile membership, read-only queries, expected-versus-observed state, doctor findings, and informational unmanaged Skills CLI inventory.
 - Bounded skill lifecycle through a deliberately installed Skills CLI, non-invoked KI authority, canonical local leaf-symlink projection, observation-only runtime/plugin ownership, tools → skills → resources application order, explicit update, and no lifecycle removal on deselection, maintain, or clean.
 - Deterministic `rig-publication` version 2 JSON with explicit skill view membership, an always-present `profile.skills` array, narrow public metadata allow-list, and exclusion of authorities, native sources, runtime mappings, paths, roots, locks, arguments, state, unmanaged inventory, and private ports.
@@ -92,6 +93,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 
 ### Documentation
 
+- Release guidance distinguishes the latest immutable v0.2.0 install from a linked development checkout and defines the local candidate checks required before an exact preview is selected.
 - Living decisions retain durable rationale, Specifications own detailed accepted behaviour, and the manual separates configuration schema from filesystem locations.
 - The README and focused user guides now explain Rig's purpose, model, everyday lifecycle, and publication boundary before implementation details.
 - The consumer command guide covers every shipped command and participates in the tested public-surface alignment contract.
@@ -120,7 +122,7 @@ Second public preview of the catalogue-led Rig baseline.
 
 ## [0.1.0] — 2026-09-17
 
-First public preview of the catalogue-first Rig baseline. The `1.0.0 — in progress` section remains the authority for ongoing v1 development.
+First public preview of the catalogue-first Rig baseline. Ongoing development is recorded under `Unreleased`.
 
 ### Added
 

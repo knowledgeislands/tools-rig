@@ -7,7 +7,7 @@
 
 # Rig — declarative description and manager of a working setup.
 
-RIG_VERSION=0.2.0
+RIG_VERSION=0.2.0+dev
 
 # Indexed arrays keep the installed executable compatible with macOS Bash 3.2.
 RIG_SECTION_NAMES=()
@@ -115,7 +115,7 @@ print_help() {
     '' \
     'Options:' \
     '  -h, --help            Show this help.' \
-    '  -V, --version         Print the Rig version.' \
+    '  -V, --version         Print the Rig release or development version.' \
     '' \
     'Commands:' \
     '  show        Describe a resolved profile with tools and skills.' \
@@ -330,7 +330,7 @@ print_zsh_completion() {
     "    'completion:print shell completion source'" \
     "    'help:show help'" \
     '  )' \
-    "  _arguments '(-h --help)'{-h,--help}'[show help]' '(-V --version)'{-V,--version}'[print the Rig version]' '1:command:->command' '*::argument:->argument'" \
+    "  _arguments '(-h --help)'{-h,--help}'[show help]' '(-V --version)'{-V,--version}'[print the Rig release or development version]' '1:command:->command' '*::argument:->argument'" \
     '  case $state in' \
     "    command) _describe -t commands 'rig command' commands ;;" \
     '    argument)' \
