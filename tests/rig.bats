@@ -361,7 +361,6 @@ write_query_config() {
   man_synopsis=$(sed -n '/^.SH SYNOPSIS/,/^.SH DESCRIPTION/p' "$repo_root/man/rig.1")
 
   for command in show list explain status doctor apply bootstrap update maintain capture run export publish clean diag completion help; do
-    grep -Fq "\`rig $command" "$repo_root/README.md"
     grep -Fq "\`rig $command" "$repo_root/CHANGELOG.md"
     grep -Fq "\`rig $command" "$repo_root/docs/guides/user/commands.md"
     grep -Fq "rig $command" "$repo_root/man/rig.1"
@@ -387,13 +386,13 @@ write_query_config() {
     'diag' \
     'completion bash|zsh' \
     'help [-h|--help]'; do
-    grep -Fq "\`rig $synopsis\`" "$repo_root/README.md"
     grep -Fq "\`rig $synopsis\`" "$repo_root/CHANGELOG.md"
     grep -Fq "\`rig $synopsis\`" "$repo_root/docs/guides/user/commands.md"
   done
 
-  grep -Fq 'rig --help' "$repo_root/README.md"
-  grep -Fq 'rig --version' "$repo_root/README.md"
+  grep -Fq '[Get started with Rig](docs/guides/user/getting-started.md)' "$repo_root/README.md"
+  grep -Fq '[user-guide journey](docs/guides/user/README.md)' "$repo_root/README.md"
+  grep -Fq 'man rig' "$repo_root/README.md"
   grep -Fq 'rig --help' "$repo_root/CHANGELOG.md"
   grep -Fq 'rig --version' "$repo_root/CHANGELOG.md"
   grep -Fq 'rig --help' "$repo_root/docs/guides/user/commands.md"

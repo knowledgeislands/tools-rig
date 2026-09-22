@@ -1,68 +1,49 @@
 # Use Rig
 
-Rig is for people who want their working setup to be understandable as a whole, not only reproducible through unrelated installers and configuration managers.
+Rig is for people who want their working setup to be understandable as a whole. A Rig configuration describes the tools and managed resources that matter, why they belong, which contexts need them, and which native system remains responsible for them.
 
-A Rig declaration tells you which tools and managed resources matter, what each one is for, why it belongs, which contexts need it, and which native system is responsible for it. Rig can then compare the declaration with the current machine and coordinate native managers without making you configure its built-in adapters.
+You do not need to understand Rig's internal provider protocol to begin. Start with one readable catalogue entry and one complete profile, inspect what Rig resolved, and add richer declarations only when they solve a real need.
 
-## Start with the questions
+## Begin with the everyday loop
 
-Rig is useful when you want durable answers to questions such as:
+The normal progression is:
 
-- What is my rig?
-- Which tools do I use for navigation, development, writing, or operations?
-- Why is a particular tool part of the setup?
-- Which tools and settings belong on this laptop, a minimal machine, or a developer workstation?
-- Which parts are present here, and which native system reported that state?
-- What can I share publicly without publishing private configuration or observed machine state?
-
-## Understand the five core concepts
-
-- **Catalogue** — the complete description of tools you care about. Each entry can record category, purpose, rationale, relationships, supported platforms, and installation metadata.
-- **Skill** — a user-level agent capability whose reviewed source, native authority, and runtime projections are declared without copying its instructions into Rig.
-- **Managed resource** — a service, scheduled job, typed setting, or semantic layout whose identity, intent, and desired state Rig declares while a provider owns native projection and operation.
-- **Private port** — stable TCP allocation whose number, expected bind scope, lifecycle mode, and qualified tool or service owner Rig records and observes without controlling sockets.
-- **Profile** — complete machine or role intent, or a non-appliable view. Selectable declarations own direct membership; omission means the configured default, and profiles inherit shared intent explicitly. A workstation is a complete profile, not a provider.
-- **Provider** — a native system that already owns installation or state. Built-in providers such as Homebrew and launchd need no adapter or capability declarations; external providers are explicit trust boundaries.
-- **State** — the comparison between a resolved profile and provider observations on the current machine.
-
-Publication is an optional projection of that model. It exports one deliberately public non-appliable view as versioned data; a website owns how that data is presented.
-
-## Follow the everyday lifecycle
-
-1. **Declare** a catalogue, managed resources, profiles, and the native provider for each materialised item.
+1. **Declare** intent in `rig.toml` and optional `conf.d/*.toml` fragments.
 2. **Understand** the resolved setup with `rig show`, `rig list`, and `rig explain`.
-3. **Check Rig itself** with `rig diag`.
-4. **Assess the machine** with `rig doctor` for a summary or `rig status` for full expected-versus-observed detail.
-5. **Preview change** with `rig apply --dry-run`.
-6. **Materialise** with `rig apply` in tools → skills → resources order, or use Rig's native `rig bootstrap` lifecycle to stage required managers and then materialise the selected bootstrap profile.
-7. **Advance explicitly** with dry-run-first `rig update`, `rig maintain`, or `rig capture` when tools, provider state, or a native manifest should change outside reconciliation.
-8. **Publish deliberately** with offline `rig export` followed by explicit `rig publish` when configured.
+3. **Diagnose** Rig itself with `rig diag`.
+4. **Observe** expected versus actual machine state with `rig doctor` and `rig status`.
+5. **Preview** the complete plan with `rig apply --dry-run`.
+6. **Materialise** an operable complete profile with `rig apply` or the native `rig bootstrap` lifecycle.
+7. **Advance** provider-managed state deliberately with dry-run-first `rig update`, `rig maintain`, or `rig capture`.
+8. **Publish** only a deliberately selected public view, first with offline `rig export` and then with explicit `rig publish`.
 
-Inspection comes before mutation. Rig never turns a read-only declaration query into provider execution, and a dry run never applies provider changes.
+Inspection precedes mutation. Declaration queries do not invoke providers, and dry-run commands do not apply provider changes.
 
-Generated paths stay with the tool whose capability they expose. Their `artifacts` paths make them visible to `explain`, `status`, and `doctor`; they are not separate tools. Rig observes those paths, while their native owner remains responsible for creating, updating, and removing them.
+## Learn in stages
 
-One catalogue tool can use bounded `variant.ID.*` declarations when its installation or artifacts differ by platform. Managed resources can use qualified `depends-on` references when their reconciliation order matters. Both remain declarative: variants choose data, dependencies order known resources, and neither introduces arbitrary commands.
+Follow these guides in order until you have what you need:
 
-## Choose a guide
+1. [Get started](getting-started.md) establishes the configuration, first catalogue entry, health checks, and safe preview.
+2. [Choose a command](commands.md) maps the CLI to the everyday loop and explains command trust boundaries.
+3. [Build complete profiles and safe views](profiles.md) introduces additional contexts only when the selected intent genuinely differs.
+4. [Manage operational resources and private ports](operational-resources.md) adds machine-level desired state after the tool catalogue is clear.
+5. [Manage user-level skills](skills.md) adds agent capabilities while preserving their native ownership and trust boundary.
+6. [Run external provider actions](provider-actions.md) covers the exceptional host-specific work that cannot be expressed declaratively.
+7. [Publish a public rig](publishing.md) creates a private-by-default data projection for a site such as `rig.midnight.ninja`.
 
-- [Get started](getting-started.md) — install Rig, create a small configuration, understand it, check a machine, and preview the first application.
-- [Build complete profiles and safe views](profiles.md) — place membership beside declarations, inherit shared intent, switch complete profiles safely, and publish an explicit view.
-- [Manage user-level skills](skills.md) — choose a native authority, declare reviewed provenance, inspect state, and understand non-removal and publication boundaries.
-- [Use commands](commands.md) — choose the right command and understand whether it reads declarations, observes providers, mutates state, or publishes data.
-- [Publish a rig](publishing.md) — choose a safe public profile, inspect its versioned JSON, and hand it to a trusted publisher.
-- [Run external provider actions](provider-actions.md) — expose bounded host-specific operations only when no built-in declarative integration fits.
-- [Manage resources and private ports](operational-resources.md) — declare services, jobs, settings, layouts, and stable TCP intent, then inspect or preview their state.
+Use `man rig` when you need the complete schema, provider support matrix, environment variables, exit statuses, or extension protocol.
 
-For the exhaustive configuration grammar, environment variables, built-in provider matrix, extension protocol, and exit-status contract, use `man rig`. Specifications are maintained for implementers and verification; most users should start with these guides.
+## Keep the ownership boundary clear
 
-## Configuration location
+Rig owns catalogue meaning, profile resolution, orchestration order, preflight checks, and outcome reporting. Native systems retain their manifests, resolution rules, credentials, and operating state. Personal choices and host-specific values stay in private Rig configuration rather than the executable.
 
-By default, Rig reads:
+A path generated by a tool remains an artifact of that tool, not a second catalogue entry. A workstation is a complete profile, not a provider. A public site consumes an exported view; it is never the authority for private configuration or observed state.
 
-1. `${XDG_CONFIG_HOME:-$HOME/.config}/rig/rig.toml`, when present;
-2. regular `${XDG_CONFIG_HOME:-$HOME/.config}/rig/conf.d/*.toml` fragments in bytewise filename order.
+## Find the configuration
 
-Set `RIG_CONFIG_HOME` to replace the complete Rig configuration directory. Similar `RIG_DATA_HOME`, `RIG_STATE_HOME`, and `RIG_CACHE_HOME` overrides replace the corresponding Rig application directories.
+Rig reads:
 
-The root `rig.toml` is optional when fragments supply the complete model, including exactly one `[rig]` table.
+1. `${RIG_CONFIG_HOME}/rig.toml` when `RIG_CONFIG_HOME` is set; otherwise `${XDG_CONFIG_HOME:-$HOME/.config}/rig/rig.toml`.
+2. Regular `conf.d/*.toml` fragments from the same directory in bytewise filename order.
+
+Configuration is inert TOML. Rig parses data and never sources it as shell code.

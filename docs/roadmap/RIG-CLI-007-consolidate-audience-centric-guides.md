@@ -4,86 +4,116 @@ title: Consolidate audience-centric guides
 area: CLI
 theme: cli
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
 transferred_from: ki-website
-baseline_ref: null
+baseline_ref: 8e3dc95af5d7631300f46368d62386b87533df48
 created_at: 2026-09-21T17:20:00Z
-updated_at: 2026-09-21T23:43:26Z
+updated_at: 2026-09-22T03:55:52Z
 ---
 
 ## Goal
 
-Every practical instruction for Rig lives in the guide collection under the audience that needs it, and the README orients rather than instructs.
+Practical instruction for Rig lives in a guide collection organised around audience needs, while the repository README orients readers and routes them to the right next step.
 
 ## Context
 
-`docs/guides/` already splits `user/` and `developer/`, each with its own index, and `.ki.toml` declares `[skills.ki-guides]`. The user collection covers getting started, commands, provider actions, operational resources, and publishing. The structure is right.
+The guide collection already separated user and developer audiences, but its instructional material competed with a long README. Installation, first configuration, profiles, artifacts, commands, and safety boundaries appeared in more than one place and could drift independently.
 
-What this item questions is duplication. The 179-line README carries Install, Create a first rig, Workstations are profiles, Generated artifacts, Commands, and Safety and ownership — material that either restates the user guides or contradicts them. A README that both orients and instructs is the thing being consolidated, and two copies of an install procedure is worse than one.
-
-KI Website now declares, for every page it publishes under `apps/site/src/guidance/`, the exact upstream document and pinned ref that page was written from, and a `verify:guidance --network` sweep reports the pages whose source has moved. The site intends to derive public guidance for this project from this repository's own guides and cite them at a pinned ref, so the quality and stability of `docs/guides/` here directly determines the quality of what the site can publish.
-
-That is a pull, not an obligation: KI Website derives, it does not own. This repository decides what its guides say and when they change.
-
-Separately, `ki-guides` is being asked to require audience directories under `docs/guides/` rather than permitting a flat collection (`ki-agentic-harness` `KI-HARNESS-GOV-083`). If that lands, this repository's collection has to satisfy it.
+The Knowledge Islands website derives public guidance from repository-owned guides. Rig therefore owns the quality and stability of these source documents; the website remains a consumer rather than an authority.
 
 ## Boundary
 
-Adopted into `Now` by explicit approval, so this is prioritised work rather than intake. It remains `status: draft`: `ki-plan` shapes it to `Ready` before any implementation, and this repository still owns its plan and sequencing.
-
-KI Website derives and cites; it does not own this collection and must not be given approval rights over it. Nothing here requires a guide to be written for the website's benefit — if a guide would not serve this repository's own readers, it should not exist.
-
-## Shaping
-
-- Compare each instructional README section against the user guide that covers the same ground, and decide which is authoritative.
-- Reduce the README to orientation: what Rig is, what it answers, and where to go next. The plain-language model and the lifecycle sketch earn their place; step-by-step setup does not.
-- Confirm `docs/guides/user/commands.md` and the README's command list cannot disagree, ideally by having only one of them.
-- Check whether anything practical still lives only in `docs/specs/` or `AGENTS.md`.
+- Compare instructional README sections with the user guides covering the same outcomes.
+- Keep only purpose, mental model, status, and navigation in the README.
+- Make `docs/guides/user/commands.md` the explanatory command map and keep exhaustive reference material in `man rig`.
+- Ensure the journey starts with one readable catalogue and introduces profiles, machine resources, skills, extensions, and publication incrementally.
+- Check Specifications and `AGENTS.md` for practical instruction that belongs in the guide collection without duplicating normative contracts.
 
 ## Current state
 
-`docs/guides/` splits `user/` and `developer/` with an index each, `.ki.toml` declares `[skills.ki-guides]`, and ten guides exist. The collection is in good shape. The unverified part is the README, which carries six instructional sections covering ground the user guides also cover, with nothing establishing which is authoritative.
+`docs/guides/` contains audience indexes and a complete, ordered user journey. README orientation points directly to that journey and no longer embeds setup procedures or the complete command reference.
 
 ## Steps
 
-- [ ] Map each instructional README section to the user guide covering the same ground, and note where they disagree.
-- [ ] Decide the authoritative home for each, resolving toward the guide.
-- [ ] Reduce the README to orientation and links.
-- [ ] Sweep `docs/specs/` and `AGENTS.md` for practical instruction that belongs in the collection.
-- [ ] Run the guides audit and repair what it reports.
+- [x] Map instructional README sections to the user guides covering the same outcomes.
+- [x] Choose one authoritative practical home for each outcome.
+- [x] Reduce the README to product orientation and durable navigation.
+- [x] Sweep Specifications and `AGENTS.md`; retain their normative and contributor-specific content rather than duplicating it in user guides.
+- [x] Run guide, authoring, repository, and public-command coherence checks.
 
 ## Files touched
 
-`README.md`, `docs/guides/user/` and `docs/guides/developer/`.
+`README.md`, `docs/guides/`, `tests/rig.bats`, and this roadmap record.
 
 ## Verify
 
-`ki repo audit --skill ki-guides --repo .` passes, and `ki repo audit --skill ki-authoring --repo .` passes over the collection.
+`ki repo audit --skill ki-guides --repo .` and `ki repo audit --skill ki-authoring --repo .` pass. The full repository gate and the focused public-command documentation test pass.
 
 ## Dependencies / blocks
 
-Nothing blocks this. `KI-HARNESS-GOV-083` in `ki-agentic-harness` proposes making audience directories a `ki-guides` requirement: if it lands first this collection satisfies it by construction, and if it lands later this collection already conforms. KI Website intends to derive public guidance from these guides and cite them at a pinned ref, but it derives rather than owns and its schedule does not gate this work.
+Nothing blocks this work. The collection already uses audience directories, so it also satisfies the proposed `ki-guides` audience-directory shape if that becomes mandatory.
 
 ## Documentation impact
 
 ### Decision Records
 
-No decision record is needed. Audience-centric grouping is the house arrangement `ki-guides` already encodes, so adopting it here is conformance rather than a new decision. One becomes owed only if this repository concludes it needs an exception.
+No architectural decision changed. The guides link durable rationale rather than reproducing it.
 
 ### Specifications
 
-No behaviour-level contract changes. This item changes only where instructions live and who they are written for.
+No behaviour-level contract changed. Specifications remain the accepted-behaviour authority and are linked rather than copied into guides.
 
 ### Guides
 
-This item is entirely guide impact: it establishes or completes the collection, its audience directories, and their indexes.
+This item establishes the guide collection as the practical authority for adoption, operation, development, and release workflows.
 
 ### Roadmap
 
-No further roadmap change is expected. If writing the guides exposes behaviour that cannot honestly be explained, that is a separate item raised at the time.
+No follow-up roadmap item was exposed by the guide rewrite.
+
+## Review
+
+### Delivered
+
+From immutable baseline `8e3dc95af5d7631300f46368d62386b87533df48`, consolidated Rig's practical documentation into a reader-first, audience-centred journey. The implementation changes no runtime behaviour and does not publish or mutate external systems.
+
+### Summary of changes
+
+- Reduced `README.md` to product purpose, a plain-language model, maturity, and routes into the guide collection.
+- Reworked the guide indexes into an explicit incremental learning sequence.
+- Rewrote user guides around concrete outcomes with human-readable multiline TOML and clear read, observe, preview, mutate, and publish boundaries.
+- Reworked developer guides around the repository boundary, one complete verification gate, definition of done, commit safety, and explicit external authority.
+- Updated the public-command coherence test so README navigation is checked without forcing the complete command inventory back into the landing page; exact command synopses remain checked across the command guide, changelog, manual, help, and completions.
+
+### Verification
+
+- `bats --filter 'public command inventory stays aligned across documentation' tests/rig.bats` — pass.
+- `rumdl check README.md docs/guides docs/roadmap/RIG-CLI-007-consolidate-audience-centric-guides.md` — pass.
+- `ki repo audit --skill ki-guides --repo .` — pass.
+- `ki repo audit --skill ki-authoring --repo .` — pass.
+- ShellCheck and Bash syntax gates for the executable, installer, authored modules, and support scripts — pass.
+- `scripts/assemble-rig --check` — pass.
+- `scripts/benchmark-rig` — pass within all budgets.
+- `scripts/smoke-native-providers` — pass for all available native providers.
+- `bats tests/` — 221 tests pass.
+- `mandoc -T lint man/rig.1` — pass.
+- `ki repo audit --repo .` — pass across 16 selected skills.
+- `git diff --check` — pass.
+
+### Outstanding concerns
+
+None. The version shown in installation examples remains the current documented preview; release-candidate alignment belongs to the separate distribution work item.
+
+### Post-change review
+
+The new structure gives a first-time reader a short route from purpose to a safe first preview, then exposes advanced concepts only when needed. Normative details remain in Specifications and `man rig`, reducing drift risk without hiding the complete CLI contract. The change is ready for human acceptance review.
+
+### Mini recap
+
+Rig now has one coherent practical documentation journey for users and maintainers. Verification found no behaviour, portability, assembly, manual, or repository-governance regression, and no further work was created.
 
 ## Discussion
 
-Shaping settles how far this goes, not whether it happens. The prompting question is whether a reader who has never opened this repository can do what it is for without reading source.
+The deciding test is whether a reader who has never opened the source can understand what Rig is, create a small declaration, assess the machine, and choose the next safe command without learning the implementation first.

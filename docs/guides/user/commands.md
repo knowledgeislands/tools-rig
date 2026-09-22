@@ -1,99 +1,115 @@
 # Choose a Rig command
 
-Rig commands follow a deliberate progression from understanding declared intent to observing a machine, previewing changes, applying them, and optionally publishing a public view.
+Rig's commands follow a deliberate progression from understanding declared intent, through observing the machine, to previewing and applying changes. Start with the least powerful command that answers the question.
 
-## Understand the declaration
+## Command synopsis
+
+- `rig show [--profile NAME]`
+- `rig list [--category ID] [--profile NAME]`
+- `rig explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID`
+- `rig status [--profile NAME] [--unmanaged]`
+- `rig doctor [--profile NAME]`
+- `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]`
+- `rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]`
+- `rig update [--profile NAME] [--dry-run]`
+- `rig maintain [--profile NAME] [--dry-run]`
+- `rig capture PROVIDER [--dry-run]`
+- `rig run PROVIDER ACTION [-- ARGUMENT...]`
+- `rig export PUBLICATION --output DIRECTORY`
+- `rig publish PUBLICATION`
+- `rig clean [--dry-run]`
+- `rig diag`
+- `rig completion bash|zsh`
+- `rig help [-h|--help]`
+
+`rig --help` shows top-level help, while `rig --version` prints the installed version. The sections below explain when to use each command rather than repeating the manual's complete option reference.
+
+## Understand declarations
 
 These commands parse configuration and never invoke providers:
 
-- `rig show [--profile NAME]` — describe the resolved default or named profile in readable tool and skill tables.
-- `rig list [--category ID] [--profile NAME]` — list declared tools, optionally restricted by category and resolved profile.
-- `rig explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID` — show one tool, user-level skill, qualified managed resource, or private port allocation with complete declaration and profile membership.
-- `rig diag` — report the running Rig version, executable, Bash, platform, XDG paths, configuration sources, validity, profile-selection mode, and model counts.
+- `rig show [--profile NAME]` describes the resolved default or named profile in readable tables.
+- `rig list [--category ID] [--profile NAME]` browses catalogue tools, optionally restricted by category or profile.
+- `rig explain ID` shows one complete declaration and its profile membership. Qualify non-tool identities, for example `skill:caveman`, `service:example-daemon`, or `port:example-api`.
+- `rig diag` reports the running executable, Bash and platform details, XDG paths, configuration sources, selection mode, and model counts.
 
-Use `show` for the whole selected setup, `list` to browse, `explain` for one tool, and `diag` when Rig itself cannot find or parse what you expect.
+Use `show` for the whole selected setup, `list` to browse tools, `explain` for one identity, and `diag` when Rig is not finding or parsing what you expect.
 
 ## Observe the machine
 
-These commands may invoke only built-in observation operations or explicitly allowed observations for selected external providers:
+These commands are read-only, but may invoke built-in observations or observations explicitly allowed for a trusted extension:
 
-- `rig doctor [--profile NAME]` — give a compact health answer and actionable findings for tools, resources, and private ports.
-- `rig status [--profile NAME] [--unmanaged]` — show the full expected-versus-observed comparison and optionally inventory undeclared tools and TCP listeners.
+- `rig doctor [--profile NAME]` gives a compact health answer and actionable findings.
+- `rig status [--profile NAME] [--unmanaged]` gives the detailed expected-versus-observed comparison. `--unmanaged` also asks supported inventory sources for undeclared tools, skills, or listeners.
 
-`status --unmanaged` additionally uses built-in inventory sources and explicitly allowed external inventory operations to find identities that no catalogue installation declares. Those rows are informational and do not make an otherwise healthy status fail.
+Neither command applies changes. A healthy `doctor` is a concise confidence check; `status` is the diagnostic detail behind it.
 
-Neither command applies changes.
+## Preview and reconcile
 
-## Preview and materialise
+Run the dry-run form before either materialising command:
 
-Apply and bootstrap preflight the complete selected plan before mutation. Shared configuration, trust, executable, platform, and receipt-boundary failures reject the plan with status 2. A resource-local environmental finding produces a failed row with status 1, prevents that resource from being invoked, and leaves independent work available.
+```sh
+rig apply --dry-run
+rig bootstrap --dry-run
+```
 
-- `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]` — preflight the resolved profile, print the selected scope in dry-run mode, or materialise tools → skills → resources.
-- `rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]` — run Rig's native new-machine lifecycle for the configured bootstrap profile, an explicit profile, or the default-profile fallback.
+- `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]` reconciles an operable complete profile in tools → skills → resources order.
+- `rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]` runs Rig's bounded new-machine lifecycle, verifies the required native managers, and then materialises the selected bootstrap profile.
 
-Run the dry-run form first. A dry run invokes no provider and writes no state. Without `--dry-run`, apply reconciles a complete profile after complete preflight. A non-appliable view is rejected by apply, bootstrap, update, maintain, and selected-resource mutation. Reports disclose whether work affects one declaration, a native manifest, or a provider-wide surface before execution. Receipt-backed work serialises the platform target before reading its receipt. Bootstrap can stage only the fixed Homebrew → mise → npm manager chain when the corresponding prerequisite tools are selected; all external and unrelated managers must already be available. It reports each stage before completing a normal apply preflight.
+Bootstrap is a lifecycle stage, not a provider or a reason to create another profile. It does not install an absent package manager from arbitrary configuration.
 
-## Advance provider-managed state
+Both commands preflight the selected plan before the first mutation. A shared safety problem rejects the plan. A finding local to one managed resource fails that row while allowing independent work to remain visible.
 
-- `rig update [--profile NAME] [--dry-run]` — advance selected Homebrew, uv, mise, and npm tools with each manager's fixed native operation.
-- `rig maintain [--profile NAME] [--dry-run]` — run one bounded maintenance work item for each supported provider selected by the resolved profile.
-- `rig capture PROVIDER [--dry-run]` — deliberately refresh the named provider's native manifest; Homebrew is the current built-in capture target and requires a configured manifest path.
+## Advance native provider state
 
-Use a dry run first. Rig preflights every supported target before mutation, deduplicates shared provider work, and reports selected providers without a supported lifecycle operation as skipped. Update and maintenance resolve the default or named profile; capture names one provider directly because it writes that provider's manifest rather than reconciling a profile.
+Reconciliation makes declared intent present. It does not silently upgrade every tool, run package-manager maintenance, or rewrite a native manifest. Those changes are explicit:
 
-These commands use fixed built-in behaviour. Configuration selects tools and may supply documented provider-native details such as the Homebrew manifest path, but it cannot define lifecycle shell commands, grant capabilities, or route lifecycle work through an external provider. `rig maintain` owns provider-native maintenance such as cache pruning; `rig clean` has a separate and narrower Rig-cache boundary.
+- `rig update [--profile NAME] [--dry-run]` advances selected tools through supported native managers.
+- `rig maintain [--profile NAME] [--dry-run]` runs one bounded maintenance operation for each supported selected provider.
+- `rig capture PROVIDER [--dry-run]` deliberately refreshes a supported provider-native manifest.
 
-Declared `artifacts` are observation-only. `apply`, `bootstrap`, and `update` manage the owning tool through its provider but do not invoke artifact generators; the native tool owns that lifecycle.
+Use dry run first. These commands have broader provider effects than applying one declaration, and Rig reports whether each operation has declaration, manifest, or provider-wide scope.
 
-## Run a declared host action
+## Run a bounded provider action
 
-- `rig run PROVIDER ACTION [-- ARGUMENT...]` — invoke one built-in provider operation or an action explicitly allowed for one external provider.
+`rig run PROVIDER ACTION [-- ARGUMENT...]` invokes a fixed built-in action or one action allow-listed for an explicitly trusted custom provider.
 
-Built-in operations are fixed by Rig. An external action is an advanced trust transition: configuration fixes its executable, allowed operation, mode, base arguments, platforms, and caller-argument policy before dispatch. See [external provider actions](provider-actions.md).
+This is not a general shell runner. Read [Run external provider actions](provider-actions.md) before adding a custom action.
 
 ## Export or publish a public view
 
-- `rig export PUBLICATION --output DIRECTORY` — generate deterministic `rig-publication` version 2 data without invoking a publisher.
-- `rig publish PUBLICATION` — generate the same isolated data and pass it to the publication's explicitly selected custom publisher.
+- `rig export PUBLICATION --output DIRECTORY` generates deterministic public data locally without invoking a publisher.
+- `rig publish PUBLICATION` generates the same isolated data and hands it to the explicitly selected trusted publisher.
 
-Export is the review boundary; publish is the network-capable transition. See [publish a rig](publishing.md).
+Export is the review boundary; publish is the network-capable transition. Follow [Publish a public rig](publishing.md) before configuring either command.
 
-## Maintain Rig-owned cache data
+## Clean Rig-owned cache data
 
-- `rig clean [--dry-run]` — remove complete retained publication exports and resumable cleanup claims that Rig can prove it owns.
+`rig clean [--dry-run]` removes only retained cache artifacts that Rig can prove it owns. Use `rig clean --dry-run` first to inspect exact targets and reasons.
 
-Use `rig clean --dry-run` first to see the exact paths and reasons. Retained publication exports remain indefinitely until this explicit command removes them. Unsafe or unclassified cache shapes are reported and skipped; active publication staging, provider-native caches, configuration, data, and state are never cleanup targets.
-
-Cleanup is maintenance, not a step in the everyday Rig lifecycle. It does not load configuration or invoke providers.
+Clean is maintenance, not part of the everyday reconciliation lifecycle. It never removes provider-native caches, configuration, data, or state.
 
 ## Get help and completion
 
-- `rig completion bash|zsh` — print completion source for the selected shell.
-- `rig help [-h|--help]` — print top-level help.
-- `rig --help` — print top-level help.
-- `rig --version` — print the installed Rig version.
+- `rig help`, `rig -h`, and `rig --help` show top-level help.
+- `rig COMMAND --help` shows command-local help where available.
+- `rig --version` prints the version.
+- `rig completion bash|zsh` prints completion source.
 
-Every subcommand accepts `-h` or `--help` for command-local usage. `man rig` is the exhaustive reference.
+Use `man rig` for the exhaustive command synopsis, options, configuration schema, environment variables, and exit-status contract.
 
-## Interpret exit status
+## Read exit statuses
 
-Resource-local preflight findings are operational outcomes, not invalid configuration. They therefore use status 1. Shared preflight safety failures use status 2 and prevent every mutation.
+- Status 0 means the command completed successfully; for a health command, the checked rig is healthy.
+- Status 1 means an operational command completed with findings or provider work failed.
+- Status 2 means Rig rejected command syntax, configuration, or profile resolution before valid work could proceed.
 
-- Status 0 means the command completed successfully. For health commands, the checked rig is healthy.
-- Status 1 means an operational command completed with findings or a provider operation failed.
-- Status 2 means Rig rejected its own command syntax, configuration, or profile resolution.
-- `rig run`, `rig capture`, and publication dispatch preserve provider-native failure status where their contract requires it; profile-wide update and maintenance report independent provider failures and return status 1.
+Some direct dispatch commands preserve a provider-native non-zero status. Profile-wide operations aggregate independent provider failures and return status 1.
 
-## Follow long-running work
+## Follow progress
 
-Operational commands report configuration, resolution, planning, preflight, observation, execution, publication, and cleanup phases on interactive stderr. Each enumerable phase starts at `0/N`; a `running` line names the safe declaration or provider identity without advancing the count; and the following `succeeded`, `skipped`, or `failed` line advances it. Mutation lines include `declaration`, `manifest`, or `provider-wide` scope before the native command starts. A final line gives the completed denominator and outcome totals. Interrupted work says `interrupted` rather than `finished` and retains the native signal exit status.
+Operational commands report phases, completed counts, safe current identities, mutation scope, and terminal outcomes on stderr. Tables, JSON, and other command results remain on stdout.
 
-Rig never writes this progress to stdout, so tables, JSON, and other command reports remain composable. Progress labels omit paths, locators, configured arguments, environment values, publication titles, observed details, credentials, and native output. Provider diagnostics may still share stderr under the provider's own format.
+The default `RIG_PROGRESS=auto` shows progress for operational work on an interactive terminal and keeps fast declaration queries quiet. Use `RIG_PROGRESS=always` for stable line-oriented progress when stderr is redirected, or `RIG_PROGRESS=never` to suppress Rig-authored progress.
 
-The default `RIG_PROGRESS=auto` shows progress only for operational commands on an interactive terminal; fast `show`, `list`, `explain`, and `diag` queries remain quiet. Set `RIG_PROGRESS=always` for the same stable line-oriented events when stderr is redirected, or `RIG_PROGRESS=never` to suppress progress.
-
-```text
-rig: progress: applying 0/3: base via homebrew [declaration] running
-rig: progress: applying 1/3: base via homebrew [declaration] succeeded
-rig: progress: applying finished completed=3/3 succeeded=2 skipped=1 failed=0
-```
+Progress labels omit private values such as paths, locators, arguments, environment entries, publication titles, observed details, and credentials. Native provider diagnostics may still use stderr in their own format.

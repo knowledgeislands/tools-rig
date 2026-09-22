@@ -1,17 +1,17 @@
-# Manage resources and private ports with Rig
+# Manage operational resources and private ports
 
-Rig treats operational resources and stable machine policy as part of the selected working setup. Put the desired state in private Rig configuration, select it from a profile, inspect it without execution, and review the complete plan before applying it.
+Rig treats selected machine policy as part of a working setup. Put desired state in private Rig configuration, select it through a complete profile, inspect it without execution, and review the complete plan before applying it.
 
-Built-in providers such as `launchd`, `macos-defaults`, and `macos-dock` need no provider table, adapter name, capability list, or executable protocol configuration.
+Built-in providers such as `launchd`, `macos-defaults`, and `macos-dock` need no provider table, adapter name, capability list, or extension protocol configuration.
 
-## Declare a private port
+## Record a private port allocation
 
 Declare a port when its number is durable personal machine intent rather than an ephemeral application choice:
 
 ```toml
 [port.example-api]
 name = "Example API"
-purpose = "Keep the local example endpoint predictable"
+purpose = "Keep a local endpoint predictable"
 rationale = "Several development tools connect to the same private endpoint"
 protocol = "tcp"
 port = 3333
@@ -21,24 +21,24 @@ owner = "service:example-daemon"
 profiles = ["workstation"]
 ```
 
-The first schema supports TCP ports from 1 through 65535. Use `scope = "loopback"` when the listener must not be reachable through normal network interfaces; use `scope = "all-interfaces"` only when broader binding is deliberate.
+Use `scope = "loopback"` when a listener must not be reachable through normal network interfaces. Use `all-interfaces` only when broader binding is deliberate.
 
-Choose the mode according to the intended lifecycle:
+Choose a lifecycle mode that matches the owner:
 
-- `required` means the selected owner should be listening continuously; absence is a finding.
-- `on-demand` means absence is healthy, but an active listener must have the expected scope and owner.
-- `allocated` reserves the number for planning. Absence is healthy; a positively different occupant is a conflict.
+- `required` expects the selected owner to be listening continuously; absence is a finding.
+- `on-demand` permits absence, but an active listener must match the expected scope and owner.
+- `allocated` records planning ownership; absence is healthy, while a positively different occupant is a conflict.
 
-The owner must be qualified as `tool:ID`, `service:ID`, or `scheduled-job:ID`. On macOS, `rig status` and `rig doctor` inspect listeners through the built-in read-only source. If process ownership is inaccessible, Rig reports unknown rather than claiming drift. `rig status --unmanaged` can also show listeners whose number has no declaration.
+The owner must be a qualified `tool:ID`, `service:ID`, or `scheduled-job:ID`. Rig observes supported listeners but never opens, reserves, closes, or kills a socket. `rig status --unmanaged` can show listeners whose port has no declaration.
 
-Port declarations are private even if they are accidentally assigned to a publication view. Rig never includes their identities, numbers, owners, observations, or unmanaged listener details in public data. Rig also never opens, reserves, closes, or kills a socket; the declared owner retains its lifecycle.
+Port declarations and observations are always private. They never enter published data, even if a port is accidentally assigned to a publication view.
 
 ## Declare a service
 
 ```toml
 [service.example-daemon]
 name = "Example daemon"
-purpose = "Keep the local example endpoint available"
+purpose = "Keep a local example endpoint available"
 rationale = "The selected development profile depends on the endpoint"
 provider = "launchd"
 locator = "example.daemon"
@@ -51,9 +51,10 @@ restart-policy = "always"
 start-policy = "load"
 standard-output = "~/Library/Logs/example-daemon.log"
 standard-error = "~/Library/Logs/example-daemon.log"
+profiles = ["workstation"]
 ```
 
-The provider field identifies the native authority. Rig already knows how launchd resources are observed, rendered, loaded, stopped, and retired.
+The provider field identifies native authority. Rig already knows how supported launchd resources are observed, rendered, loaded, stopped, and retired.
 
 ## Declare a scheduled job
 
@@ -66,15 +67,20 @@ provider = "launchd"
 locator = "example.good-morning"
 platforms = ["macos"]
 desired-state = "enabled"
-program = ["/usr/bin/osascript", "-e", "display notification \"Ready\""]
+program = [
+  "/usr/bin/osascript",
+  "-e",
+  "display notification \"Ready\"",
+]
 schedule.calendar = ["hour=8,minute=0"]
 run-policy = "scheduled-only"
 priority = "background"
 standard-output = "~/Library/Logs/example.good-morning.log"
 standard-error = "~/Library/Logs/example.good-morning.log"
+profiles = ["workstation"]
 ```
 
-Use `schedule.interval = "3600"` instead of `schedule.calendar` for a positive interval in seconds. Calendar entries accept comma-separated `minute`, `hour`, `day`, `weekday`, and `month` decimal pairs. Declare exactly one schedule form.
+Use `schedule.interval = "3600"` instead of `schedule.calendar` for a positive interval in seconds. Calendar entries accept comma-separated decimal pairs for `minute`, `hour`, `day`, `weekday`, and `month`. Declare exactly one schedule form.
 
 ## Declare a typed macOS setting
 
@@ -89,15 +95,16 @@ domain = "NSGlobalDomain"
 key = "AppleShowAllExtensions"
 value-type = "bool"
 value = "true"
+profiles = ["workstation"]
 ```
 
-The explicit value type lets Rig validate, compare, and apply the setting without a provider-owned YAML file or an arbitrary workstation script.
+The explicit value type lets Rig validate, compare, and apply the setting without a provider-owned YAML file or arbitrary workstation script.
 
-String settings may use exact whole-value `~`, `~/...`, `$HOME`, or `$HOME/...` forms. A file URL may use exact `file://$HOME` or `file://$HOME/...`. Rig expands those values consistently for observation, preview validation, and application while `rig explain` retains the authored value. It does not expand embedded variables such as `prefix-$HOME`, other names such as `$WORK_HOME`, or shell syntax.
+String settings may use exact whole-value `~`, `~/...`, `$HOME`, or `$HOME/...` forms. File URLs may use exact `file://$HOME` forms. Rig does not expand embedded variables, unrelated environment names, or shell syntax.
 
 ## Declare a semantic Dock layout
 
-A Dock layout names ordered items. Applications and folders retain their own semantic options:
+A Dock layout names ordered items. Applications and folders retain their semantic options:
 
 ```toml
 [dock-item.system-settings]
@@ -112,20 +119,19 @@ display = "folder"
 
 [dock.primary]
 name = "Primary Dock"
-purpose = "Keep frequent workstation destinations in a stable order"
+purpose = "Keep frequent workstation destinations in stable order"
 rationale = "A semantic layout is portable across equivalent Macs"
 provider = "macos-dock"
 platforms = ["macos"]
 items = ["system-settings", "downloads"]
+profiles = ["workstation"]
 ```
 
-Rig validates every item and required path before replacing the selected Dock layout.
+Rig validates resolved item paths before replacing a selected Dock layout. The same exact whole-value home forms are available for Dock paths; other text remains literal.
 
-Dock paths accept exact whole-value `~`, `~/...`, `$HOME`, and `$HOME/...` forms. Rig validates the resolved path before replacing a selected layout; all other text remains literal.
+## Select and inspect the workstation
 
-## Select a workstation
-
-A workstation is a profile composed from the declarations it needs:
+A workstation is a complete profile, not a provider:
 
 ```toml
 [profile.workstation]
@@ -134,9 +140,7 @@ purpose = "Complete everyday machine intent"
 kind = "complete"
 ```
 
-Place `profiles = ["workstation"]` in each selected tool, service, scheduled job, setting, and Dock declaration. A declaration without `profiles` belongs to the configured default profile; use explicit membership when `workstation` is not that default.
-
-Inspect the complete profile before mutation:
+When `workstation` is not the configured default, place `profiles = ["workstation"]` in each selected declaration. Then inspect the complete profile before mutation:
 
 ```sh
 rig show --profile workstation
@@ -144,48 +148,38 @@ rig explain service:example-daemon
 rig explain scheduled-job:good-morning
 rig explain setting:show-file-extensions
 rig explain dock:primary
+rig explain port:example-api
 rig status --profile workstation
 rig doctor --profile workstation
 rig apply --profile workstation --dry-run
 ```
 
-Declaration queries are inert. Status and doctor perform observation only. Dry-run preflights the complete plan and discloses deferred programs, schedules, settings, ordered Dock items, paths, policies, and pending retirements without invoking providers or writing state.
-
-Configuration, provider trust, executable, platform, and receipt-boundary failures reject the complete plan before mutation. A finding local to one resource appears as a failed row while independent resources remain planned.
+Declaration queries are inert. Status and doctor only observe. Dry run preflights the complete plan and discloses programs, schedules, settings, ordered Dock items, paths, policies, and pending retirements without provider mutation or state writes.
 
 ## Order related resources
 
-Use `depends-on` when one managed resource needs another resource to reconcile first. References are qualified so the target kind stays obvious:
+Use qualified `depends-on` references when one managed resource must reconcile before another:
 
 ```toml
 [service.example-daemon]
-# Other service fields remain as above.
+# Other service fields appear above.
 depends-on = ["setting:show-file-extensions"]
 
 [scheduled-job.good-morning]
-# Other scheduled-job fields remain as above.
+# Other scheduled-job fields appear above.
 depends-on = ["service:example-daemon"]
 ```
 
-Supported prefixes are `service:`, `scheduled-job:`, `setting:`, and `dock:`. Rig selects dependencies transitively and produces a deterministic dependency-first plan. Missing targets and cycles fail during configuration loading. If a resource fails, its transitive dependants are reported as blocked while independent resources can continue. `depends-on` cannot contain a condition, command, or lifecycle hook.
+Supported prefixes are `service:`, `scheduled-job:`, `setting:`, and `dock:`. Rig selects dependencies transitively and produces a deterministic dependency-first plan. Missing targets and cycles fail during configuration loading. A failed resource blocks only its transitive dependants; independent resources remain available.
 
-## Apply and retire
+Dependencies cannot contain conditions, commands, or lifecycle hooks.
 
-A resource with a local preflight finding is not invoked, independent resources may still reconcile, and the command exits with status 1. Any selected resource failure withholds stale retirement and receipt replacement.
+## Apply and retire resources
 
-`rig apply` reconciles the exact selected profile after complete preflight. `rig bootstrap` first identifies and verifies required managers and then performs the same declared reconciliation; it does not install missing manager systems, and neither command requires a bootstrap provider or setup tools.
+`rig apply` reconciles the exact selected complete profile after full-plan preflight. `rig bootstrap` first verifies required native managers and then performs the same declared reconciliation. Neither command needs a bootstrap provider or arbitrary setup operations.
 
-Rig records only minimal successful-application evidence needed to retire a deselected long-lived resource safely. A receipt is not observed state or configuration authority. Removing a service or scheduled job from the selected profile makes its former native locator retirement work on the next apply.
+Rig records only the minimal evidence required to retire a deselected long-lived resource safely. A receipt is not observed state or configuration authority. Removing a service or scheduled job from the selected profile schedules its former native locator for retirement on the next application.
 
-Review profile changes and `rig apply --dry-run` before applying them. Native providers own their manifests and operating mechanics, but the selected desired state comes from Rig configuration.
+A resource-local preflight finding prevents that resource from being invoked while independent resources may continue. Any selected resource failure withholds stale-resource retirement and receipt replacement. Always review `rig apply --dry-run` after changing profile membership.
 
-## Use provider operations only for exceptions
-
-Built-in launchd operations can expose exceptional tasks such as reading logs, restarting a selected service, or triggering one scheduled job immediately:
-
-```sh
-rig run launchd logs -- service:example-daemon
-rig run launchd run -- scheduled-job:good-morning
-```
-
-These explicit operations do not replace the desired-state model. Use an [external provider action](provider-actions.md) only when the operation cannot be expressed through a built-in provider or managed declaration.
+Built-in launchd actions such as log inspection, restart, or running one scheduled job are explicit exceptions to desired-state reconciliation. Use an [external provider action](provider-actions.md) only when the operation cannot be represented by a built-in provider or managed declaration.

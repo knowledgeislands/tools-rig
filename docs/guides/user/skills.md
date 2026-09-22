@@ -1,26 +1,24 @@
 # Manage user-level skills
 
-Use Rig to describe agent skills that belong in your personal working setup, explain why they are present, and compare the declaration with their native authority. Rig records intent and provenance; it does not copy, inspect, or evaluate skill instructions.
+Use Rig to describe agent skills that belong in your personal setup, explain why they are present, and compare the declaration with their native authority. Rig records intent and provenance; it does not copy, inspect, or evaluate skill instructions.
 
-## Choose the authority
+## Choose the native authority
 
-Every `[skill.ID]` names one authority and matching trust boundary:
+Every `[skill.ID]` names one authority matching the real ownership boundary:
 
-- **`skills-cli`** — a deliberately installed `skills` executable owns a remote global skill. Rig invokes that executable directly; it never uses unqualified `npx`.
-- **`ki`** — KI owns the projection. Rig reports observation unavailable until KI exposes a stable machine-readable inventory and never parses human output.
-- **`local`** — a reviewed local source is projected into declared runtime roots through leaf symlinks. Rig requires real, non-symlink source and root directories and never replaces an existing target.
-- **`runtime` or `plugin`** — the runtime or plugin manager owns the skill. Rig observes the declared projection only; apply and update do not materialise it.
+- **`skills-cli`** means a deliberately installed `skills` executable owns a remote global skill. Rig invokes that executable directly and never falls back to unqualified `npx`.
+- **`ki`** means Knowledge Islands owns the projection. Rig reports observation unavailable until KI exposes a stable machine-readable inventory.
+- **`local`** means a reviewed local source is projected into declared runtime roots through leaf symlinks.
+- **`runtime` or `plugin`** means a runtime or plugin manager owns the skill. Rig observes the declared projection but does not materialise or update it.
 
-Repository-local skills remain repository concerns. Runtime-bundled and plugin-provided skills should stay under their native owner instead of being duplicated as a global installation.
+Repository-local skills remain repository concerns. Runtime-bundled and plugin-provided skills should use their existing owners rather than being copied into a global store.
 
-## Declare a remotely sourced skill
-
-Declare the skill beside its human meaning and reviewed provenance:
+## Declare a remote global skill
 
 ```toml
 [skill.caveman]
 name = "Caveman"
-purpose = "Provide a compact communication mode"
+purpose = "Provide compact communication mode"
 rationale = "Keeps low-token collaboration available across agent runtimes"
 authority = "skills-cli"
 source = "JuliusBrussee/caveman"
@@ -32,13 +30,13 @@ profiles = ["default", "public"]
 public-source = "https://github.com/JuliusBrussee/caveman"
 ```
 
-`source-skill` is optional when the native skill name matches the Rig ID. `public-source` is optional and must be a reviewed HTTP or HTTPS URL. It is not the materialisation source.
+`source-skill` is optional when the native skill name matches the Rig ID. `public-source` is an optional reviewed HTTP or HTTPS URL for publication; it is not a materialisation source.
 
-The `skills-cli` executable may itself be declared as a normal tool when bootstrap must install it first. A skill can use `requires = ["skills-cli"]` to make that order explicit.
+The Skills CLI may itself be a normal tool in the catalogue when bootstrap needs to make it present first. Use `requires = ["skills-cli"]` on the skill when that ordering should be explicit.
 
 ## Declare a bounded local projection
 
-Use `local` only for a source you control and have reviewed:
+Use `local` only for source you control and have reviewed:
 
 ```toml
 [skill.personal-audits]
@@ -52,11 +50,11 @@ platforms = ["macos"]
 runtimes = ["claude-code", "codex"]
 ```
 
-Before creating a projection, Rig canonicalises the source and each runtime root, confirms each is a real directory rather than a symlink, verifies the target remains contained beneath that root, then revalidates immediately before creating only a missing leaf symlink. A file, directory, or symlink already at the target is a collision and remains untouched.
+Before creating a projection, Rig canonicalises the source and runtime root, confirms the source is a real non-symlink directory, verifies the target remains inside the runtime root, and revalidates immediately before creating one missing leaf symlink. An existing file, directory, or symlink collision remains untouched.
 
-## Inspect and materialise
+## Inspect and materialise skills
 
-Queries are read-only:
+Declaration and observation commands remain read-only:
 
 ```sh
 rig show
@@ -65,19 +63,19 @@ rig status --unmanaged
 rig doctor
 ```
 
-`status --unmanaged` asks the direct Skills CLI inventory for global skills not represented by any `skills-cli` declaration. If the executable is absent, returns non-zero, reports an unsupported version, or emits malformed JSON, Rig reports the inventory unavailable.
+For `skills-cli`, `status --unmanaged` asks the installed executable for global skills not represented by a declaration. An absent executable, unsupported version, failed command, or malformed machine output makes inventory unavailable rather than guessed.
 
-Preview before applying:
+Preview before materialising:
 
 ```sh
 rig apply --scope skills --dry-run
 rig apply --scope skills
 ```
 
-The full apply and bootstrap order is tools → skills → resources. `rig update --dry-run` previews explicit Skills CLI updates, and `rig update` advances selected `skills-cli` skills. `rig maintain`, `rig clean`, and selecting another profile never update or remove skills.
+Full application orders tools → skills → resources. `rig update --dry-run` previews explicit Skills CLI updates, and `rig update` advances selected `skills-cli` skills. Maintenance, cleanup, and profile selection never remove a skill.
 
 ## Publish only deliberate metadata
 
-A publication view must explicitly select a skill. Publication format 2 emits only `id`, `name`, `purpose`, `rationale`, and optional `public-source` as `source`. It never emits native authority, install source, runtime mappings, local paths or roots, locks, arguments, observed state, or unmanaged inventory.
+A publication view must select a skill explicitly. Public output emits only its identity, explanatory metadata, and optional reviewed public source. It never emits authority details, install source, runtime mappings, local paths, locks, arguments, observed state, or unmanaged inventory.
 
-Inspect `rig export` output before handing it to a publisher. A skill being installed or selected in a complete profile does not make it public.
+Inspect `rig export` output before handing it to a publisher. Being installed or selected by a complete profile never makes a skill public.
