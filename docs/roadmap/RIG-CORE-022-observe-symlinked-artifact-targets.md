@@ -36,7 +36,7 @@ This work changes how a declared artifact that is a symlink is observed and what
 
 `rig_observe_tool_artifacts` in `src/rig/20-orchestration.bash:1694` tests `[ -L "$artifact" ]` first and sets `candidate_state=unavailable`, `candidate_detail=unsafe`, `candidate_rank=3` — the highest rank in the function, so a linked artifact dominates every other finding for that tool. Nothing downstream distinguishes a link that resolves into a real bundle from one that resolves nowhere, because resolution never happens.
 
-The reporting workstation carries a repository-side check, `bin/workstation_surfaces` in `krisb/dotfiles`, that enumerates `/usr/local/bin`, resolves each link, and reports one that dangles or one whose bundle no declared tool claims. It exists only because this observation is missing, and its own documented limit — that it cannot see a command line that was never created — is a limit only because the expectation has nowhere to live. Declaring the link as an artifact is that expectation, so this work removes the local check and its blind spot together.
+A repository-side check enumerating `/usr/local/bin` and resolving each link was written in `krisb/dotfiles` and then removed, on the grounds that a general defect in Rig should not acquire a local answer. It could report a dangling link, but never a command line that was never created, because that expectation has nowhere to live but the artifact list. That workstation now leaves the surface unobserved until this lands.
 
 ## Steps
 

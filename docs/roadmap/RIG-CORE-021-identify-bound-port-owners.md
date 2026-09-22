@@ -37,7 +37,7 @@ This work changes how an observed listener is identified and compared, and the d
 
 The pid is therefore already available at the point of comparison, which is what makes the full command line obtainable without a second enumeration pass.
 
-The reporting workstation carries a repository-side check, `bin/workstation_surfaces` in `krisb/dotfiles`, that compares each listener's full argv against the owner's declared `program`. It exists only because this defect makes Rig's own answer unusable, and it should become redundant when this lands.
+A repository-side check comparing each listener's full argv against the owner's declared `program` was written in `krisb/dotfiles` and then removed, on the grounds that a general defect in Rig should not acquire a local answer. That workstation therefore reads both `conflicting` findings as known false positives until this lands, which is the cost this work removes.
 
 ## Steps
 
