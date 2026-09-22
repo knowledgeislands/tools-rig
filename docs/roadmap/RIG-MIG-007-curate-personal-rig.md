@@ -4,12 +4,12 @@ title: Curate personal rig
 area: MIG
 theme: migration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 9bb2a753281f94a2e91ff65ca71995a3db787b2e
 created_at: 2026-09-21T23:35:16Z
-updated_at: 2026-09-21T23:43:26Z
+updated_at: 2026-09-22T04:38:19Z
 ---
 
 ## Goal
@@ -30,12 +30,12 @@ The live Rig configuration and chezmoi source agree and former operation scripts
 
 ## Steps
 
-- [ ] Reconcile the live configuration and chezmoi source immediately before editing and preserve unrelated dotfiles changes.
-- [ ] Migrate declaration membership to the accepted implicit-default item model, create a descriptive profile fragment, and remove redundant bootstrap-profile configuration.
-- [ ] Create an explicit non-appliable public view and publication declaration for `rig.midnight.ninja`, reviewing the allow-list against all private resources and observed state.
-- [ ] Add stable port and trusted global-skill declarations only after `RIG-CORE-016` and `RIG-CORE-017` land, preserving each native owner's authority.
-- [ ] Curate purposes and rationales only where the user's intent is known; leave clearly marked reviewable text rather than fabricate preferences.
-- [ ] Validate the source and rendered configuration, run `chezmoi diff`, and do not run `chezmoi apply` without explicit current approval.
+- [x] Reconcile the live configuration and chezmoi source immediately before editing and preserve unrelated dotfiles changes.
+- [x] Migrate declaration membership to the accepted implicit-default item model, create a descriptive profile fragment, and remove redundant bootstrap-profile configuration.
+- [x] Create an explicit non-appliable public view and publication declaration for `rig.midnight.ninja`, reviewing the allow-list against all private resources and observed state.
+- [x] Add stable port and trusted global-skill declarations only after `RIG-CORE-016` and `RIG-CORE-017` land, preserving each native owner's authority.
+- [x] Curate purposes and rationales only where the user's intent is known; leave clearly marked reviewable text rather than fabricate preferences.
+- [x] Validate the source and rendered configuration, run `chezmoi diff`, and do not run `chezmoi apply` without explicit current approval.
 
 ## Files touched
 
@@ -70,6 +70,47 @@ Use the resulting personal configuration only as private validation evidence, no
 ### Roadmap
 
 Any unknown personal rationale remains an explicit user-review follow-up rather than being invented or silently dropped.
+
+## Review
+
+### Delivered
+
+Delivered the approved personal Rig migration from tools-rig baseline `9bb2a753281f94a2e91ff65ca71995a3db787b2e` in dotfiles commit `ed15c68f4fb6b403a6db686a5d55317eced2069e`. The change edits only chezmoi sources and their source-level test; it does not apply home targets, publish the public projection, deploy the website, or push either repository.
+
+### Summary of changes
+
+- Replaced the central default-profile member arrays with item-owned membership: ordinary declarations use implicit default membership, while `chatgpt-current`, `rekordbox`, and `tigervnc` retain explicit `profiles = []` catalogue-only intent.
+- Moved complete and public view declarations into discoverable `90-profiles.toml`, removed the redundant `bootstrap-profile`, and added the trusted `midnight-ninja` publisher boundary plus `rig.midnight.ninja` publication.
+- Added private loopback port intent for required MCP bridge port 3333 and on-demand Headroom port 8787. Port 1675 remains undeclared because no catalogue owner or stable intent was established.
+- Added the npm-managed Skills CLI tool and the one reviewed global skill with known provenance, Caveman. The declaration uses the native `skills` executable contract and never falls back to `npx`.
+- Converted generic application and macOS-setting rationales into explicit `Review needed` text. Only the known Rig, profile, publication, port, and skill intent was curated; no personal preference was invented.
+- Updated the dotfiles catalogue test for implicit membership, excluded items, ports, skill authority, and the public publication boundary.
+
+### Verification
+
+- `node --test tests/*.test.mjs` in the dotfiles repository: 33 passed, 0 failed.
+- `chezmoi cat` byte comparison for all nine rendered Rig files: matched their source content.
+- `chezmoi diff`: passed and reported only the seven pending `.config/rig/**` target changes.
+- `rig show` for the default and public profiles: passed; the public view contains only `rig` and `skill:caveman`.
+- `rig export midnight-ninja`: passed with publication format 2; disclosure checks found no private ports, provider authority, machine paths, native install locators, or observed state.
+- `rig apply --profile public --dry-run`: rejected the view as non-appliable, as required.
+- `rig status --profile public` and `rig doctor --profile public`: read-only validation completed and reported the expected unavailable Skills CLI executable.
+- `rig apply --dry-run`: completed the full plan without mutation and returned 1 because the declared Skills CLI is not installed yet; it planned `tool.skills-cli` and reported `skill.caveman` preflight unavailable.
+
+### Outstanding concerns
+
+- The seven rendered Rig target changes remain unapplied pending explicit review and approval.
+- The `skills` executable is not currently installed, so Caveman remains honestly unavailable to Rig until the native manager is materialised.
+- The custom `midnight-ninja` publisher executable is intentionally absent; export is available, but publication and website deployment remain outside this item.
+- Eighty-six application and thirty-five macOS-setting `Review needed` rationales remain for personal curation.
+
+### Post-change review
+
+The source migration exercises every accepted portable contract without widening Rig into dotfiles authority or leaking private machine state. Implicit default membership preserves the former 99-tool selection, adds the explicitly managed Skills CLI as the hundredth default tool, and retains the three prior catalogue-only tools. The public projection is deliberately narrow and non-appliable. The remaining unavailable native executables and unapplied target diff are visible operational states rather than hidden migration defects. The item is ready for human review.
+
+### Mini recap
+
+Personal configuration now demonstrates human-oriented profiles, private ports, a reviewed user skill, and a safe public data projection. Verification is green at the source and export boundaries; live application, skill installation, publisher delivery, and personal rationale review remain explicit follow-up decisions.
 
 ## Discussion
 
