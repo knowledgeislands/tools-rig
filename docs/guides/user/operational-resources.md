@@ -100,12 +100,12 @@ A workstation is a profile composed from the declarations it needs:
 
 ```toml
 [profile.workstation]
-tools = ["example"]
-services = ["example-daemon"]
-scheduled-jobs = ["good-morning"]
-settings = ["show-file-extensions"]
-docks = ["primary"]
+name = "Workstation"
+purpose = "Complete everyday machine intent"
+kind = "complete"
 ```
+
+Place `profiles = ["workstation"]` in each selected tool, service, scheduled job, setting, and Dock declaration. A declaration without `profiles` belongs to the configured default profile; use explicit membership when `workstation` is not that default.
 
 Inspect the complete profile before mutation:
 

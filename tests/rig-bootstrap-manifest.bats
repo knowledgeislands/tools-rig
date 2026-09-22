@@ -46,7 +46,7 @@ run_rig() {
   run_rig bootstrap
   [ "$status" -eq 0 ]
   [ "$(grep -c '^CALL <bundle>' "$BREW_LOG")" -eq 1 ]
-  [ "${lines[0]}" = $'MANAGER\tPROVIDER\tRESULT\tDETAIL' ]
+  [[ "$output" == *$'MANAGER\tPROVIDER\tRESULT\tDETAIL\tSCOPE'* ]]
   [ "$(sed -n '1p' "$BREW_LOG")" = "CALL <bundle> <--file=$MANIFEST>" ]
   [ "$(sed -n '2p' "$BREW_LOG")" = 'CALL <install> <--formula> <example/alpha>' ]
 }

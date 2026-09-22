@@ -20,11 +20,13 @@ Package managers, configuration managers, service managers, and platform facilit
 
 Rig is the declarative description and manager of a person's working setup. Its primary product concept is a catalogue of categorised tools with stable identities, purposes, personal rationale, relationships, supported platforms, and optional provider-backed installation metadata.
 
-Profiles select tools and managed resources for machines, roles, or contexts. Services, scheduled jobs, typed machine settings, and semantic layouts are first-class declarations rather than hidden provider policy. A workstation is therefore a profile assembled from those declarations, not a provider or synthetic catalogue tool.
+Tools and managed resources declare the profiles to which they belong. An omitted membership belongs to the configured default profile; an explicitly empty membership belongs nowhere. Profiles describe identity, purpose, explicit inheritance, and whether they are complete appliable intent or a non-appliable view. This item-owned model keeps selection beside each declaration while preventing new private declarations from entering public or minimal views implicitly.
+
+Services, scheduled jobs, typed machine settings, and semantic layouts are first-class declarations rather than hidden provider policy. A workstation is therefore a complete profile assembled from those declarations, not a provider or synthetic catalogue tool.
 
 Providers are independently existing native authorities such as Homebrew, uv, mise, npm, chezmoi, launchd, macOS defaults, and direct downloads. Rig recognises its built-in providers and their supported operations without requiring adapter or capability declarations. A provider table is needed only to configure an optional built-in detail or explicitly trust an external extension.
 
-Rig owns a small explicit lifecycle over the resolved declaration. `apply` and `bootstrap` converge declared state, `update` advances selected tools through their native managers, `maintain` performs bounded provider-native maintenance, `capture` refreshes a deliberately named provider manifest, and `clean` removes only Rig-owned cache data. These commands are native Rig behaviour rather than configuration-defined tasks, setup tools, or synthetic providers.
+Rig owns a small explicit lifecycle over the resolved declaration. `apply` and `bootstrap` converge complete profiles, `update` advances selected tools through their native managers, `maintain` performs bounded provider-native maintenance, `capture` refreshes a deliberately named provider manifest, and `clean` removes only Rig-owned cache data. Non-appliable views support inspection and publication but cannot enter a mutating profile lifecycle. These commands are native Rig behaviour rather than configuration-defined tasks, setup tools, or synthetic providers.
 
 Rig may derive an explicitly selected public profile into a static personal-site projection. The private catalogue remains canonical; publication never makes the website an authority for local configuration or machine state.
 

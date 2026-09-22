@@ -22,9 +22,9 @@ Schema 1 provides first-class services, scheduled jobs, typed settings, and sema
 
 Launchd is a built-in macOS provider for services and scheduled jobs. macOS defaults and semantic Dock layout are built-in typed resource providers. Application-bundle inventory is a built-in read-only observation source. None requires a custom executable, adapter declaration, capability list, or provider-owned configuration registry.
 
-A workstation is a composed profile selecting its applications, command-line tools, settings, Dock layout, services, and scheduled jobs. `rig show`, qualified `rig explain`, `rig status`, `rig doctor`, `rig apply --dry-run`, and `rig apply` operate on that resolved declaration. Provider-specific escape-hatch actions do not replace desired-state declarations.
+A workstation is a complete profile resolving its applications, command-line tools, settings, Dock layout, services, and scheduled jobs through item-owned membership and explicit inheritance. `rig show`, qualified `rig explain`, `rig status`, `rig doctor`, `rig apply --dry-run`, and `rig apply` operate on that resolved declaration. Provider-specific escape-hatch actions do not replace desired-state declarations.
 
-Rig stores minimal successful-application receipts only for resources whose safe retirement requires former identity and locator evidence. Receipts are not observed state and cannot recreate a declaration. Built-in and external providers receive the same resolved intent, but only an external provider crosses the versioned executable protocol boundary.
+Rig stores minimal successful-application receipts only for services and scheduled jobs whose safe retirement requires former identity and locator evidence. Deselecting one of those resources from the next complete profile schedules retirement. Deselecting a package, artifact, setting, Dock layout, port, or skill is non-destructive unless a separate explicit cleanup contract applies. A non-appliable view neither reads retirement ownership into its result nor writes a receipt. Receipts are not observed state and cannot recreate a declaration. Built-in and external providers receive the same resolved intent, but only an external provider crosses the versioned executable protocol boundary.
 
 ## Consequences
 

@@ -4,11 +4,16 @@ Rig publishes data, not a website. You choose one profile intended for disclosur
 
 ## Declare the public boundary
 
-Create a profile containing only tools you intend to disclose, then bind it to a publication and publisher:
+Add `public` membership only to declarations you intend to disclose, create a non-appliable view, then bind it to a publication and publisher. Every required tool must opt in explicitly as well.
 
 ```toml
+[tool.mgit]
+profiles = ["default", "public"]
+
 [profile.public]
-tools = ["mgit"]
+name = "Public rig"
+purpose = "Catalogue choices safe to publish"
+kind = "view"
 
 [provider.site]
 adapter = "custom"

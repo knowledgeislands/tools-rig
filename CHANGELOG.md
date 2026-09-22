@@ -36,6 +36,11 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - A standalone Bash 3.2-compatible executable with no required runtime dependency beyond Bash.
 - Non-mutating runtime, platform, XDG-path, and configuration diagnostics with explicit Rig overrides.
 - An inert TOML schema 1 loader with deterministic fragment order, validation, composed-profile resolution, transitive requirements, platform selection, and tool-centred `install.*` metadata.
+- Item-owned profile membership for tools and every selectable resource, with omission mapped to the configured default profile, explicit empty exclusion, named inheritance, and mixed-model rejection.
+- Complete appliable profiles and non-appliable views, including explicit public dependency closure and mutation rejection for views.
+- Resolved-selection native conflict checks for provider locators, macOS defaults targets, and semantic Dock layouts, allowing mutually exclusive catalogue alternatives.
+- Per-platform exclusive reconciliation locks held from receipt read through atomic replacement, with active, stale, and unknown owner diagnostics that fail before mutation.
+- Declaration, manifest, and provider-wide operation-scope disclosure before apply, bootstrap, update, maintain, and capture work.
 - Declarative built-in provider identities whose adapters and supported operations are inferred by Rig without `[provider.*]` boilerplate; provider tables are reserved for optional built-in configuration and explicitly trusted external executables.
 - A native bootstrap lifecycle that fully preflights configuration and external boundaries, stages only the fixed declared Homebrew → mise → npm manager chain, applies bounded Homebrew autoupdate policy, and then reconciles the selected profile without synthetic setup tools or a bootstrap provider.
 - Explicit update and maintenance lifecycles for selected Homebrew, uv, mise, and npm tools, with fixed built-in operations, complete supported-target preflight, non-mutating previews, deduplicated provider work, and deterministic outcomes.

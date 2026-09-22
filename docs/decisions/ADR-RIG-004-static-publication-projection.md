@@ -18,7 +18,7 @@ Generating an HTML and CSS tree would make one presentation part of Rig's durabl
 
 ## Decision
 
-Rig treats a published rig as a derived, versioned data projection of one explicitly configured public profile. `rig export` generates exactly one `rig.json` file in a complete local output tree without invoking providers, publishers, or the network.
+Rig treats a published rig as a derived, versioned data projection of one explicitly configured non-appliable view. Every disclosed declaration opts into that view. A view cannot inherit a complete profile, and each dependency in its resolved relationship closure must also opt in explicitly. `rig export` generates exactly one `rig.json` file in a complete local output tree without invoking providers, publishers, or the network.
 
 The projection is platform-neutral: profile membership records public intent, while each tool retains its declared supported platforms. It has top-level format identity `rig-publication`, integer schema version `1`, publication metadata, profile identity, selected categories, and selected tools with public catalogue metadata and closed relationships. The publication's configured `base-url` is projected as `canonical_url` metadata.
 

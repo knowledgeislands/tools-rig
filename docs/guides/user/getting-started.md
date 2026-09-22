@@ -47,7 +47,9 @@ install.locator = "mgit"
 install.platforms = ["macos"]
 
 [profile.default]
-tools = ["mgit"]
+name = "Default rig"
+purpose = "Complete everyday setup"
+kind = "complete"
 ```
 
 Rig recognises `homebrew` as a built-in provider, including its supported formula operations. You declare the native owner with `install.provider`; you do not register its adapter or capabilities.
@@ -183,13 +185,14 @@ install.kind = "formula"
 install.locator = "shellcheck"
 install.platforms = ["macos"]
 
-[profile.minimal]
-tools = ["mgit"]
-
 [profile.developer]
-profiles = ["minimal"]
-tools = ["shellcheck"]
+name = "Developer rig"
+purpose = "Default setup plus development tools"
+kind = "complete"
+inherits = ["default"]
 ```
+
+Add `profiles = ["developer"]` to the `shellcheck` declaration. `mgit` needs no membership field because an omission belongs to the configured default profile. Use `profiles = []` for a catalogue item that belongs to no profile.
 
 Inspect a named profile without changing the default:
 
@@ -218,9 +221,13 @@ value-type = "bool"
 value = "true"
 
 [profile.workstation]
-profiles = ["developer"]
-settings = ["show-file-extensions"]
+name = "Workstation"
+purpose = "Development tools and machine settings"
+kind = "complete"
+inherits = ["developer"]
 ```
+
+Add `profiles = ["workstation"]` to the `show-file-extensions` setting declaration. Profiles describe composition and intent; each selectable declaration owns its direct membership.
 
 The `macos-defaults` provider is built in. The same rule applies to launchd services and scheduled jobs: declare the desired resource and select it from a profile, without a `[provider.launchd]` table.
 

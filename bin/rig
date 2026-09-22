@@ -23,6 +23,7 @@ RIG_FIELD_VALUES=()
 RIG_SELECTED_TOOLS=()
 RIG_SELECTED_BINDINGS=()
 RIG_SELECTED_RESOURCE_SECTIONS=()
+RIG_ACTIVE_PROFILES=()
 RIG_PLAN_TOOLS=()
 RIG_PLAN_BINDINGS=()
 RIG_PLAN_PROVIDERS=()
@@ -64,6 +65,10 @@ RIG_PROGRESS_ACTIVE=0
 RIG_PROGRESS_CURRENT=0
 RIG_PROGRESS_LABEL=
 RIG_PROGRESS_TOTAL=0
+RIG_PROFILE_SELECTION_MODE=
+RIG_RESOLVED_PROFILE_KIND=
+RIG_RECONCILIATION_LOCK=
+RIG_RECONCILIATION_LOCK_ACQUIRED=0
 
 print_help() {
   printf '%s\n' \
@@ -256,6 +261,7 @@ rig_model_reset() {
   RIG_SELECTED_TOOLS=()
   RIG_SELECTED_BINDINGS=()
   RIG_SELECTED_RESOURCE_SECTIONS=()
+  RIG_ACTIVE_PROFILES=()
   RIG_PLAN_TOOLS=()
   RIG_PLAN_BINDINGS=()
   RIG_PLAN_PROVIDERS=()
@@ -282,6 +288,8 @@ rig_model_reset() {
   RIG_RESOURCE_PREFLIGHT_DETAIL=
   RIG_RESOLVED_PROFILE=
   RIG_RESOLVED_PLATFORM=
+  RIG_RESOLVED_PROFILE_KIND=
+  RIG_PROFILE_SELECTION_MODE=
   RIG_PUBLICATION_PLATFORM_NEUTRAL=0
 }
 
@@ -433,6 +441,7 @@ rig_field_kind() {
     rig:schema|rig:default-profile|rig:bootstrap-profile|\
     category:name|category:purpose|\
     tool:name|tool:category|tool:purpose|tool:rationale|\
+    profile:name|profile:purpose|profile:kind|\
     tool:install-provider|tool:install-kind|tool:install-locator|\
     tool:install-destination|tool:install-checksum|\
     provider:adapter|provider:command|provider:executable|provider:manifest|\
@@ -454,16 +463,17 @@ rig_field_kind() {
     action:mode|action:description|action:argument-policy)
       RIG_FIELD_KIND=scalar
       ;;
-    tool:platform|tool:requires|tool:related|tool:alternative|tool:artifact|\
+    tool:platform|tool:requires|tool:related|tool:alternative|tool:artifact|tool:member-profile|\
     tool:install-platform|tool:install-argument|\
-    profile:profile|profile:tool|profile:service|profile:scheduled-job|\
+    profile:profile|profile:inherit|profile:tool|profile:service|profile:scheduled-job|\
     profile:setting|profile:dock|\
     provider:argument|provider:capability|provider:autoupdate-option|\
     binding:platform|binding:argument|\
-    service:platform|service:requires|service:program|service:environment|\
+    service:platform|service:requires|service:program|service:environment|service:member-profile|\
     scheduled-job:platform|scheduled-job:requires|scheduled-job:program|\
-    scheduled-job:environment|scheduled-job:schedule-calendar|\
-    setting:platform|setting:requires|dock:platform|dock:requires|dock:item|\
+    scheduled-job:environment|scheduled-job:schedule-calendar|scheduled-job:member-profile|\
+    setting:platform|setting:requires|setting:member-profile|\
+    dock:platform|dock:requires|dock:item|dock:member-profile|\
     action:platform|action:argument|action:allow-argument|action:resource-kind)
       RIG_FIELD_KIND=repeatable
       ;;
@@ -485,7 +495,7 @@ rig_toml_field() {
       RIG_TOML_FIELD_TYPE=integer
       ;;
     rig:default-profile|rig:bootstrap-profile|\
-    category:name|category:purpose|\
+    category:name|category:purpose|profile:name|profile:purpose|profile:kind|\
     tool:name|tool:category|tool:purpose|tool:rationale|\
     provider:adapter|provider:command|provider:executable|provider:manifest|\
     binding:kind|binding:locator|binding:destination|binding:checksum|\
@@ -519,15 +529,21 @@ rig_toml_field() {
     tool:related) RIG_TOML_FIELD_KEY=related ; RIG_TOML_FIELD_TYPE=array ;;
     tool:alternatives) RIG_TOML_FIELD_KEY=alternative ; RIG_TOML_FIELD_TYPE=array ;;
     tool:artifacts) RIG_TOML_FIELD_KEY=artifact ; RIG_TOML_FIELD_TYPE=array ;;
+    tool:profiles) RIG_TOML_FIELD_KEY=member-profile ; RIG_TOML_FIELD_TYPE=array ;;
     tool:install.platforms) RIG_TOML_FIELD_KEY=install-platform ; RIG_TOML_FIELD_TYPE=array ;;
     tool:install.arguments) RIG_TOML_FIELD_KEY=install-argument ; RIG_TOML_FIELD_TYPE=array ;;
     profile:profiles) RIG_TOML_FIELD_KEY=profile ; RIG_TOML_FIELD_TYPE=array ;;
+    profile:inherits) RIG_TOML_FIELD_KEY=inherit ; RIG_TOML_FIELD_TYPE=array ;;
     profile:tools) RIG_TOML_FIELD_KEY=tool ; RIG_TOML_FIELD_TYPE=array ;;
     profile:services) RIG_TOML_FIELD_KEY=service ; RIG_TOML_FIELD_TYPE=array ;;
     profile:scheduled-jobs) RIG_TOML_FIELD_KEY=scheduled-job ; RIG_TOML_FIELD_TYPE=array ;;
     profile:settings) RIG_TOML_FIELD_KEY=setting ; RIG_TOML_FIELD_TYPE=array ;;
     profile:docks) RIG_TOML_FIELD_KEY=dock ; RIG_TOML_FIELD_TYPE=array ;;
     service:platforms|scheduled-job:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
+    service:profiles|scheduled-job:profiles|setting:profiles|dock:profiles)
+      RIG_TOML_FIELD_KEY=member-profile
+      RIG_TOML_FIELD_TYPE=array
+      ;;
     service:requires|scheduled-job:requires) RIG_TOML_FIELD_KEY=requires ; RIG_TOML_FIELD_TYPE=array ;;
     service:program|scheduled-job:program) RIG_TOML_FIELD_KEY=program ; RIG_TOML_FIELD_TYPE=array ;;
     service:environment|scheduled-job:environment) RIG_TOML_FIELD_KEY=environment ; RIG_TOML_FIELD_TYPE=array ;;
@@ -724,6 +740,21 @@ rig_field_count() {
     index=$((index + 1))
   done
   RIG_COUNT=$count
+}
+
+rig_field_declared() {
+  local section_name key marker index
+
+  section_name=$1
+  key=$2
+  rig_section_index "$section_name" || return 1
+  marker=$RIG_INDEX:$key
+  index=0
+  while [ "$index" -lt "${#RIG_DECLARED_FIELDS[@]}" ]; do
+    [ "${RIG_DECLARED_FIELDS[$index]}" != "$marker" ] || return 0
+    index=$((index + 1))
+  done
+  return 1
 }
 
 rig_add_field() {
@@ -962,6 +993,53 @@ rig_visit_set() {
   fi
 }
 
+rig_profile_kind() {
+  local profile
+
+  profile=$1
+  if rig_get_value "profile.$profile" kind; then
+    return 0
+  fi
+  RIG_VALUE=complete
+}
+
+rig_detect_profile_selection_mode() {
+  local index section_type section_name central item
+
+  central=0
+  item=0
+  index=0
+  while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+    section_type=${RIG_SECTION_TYPES[$index]}
+    section_name=${RIG_SECTION_NAMES[$index]}
+    case "$section_type" in
+      profile)
+        if rig_field_declared "$section_name" tool ||
+          rig_field_declared "$section_name" service ||
+          rig_field_declared "$section_name" scheduled-job ||
+          rig_field_declared "$section_name" setting ||
+          rig_field_declared "$section_name" dock; then
+          central=1
+        fi
+        ;;
+      tool|service|scheduled-job|setting|dock)
+        if rig_field_declared "$section_name" member-profile; then
+          item=1
+        fi
+        ;;
+    esac
+    index=$((index + 1))
+  done
+  if [ "$central" -eq 1 ] && [ "$item" -eq 1 ]; then
+    rig_fail 'configuration cannot mix central profile members with item profiles' || return
+  fi
+  if [ "$central" -eq 1 ]; then
+    RIG_PROFILE_SELECTION_MODE=central
+  else
+    RIG_PROFILE_SELECTION_MODE=item
+  fi
+}
+
 rig_profile_cycle_visit() {
   local profile section_index field_index field_end child state
 
@@ -978,8 +1056,10 @@ rig_profile_cycle_visit() {
   field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
   field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
   while [ "$field_index" -lt "$field_end" ]; do
-    if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] &&
-      [ "${RIG_FIELD_KEYS[$field_index]}" = profile ]; then
+    if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] && {
+      [ "${RIG_FIELD_KEYS[$field_index]}" = profile ] ||
+        [ "${RIG_FIELD_KEYS[$field_index]}" = inherit ];
+    }; then
       child=${RIG_FIELD_VALUES[$field_index]}
       rig_profile_cycle_visit "$child" || return
     fi
@@ -1478,7 +1558,7 @@ rig_validate_dock_item() {
 }
 
 rig_validate_model() {
-  local index section_name section_type section_id secondary_id adapter provider
+  local index section_name section_type section_id secondary_id adapter provider profile
   local field_index field_end
 
   rig_section_index rig || rig_fail 'missing [rig] section' || return
@@ -1528,20 +1608,37 @@ rig_validate_model() {
       rig_validate_references_for_field "$index" requires tool || return
         rig_validate_references_for_field "$index" related tool || return
         rig_validate_references_for_field "$index" alternative tool || return
+        rig_validate_references_for_field "$index" member-profile profile || return
         ;;
       profile)
         rig_validate_references_for_field "$index" profile profile || return
+        rig_validate_references_for_field "$index" inherit profile || return
         rig_validate_references_for_field "$index" tool tool || return
         rig_validate_references_for_field "$index" service service || return
         rig_validate_references_for_field "$index" scheduled-job scheduled-job || return
         rig_validate_references_for_field "$index" setting setting || return
         rig_validate_references_for_field "$index" dock dock || return
+        if rig_field_declared "$section_name" profile &&
+          rig_field_declared "$section_name" inherit; then
+          rig_fail "[$section_name] cannot combine 'profiles' with 'inherits'" || return
+        fi
+        rig_profile_kind "$section_id" || return
+        case "$RIG_VALUE" in complete|view) ;; *)
+          rig_fail "[$section_name] kind must be 'complete' or 'view'" || return ;;
+        esac
         ;;
       service|scheduled-job)
         rig_validate_resource "$section_name" "$section_type" || return
+        rig_validate_references_for_field "$index" member-profile profile || return
         ;;
-      setting) rig_validate_setting "$section_name" || return ;;
-      dock) rig_validate_dock "$section_name" || return ;;
+      setting)
+        rig_validate_setting "$section_name" || return
+        rig_validate_references_for_field "$index" member-profile profile || return
+        ;;
+      dock)
+        rig_validate_dock "$section_name" || return
+        rig_validate_references_for_field "$index" member-profile profile || return
+        ;;
       dock-item) rig_validate_dock_item "$section_name" || return ;;
     provider)
       if rig_get_value "$section_name" command; then
@@ -1604,6 +1701,7 @@ rig_validate_model() {
         ;;
       publication)
         rig_require_field "$section_name" profile || return
+        profile=$RIG_VALUE
         rig_valid_id "$RIG_VALUE" && rig_reference_exists profile "$RIG_VALUE" ||
           rig_fail "[$section_name] references unknown profile '$RIG_VALUE'" || return
         rig_require_field "$section_name" title || return
@@ -1617,6 +1715,9 @@ rig_validate_model() {
           rig_fail "[$section_name] publisher must reference a custom provider" || return
         rig_provider_has_capability "$provider" publish ||
           rig_fail "[$section_name] publisher '$provider' requires capability 'publish'" || return
+        rig_profile_kind "$profile" || return
+        [ "$RIG_VALUE" = view ] ||
+          rig_fail "[$section_name] profile '$profile' must be a non-appliable view" || return
         ;;
     action)
       rig_validate_action "$section_name" "$section_id" || return
@@ -1625,7 +1726,35 @@ rig_validate_model() {
     index=$((index + 1))
   done
 
-  rig_validate_resource_locators || return
+  rig_detect_profile_selection_mode || return
+
+  index=0
+  while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+    if [ "${RIG_SECTION_TYPES[$index]}" = profile ]; then
+      section_name=${RIG_SECTION_NAMES[$index]}
+      section_id=${RIG_SECTION_IDS[$index]}
+      rig_profile_kind "$section_id" || return
+      if [ "$RIG_VALUE" = view ]; then
+        field_index=${RIG_SECTION_FIELD_STARTS[$index]}
+        field_end=${RIG_SECTION_FIELD_ENDS[$index]}
+        while [ "$field_index" -lt "$field_end" ]; do
+          case "${RIG_FIELD_KEYS[$field_index]}" in profile|inherit)
+            rig_profile_kind "${RIG_FIELD_VALUES[$field_index]}" || return
+            [ "$RIG_VALUE" = view ] ||
+              rig_fail "[$section_name] view cannot inherit appliable profile '${RIG_FIELD_VALUES[$field_index]}'" || return
+            ;;
+          esac
+          field_index=$((field_index + 1))
+        done
+      fi
+    fi
+    index=$((index + 1))
+  done
+
+  if rig_get_value rig bootstrap-profile; then
+    rig_profile_kind "$RIG_VALUE" || return
+    [ "$RIG_VALUE" = complete ] || rig_fail '[rig] bootstrap-profile must be appliable' || return
+  fi
 
   rig_validate_cycles
 }
@@ -1789,7 +1918,103 @@ rig_sort_selected_resources() {
   done
 }
 
-rig_select_profile() {
+rig_activate_profile() {
+  local profile section_index field_index field_end child
+
+  profile=$1
+  if [ "${#RIG_ACTIVE_PROFILES[@]}" -gt 0 ] &&
+    rig_array_contains "$profile" "${RIG_ACTIVE_PROFILES[@]}"; then
+    return 0
+  fi
+  RIG_ACTIVE_PROFILES[${#RIG_ACTIVE_PROFILES[@]}]=$profile
+  rig_section_index "profile.$profile" || rig_fail "unknown profile '$profile'" || return
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    case "${RIG_FIELD_KEYS[$field_index]}" in profile|inherit)
+      child=${RIG_FIELD_VALUES[$field_index]}
+      rig_activate_profile "$child" || return
+      ;;
+    esac
+    field_index=$((field_index + 1))
+  done
+}
+
+rig_item_selected_by_active_profiles() {
+  local section_name section_index field_index field_end profile default_profile
+
+  section_name=$1
+  rig_section_index "$section_name" || return 1
+  section_index=$RIG_INDEX
+  if rig_field_declared "$section_name" member-profile; then
+    field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+    field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+    while [ "$field_index" -lt "$field_end" ]; do
+      if [ "${RIG_FIELD_KEYS[$field_index]}" = member-profile ]; then
+        profile=${RIG_FIELD_VALUES[$field_index]}
+        if [ "${#RIG_ACTIVE_PROFILES[@]}" -gt 0 ] &&
+          rig_array_contains "$profile" "${RIG_ACTIVE_PROFILES[@]}"; then
+          return 0
+        fi
+      fi
+      field_index=$((field_index + 1))
+    done
+    return 1
+  fi
+  rig_get_value rig default-profile || return 2
+  default_profile=$RIG_VALUE
+  [ "${#RIG_ACTIVE_PROFILES[@]}" -gt 0 ] &&
+    rig_array_contains "$default_profile" "${RIG_ACTIVE_PROFILES[@]}"
+}
+
+rig_item_declares_profile() {
+  local section_name profile section_index field_index field_end default_profile
+
+  section_name=$1
+  profile=$2
+  rig_section_index "$section_name" || return 1
+  section_index=$RIG_INDEX
+  if rig_field_declared "$section_name" member-profile; then
+    field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+    field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+    while [ "$field_index" -lt "$field_end" ]; do
+      if [ "${RIG_FIELD_KEYS[$field_index]}" = member-profile ] &&
+        [ "${RIG_FIELD_VALUES[$field_index]}" = "$profile" ]; then
+        return 0
+      fi
+      field_index=$((field_index + 1))
+    done
+    return 1
+  fi
+  rig_get_value rig default-profile || return 2
+  default_profile=$RIG_VALUE
+  [ "$profile" = "$default_profile" ]
+}
+
+rig_select_item_memberships() {
+  local platform index section_type section_name section_id
+
+  platform=$1
+  index=0
+  while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+    section_type=${RIG_SECTION_TYPES[$index]}
+    section_name=${RIG_SECTION_NAMES[$index]}
+    section_id=${RIG_SECTION_IDS[$index]}
+    case "$section_type" in tool|service|scheduled-job|setting|dock) ;; *)
+      index=$((index + 1)); continue ;;
+    esac
+    if rig_item_selected_by_active_profiles "$section_name"; then
+      case "$section_type" in
+        tool) rig_select_tool "$section_id" "$platform" || return ;;
+        *) rig_select_resource "$section_type" "$section_id" "$platform" || return ;;
+      esac
+    fi
+    index=$((index + 1))
+  done
+}
+
+rig_select_central_profile() {
   local profile platform section_index field_index field_end key target
 
   profile=$1
@@ -1803,7 +2028,7 @@ rig_select_profile() {
       key=${RIG_FIELD_KEYS[$field_index]}
       target=${RIG_FIELD_VALUES[$field_index]}
       case "$key" in
-        profile) rig_select_profile "$target" "$platform" || return ;;
+        profile|inherit) rig_select_central_profile "$target" "$platform" || return ;;
         tool) rig_select_tool "$target" "$platform" || return ;;
         service) rig_select_resource service "$target" "$platform" || return ;;
         scheduled-job) rig_select_resource scheduled-job "$target" "$platform" || return ;;
@@ -1812,6 +2037,88 @@ rig_select_profile() {
       esac
     fi
     field_index=$((field_index + 1))
+  done
+}
+
+rig_view_tool_is_explicit() {
+  local tool profile section_index field_index field_end
+
+  tool=$1
+  if [ "$RIG_PROFILE_SELECTION_MODE" = item ]; then
+    rig_item_selected_by_active_profiles "tool.$tool"
+    return
+  fi
+  for profile in "${RIG_ACTIVE_PROFILES[@]}"; do
+    rig_section_index "profile.$profile" || return 2
+    section_index=$RIG_INDEX
+    field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+    field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+    while [ "$field_index" -lt "$field_end" ]; do
+      if [ "${RIG_FIELD_KEYS[$field_index]}" = tool ] &&
+        [ "${RIG_FIELD_VALUES[$field_index]}" = "$tool" ]; then
+        return 0
+      fi
+      field_index=$((field_index + 1))
+    done
+  done
+  return 1
+}
+
+rig_validate_view_closure() {
+  local profile tool
+
+  profile=$1
+  for tool in "${RIG_SELECTED_TOOLS[@]+"${RIG_SELECTED_TOOLS[@]}"}"; do
+    rig_view_tool_is_explicit "$tool" ||
+      rig_fail "view profile '$profile' dependency '$tool' is not explicitly opted in" || return
+  done
+}
+
+rig_resource_native_target() {
+  local section_name section_index kind provider domain key locator
+
+  section_name=$1
+  rig_section_index "$section_name" || return 2
+  section_index=$RIG_INDEX
+  kind=${RIG_SECTION_TYPES[$section_index]}
+  rig_get_value "$section_name" provider || return 2
+  provider=$RIG_VALUE
+  case "$kind" in
+    service|scheduled-job)
+      rig_get_value "$section_name" locator || return 2
+      locator=$RIG_VALUE
+      RIG_VALUE=$provider:locator:$locator
+      ;;
+    setting)
+      rig_get_value "$section_name" domain || return 2
+      domain=$RIG_VALUE
+      rig_get_value "$section_name" key || return 2
+      key=$RIG_VALUE
+      RIG_VALUE=$provider:setting:$domain:$key
+      ;;
+    dock) RIG_VALUE=$provider:dock ;;
+    *) return 1 ;;
+  esac
+}
+
+rig_validate_selected_native_targets() {
+  local index scan section_name other target other_target
+
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_RESOURCE_SECTIONS[@]}" ]; do
+    section_name=${RIG_SELECTED_RESOURCE_SECTIONS[$index]}
+    rig_resource_native_target "$section_name" || return
+    target=$RIG_VALUE
+    scan=$((index + 1))
+    while [ "$scan" -lt "${#RIG_SELECTED_RESOURCE_SECTIONS[@]}" ]; do
+      other=${RIG_SELECTED_RESOURCE_SECTIONS[$scan]}
+      rig_resource_native_target "$other" || return
+      other_target=$RIG_VALUE
+      [ "$target" != "$other_target" ] ||
+        rig_fail "[$other] conflicts with [$section_name] at native target '$target'" || return
+      scan=$((scan + 1))
+    done
+    index=$((index + 1))
   done
 }
 
@@ -1900,8 +2207,10 @@ rig_resolve_profile() {
   RIG_SELECTED_TOOLS=()
   RIG_SELECTED_BINDINGS=()
   RIG_SELECTED_RESOURCE_SECTIONS=()
+  RIG_ACTIVE_PROFILES=()
   RIG_RESOLVED_PROFILE=
   RIG_RESOLVED_PLATFORM=
+  RIG_RESOLVED_PROFILE_KIND=
   [ -n "$platform" ] || rig_fail 'a platform is required for profile resolution' || return
   if [ -z "$profile" ]; then
     rig_get_value rig default-profile || rig_fail 'configuration is not loaded' || return
@@ -1909,9 +2218,20 @@ rig_resolve_profile() {
   fi
   rig_valid_id "$profile" || rig_fail "invalid profile '$profile'" || return
 
-  rig_select_profile "$profile" "$platform" || return
+  rig_activate_profile "$profile" || return
+  if [ "$RIG_PROFILE_SELECTION_MODE" = item ]; then
+    rig_select_item_memberships "$platform" || return
+  else
+    rig_select_central_profile "$profile" "$platform" || return
+  fi
   rig_sort_selected_tools
   rig_sort_selected_resources
+  rig_validate_selected_native_targets || return
+  rig_profile_kind "$profile" || return
+  RIG_RESOLVED_PROFILE_KIND=$RIG_VALUE
+  if [ "$RIG_RESOLVED_PROFILE_KIND" = view ]; then
+    rig_validate_view_closure "$profile" || return
+  fi
   RIG_RESOLVED_PROFILE=$profile
   RIG_RESOLVED_PLATFORM=$platform
 }
@@ -2998,9 +3318,10 @@ rig_plan_blocker() {
 }
 
 rig_resolve_operational_plan() {
-  local profile platform index
+  local profile receipt_mode platform index
 
   profile=$1
+  receipt_mode=${2:-load}
   rig_load_config || return
   rig_current_platform || return
   platform=$RIG_VALUE
@@ -3013,8 +3334,10 @@ rig_resolve_operational_plan() {
     RIG_RESOURCE_PLAN_SECTIONS[$index]=${RIG_SELECTED_RESOURCE_SECTIONS[$index]}
     index=$((index + 1))
   done
-  if [ "${#RIG_SELECTED_RESOURCE_SECTIONS[@]}" -gt 0 ] ||
-    [ -n "${RIG_STATE_HOME:-}${XDG_STATE_HOME:-}${HOME:-}" ]; then
+  if [ "$receipt_mode" = load ] && [ "$RIG_RESOLVED_PROFILE_KIND" = complete ] && {
+    [ "${#RIG_SELECTED_RESOURCE_SECTIONS[@]}" -gt 0 ] ||
+      [ -n "${RIG_STATE_HOME:-}${XDG_STATE_HOME:-}${HOME:-}" ];
+  }; then
     rig_load_resource_receipt "$platform"
   fi
 }
@@ -3048,6 +3371,99 @@ rig_effective_state_home() {
   fi
 }
 
+rig_reconciliation_lock_path() {
+  local state_home platform
+
+  platform=$1
+  rig_effective_state_home || return
+  state_home=$RIG_VALUE
+  RIG_VALUE=$state_home/reconciliation/$platform.lock
+}
+
+rig_release_reconciliation_lock() {
+  local lock parent
+
+  lock=${RIG_RECONCILIATION_LOCK:-}
+  [ -n "$lock" ] || return 0
+  rig_effective_state_home || return
+  parent=$RIG_VALUE/reconciliation
+  case "$lock" in "$parent"/*.lock) ;; *)
+    rig_fail "refusing unsafe reconciliation lock release: $lock" || return ;;
+  esac
+  [ -d "$lock" ] && [ ! -L "$lock" ] ||
+    rig_fail "reconciliation lock became unsafe: $lock" || return
+  rm -f "$lock/owner" || return
+  rmdir "$lock" || return
+  RIG_RECONCILIATION_LOCK=
+  RIG_RECONCILIATION_LOCK_ACQUIRED=0
+}
+
+rig_reconciliation_signal() {
+  local exit_code
+
+  exit_code=$1
+  trap - HUP INT TERM
+  rig_release_reconciliation_lock || true
+  exit "$exit_code"
+}
+
+rig_acquire_reconciliation_lock() {
+  local platform profile command lock parent ancestor owner owner_pid owner_state
+
+  platform=$1
+  profile=$2
+  command=$3
+  rig_reconciliation_lock_path "$platform" || return
+  lock=$RIG_VALUE
+  if [ -n "${RIG_RECONCILIATION_LOCK:-}" ]; then
+    [ "$RIG_RECONCILIATION_LOCK" = "$lock" ] ||
+      rig_fail "another reconciliation target is already locked by this process: $RIG_RECONCILIATION_LOCK" || return
+    RIG_RECONCILIATION_LOCK_ACQUIRED=0
+    return 0
+  fi
+  parent=${lock%/*}
+  if [ -L "$parent" ] || { [ -e "$parent" ] && [ ! -d "$parent" ]; }; then
+    rig_fail "reconciliation lock directory is unsafe: $parent" || return
+  fi
+  ancestor=$parent
+  while [ ! -e "$ancestor" ]; do
+    [ "$ancestor" != "${ancestor%/*}" ] || { ancestor=/; break; }
+    ancestor=${ancestor%/*}
+    [ -n "$ancestor" ] || ancestor=/
+  done
+  [ -d "$ancestor" ] && [ -w "$ancestor" ] && [ -x "$ancestor" ] ||
+    rig_fail "reconciliation lock parent is unavailable: $ancestor" || return
+  mkdir -p "$parent" || rig_fail "cannot create reconciliation lock directory: $parent" || return
+  if ! mkdir "$lock" 2>/dev/null; then
+    [ -d "$lock" ] && [ ! -L "$lock" ] ||
+      rig_fail "reconciliation target lock is unsafe: $lock" || return
+    owner=unknown
+    if [ -f "$lock/owner" ] && [ -r "$lock/owner" ]; then
+      IFS= read -r owner <"$lock/owner" || owner=unknown
+    fi
+    owner_state=active
+    case "$owner" in
+      pid=[0-9]*' '*)
+        owner_pid=${owner#pid=}
+        owner_pid=${owner_pid%% *}
+        kill -0 "$owner_pid" 2>/dev/null || owner_state=stale
+        ;;
+      *) owner_state=unknown ;;
+    esac
+    rig_fail "reconciliation target '$platform' is $owner_state; owner=$owner" || return
+  fi
+  if ! printf 'pid=%s profile=%s command=%s\n' "$$" "$profile" "$command" >"$lock/owner"; then
+    rmdir "$lock" 2>/dev/null || true
+    rig_fail "cannot record reconciliation lock owner: $lock" || return
+  fi
+  RIG_RECONCILIATION_LOCK=$lock
+  RIG_RECONCILIATION_LOCK_ACQUIRED=1
+  trap rig_release_reconciliation_lock EXIT
+  trap 'rig_reconciliation_signal 129' HUP
+  trap 'rig_reconciliation_signal 130' INT
+  trap 'rig_reconciliation_signal 143' TERM
+}
+
 rig_resource_receipt_path() {
   local state_home platform
 
@@ -3055,6 +3471,16 @@ rig_resource_receipt_path() {
   rig_effective_state_home || return
   state_home=$RIG_VALUE
   RIG_VALUE=$state_home/resources/$platform.tsv
+}
+
+rig_reconciliation_needed() {
+  local platform receipt
+
+  platform=$1
+  [ "${#RIG_SELECTED_RESOURCE_SECTIONS[@]}" -eq 0 ] || return 0
+  rig_resource_receipt_path "$platform" || return
+  receipt=$RIG_VALUE
+  [ -e "$receipt" ] || [ -L "$receipt" ]
 }
 
 rig_selected_resource_has_locator() {
@@ -4538,7 +4964,7 @@ rig_print_resource_projection() {
 rig_command_apply() {
   local profile scope dry_run profile_seen scope_seen dry_run_seen index tool binding provider
   local blocker native_status planned completed failed skipped operational_failure
-  local section_name section_index kind id locator resource_total
+  local section_name section_index kind id locator resource_total lock_acquired exit_code
 
   profile=
   scope=all
@@ -4585,7 +5011,18 @@ rig_command_apply() {
     esac
   done
 
-  rig_resolve_operational_plan "$profile" || return
+  rig_resolve_operational_plan "$profile" defer || return
+  [ "$RIG_RESOLVED_PROFILE_KIND" = complete ] ||
+    rig_fail "profile '$RIG_RESOLVED_PROFILE' is a non-appliable view" || return
+  lock_acquired=0
+  if [ "$scope" != tools ] && rig_reconciliation_needed "$RIG_RESOLVED_PLATFORM"; then
+    if [ "$dry_run" -eq 0 ]; then
+      rig_acquire_reconciliation_lock \
+        "$RIG_RESOLVED_PLATFORM" "$RIG_RESOLVED_PROFILE" apply || return
+      lock_acquired=$RIG_RECONCILIATION_LOCK_ACQUIRED
+    fi
+    rig_load_resource_receipt "$RIG_RESOLVED_PLATFORM" || return
+  fi
   case "$scope" in
     tools)
       RIG_RESOURCE_PLAN_SECTIONS=()
@@ -4602,7 +5039,8 @@ rig_command_apply() {
   esac
   rig_preflight_apply "$scope" || return
   printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
-  printf 'TOOL\tPROVIDER\tRESULT\tDETAIL\n'
+  printf 'Operation scope: declaration\n'
+  printf 'TOOL\tPROVIDER\tRESULT\tDETAIL\tSCOPE\n'
   planned=0
   completed=0
   failed=0
@@ -4653,12 +5091,12 @@ rig_command_apply() {
         operational_failure=1
       fi
     fi
-    printf '%s\t%s\t%s\t%s\n' "$tool" "$provider" \
+    printf '%s\t%s\t%s\t%s\tdeclaration\n' "$tool" "$provider" \
       "${RIG_PLAN_RESULTS[$index]}" "${RIG_PLAN_DETAILS[$index]}"
     index=$((index + 1))
   done
   if [ "$resource_total" -gt 0 ]; then
-    printf '\nRESOURCE\tKIND\tPROVIDER\tRESULT\tDETAIL\n'
+    printf '\nRESOURCE\tKIND\tPROVIDER\tRESULT\tDETAIL\tSCOPE\n'
   fi
   RIG_RESOURCE_PLAN_RESULTS=()
   RIG_RESOURCE_PLAN_DETAILS=()
@@ -4703,7 +5141,7 @@ rig_command_apply() {
         operational_failure=1
       fi
     fi
-    printf '%s\t%s\t%s\t%s\t%s\n' "$id" "$kind" "$provider" \
+    printf '%s\t%s\t%s\t%s\t%s\tdeclaration\n' "$id" "$kind" "$provider" \
       "${RIG_RESOURCE_PLAN_RESULTS[$index]}" "${RIG_RESOURCE_PLAN_DETAILS[$index]}"
     if [ "$dry_run" -eq 1 ]; then
       rig_print_resource_projection "$section_name" || return
@@ -4717,20 +5155,20 @@ rig_command_apply() {
     id=${RIG_STALE_RESOURCE_IDS[$index]}
     locator=${RIG_STALE_RESOURCE_LOCATORS[$index]}
     if [ "$operational_failure" -ne 0 ]; then
-      printf '%s\t%s\t%s\tskipped\tblocked-by:resource-failure\n' "$id" "$kind" "$provider"
+      printf '%s\t%s\t%s\tskipped\tblocked-by:resource-failure\tdeclaration\n' "$id" "$kind" "$provider"
       skipped=$((skipped + 1))
     elif [ "$dry_run" -eq 1 ]; then
-      printf '%s\t%s\t%s\tplanned\tretire:%s\n' "$id" "$kind" "$provider" "$locator"
+      printf '%s\t%s\t%s\tplanned\tretire:%s\tdeclaration\n' "$id" "$kind" "$provider" "$locator"
       planned=$((planned + 1))
     else
       rig_progress_step "retire $kind.$id via $provider"
       rig_retire_resource "$provider" "$kind" "$id" "$locator"
       native_status=$?
       if [ "$native_status" -eq 0 ]; then
-        printf '%s\t%s\t%s\tcompleted\tretired:%s\n' "$id" "$kind" "$provider" "$locator"
+        printf '%s\t%s\t%s\tcompleted\tretired:%s\tdeclaration\n' "$id" "$kind" "$provider" "$locator"
         completed=$((completed + 1))
       else
-        printf '%s\t%s\t%s\tfailed\texit:%s\n' "$id" "$kind" "$provider" "$native_status"
+        printf '%s\t%s\t%s\tfailed\texit:%s\tdeclaration\n' "$id" "$kind" "$provider" "$native_status"
         failed=$((failed + 1))
         operational_failure=1
       fi
@@ -4745,7 +5183,13 @@ rig_command_apply() {
   rig_progress_finish
   printf 'Summary: planned=%s completed=%s failed=%s skipped=%s\n' \
     "$planned" "$completed" "$failed" "$skipped"
-  [ "$operational_failure" -eq 0 ]
+  exit_code=0
+  [ "$operational_failure" -eq 0 ] || exit_code=1
+  if [ "$lock_acquired" -eq 1 ]; then
+    rig_release_reconciliation_lock || return
+    trap - EXIT HUP INT TERM
+  fi
+  return "$exit_code"
 }
 
 rig_bootstrap_preflight_homebrew_manifest() {
@@ -4837,6 +5281,7 @@ rig_bootstrap_apply_npm_prerequisite() {
 
 rig_command_bootstrap() {
   local profile scope dry_run profile_seen scope_seen dry_run_seen native_status manager_total
+  local lock_acquired exit_code
 
   profile=
   scope=all
@@ -4899,8 +5344,18 @@ rig_command_bootstrap() {
     fi
   fi
 
-  rig_resolve_operational_plan "$profile" || return
+  rig_resolve_operational_plan "$profile" defer || return
   profile=$RIG_RESOLVED_PROFILE
+  [ "$RIG_RESOLVED_PROFILE_KIND" = complete ] ||
+    rig_fail "profile '$profile' is a non-appliable view" || return
+  lock_acquired=0
+  if [ "$scope" != tools ] && rig_reconciliation_needed "$RIG_RESOLVED_PLATFORM"; then
+    if [ "$dry_run" -eq 0 ]; then
+      rig_acquire_reconciliation_lock "$RIG_RESOLVED_PLATFORM" "$profile" bootstrap || return
+      lock_acquired=$RIG_RECONCILIATION_LOCK_ACQUIRED
+    fi
+    rig_load_resource_receipt "$RIG_RESOLVED_PLATFORM" || return
+  fi
   case "$scope" in
     tools)
       RIG_RESOURCE_PLAN_SECTIONS=()
@@ -4925,19 +5380,20 @@ rig_command_bootstrap() {
   rig_bootstrap_preflight_homebrew_manifest "$scope" || return
   if [ -n "$RIG_BOOTSTRAP_MANIFEST" ] || [ -n "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL" ] ||
     [ "$RIG_BOOTSTRAP_DEFER_MISE" -eq 1 ] || [ "$RIG_BOOTSTRAP_DEFER_NPM" -eq 1 ]; then
-    printf 'MANAGER\tPROVIDER\tRESULT\tDETAIL\n'
+    printf 'Operation scopes: declaration, manifest, provider-wide\n'
+    printf 'MANAGER\tPROVIDER\tRESULT\tDETAIL\tSCOPE\n'
     if [ "$dry_run" -eq 1 ]; then
       if [ -n "$RIG_BOOTSTRAP_MANIFEST" ]; then
-        printf 'manifest\thomebrew\tplanned\tbundle:%s\n' "$RIG_BOOTSTRAP_MANIFEST"
+        printf 'manifest\thomebrew\tplanned\tbundle:%s\tmanifest\n' "$RIG_BOOTSTRAP_MANIFEST"
       fi
       if [ -n "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL" ]; then
-        printf 'autoupdate\thomebrew\tplanned\tinterval:%s\n' "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL"
+        printf 'autoupdate\thomebrew\tplanned\tinterval:%s\tprovider-wide\n' "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL"
       fi
       if [ "$RIG_BOOTSTRAP_DEFER_MISE" -eq 1 ]; then
-        printf 'provider:mise\thomebrew\tplanned\tbootstrap-prerequisite\n'
+        printf 'provider:mise\thomebrew\tplanned\tbootstrap-prerequisite\tdeclaration\n'
       fi
       if [ "$RIG_BOOTSTRAP_DEFER_NPM" -eq 1 ]; then
-        printf 'provider:npm\tmise\tplanned\tbootstrap-prerequisite\n'
+        printf 'provider:npm\tmise\tplanned\tbootstrap-prerequisite\tdeclaration\n'
       fi
       printf '\n'
     else
@@ -4953,10 +5409,10 @@ rig_command_bootstrap() {
         native_status=$?
         if [ "$native_status" -ne 0 ]; then
           rig_progress_finish
-          printf 'manifest\thomebrew\tfailed\texit:%s\n' "$native_status"
+          printf 'manifest\thomebrew\tfailed\texit:%s\tmanifest\n' "$native_status"
           return "$native_status"
         fi
-        printf 'manifest\thomebrew\tcompleted\tbundle:%s\n' "$RIG_BOOTSTRAP_MANIFEST"
+        printf 'manifest\thomebrew\tcompleted\tbundle:%s\tmanifest\n' "$RIG_BOOTSTRAP_MANIFEST"
       fi
       if [ -n "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL" ]; then
         rig_progress_step 'homebrew autoupdate'
@@ -4964,20 +5420,20 @@ rig_command_bootstrap() {
         native_status=$?
         if [ "$native_status" -ne 0 ]; then
           rig_progress_finish
-          printf 'autoupdate\thomebrew\tfailed\texit:%s\n' "$native_status"
+          printf 'autoupdate\thomebrew\tfailed\texit:%s\tprovider-wide\n' "$native_status"
           return "$native_status"
         fi
-        printf 'autoupdate\thomebrew\tcompleted\tinterval:%s\n' "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL"
+        printf 'autoupdate\thomebrew\tcompleted\tinterval:%s\tprovider-wide\n' "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL"
       fi
       RIG_BOOTSTRAP_ALLOW_DEFERRED_MANAGERS=0
       if [ "$RIG_BOOTSTRAP_DEFER_MISE" -eq 1 ]; then
         rig_progress_step 'verify provider mise'
         if ! rig_bootstrap_verify_deferred_mise; then
           rig_progress_finish
-          printf 'provider:mise\thomebrew\tfailed\tunavailable\n'
+          printf 'provider:mise\thomebrew\tfailed\tunavailable\tdeclaration\n'
           return 1
         fi
-        printf 'provider:mise\thomebrew\tcompleted\tavailable\n'
+        printf 'provider:mise\thomebrew\tcompleted\tavailable\tdeclaration\n'
       fi
       if [ "$RIG_BOOTSTRAP_DEFER_NPM" -eq 1 ]; then
         rig_progress_step 'materialise provider npm'
@@ -4985,10 +5441,10 @@ rig_command_bootstrap() {
         native_status=$?
         if [ "$native_status" -ne 0 ]; then
           rig_progress_finish
-          printf 'provider:npm\tmise\tfailed\texit:%s\n' "$native_status"
+          printf 'provider:npm\tmise\tfailed\texit:%s\tdeclaration\n' "$native_status"
           return "$native_status"
         fi
-        printf 'provider:npm\tmise\tcompleted\tavailable\n'
+        printf 'provider:npm\tmise\tcompleted\tavailable\tdeclaration\n'
       fi
       rig_progress_finish
       printf '\n'
@@ -5007,6 +5463,12 @@ rig_command_bootstrap() {
   else
     rig_command_apply --scope "$scope"
   fi
+  exit_code=$?
+  if [ "$lock_acquired" -eq 1 ]; then
+    rig_release_reconciliation_lock || return
+    trap - EXIT HUP INT TERM
+  fi
+  return "$exit_code"
 }
 
 rig_current_platform() {
@@ -5141,6 +5603,11 @@ rig_command_run_launchd_action() {
   platform=$RIG_VALUE
   [ "$platform" = macos ] || rig_fail "action 'launchd $action' not supported on platform '$platform'" || return
   rig_resolve_profile '' "$platform" || return
+  case "$action" in run|restart)
+    [ "$RIG_RESOLVED_PROFILE_KIND" = complete ] ||
+      rig_fail "profile '$RIG_RESOLVED_PROFILE' is a non-appliable view" || return
+    ;;
+  esac
   if [ "${#RIG_SELECTED_RESOURCE_SECTIONS[@]}" -eq 0 ] ||
     ! rig_array_contains "$section_name" "${RIG_SELECTED_RESOURCE_SECTIONS[@]}"; then
     rig_fail "resource '$target' is not selected by the default profile" || return
@@ -5301,6 +5768,10 @@ rig_command_run_action() {
     [ "$RIG_VALUE" = "$provider" ] ||
       rig_fail "resource '$target' is owned by provider '$RIG_VALUE', not '$provider'" || return
     rig_resolve_profile '' "$platform" || return
+    if [ "$mode" = mutate ]; then
+      [ "$RIG_RESOLVED_PROFILE_KIND" = complete ] ||
+        rig_fail "profile '$RIG_RESOLVED_PROFILE' is a non-appliable view" || return
+    fi
     if [ "${#RIG_SELECTED_RESOURCE_SECTIONS[@]}" -eq 0 ] ||
       ! rig_array_contains "$resource_section" "${RIG_SELECTED_RESOURCE_SECTIONS[@]}"; then
       rig_fail "resource '$target' is not selected by the default profile" || return
@@ -5641,6 +6112,10 @@ rig_profile_declares_tool() {
 
   profile=$1
   tool=$2
+  if [ "$RIG_PROFILE_SELECTION_MODE" = item ]; then
+    rig_item_declares_profile "tool.$tool" "$profile"
+    return
+  fi
   rig_section_index "profile.$profile" || return 1
   section_index=$RIG_INDEX
   field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
@@ -5667,8 +6142,10 @@ rig_profile_contains_declared_tool() {
   field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
   field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
   while [ "$field_index" -lt "$field_end" ]; do
-    if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] &&
-      [ "${RIG_FIELD_KEYS[$field_index]}" = profile ]; then
+    if [ "${RIG_FIELD_SECTIONS[$field_index]}" -eq "$section_index" ] && {
+      [ "${RIG_FIELD_KEYS[$field_index]}" = profile ] ||
+        [ "${RIG_FIELD_KEYS[$field_index]}" = inherit ];
+    }; then
       child=${RIG_FIELD_VALUES[$field_index]}
       rig_profile_contains_declared_tool "$child" "$tool" && return 0
     fi
@@ -5699,10 +6176,31 @@ rig_tool_requires_tool() {
 }
 
 rig_profile_requires_tool() {
-  local profile tool section_index field_index field_end key target
+  local profile tool section_index field_index field_end key target index candidate result
+  local -a saved_active_profiles
 
   profile=$1
   tool=$2
+  if [ "$RIG_PROFILE_SELECTION_MODE" = item ]; then
+    saved_active_profiles=("${RIG_ACTIVE_PROFILES[@]+"${RIG_ACTIVE_PROFILES[@]}"}")
+    RIG_ACTIVE_PROFILES=()
+    rig_activate_profile "$profile" || return
+    result=1
+    index=0
+    while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+      if [ "${RIG_SECTION_TYPES[$index]}" = tool ]; then
+        candidate=${RIG_SECTION_IDS[$index]}
+        if rig_item_selected_by_active_profiles "tool.$candidate" &&
+          rig_tool_requires_tool "$candidate" "$tool"; then
+          result=0
+          break
+        fi
+      fi
+      index=$((index + 1))
+    done
+    RIG_ACTIVE_PROFILES=("${saved_active_profiles[@]+"${saved_active_profiles[@]}"}")
+    return "$result"
+  fi
   rig_section_index "profile.$profile" || return 1
   section_index=$RIG_INDEX
   field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
@@ -5712,7 +6210,7 @@ rig_profile_requires_tool() {
       key=${RIG_FIELD_KEYS[$field_index]}
       target=${RIG_FIELD_VALUES[$field_index]}
       case "$key" in
-        profile) rig_profile_requires_tool "$target" "$tool" && return 0 ;;
+        profile|inherit) rig_profile_requires_tool "$target" "$tool" && return 0 ;;
         tool) rig_tool_requires_tool "$target" "$tool" && return 0 ;;
       esac
     fi
@@ -5984,10 +6482,20 @@ rig_command_list() {
 }
 
 rig_profile_contains_resource() {
-  local profile wanted section_index field_index field_end key target
+  local profile wanted section_index field_index field_end key target result
+  local -a saved_active_profiles
 
   profile=$1
   wanted=$2
+  if [ "$RIG_PROFILE_SELECTION_MODE" = item ]; then
+    saved_active_profiles=("${RIG_ACTIVE_PROFILES[@]+"${RIG_ACTIVE_PROFILES[@]}"}")
+    RIG_ACTIVE_PROFILES=()
+    rig_activate_profile "$profile" || return
+    result=1
+    rig_item_selected_by_active_profiles "$wanted" && result=0
+    RIG_ACTIVE_PROFILES=("${saved_active_profiles[@]+"${saved_active_profiles[@]}"}")
+    return "$result"
+  fi
   rig_section_index "profile.$profile" || return 1
   section_index=$RIG_INDEX
   field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
@@ -5997,7 +6505,7 @@ rig_profile_contains_resource() {
       key=${RIG_FIELD_KEYS[$field_index]}
       target=${RIG_FIELD_VALUES[$field_index]}
       case "$key" in
-        profile) rig_profile_contains_resource "$target" "$wanted" && return 0 ;;
+        profile|inherit) rig_profile_contains_resource "$target" "$wanted" && return 0 ;;
         service|scheduled-job|setting|dock) [ "$key.$target" = "$wanted" ] && return 0 ;;
       esac
     fi
@@ -7105,6 +7613,10 @@ rig_run_lifecycle_tasks() {
   done
 
   printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
+  case "$action" in
+    update) printf 'Operation scopes: declaration, manifest\n' ;;
+    maintain) printf 'Operation scope: provider-wide\n' ;;
+  esac
   printf 'TARGET\tPROVIDER\tRESULT\tDETAIL\n'
   [ "$dry_run" -eq 1 ] || rig_progress_start "$action" "$supported_total"
   index=0
@@ -7179,6 +7691,8 @@ rig_command_lifecycle() {
     esac
   done
   rig_resolve_operational_plan "$profile" || return
+  [ "$RIG_RESOLVED_PROFILE_KIND" = complete ] ||
+    rig_fail "profile '$RIG_RESOLVED_PROFILE' is a non-appliable view" || return
   rig_collect_lifecycle_tasks "$action" || return
   rig_run_lifecycle_tasks "$action" "$dry_run"
 }
@@ -7227,6 +7741,7 @@ rig_command_capture() {
     rig_fail "provider '$provider' does not support capture" || return
   rig_preflight_lifecycle_task capture "$provider" '' || return
   executable=$RIG_VALUE
+  printf 'Operation scope: manifest\n'
   printf 'PROVIDER\tRESULT\tDETAIL\n'
   if [ "$dry_run" -eq 1 ]; then
     printf '%s\tplanned\tcapture\n' "$provider"

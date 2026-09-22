@@ -19,11 +19,11 @@ Rig is useful when you want durable answers to questions such as:
 
 - **Catalogue** — the complete description of tools you care about. Each entry can record category, purpose, rationale, relationships, supported platforms, and installation metadata.
 - **Managed resource** — a service, scheduled job, typed setting, or semantic layout whose identity, intent, and desired state Rig declares while a provider owns native projection and operation.
-- **Profile** — a named selection of catalogue tools and managed resources for a machine, role, or context. A workstation is a profile, not a provider. Profiles may compose other profiles; resources may require tools.
+- **Profile** — complete machine or role intent, or a non-appliable view. Selectable declarations own direct membership; omission means the configured default, and profiles inherit shared intent explicitly. A workstation is a complete profile, not a provider.
 - **Provider** — a native system that already owns installation or state. Built-in providers such as Homebrew and launchd need no adapter or capability declarations; external providers are explicit trust boundaries.
 - **State** — the comparison between a resolved profile and provider observations on the current machine.
 
-Publication is an optional projection of that model. It exports one deliberately public profile as versioned data; a website owns how that data is presented.
+Publication is an optional projection of that model. It exports one deliberately public non-appliable view as versioned data; a website owns how that data is presented.
 
 ## Follow the everyday lifecycle
 
@@ -43,6 +43,7 @@ Generated paths stay with the tool whose capability they expose. Their `artifact
 ## Choose a guide
 
 - [Get started](getting-started.md) — install Rig, create a small configuration, understand it, check a machine, and preview the first application.
+- [Build complete profiles and safe views](profiles.md) — place membership beside declarations, inherit shared intent, switch complete profiles safely, and publish an explicit view.
 - [Use commands](commands.md) — choose the right command and understand whether it reads declarations, observes providers, mutates state, or publishes data.
 - [Publish a rig](publishing.md) — choose a safe public profile, inspect its versioned JSON, and hand it to a trusted publisher.
 - [Run external provider actions](provider-actions.md) — expose bounded host-specific operations only when no built-in declarative integration fits.

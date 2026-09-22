@@ -6,6 +6,7 @@ These guides explain how to use, develop, and release Rig. Decision Records own 
 
 - [Use Rig](user/README.md) — understand the purpose, mental model, everyday lifecycle, and safest next step.
 - [Get started](user/getting-started.md) — install Rig, create a first catalogue, inspect it, check the machine, and preview application.
+- [Build complete profiles and safe views](user/profiles.md) — declare item membership, explicit inheritance, safe switching, and publication views.
 - [Choose a command](user/commands.md) — understand every command and its read, observe, mutate, or publish boundary.
 - [Publish a public rig](user/publishing.md) — export a deliberately public profile and hand it to a trusted publisher.
 - [Run external provider actions](user/provider-actions.md) — expose bounded host-specific operations only when no built-in declaration fits.

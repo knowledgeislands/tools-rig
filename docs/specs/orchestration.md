@@ -6,7 +6,7 @@ This area of the [Rig Specifications](index.md) defines profile and provider orc
 
 ### RIG-ORCH-001 — Configurable default profile
 
-Rig MUST allow a user to define which catalogue tools constitute the default profile.
+Rig MUST allow a user to name a default profile. In item-owned selection, every selectable declaration that omits `profiles` MUST belong to that configured profile, not to a hard-coded `default` identity or every profile.
 
 _Conformance:_ conforming
 
@@ -38,7 +38,7 @@ _Evidence:_ `rig_command_bootstrap`, `rig_preflight_apply`, and `rig_bootstrap_p
 
 ### RIG-ORCH-007 — Profile composition
 
-Rig MUST allow a profile to include other declared profiles and MUST expand required tool relationships transitively. Resolution MUST fail when a selected tool supports the active platform but one of its required tools does not.
+Rig MUST allow a profile to inherit other declared profiles explicitly and MUST expand required tool relationships transitively. Resolution MUST fail when a selected tool supports the active platform but one of its required tools does not.
 
 _Conformance:_ conforming
 
@@ -272,3 +272,33 @@ _Conformance:_ conforming
 _Verify:_ Bats proves artifact declarations do not add provider invocations, progress steps, or dry-run work and that unknown artifact lifecycle fields fail closed.
 
 _Evidence:_ `rig_command_apply` and `rig_run_lifecycle_tasks` operate only on provider work; `tests/rig-artifacts.bats` covers observation independently.
+
+### RIG-ORCH-026 — Complete profiles and safe views
+
+Rig MUST resolve item membership through the selected profile and its explicit inheritance closure, then close tool dependencies transitively. A complete profile MUST be eligible for mutation. A view MUST reject `apply`, `bootstrap`, `update`, `maintain`, and selected-resource mutation; MUST NOT inherit a complete profile; and MUST reject a dependency that has not explicitly opted into the view closure.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats compares complete, inherited, and public view selections, then attempts every profile-aware mutating lifecycle and an implicit dependency disclosure.
+
+_Evidence:_ `rig_resolve_profile`, `rig_validate_view_closure`, and the lifecycle command gates implement the distinction; `tests/rig-profile-authority.bats` exercises resolution and rejection.
+
+### RIG-ORCH-027 — Resolved native-target conflicts
+
+Rig MUST reject two selected services or scheduled jobs sharing a provider locator, two selected settings sharing a provider domain and key, or more than one selected Dock layout for the same provider. It MUST permit those alternatives to coexist when no resolved profile selects them together.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats resolves each mutually exclusive alternative successfully and a composed contradictory selection unsuccessfully for every native target class.
+
+_Evidence:_ `rig_resource_native_target` and `rig_validate_selected_native_targets` validate only `RIG_SELECTED_RESOURCE_SECTIONS`; `tests/rig-profile-authority.bats` covers locator, setting, and Dock conflicts.
+
+### RIG-ORCH-028 — Provider operation scope disclosure
+
+Every mutating lifecycle report MUST identify work as declaration-scoped, manifest-scoped, or provider-wide before provider execution. Dry-run and live output MUST use the same scope classification.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats inspects apply, bootstrap, update, maintain, and capture output before and after provider execution.
+
+_Evidence:_ `rig_command_apply`, `rig_command_bootstrap`, `rig_run_lifecycle_tasks`, and `rig_command_capture` emit operation scope before mutation; lifecycle and profile-authority Bats assert the stable report prefixes.

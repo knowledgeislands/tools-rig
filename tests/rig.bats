@@ -1045,6 +1045,7 @@ Install the latest released Rig, pin an exact release, or link a local checkout.
     'install.kind = "executable"' \
     'install.locator = "~/literal # locator = value"' \
     '[profile.default]' \
+    'kind = "view"' \
     'tools = ["alpha"]' \
     '[provider.custom]' \
     'adapter = "custom"' \
@@ -2069,7 +2070,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
 
   [ "$status" -eq 0 ]
   [ ! -e "$ORCHESTRATION_LOG" ]
-  [ "$output" = $'Profile: default\nPlatform: macos\nTOOL\tPROVIDER\tRESULT\tDETAIL\nbase\trunner\tplanned\t-\napp\trunner\tplanned\t-\nindependent\trunner\tplanned\t-\nnotes\t-\tskipped\tcatalogue-only\nSummary: planned=3 completed=0 failed=0 skipped=1' ]
+  [ "$output" = $'Profile: default\nPlatform: macos\nOperation scope: declaration\nTOOL\tPROVIDER\tRESULT\tDETAIL\tSCOPE\nbase\trunner\tplanned\t-\tdeclaration\napp\trunner\tplanned\t-\tdeclaration\nindependent\trunner\tplanned\t-\tdeclaration\nnotes\t-\tskipped\tcatalogue-only\tdeclaration\nSummary: planned=3 completed=0 failed=0 skipped=1' ]
 }
 
 @test "bootstrap selects its declared profile with explicit and default fallbacks" {
@@ -2591,6 +2592,7 @@ write_publication_config() {
     'rationale = "private-rationale-token"' \
     'platforms = ["any"]' \
     '[profile.public]' \
+    'kind = "view"' \
     'tools = ["alpha", "beta"]' \
     '[profile.private]' \
     'profiles = ["public"]' \

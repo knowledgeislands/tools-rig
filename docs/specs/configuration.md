@@ -108,7 +108,7 @@ _Evidence:_ `rig_toml_field`, `rig_synthesise_bindings`, and the tool branch of 
 
 ### RIG-CONF-011 — Profile fields
 
-Schema 1 profile tables MAY contain `profiles`, `tools`, `services`, `scheduled-jobs`, `settings`, and `docks` string arrays. Every item MUST name a declaration of the corresponding kind.
+Schema 1 profile tables MAY contain string `name` and `purpose`, `kind` with value `complete` or `view`, and an `inherits` string array naming other profiles. Omitted `kind` MUST mean `complete`. A view MUST inherit only views. Central `profiles`, `tools`, `services`, `scheduled-jobs`, `settings`, and `docks` arrays remain valid only in a configuration that contains no item-owned `profiles` field; every central item MUST name a declaration of the corresponding kind.
 
 _Conformance:_ conforming
 
@@ -197,3 +197,13 @@ _Conformance:_ conforming
 _Verify:_ Bats accepts artifact arrays, rejects unknown artifact lifecycle fields before invocation, and proves configuration loading remains non-executing.
 
 _Evidence:_ `rig_toml_field` admits only the `artifacts` array for this concern; `tests/rig-artifacts.bats` and parser rejection tests cover the boundary.
+
+### RIG-CONF-020 — Item-owned profile membership
+
+Every selectable tool, service, scheduled job, setting, and Dock layout MAY declare a `profiles` string array. An omitted array MUST assign the declaration to `[rig].default-profile`; an explicitly empty array MUST assign it to no profile. Profiles MAY declare `name`, `purpose`, `kind`, and `inherits`; `kind` MUST be `complete` or `view`, defaulting to `complete`. Rig MUST reject unknown profile references, inheritance cycles, a view inheriting a complete profile, and a merged configuration that combines any item-owned membership with central profile member arrays.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats resolves a non-`default` configured default, explicit membership, explicit inheritance, an empty membership, and invalid mixed or unsafe view declarations.
+
+_Evidence:_ `rig_detect_profile_selection_mode`, `rig_item_declares_profile`, `rig_activate_profile`, and `rig_validate_model` enforce the schema; `tests/rig-profile-authority.bats` covers its accepted and rejected forms.

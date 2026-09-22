@@ -223,7 +223,11 @@ resource from being invoked. Shared configuration, trust, executable,
 platform, and receipt-boundary failures stop the plan before mutation. The
 atomic resource receipt advances only after the complete resource plan
 succeeds, and stale retirement is withheld after any selected resource
-failure.
+failure. The report identifies declaration, manifest, and provider-wide
+operation scope before execution. Receipt-backed work acquires one exclusive
+platform lock before reading the receipt. A profile whose kind is
+.B view
+is non-appliable and is rejected before mutation.
 .TP
 .BI "rig apply \-\-profile " NAME
 Apply a named resolved profile without changing the configured default.
@@ -490,17 +494,23 @@ and
 .B artifacts
 string arrays; and
 .B [profile.ID]
-with
+may declare
+.BR name ,
+.BR purpose ,
+.B kind
+as
+.B complete
+or
+.BR view ,
+and an
+.B inherits
+string array. Each selectable tool or resource may declare a
 .B profiles
-and
-.B tools
-string arrays, plus optional
-.BR services ,
-.BR scheduled-jobs ,
-.BR settings ,
-and
-.B docks
-arrays. Tool
+string array beside its own fields. Omission assigns that declaration to
+.BR default-profile ;
+an explicitly empty array assigns it to no profile. Central profile member
+arrays remain accepted only when the merged configuration contains no
+item-owned membership. Tool
 .B install.*
 fields retain their native locator and argument data without executing it while
 configuration is loaded. Source-authored
@@ -759,7 +769,9 @@ install.locator = "mgit"
 install.platforms = ["macos"]
 
 [profile.default]
-tools = ["mgit"]
+name = "Default rig"
+purpose = "Complete everyday setup"
+kind = "complete"
 .fi
 .TP
 .I ${XDG_CONFIG_HOME:-$HOME/.config}/rig/conf.d/*.toml
@@ -781,6 +793,11 @@ Atomic reconciliation receipt for resources last successfully managed on one
 platform. Each tab-separated row stores only provider, resource kind, identity,
 and locator; it is not observed state or declaration authority.
 .TP
+.I ${XDG_STATE_HOME:-$HOME/.local/state}/rig/reconciliation/PLATFORM.lock
+Exclusive live reconciliation lock. Rig acquires it before reading a receipt
+and holds it through provider work and atomic receipt replacement. Existing
+active, stale, or unknown owners are reported and not removed automatically.
+.TP
 .I ${XDG_CACHE_HOME:-$HOME/.cache}/rig
 Default cache directory.
 .SH PUBLIC DATA EXPORT
@@ -801,11 +818,12 @@ and selected tool identity, name, purpose, rationale, declared platforms, and
 closed relationships. Category, tool, platform, and relationship values use
 deterministic bytewise ordering.
 .PP
-The public profile is resolved independently of the active host platform while
-each tool retains its declared platforms. Relationships are included only when
-both endpoints are selected. Provider configuration and tool installation
-metadata, private profiles, observed state, credentials, and machine paths are
-not rendered.
+The public profile must be a non-appliable view and is resolved independently
+of the active host platform while each tool retains its declared platforms.
+Every selected declaration and dependency must opt into the view explicitly.
+Relationships are included only when both endpoints are selected. Provider
+configuration and tool installation metadata, private profiles, observed state,
+credentials, and machine paths are not rendered.
 Consumers should check both
 .B format
 and

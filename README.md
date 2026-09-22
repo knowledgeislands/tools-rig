@@ -76,7 +76,9 @@ install.locator = "mgit"
 install.platforms = ["macos"]
 
 [profile.default]
-tools = ["mgit"]
+name = "Default rig"
+purpose = "Complete everyday setup"
+kind = "complete"
 ```
 
 Then inspect before changing anything:
@@ -107,15 +109,18 @@ domain = "NSGlobalDomain"
 key = "AppleShowAllExtensions"
 value-type = "bool"
 value = "true"
+profiles = ["workstation"]
 
 [profile.workstation]
-tools = ["mgit"]
-settings = ["show-file-extensions"]
+name = "Workstation"
+purpose = "Default tools plus workstation settings"
+kind = "complete"
+inherits = ["default"]
 ```
 
 The provider name identifies the native authority. Rig supplies the adapter, observation, validation, and application behaviour for built-in providers such as `macos-defaults` and `launchd`.
 
-Do not create separate profiles merely to name lifecycle commands. `bootstrap-profile` may point to `default`; add profiles such as `minimal`, `developer`, or `public` only when they select a materially different setup. Profiles may compose one another so shared intent remains declared once.
+Do not create separate profiles merely to name lifecycle commands. `bootstrap-profile` must name a complete profile; add another complete profile only when it selects materially different machine intent. Declarations own direct membership: omission means the configured default profile and `profiles = []` means no profile. Complete profiles may inherit shared complete intent, while non-appliable views opt in explicitly for inspection or publication. See [Build complete profiles and safe views](docs/guides/user/profiles.md).
 
 ## Generated artifacts
 

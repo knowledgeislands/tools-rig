@@ -4,12 +4,12 @@ title: Define reconciliation authority
 area: CORE
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: f84233051bc7301fa84b78e03c4055ba6e33c1bf
 created_at: 2026-09-21T23:35:16Z
-updated_at: 2026-09-21T23:43:26Z
+updated_at: 2026-09-22T00:31:39Z
 ---
 
 ## Goal
@@ -32,13 +32,13 @@ Profile arrays centrally enumerate declarations, receipts are platform-wide, dec
 
 ## Steps
 
-- [ ] Amend the product, configuration, orchestration, state, and publication contracts with the locked authority model below.
-- [ ] Add item-centric `profiles` membership with omission meaning `default`, explicit profile inheritance, and rejection of ambiguous mixed central and item-centric selection.
-- [ ] Add profile identity, purpose, and appliable-versus-view semantics; reject `apply` and `bootstrap` for non-appliable profiles.
-- [ ] Resolve dependencies transitively, then validate native-target conflicts only across the resolved selection while retaining globally unique declaration identities.
-- [ ] Make lifecycle plans disclose declaration, manifest, or provider-wide mutation scope before execution.
-- [ ] Serialize receipt-backed reconciliation per target and fail safely when another apply owns the target lock.
-- [ ] Cover selection, inheritance, publication safety, deselection, conflicts, provider scope, and concurrent apply with deterministic tests.
+- [x] Amend the product, configuration, orchestration, state, and publication contracts with the locked authority model below.
+- [x] Add item-centric `profiles` membership with omission meaning `default`, explicit profile inheritance, and rejection of ambiguous mixed central and item-centric selection.
+- [x] Add profile identity, purpose, and appliable-versus-view semantics; reject `apply` and `bootstrap` for non-appliable profiles.
+- [x] Resolve dependencies transitively, then validate native-target conflicts only across the resolved selection while retaining globally unique declaration identities.
+- [x] Make lifecycle plans disclose declaration, manifest, or provider-wide mutation scope before execution.
+- [x] Serialize receipt-backed reconciliation per target and fail safely when another apply owns the target lock.
+- [x] Cover selection, inheritance, publication safety, deselection, conflicts, provider scope, and concurrent apply with deterministic tests.
 
 ## Files touched
 
@@ -73,6 +73,43 @@ Explain complete appliable profiles, safe views, switching effects, and how to r
 ### Roadmap
 
 This settles the semantic foundation for configuration, documentation, publication, and personal migration records; no separate authority item is expected.
+
+## Review
+
+### Delivered
+
+The locked authority model is implemented across Rig's parser, selection engine, lifecycle commands, publication boundary, reconciliation state, and user-facing contracts.
+
+### Summary of changes
+
+- Selectable declarations can own profile membership, with omission resolving to the configured default profile and an explicit empty list selecting nowhere.
+- Profiles have explicit inheritance and complete-versus-view semantics; mixed central and item-owned membership is rejected.
+- Resolved selections close dependencies before checking native-target conflicts, while publication views require dependencies to opt in explicitly.
+- Mutating lifecycle commands reject views, bootstrap requires a complete profile, and plans disclose declaration, manifest, or provider-wide scope.
+- Receipt-backed reconciliation is serialized per target from receipt read through atomic replacement, with conservative stale-lock diagnostics and cleanup of locks acquired by the current process.
+- Decisions, specifications, user guides, README, manual, changelog, and focused acceptance tests now describe and verify the same model.
+
+### Verification
+
+- `ki repo audit --repo .`
+- `shellcheck bin/rig install.sh`
+- `bats tests/`
+- `mandoc -T lint man/rig.1`
+- `git diff --check`
+
+All checks passed on the delivery tree.
+
+### Outstanding concerns
+
+The legacy central profile-array form remains available as a compatibility mode, but cannot be mixed with item-owned membership. Existing personal configuration migration remains separately owned. Existing reconciliation locks are intentionally never removed automatically because Rig cannot prove that an unknown or stale-looking owner is safe to evict.
+
+### Post-change review
+
+The implementation satisfies the locked model without adding runtime dependencies or weakening Bash 3.2 compatibility. The principal operational risk is filesystem lock recovery after abnormal termination; explicit diagnosis is safer than automatic eviction, and the contract documents that boundary.
+
+### Mini recap
+
+Rig now has one unambiguous profile authority per configuration, safe non-mutating views, deterministic resolved-target validation, visible mutation scope, and serialized receipt-backed application.
 
 ## Discussion
 

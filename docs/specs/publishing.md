@@ -6,7 +6,7 @@ This area of the [Rig Specifications](index.md) defines the public projection es
 
 ### RIG-PUB-001 — Explicit public profile
 
-Rig MUST export only the profile explicitly named by a publication declaration. Publication resolution MUST include every tool selected by that profile regardless of the active host platform, while retaining each tool's declared platform values.
+Rig MUST export only the non-appliable view explicitly named by a publication declaration. Publication resolution MUST include every tool that opts into that view regardless of the active host platform, while retaining each tool's declared platform values.
 
 _Conformance:_ conforming
 
@@ -130,3 +130,13 @@ _Conformance:_ conforming
 _Verify:_ Export over a stale directory and attempt each unsafe target.
 
 _Evidence:_ `tests/rig.bats` verifies the one-file tree, stale-file removal, and unchanged unsafe targets.
+
+### RIG-PUB-009 — Non-appliable disclosure view
+
+A publication MUST reference a non-appliable view. Every declaration and relationship dependency in its resolved projection MUST opt into that view or an inherited view explicitly. The view MUST NOT inherit a complete profile, acquire reconciliation ownership, or expose declarations assigned implicitly to the configured default profile.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats exports an explicit public view and rejects complete-profile publication, complete inheritance, implicit default disclosure, and an unlisted dependency.
+
+_Evidence:_ publication validation, `rig_validate_view_closure`, and item-owned profile resolution enforce the boundary; publication and profile-authority Bats cover safe selection and rejection.

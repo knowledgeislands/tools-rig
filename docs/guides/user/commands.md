@@ -31,7 +31,7 @@ Apply and bootstrap preflight the complete selected plan before mutation. Shared
 - `rig apply [--profile NAME] [--scope tools|resources|all] [--dry-run]` — preflight the resolved profile, print the selected scope in dry-run mode, or invoke built-in and explicitly allowed external mutation operations.
 - `rig bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]` — run Rig's native new-machine lifecycle for the configured bootstrap profile, an explicit profile, or the default-profile fallback.
 
-Run the dry-run form first. A dry run invokes no provider and writes no state. Without `--dry-run`, apply reconciles an operable profile after complete preflight. Bootstrap can stage only the fixed Homebrew → mise → npm manager chain when the corresponding prerequisite tools are selected; all external and unrelated managers must already be available. It reports each stage before completing a normal apply preflight.
+Run the dry-run form first. A dry run invokes no provider and writes no state. Without `--dry-run`, apply reconciles a complete profile after complete preflight. A non-appliable view is rejected by apply, bootstrap, update, maintain, and selected-resource mutation. Reports disclose whether work affects one declaration, a native manifest, or a provider-wide surface before execution. Receipt-backed work serialises the platform target before reading its receipt. Bootstrap can stage only the fixed Homebrew → mise → npm manager chain when the corresponding prerequisite tools are selected; all external and unrelated managers must already be available. It reports each stage before completing a normal apply preflight.
 
 ## Advance provider-managed state
 

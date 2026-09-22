@@ -237,3 +237,23 @@ _Conformance:_ conforming
 _Verify:_ Bats covers missing, unsafe, structurally damaged, broken-executable, and healthy application artifacts without invoking a generator.
 
 _Evidence:_ `rig_observe_tool_artifacts` implements the state contract; `tests/rig-artifacts.bats` supplies isolated filesystem evidence.
+
+### RIG-STATE-024 — Declaration-kind deselection
+
+A successful complete-profile reconciliation MUST retire previously receipted services and scheduled jobs omitted from the next selection. Profile deselection MUST NOT remove packages, tool artifacts, settings, Dock layouts, ports, or skills without a separate explicit cleanup contract. A view MUST NOT load retirement work or replace a receipt.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats switches complete resource selections and inspects retirement, then observes a view against the same state and confirms no retirement work or receipt mutation.
+
+_Evidence:_ `rig_load_resource_receipt` records only service and scheduled-job retirement while `rig_resolve_operational_plan` excludes views from receipt loading; resource and profile-authority Bats cover both paths.
+
+### RIG-STATE-025 — Exclusive reconciliation target
+
+Before a live receipt-backed apply or bootstrap reads its per-platform receipt, Rig MUST acquire an exclusive lock for that platform and MUST hold it through receipt replacement or failure cleanup. A concurrent invocation MUST fail before provider mutation with active, stale, or unknown owner detail and MUST NOT remove an unverified existing lock.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats supplies live and non-existent owner PIDs, asserts no provider call and retained lock, then completes reconciliation and asserts lock cleanup plus receipt installation.
+
+_Evidence:_ `rig_acquire_reconciliation_lock`, signal traps, `rig_release_reconciliation_lock`, and deferred receipt loading implement the boundary; `tests/rig-profile-authority.bats` covers contention and success.
