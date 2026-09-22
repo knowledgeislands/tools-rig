@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+
+set -u
+
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P) || exit 1
+rig_root=$(CDPATH='' cd -- "$script_dir/.." && pwd -P) || exit 1
+rig_executable=${RIG_BENCHMARK_EXECUTABLE:-$rig_root/bin/rig}
+budget=${RIG_BENCHMARK_BUDGET_SECONDS:-5}
+observation_budget=${RIG_BENCHMARK_OBSERVATION_BUDGET_SECONDS:-8}
+
+case "$budget" in
+  ''|*[!0-9]*|0)
+    printf 'benchmark-rig: benchmark budgets must be greater than zero\n' >&2
+    exit 2
+    ;;
+esac
+case "$observation_budget" in
+  ''|*[!0-9]*|0)
+    printf 'benchmark-rig: benchmark budgets must be greater than zero\n' >&2
+    exit 2
+    ;;
+esac
+
+[ -x "$rig_executable" ] || {
+  printf 'benchmark-rig: Rig executable is unavailable: %s\n' "$rig_executable" >&2
+  exit 2
+}
+
+benchmark_root=$(mktemp -d "${TMPDIR:-/tmp}/rig-benchmark.XXXXXX") || exit 1
+trap 'rm -rf "$benchmark_root"' EXIT HUP INT TERM
+mkdir -p "$benchmark_root/query-config" "$benchmark_root/observation-config" "$benchmark_root/home" || exit
+
+# shellcheck source=../tests/helpers/large-catalogue-fixture.bash
+# shellcheck disable=SC1091
+source "$rig_root/tests/helpers/large-catalogue-fixture.bash"
+fake_uv=$benchmark_root/uv
+# Generated fixture commands intentionally defer expansion to the fake executable.
+# shellcheck disable=SC2016
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'index=1' \
+  'while [ "$index" -le 100 ]; do' \
+  '  printf "fixture/tool-%03d v1.0\n" "$index"' \
+  '  index=$((index + 1))' \
+  'done' >"$fake_uv"
+chmod +x "$fake_uv"
+write_large_catalogue_fixture "$benchmark_root/query-config/rig.toml"
+write_large_catalogue_fixture "$benchmark_root/observation-config/rig.toml" batched "$fake_uv"
+
+benchmark_command() {
+  local command_name command_budget config_home started elapsed
+
+  command_name=$1
+  command_budget=$2
+  config_home=$3
+  SECONDS=0
+  started=$SECONDS
+  env HOME="$benchmark_root/home" \
+    RIG_CONFIG_HOME="$config_home" \
+    RIG_PLATFORM=macos \
+    RIG_PROGRESS=never \
+    "$rig_executable" "$command_name" >/dev/null || return
+  elapsed=$((SECONDS - started))
+  printf '%s: %ss (budget %ss)\n' "$command_name" "$elapsed" "$command_budget"
+  [ "$elapsed" -le "$command_budget" ] || {
+    printf 'benchmark-rig: %s exceeded the %ss budget\n' "$command_name" "$command_budget" >&2
+    return 1
+  }
+}
+
+benchmark_command diag "$budget" "$benchmark_root/query-config" || exit
+benchmark_command show "$budget" "$benchmark_root/query-config" || exit
+benchmark_command list "$budget" "$benchmark_root/query-config" || exit
+benchmark_command status "$observation_budget" "$benchmark_root/observation-config" || exit

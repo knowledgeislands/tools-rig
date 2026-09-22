@@ -87,3 +87,33 @@ _Conformance:_ conforming
 _Verify:_ ShellCheck and Bash syntax gates cover the runtime; isolated Bats tests exercise absent executables and temporary runtime roots.
 
 _Evidence:_ `bin/rig` implements skill parsing and state in Bash; `tests/rig-skills.bats` supplies fake HOME, configuration, Skills CLI, KI, and runtime roots.
+
+### RIG-PORT-009 — Deterministic authored assembly
+
+Rig's authored Bash modules MUST assemble byte-for-byte into the committed `bin/rig`. `src/rig/00-runtime.bash` MUST own the sole authored `RIG_VERSION`, assembly MUST copy it into the single installed executable, and release verification MUST check the assembled runtime version. Every authored module and assembled output MUST parse under macOS Bash 3.2 and pass ShellCheck without introducing a runtime module loader.
+
+_Conformance:_ conforming
+
+_Verify:_ Run `scripts/assemble-rig --check`, Bash 3.2 syntax checks, and ShellCheck over `src/rig/*.bash` and `bin/rig`.
+
+_Evidence:_ `scripts/assemble-rig` concatenates the ordered `src/rig/` modules and detects drift; repository verification covers the source modules and committed payload.
+
+### RIG-PORT-010 — Representative query performance
+
+On the documented reference macOS machine, `rig diag`, `rig show`, and `rig list` SHOULD each complete the deterministic 100-tool, 1,434-line benchmark in no more than two seconds. Automated verification MUST apply an overrideable five-second portable query guard and eight-second fake-provider observation guard so shared or contended runners do not turn the measured macOS target into a flaky correctness test.
+
+_Conformance:_ conforming
+
+_Verify:_ Run `RIG_BENCHMARK_BUDGET_SECONDS=2 scripts/benchmark-rig` on the reference machine and the default portable budget in Bats.
+
+_Evidence:_ `tests/helpers/large-catalogue-fixture.bash`, `scripts/benchmark-rig`, and `tests/rig-performance.bats` provide the deterministic fixture, measured target, and portable regression guard.
+
+### RIG-PORT-011 — Bounded native smoke
+
+Development verification MUST probe available native managers only through read-only version operations in a disposable HOME and XDG environment. An absent optional manager MUST report an explicit skip, while a failed probe for an available manager MUST fail the smoke check. Native smoke MUST complement rather than replace deterministic fake-based provider behaviour tests.
+
+_Conformance:_ conforming
+
+_Verify:_ Run `scripts/smoke-native-providers` with available and unavailable native-manager commands and inspect its outcome classifications.
+
+_Evidence:_ `scripts/smoke-native-providers` bounds Homebrew, uv, mise, npm, chezmoi, and mas probes to disposable-environment version calls; the complete Bats suite retains fake-based command and state assertions.

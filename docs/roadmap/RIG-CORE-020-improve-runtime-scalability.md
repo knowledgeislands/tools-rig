@@ -4,12 +4,12 @@ title: Improve runtime scalability
 area: CORE
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 28b7d426b1caa9c8228843931b3df3f16d292731
 created_at: 2026-09-21T23:35:16Z
-updated_at: 2026-09-21T23:43:26Z
+updated_at: 2026-09-22T03:16:26Z
 ---
 
 ## Goal
@@ -30,12 +30,12 @@ The 1,893-line personal configuration takes roughly 16 seconds for declaration-o
 
 ## Steps
 
-- [ ] Add a deterministic large-catalogue benchmark fixture and budgets for configuration loading, `show`, `diag`, profile resolution, and fake-provider observation.
-- [ ] Profile parser and lookup paths, index parsed sections once, and remove repeated whole-configuration scans without weakening validation.
-- [ ] Batch observations by native provider where a fixed literal provider operation can return equivalent evidence; retain per-item fallbacks and truthful unavailable states.
-- [ ] Keep slow-work progress aligned with `RIG-CLI-009` and prove completion remains cheap and side-effect free.
-- [ ] Split authored implementation into domain-focused Bash modules assembled deterministically into the single installed `bin/rig`, with an assembly drift check.
-- [ ] Add a bounded disposable-environment smoke matrix for native manager discovery and harmless observations while retaining fake-based behavioural coverage.
+- [x] Add a deterministic large-catalogue benchmark fixture and budgets for configuration loading, `show`, `diag`, profile resolution, and fake-provider observation.
+- [x] Profile parser and lookup paths, index parsed sections once, and remove repeated whole-configuration scans without weakening validation.
+- [x] Batch observations by native provider where a fixed literal provider operation can return equivalent evidence; retain per-item fallbacks and truthful unavailable states.
+- [x] Keep slow-work progress aligned with `RIG-CLI-009` and prove completion remains cheap and side-effect free.
+- [x] Split authored implementation into domain-focused Bash modules assembled deterministically into the single installed `bin/rig`, with an assembly drift check.
+- [x] Add a bounded disposable-environment smoke matrix for native manager discovery and harmless observations while retaining fake-based behavioural coverage.
 
 ## Files touched
 
@@ -70,6 +70,44 @@ Document contributor assembly, benchmark, and smoke-test workflows; user guides 
 ### Roadmap
 
 Performance regressions beyond the representative budgets become new evidence-backed records; this item owns the present scaling correction.
+
+## Review
+
+### Delivered
+
+Delivered the approved scalability boundary from immutable baseline `28b7d426b1caa9c8228843931b3df3f16d292731`: deterministic query and observation budgets, indexed declaration lookup, equivalent built-in observation coalescing, deterministic authored-module assembly, and bounded disposable native smoke. The installed Bash 3.2 runtime, exact native command matrix, custom-provider isolation, and progress semantics remain unchanged.
+
+### Summary of changes
+
+- Replaced quadratic model-wide declared-field scans with per-section indexes and added validated fast paths for comment-free lines, unescaped strings, and complete arrays. The 1,434-line fixture improved from approximately 11.4 seconds for `diag` and `show` to measured runs of 1–2 seconds on macOS Bash 3.2.
+- Coalesced only identical built-in read-only invocations, keyed by executable and length-delimited literal arguments. Results remain command-local and each tool still performs dependency, identity, artifact, result, and progress evaluation; custom providers are never coalesced.
+- Split authored implementation into six domain-focused files beneath `src/rig/`; `scripts/assemble-rig` produces byte-identical committed `bin/rig` and fails closed on drift. The assembled file remains the single installed payload without a runtime loader.
+- Added a self-contained 100-tool benchmark with five-second portable query and eight-second fake-provider observation guards, a two-second reference query target, a disposable-XDG native version-probe matrix, focused Bats coverage, and contributor and release guidance.
+- Updated the shell-runtime Decision Record, portability and orchestration Specifications, developer guides, repository instructions, and changelog.
+
+### Verification
+
+- `ki repo audit --repo .` — passed.
+- Focused `ki-authoring`, `ki-decision-records`, `ki-specs`, `ki-guides`, and `ki-work-roadmap` audits — passed.
+- `shellcheck bin/rig install.sh src/rig/*.bash scripts/assemble-rig scripts/benchmark-rig scripts/smoke-native-providers` — passed.
+- `/bin/bash -n` across the installed payload, installer, authored modules, and scripts — passed.
+- `scripts/assemble-rig --check` and its drift-failure Bats case — passed.
+- `RIG_BENCHMARK_BUDGET_SECONDS=2 scripts/benchmark-rig` — passed with `diag` 1–2 seconds, `show` 2 seconds, `list` 1–2 seconds, and fake-provider `status` 5–6 seconds within its eight-second guard.
+- `scripts/smoke-native-providers` — passed read-only version probes for Homebrew, uv, mise, npm, chezmoi, and mas in a disposable HOME and XDG environment; unavailable commands would report explicit skips.
+- `bats tests/` — all 217 tests passed.
+- `mandoc -T lint man/rig.1`, `rumdl check` for touched Markdown, and `git diff --check` — passed.
+
+### Outstanding concerns
+
+None within the approved boundary. Wall-clock benchmark assertions deliberately retain portable headroom above the measured two-second reference target, and the native smoke matrix proves bounded command availability rather than replacing fake-based provider behaviour tests.
+
+### Post-change review
+
+The implementation removes the measured parser bottleneck without weakening duplicate detection or configuration validation, preserves exact provider commands while reducing repeated identical uv-style inventory work, and lowers maintenance coupling without changing installation. Fresh semantic review found no competing cache authority, custom-provider reuse, runtime loader, unsafe native mutation, or CLI progress regression. The item is ready for human acceptance.
+
+### Mini recap
+
+Rig now queries a representative personal catalogue near the two-second reference target, reuses only equivalent command-local observations, and is authored in reviewable modules while shipping the same standalone Bash executable. Durable rationale, accepted quality requirements, contributor procedure, release procedure, and regression evidence are all recorded in their canonical homes; no additional learning promotion is required.
 
 ## Discussion
 

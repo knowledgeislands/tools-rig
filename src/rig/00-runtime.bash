@@ -1,0 +1,278 @@
+#!/usr/bin/env bash
+
+# Indexed arrays intentionally use explicit arithmetic indexes throughout.
+# The parser reads a path held in $file but never writes to that path.
+# Cross-module globals are intentionally initialised and consumed after assembly.
+# shellcheck disable=SC2004,SC2034,SC2094
+
+# Rig — declarative description and manager of a working setup.
+
+RIG_VERSION=0.2.0
+
+# Indexed arrays keep the installed executable compatible with macOS Bash 3.2.
+RIG_SECTION_NAMES=()
+RIG_SECTION_TYPES=()
+RIG_SECTION_IDS=()
+RIG_SECTION_SECONDARY_IDS=()
+RIG_SECTION_FIELD_STARTS=()
+RIG_SECTION_FIELD_ENDS=()
+RIG_SECTION_DECLARED_STARTS=()
+RIG_SECTION_DECLARED_ENDS=()
+RIG_SECTION_LOOKUP_NAMES=()
+RIG_SECTION_LOOKUP_INDICES=()
+RIG_FIELD_SECTIONS=()
+RIG_FIELD_KEYS=()
+RIG_FIELD_VALUES=()
+RIG_SELECTED_TOOLS=()
+RIG_SELECTED_SKILLS=()
+RIG_SELECTED_BINDINGS=()
+RIG_SELECTED_VARIANTS=()
+RIG_SELECTED_RESOURCE_SECTIONS=()
+RIG_SELECTED_PORTS=()
+RIG_ACTIVE_PROFILES=()
+RIG_PLAN_TOOLS=()
+RIG_PLAN_BINDINGS=()
+RIG_PLAN_PROVIDERS=()
+RIG_PLAN_RESULTS=()
+RIG_PLAN_DETAILS=()
+RIG_PLAN_STATES=()
+RIG_RESOURCE_PLAN_SECTIONS=()
+RIG_RESOURCE_PLAN_RESULTS=()
+RIG_RESOURCE_PLAN_DETAILS=()
+RIG_RESOURCE_PLAN_STATES=()
+RIG_RESOURCE_PREFLIGHT_DETAILS=()
+RIG_STALE_RESOURCE_PROVIDERS=()
+RIG_STALE_RESOURCE_KINDS=()
+RIG_STALE_RESOURCE_IDS=()
+RIG_STALE_RESOURCE_LOCATORS=()
+RIG_INVOKE_ARGUMENTS=()
+RIG_VISIT_NAMES=()
+RIG_VISIT_STATES=()
+RIG_QUERY_ITEMS=()
+RIG_DECLARED_FIELD_KEYS=()
+RIG_CLEAN_PATHS=()
+RIG_CLEAN_STATES=()
+RIG_PORT_STATES=()
+RIG_PORT_DETAILS=()
+RIG_SKILL_STATES=()
+RIG_SKILL_DETAILS=()
+RIG_SKILL_RESULTS=()
+RIG_SKILL_PREFLIGHT_DETAILS=()
+RIG_SKILL_PLANNED=0
+RIG_SKILL_COMPLETED=0
+RIG_SKILL_FAILED=0
+RIG_SKILL_SKIPPED=0
+RIG_SKILLS_INVENTORY_NAMES=()
+RIG_SKILLS_INVENTORY_SOURCES=()
+RIG_SKILLS_INVENTORY_AGENTS=()
+RIG_SKILLS_INVENTORY_LOADED=0
+RIG_SKILLS_INVENTORY_STATUS=
+RIG_SKILLS_INVENTORY_DETAIL=
+RIG_LISTENER_PORTS=()
+RIG_LISTENER_SCOPES=()
+RIG_LISTENER_COMMANDS=()
+RIG_LISTENER_PIDS=()
+RIG_OBSERVATION_CACHE_KEYS=()
+RIG_OBSERVATION_CACHE_OUTPUTS=()
+RIG_OBSERVATION_CACHE_STATUSES=()
+RIG_VALUE=
+RIG_INDEX=
+RIG_COUNT=0
+RIG_RESOLVED_PROFILE=
+RIG_RESOLVED_PLATFORM=
+RIG_INVOKED_PATH=
+RIG_PUBLISH_STAGE=
+RIG_PUBLISH_ROOT=
+RIG_PUBLISH_STAGING_ROOT=
+RIG_RESOURCE_PREFLIGHT_DETAIL=
+RIG_PUBLISH_RETAINED_ROOT=
+RIG_PUBLISH_COMPLETE=0
+RIG_CLEAN_CLAIM=
+RIG_CLEAN_ROOT=
+RIG_PUBLICATION_PLATFORM_NEUTRAL=0
+RIG_PROGRESS_ACTIVE=0
+RIG_PROGRESS_CURRENT=0
+RIG_PROGRESS_LABEL=
+RIG_PROGRESS_TOTAL=0
+RIG_PROFILE_SELECTION_MODE=
+RIG_RESOLVED_PROFILE_KIND=
+RIG_RECONCILIATION_LOCK=
+RIG_RECONCILIATION_LOCK_ACQUIRED=0
+RIG_BOOTSTRAP_ALLOW_DEFERRED_SKILLS=0
+RIG_LISTENER_OBSERVATION_AVAILABLE=0
+
+print_help() {
+  printf '%s\n' \
+    'Usage: rig [options] [command]' \
+    '' \
+    "Describe and manage a person's working setup." \
+    '' \
+    'Options:' \
+    '  -h, --help            Show this help.' \
+    '  -V, --version         Print the Rig version.' \
+    '' \
+    'Commands:' \
+    '  show        Describe a resolved profile with tools and skills.' \
+    '  list        Browse declared catalogue tools.' \
+    '  explain     Explain a declared tool, skill, resource, or private port.' \
+    '  status      Compare expected and observed tool, skill, and resource state.' \
+    '  doctor      Check whether Rig can operate.' \
+    '  apply       Materialise a resolved profile.' \
+    '  bootstrap   Materialise the bootstrap profile.' \
+    '  update      Update selected provider-managed tools and skills.' \
+    '  maintain    Run explicit selected-provider maintenance.' \
+    '  capture     Refresh one provider-native manifest.' \
+    '  run         Invoke a declared provider action.' \
+    '  export      Generate public Rig data.' \
+    '  publish     Publish public Rig data.' \
+    '  clean       Remove eligible Rig-owned cache data.' \
+    '  diag        Print runtime and configuration diagnostics.' \
+    '  completion  Print shell completion source.' \
+    '  help        Show this help.' \
+    '' \
+    "Run 'rig COMMAND --help' for command usage." \
+    '' \
+    'Configuration loading and provider work report progress on stderr when interactive.'
+}
+
+syntax_error() {
+  printf 'rig: error: %s\n' "$1" >&2
+  print_help >&2
+  return 2
+}
+
+rig_fail() {
+  printf 'rig: error: %s\n' "$1" >&2
+  return 2
+}
+
+rig_progress_enabled() {
+  case "${RIG_PROGRESS:-auto}" in
+    always) return 0 ;;
+    never) return 1 ;;
+    auto|'') [ -t 2 ] ;;
+    *) [ -t 2 ] ;;
+  esac
+}
+
+rig_progress_start() {
+  RIG_PROGRESS_ACTIVE=0
+  RIG_PROGRESS_CURRENT=0
+  RIG_PROGRESS_LABEL=$1
+  RIG_PROGRESS_TOTAL=$2
+  [ "$RIG_PROGRESS_TOTAL" -gt 0 ] || return 0
+  rig_progress_enabled || return 0
+  RIG_PROGRESS_ACTIVE=1
+  printf 'rig: %s 0/%s\n' "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_TOTAL" >&2
+}
+
+rig_progress_step() {
+  [ "$RIG_PROGRESS_ACTIVE" -eq 1 ] || return 0
+  RIG_PROGRESS_CURRENT=$((RIG_PROGRESS_CURRENT + 1))
+  printf 'rig: %s %s/%s: %s\n' \
+    "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" "$1" >&2
+}
+
+rig_progress_finish() {
+  [ "$RIG_PROGRESS_ACTIVE" -eq 1 ] || return 0
+  printf 'rig: %s complete (%s)\n' "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" >&2
+  RIG_PROGRESS_ACTIVE=0
+}
+
+require_home() {
+  if [ -z "${HOME:-}" ]; then
+    printf '%s\n' 'rig: error: HOME is required when an XDG directory is not set' >&2
+    return 1
+  fi
+}
+
+print_bash_completion() {
+  # The emitted completion deliberately retains runtime shell expressions.
+  # shellcheck disable=SC2016
+  printf '%s\n' \
+    '_rig() {' \
+    '  local current command' \
+    '  current=${COMP_WORDS[COMP_CWORD]}' \
+    '  command=${COMP_WORDS[1]:-}' \
+    '  if [ "$COMP_CWORD" -eq 1 ]; then' \
+    '    COMPREPLY=($(compgen -W "-h --help -V --version show list explain status doctor apply bootstrap update maintain capture run export publish clean diag completion help" -- "$current"))' \
+    '    return' \
+    '  fi' \
+    '  case "$command" in' \
+    '    show) COMPREPLY=($(compgen -W "-h --help --profile" -- "$current")) ;;' \
+    '    list) COMPREPLY=($(compgen -W "-h --help --category --profile" -- "$current")) ;;' \
+    '    explain) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
+    '    status) COMPREPLY=($(compgen -W "-h --help --profile --unmanaged" -- "$current")) ;;' \
+    '    doctor) COMPREPLY=($(compgen -W "-h --help --profile" -- "$current")) ;;' \
+    '    apply) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all" -- "$current")) ;;' \
+    '    bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all" -- "$current")) ;;' \
+    '    update|maintain) COMPREPLY=($(compgen -W "-h --help --profile --dry-run" -- "$current")) ;;' \
+    '    capture) COMPREPLY=($(compgen -W "-h --help --dry-run homebrew" -- "$current")) ;;' \
+    '    run) COMPREPLY=($(compgen -W "-h --help --" -- "$current")) ;;' \
+    '    export) COMPREPLY=($(compgen -W "-h --help --output" -- "$current")) ;;' \
+    '    publish) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
+    '    clean) COMPREPLY=($(compgen -W "-h --help --dry-run" -- "$current")) ;;' \
+    '    diag) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
+    '    completion) COMPREPLY=($(compgen -W "-h --help bash zsh" -- "$current")) ;;' \
+    '    help) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
+    '  esac' \
+    '}' \
+    'complete -F _rig rig'
+}
+
+print_zsh_completion() {
+  # The emitted completion deliberately retains runtime shell expressions.
+  # shellcheck disable=SC2016
+  printf '%s\n' \
+    '#compdef rig' \
+    '' \
+    '_rig() {' \
+    '  local -a commands' \
+    '  local state' \
+    '  commands=(' \
+    "    'show:describe a resolved profile'" \
+    "    'list:browse declared catalogue tools'" \
+    "    'explain:explain a declared tool, resource, or private port'" \
+    "    'status:compare expected and observed state'" \
+    "    'doctor:check whether Rig can operate'" \
+    "    'apply:materialise a resolved profile'" \
+    "    'bootstrap:materialise the bootstrap profile'" \
+    "    'update:update selected provider-managed tools'" \
+    "    'maintain:run explicit selected-provider maintenance'" \
+    "    'capture:refresh one provider-native manifest'" \
+    "    'run:invoke a declared provider action'" \
+    "    'export:generate public rig data'" \
+    "    'publish:publish public rig data'" \
+    "    'clean:remove eligible Rig-owned cache data'" \
+    "    'diag:print runtime and configuration diagnostics'" \
+    "    'completion:print shell completion source'" \
+    "    'help:show help'" \
+    '  )' \
+    "  _arguments '(-h --help)'{-h,--help}'[show help]' '(-V --version)'{-V,--version}'[print the Rig version]' '1:command:->command' '*::argument:->argument'" \
+    '  case $state in' \
+    "    command) _describe -t commands 'rig command' commands ;;" \
+    '    argument)' \
+    '      case $words[2] in' \
+    "        show) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select a profile]:profile name:' ;;" \
+    "        list) _arguments '(-h --help)'{-h,--help}'[show command help]' '--category[select a category]:category id:' '--profile[select a profile]:profile name:' ;;" \
+    "        explain) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:tool, qualified resource, or private port:' ;;" \
+    "        status) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--unmanaged[report observed items no tool installation declares]' ;;" \
+    "        doctor) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' ;;" \
+    "        apply) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--scope[select plan scope]:scope:(tools skills resources all)' '--dry-run[print plan without invoking providers]' ;;" \
+    "        bootstrap) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--scope[select plan scope]:scope:(tools skills resources all)' '--dry-run[print plan without invoking providers]' ;;" \
+    "        update|maintain) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \
+    "        capture) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:provider:(homebrew)' '--dry-run[print plan without invoking provider]' ;;" \
+    "        run) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:provider name:' '2:action name:' '3:separator:(--)' '*::action argument:' ;;" \
+    "        export) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' '--output[write complete public data tree]:directory:_directories' ;;" \
+    "        publish) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' ;;" \
+    "        clean) _arguments '(-h --help)'{-h,--help}'[show command help]' '--dry-run[report eligible cache data without removing it]' ;;" \
+    "        diag) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
+    "        completion) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:shell:(bash zsh)' ;;" \
+    "        help) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
+    '      esac' \
+    '      ;;' \
+    '  esac' \
+    '}' \
+    '' \
+    'compdef _rig rig'
+}

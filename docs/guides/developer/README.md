@@ -14,7 +14,9 @@ Generated artifacts remain part of their owning tool and are observation-only. K
 
 ## Make a change
 
-Update the public command surface in `bin/rig`, then keep `tests/rig.bats`, `man/rig.1`, README usage, command guides, completion output, and changelog aligned. Record durable rationale in Decision Records, accepted behaviour in Specifications, and future delivery in the roadmap.
+Edit the domain-focused files beneath `src/rig/`, then run `scripts/assemble-rig --write` to regenerate the single installed `bin/rig`. Update tests and keep `man/rig.1`, README usage, command guides, completion output, and changelog aligned when the public surface changes. Record durable rationale in Decision Records, accepted behaviour in Specifications, and future delivery in the roadmap.
+
+Use `scripts/benchmark-rig` after parser, resolution, or query changes. Its default five-second ceiling is the portable regression guard; use `RIG_BENCHMARK_BUDGET_SECONDS=2` to check the reference macOS target. `scripts/smoke-native-providers` performs only bounded version probes and reports unavailable provider tools as skips.
 
 Before presenting a change for review, complete the [definition of done](definition-of-done.md). Use isolated XDG and Rig-specific environment values in tests so no developer configuration or state is read or written.
 
@@ -24,8 +26,11 @@ Run:
 
 ```sh
 ki repo audit --repo .
-shellcheck bin/rig install.sh
-bash -n bin/rig install.sh
+shellcheck bin/rig install.sh src/rig/*.bash scripts/assemble-rig scripts/benchmark-rig scripts/smoke-native-providers
+bash -n bin/rig install.sh src/rig/*.bash scripts/assemble-rig scripts/benchmark-rig scripts/smoke-native-providers
+scripts/assemble-rig --check
+scripts/benchmark-rig
+scripts/smoke-native-providers
 bats tests/
 mandoc -T lint man/rig.1
 git diff --check

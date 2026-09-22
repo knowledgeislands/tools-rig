@@ -2,7 +2,8 @@
 
 # Indexed arrays intentionally use explicit arithmetic indexes throughout.
 # The parser reads a path held in $file but never writes to that path.
-# shellcheck disable=SC2004,SC2094
+# Cross-module globals are intentionally initialised and consumed after assembly.
+# shellcheck disable=SC2004,SC2034,SC2094
 
 # Rig — declarative description and manager of a working setup.
 
@@ -15,6 +16,8 @@ RIG_SECTION_IDS=()
 RIG_SECTION_SECONDARY_IDS=()
 RIG_SECTION_FIELD_STARTS=()
 RIG_SECTION_FIELD_ENDS=()
+RIG_SECTION_DECLARED_STARTS=()
+RIG_SECTION_DECLARED_ENDS=()
 RIG_SECTION_LOOKUP_NAMES=()
 RIG_SECTION_LOOKUP_INDICES=()
 RIG_FIELD_SECTIONS=()
@@ -46,7 +49,7 @@ RIG_INVOKE_ARGUMENTS=()
 RIG_VISIT_NAMES=()
 RIG_VISIT_STATES=()
 RIG_QUERY_ITEMS=()
-RIG_DECLARED_FIELDS=()
+RIG_DECLARED_FIELD_KEYS=()
 RIG_CLEAN_PATHS=()
 RIG_CLEAN_STATES=()
 RIG_PORT_STATES=()
@@ -69,6 +72,9 @@ RIG_LISTENER_PORTS=()
 RIG_LISTENER_SCOPES=()
 RIG_LISTENER_COMMANDS=()
 RIG_LISTENER_PIDS=()
+RIG_OBSERVATION_CACHE_KEYS=()
+RIG_OBSERVATION_CACHE_OUTPUTS=()
+RIG_OBSERVATION_CACHE_STATUSES=()
 RIG_VALUE=
 RIG_INDEX=
 RIG_COUNT=0
@@ -270,6 +276,10 @@ print_zsh_completion() {
     '' \
     'compdef _rig rig'
 }
+# rig-module: 10-configuration
+# shellcheck shell=bash
+# Cross-module state is intentionally consumed by later assembled modules.
+# shellcheck disable=SC2004,SC2034,SC2094
 
 rig_model_reset() {
   RIG_SECTION_NAMES=()
@@ -278,6 +288,8 @@ rig_model_reset() {
   RIG_SECTION_SECONDARY_IDS=()
   RIG_SECTION_FIELD_STARTS=()
   RIG_SECTION_FIELD_ENDS=()
+  RIG_SECTION_DECLARED_STARTS=()
+  RIG_SECTION_DECLARED_ENDS=()
   RIG_SECTION_LOOKUP_NAMES=()
   RIG_SECTION_LOOKUP_INDICES=()
   RIG_FIELD_SECTIONS=()
@@ -309,7 +321,7 @@ rig_model_reset() {
   RIG_VISIT_NAMES=()
   RIG_VISIT_STATES=()
   RIG_QUERY_ITEMS=()
-  RIG_DECLARED_FIELDS=()
+  RIG_DECLARED_FIELD_KEYS=()
   RIG_PORT_STATES=()
   RIG_PORT_DETAILS=()
   RIG_SKILL_STATES=()
@@ -330,6 +342,9 @@ rig_model_reset() {
   RIG_LISTENER_SCOPES=()
   RIG_LISTENER_COMMANDS=()
   RIG_LISTENER_PIDS=()
+  RIG_OBSERVATION_CACHE_KEYS=()
+  RIG_OBSERVATION_CACHE_OUTPUTS=()
+  RIG_OBSERVATION_CACHE_STATUSES=()
   RIG_VALUE=
   RIG_INDEX=
   RIG_COUNT=0
@@ -455,6 +470,8 @@ rig_add_section() {
   RIG_SECTION_SECONDARY_IDS[$index]=$RIG_SECTION_SECONDARY_ID
   RIG_SECTION_FIELD_STARTS[$index]=${#RIG_FIELD_KEYS[@]}
   RIG_SECTION_FIELD_ENDS[$index]=${#RIG_FIELD_KEYS[@]}
+  RIG_SECTION_DECLARED_STARTS[$index]=${#RIG_DECLARED_FIELD_KEYS[@]}
+  RIG_SECTION_DECLARED_ENDS[$index]=${#RIG_DECLARED_FIELD_KEYS[@]}
   rig_index_section_name "$name" "$index"
   RIG_INDEX=$index
 }
@@ -478,6 +495,8 @@ rig_add_derived_binding_section() {
   RIG_SECTION_SECONDARY_IDS[$index]=$provider
   RIG_SECTION_FIELD_STARTS[$index]=${#RIG_FIELD_KEYS[@]}
   RIG_SECTION_FIELD_ENDS[$index]=${#RIG_FIELD_KEYS[@]}
+  RIG_SECTION_DECLARED_STARTS[$index]=${#RIG_DECLARED_FIELD_KEYS[@]}
+  RIG_SECTION_DECLARED_ENDS[$index]=${#RIG_DECLARED_FIELD_KEYS[@]}
   rig_index_section_name "$name" "$index"
   RIG_INDEX=$index
   [ -z "$variant" ] || rig_add_field "$index" variant "$variant" '<derived install>' 0 || return
@@ -673,26 +692,32 @@ rig_toml_field() {
 }
 
 rig_toml_mark_field() {
-  local section_index key file line marker index
+  local section_index key file line index end
 
   section_index=$1
   key=$2
   file=$3
   line=$4
-  marker=$section_index:$key
-  index=0
-  while [ "$index" -lt "${#RIG_DECLARED_FIELDS[@]}" ]; do
-    [ "${RIG_DECLARED_FIELDS[$index]}" != "$marker" ] ||
+  index=${RIG_SECTION_DECLARED_STARTS[$section_index]}
+  end=${RIG_SECTION_DECLARED_ENDS[$section_index]}
+  while [ "$index" -lt "$end" ]; do
+    [ "${RIG_DECLARED_FIELD_KEYS[$index]}" != "$key" ] ||
       rig_fail "$file:$line: duplicate field '$key' in [${RIG_SECTION_NAMES[$section_index]}]" || return
     index=$((index + 1))
   done
-  RIG_DECLARED_FIELDS[${#RIG_DECLARED_FIELDS[@]}]=$marker
+  index=${#RIG_DECLARED_FIELD_KEYS[@]}
+  RIG_DECLARED_FIELD_KEYS[$index]=$key
+  RIG_SECTION_DECLARED_ENDS[$section_index]=$((index + 1))
 }
 
 rig_toml_strip_comment() {
   local input output character index length in_string escaped
 
   input=$1
+  case "$input" in
+    *'#'*) ;;
+    *) RIG_VALUE=$input; return 0 ;;
+  esac
   output=
   index=0
   length=${#input}
@@ -734,6 +759,10 @@ rig_toml_parse_string() {
   esac
   body=${input#\"}
   body=${body%\"}
+  case "$body" in
+    *\\*|*\"*) ;;
+    *) RIG_VALUE=$body; return 0 ;;
+  esac
   output=
   escaped=0
   index=0
@@ -765,7 +794,7 @@ rig_toml_parse_string() {
 }
 
 rig_toml_take_string() {
-  local input file line character escaped index length token
+  local input file line character escaped index length token rest item
 
   input=$1
   file=$2
@@ -773,6 +802,20 @@ rig_toml_take_string() {
   case "$input" in
     '"'*) ;;
     *) rig_fail "$file:$line: TOML arrays must contain basic strings" || return ;;
+  esac
+  case "$input" in
+    *\\*) ;;
+    *)
+      rest=${input#\"}
+      case "$rest" in
+        *\"*)
+          item=${rest%%\"*}
+          RIG_VALUE=$item
+          RIG_TOML_REST=${rest#*\"}
+          return 0
+          ;;
+      esac
+      ;;
   esac
   escaped=0
   index=1
@@ -805,6 +848,7 @@ rig_toml_array_complete() {
   line=$3
   RIG_COUNT=0
   case "$input" in \[*) ;; *) return 1 ;; esac
+  case "$input" in *\]) RIG_COUNT=1; return 0 ;; esac
   escaped=0
   in_string=0
   index=1
@@ -886,15 +930,16 @@ rig_field_count() {
 }
 
 rig_field_declared() {
-  local section_name key marker index
+  local section_name key section_index index end
 
   section_name=$1
   key=$2
   rig_section_index "$section_name" || return 1
-  marker=$RIG_INDEX:$key
-  index=0
-  while [ "$index" -lt "${#RIG_DECLARED_FIELDS[@]}" ]; do
-    [ "${RIG_DECLARED_FIELDS[$index]}" != "$marker" ] || return 0
+  section_index=$RIG_INDEX
+  index=${RIG_SECTION_DECLARED_STARTS[$section_index]}
+  end=${RIG_SECTION_DECLARED_ENDS[$section_index]}
+  while [ "$index" -lt "$end" ]; do
+    [ "${RIG_DECLARED_FIELD_KEYS[$index]}" != "$key" ] || return 0
     index=$((index + 1))
   done
   return 1
@@ -3012,6 +3057,10 @@ rig_dump_resolution() {
     index=$((index + 1))
   done
 }
+# rig-module: 20-orchestration
+# shellcheck shell=bash
+# Cross-module state is intentionally consumed by later assembled modules.
+# shellcheck disable=SC2004,SC2034,SC2094
 
 rig_plan_index() {
   local wanted index
@@ -4581,6 +4630,32 @@ rig_capture_invocation() {
   esac
 }
 
+rig_capture_observation_invocation() {
+  local executable key argument index
+
+  executable=$1
+  key=${#executable}:$executable
+  for argument in "${RIG_INVOKE_ARGUMENTS[@]}"; do
+    key=$key:${#argument}:$argument
+  done
+
+  index=0
+  while [ "$index" -lt "${#RIG_OBSERVATION_CACHE_KEYS[@]}" ]; do
+    if [ "${RIG_OBSERVATION_CACHE_KEYS[$index]}" = "$key" ]; then
+      RIG_CAPTURED_OUTPUT=${RIG_OBSERVATION_CACHE_OUTPUTS[$index]}
+      RIG_NATIVE_STATUS=${RIG_OBSERVATION_CACHE_STATUSES[$index]}
+      return 0
+    fi
+    index=$((index + 1))
+  done
+
+  rig_capture_invocation "$executable"
+  index=${#RIG_OBSERVATION_CACHE_KEYS[@]}
+  RIG_OBSERVATION_CACHE_KEYS[$index]=$key
+  RIG_OBSERVATION_CACHE_OUTPUTS[$index]=$RIG_CAPTURED_OUTPUT
+  RIG_OBSERVATION_CACHE_STATUSES[$index]=$RIG_NATIVE_STATUS
+}
+
 rig_output_has_identity() {
   local output wanted identity
 
@@ -4816,7 +4891,7 @@ rig_observe_provider() {
     RIG_OBSERVATION_DETAIL='executable-unavailable'
     return 0
   fi
-  rig_capture_invocation "$executable"
+  rig_capture_observation_invocation "$executable"
   if [ "$RIG_NATIVE_STATUS" -ne 0 ]; then
     if [ "$adapter:$kind:$RIG_NATIVE_STATUS" = homebrew:formula:1 ] ||
       [ "$adapter:$kind:$RIG_NATIVE_STATUS" = homebrew:cask:1 ] ||
@@ -7145,6 +7220,10 @@ rig_command_bootstrap() {
   fi
   return "$exit_code"
 }
+# rig-module: 30-commands
+# shellcheck shell=bash
+# Cross-module state is intentionally consumed by later assembled modules.
+# shellcheck disable=SC2004,SC2034,SC2094
 
 rig_current_platform() {
   local shell_platform
@@ -8491,6 +8570,10 @@ rig_command_explain() {
   printf 'Installation: %s\n' "$binding"
     printf 'Artifacts: %s\n' "$artifacts"
 }
+# rig-module: 40-publication-lifecycle
+# shellcheck shell=bash
+# Cross-module state is intentionally consumed by later assembled modules.
+# shellcheck disable=SC2004,SC2034,SC2094
 
 rig_json_escape() {
   local value escaped index character code
@@ -9763,6 +9846,10 @@ rig_command_clean() {
     return "$exit_code"
   )
 }
+# rig-module: 90-main
+# shellcheck shell=bash
+# Cross-module state is intentionally consumed by the assembled executable.
+# shellcheck disable=SC2004,SC2034,SC2094
 
 main() {
   local command_name

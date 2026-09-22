@@ -18,7 +18,8 @@ XDG defines no executable directory. `install.sh` therefore defaults to `~/.loca
 
 ## Repository shape
 
-- `bin/rig` is executable, contains the single `RIG_VERSION` source, and owns the public CLI.
+- `src/rig/*.bash` are ordered authored modules; `src/rig/00-runtime.bash` owns the sole authored `RIG_VERSION`, and `scripts/assemble-rig` deterministically generates the committed `bin/rig`.
+- `bin/rig` is the single executable installation payload and contains the assembled runtime version; never edit it directly or introduce a runtime module loader.
 - `install.sh` supports released installation and `--link` local development.
 - `man/rig.1`, CLI help, README command summaries, and completion output stay aligned.
 - `tests/rig.bats` tests the public command contract.
@@ -30,7 +31,11 @@ Run the complete local gate before committing:
 
 ```sh
 ki repo audit --repo .
-shellcheck bin/rig install.sh
+shellcheck bin/rig install.sh src/rig/*.bash scripts/assemble-rig scripts/benchmark-rig scripts/smoke-native-providers
+bash -n bin/rig install.sh src/rig/*.bash scripts/assemble-rig scripts/benchmark-rig scripts/smoke-native-providers
+scripts/assemble-rig --check
+scripts/benchmark-rig
+scripts/smoke-native-providers
 bats tests/
 mandoc -T lint man/rig.1
 ```

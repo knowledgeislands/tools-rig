@@ -12,6 +12,7 @@ Release publication has additional steps in [Release Rig](releasing.md).
 - [ ] A generally useful bootstrap stage, provider adapter, inventory source, setting type, or resource lifecycle is implemented in Rig rather than delegated to a personal workstation provider.
 - [ ] Personal catalogue data, host-specific values, credentials, provider-native state, external executables, and private observed state remain outside the public executable and public projection.
 - [ ] Runtime code remains compatible with macOS Bash 3.2 and adds no required runtime dependency beyond Bash.
+- [ ] Authored `src/rig/` modules assemble byte-for-byte into committed `bin/rig`; every module and the assembled payload passes Bash 3.2 syntax and ShellCheck gates.
 - [ ] Configuration, data, state, and cache behaviour preserve the XDG and Rig-override contract.
 
 ## Align affected public surfaces
@@ -30,7 +31,10 @@ Release publication has additional steps in [Release Rig](releasing.md).
 
 - [ ] Run `ki repo audit --repo .` and resolve findings within approved authority, recording approval-gated external findings separately.
 - [ ] Run `shellcheck bin/rig install.sh`.
-- [ ] Run `bash -n bin/rig install.sh`.
+- [ ] Run `shellcheck src/rig/*.bash scripts/assemble-rig scripts/benchmark-rig scripts/smoke-native-providers`.
+- [ ] Run `bash -n bin/rig install.sh src/rig/*.bash scripts/assemble-rig scripts/benchmark-rig scripts/smoke-native-providers`.
+- [ ] Run `scripts/assemble-rig --check` and `scripts/benchmark-rig`; use the two-second reference budget when assessing parser, resolution, or query performance.
+- [ ] Run `scripts/smoke-native-providers`, treating unavailable optional providers as explicit skips and any failed available read-only probe as a failure.
 - [ ] Run `bats tests/`.
 - [ ] Run `mandoc -T lint man/rig.1` and inspect `mandoc -T utf8 man/rig.1 | col -b` after a manual layout change.
 - [ ] Run `git diff --check` and focused KI authoring, guide, specification, decision, and roadmap audits for touched documentation.

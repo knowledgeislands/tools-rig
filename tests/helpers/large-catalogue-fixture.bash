@@ -2,9 +2,11 @@
 
 # Write a deterministic catalogue large enough to expose repeated full-model scans.
 write_large_catalogue_fixture() {
-  local output index tool previous next category provider
+  local output mode provider_executable index tool previous next category provider kind
 
   output=$1
+  mode=${2:-mixed}
+  provider_executable=${3:-}
   index=1
   {
     printf '%s\n' \
@@ -25,6 +27,11 @@ write_large_catalogue_fixture() {
       'adapter = "custom"' \
       'executable = "/usr/bin/false"' \
       'capabilities = ["install"]'
+
+    if [ "$mode" = batched ]; then
+      printf '\n[provider.uv]\n'
+      printf 'executable = "%s"\n' "$provider_executable"
+    fi
 
     index=1
     while [ "$index" -le 100 ]; do
@@ -48,13 +55,18 @@ write_large_catalogue_fixture() {
         printf '%s\n' 'alternatives = ["tool-001"]'
       fi
 
-      if [ $((index % 2)) -eq 0 ]; then
+      if [ "$mode" = batched ]; then
+        provider=uv
+        kind=tool
+      elif [ $((index % 2)) -eq 0 ]; then
         provider=fixture
+        kind=formula
       else
         provider=homebrew
+        kind=formula
       fi
-    printf 'install.provider = "%s"\n' "$provider"
-    printf '%s\n' 'install.kind = "formula"'
+      printf 'install.provider = "%s"\n' "$provider"
+      printf 'install.kind = "%s"\n' "$kind"
     printf 'install.locator = "fixture/%s"\n' "$tool"
     printf '%s\n' 'install.platforms = ["macos"]'
       index=$((index + 1))

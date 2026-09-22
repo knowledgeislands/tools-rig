@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+set -u
+
+failures=0
+smoke_root=$(mktemp -d "${TMPDIR:-/tmp}/rig-native-smoke.XXXXXX") || exit 1
+trap 'rm -rf "$smoke_root"' EXIT HUP INT TERM
+mkdir -p "$smoke_root/home" "$smoke_root/config" "$smoke_root/data" "$smoke_root/state" "$smoke_root/cache" || exit
+
+smoke_native() {
+  local provider executable
+
+  provider=$1
+  executable=$2
+  shift 2
+  if ! command -v "$executable" >/dev/null 2>&1; then
+    printf '%s: SKIP (%s unavailable)\n' "$provider" "$executable"
+    return 0
+  fi
+  if env HOME="$smoke_root/home" \
+    XDG_CONFIG_HOME="$smoke_root/config" \
+    XDG_DATA_HOME="$smoke_root/data" \
+    XDG_STATE_HOME="$smoke_root/state" \
+    XDG_CACHE_HOME="$smoke_root/cache" \
+    "$executable" "$@" >/dev/null 2>&1; then
+    printf '%s: PASS (%s)\n' "$provider" "$executable"
+  else
+    printf '%s: FAIL (%s read-only probe failed)\n' "$provider" "$executable" >&2
+    failures=$((failures + 1))
+  fi
+}
+
+smoke_native homebrew brew --version
+smoke_native uv uv --version
+smoke_native mise mise --version
+smoke_native npm npm --version
+smoke_native chezmoi chezmoi --version
+smoke_native mas mas version
+
+[ "$failures" -eq 0 ]

@@ -342,3 +342,13 @@ _Conformance:_ conforming
 _Verify:_ Isolated Bats fakes prove literal CLI arguments, no KI invocation, canonical local containment and collision preservation, tools → skills → resources ordering, explicit update, and absence of removal in apply, bootstrap, update, maintain, and clean.
 
 _Evidence:_ `rig_preflight_skills`, `rig_apply_skill`, `rig_run_skill_apply`, `rig_collect_lifecycle_tasks`, and `tests/rig-skills.bats` implement and verify the lifecycle.
+
+### RIG-ORCH-033 — Equivalent observation snapshots
+
+Within one command, Rig MAY reuse a built-in provider observation only when the executable and every literal native argument are identical. Reuse MUST remain in memory, preserve each item's dependency and artifact evaluation and progress step, MUST NOT apply to custom-provider observations, and MUST NOT persist provider state as a competing authority.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats supplies two uv tools whose exact native observation command is identical, proves one invocation, and verifies independent exact-identity results for both tools.
+
+_Evidence:_ `rig_capture_observation_invocation` keys the command-local snapshot by executable and length-delimited literal arguments; `tests/rig-performance.bats` covers reuse and per-tool interpretation.

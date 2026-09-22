@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+
+set -u
+
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P) || exit 1
+rig_root=$(CDPATH='' cd -- "$script_dir/.." && pwd -P) || exit 1
+output=${RIG_ASSEMBLY_OUTPUT:-$rig_root/bin/rig}
+mode=${1:---check}
+temporary=$(mktemp "$rig_root/bin/.rig.XXXXXX") || exit 1
+trap 'rm -f "$temporary"' EXIT HUP INT TERM
+
+assemble() {
+  local module
+
+  for module in \
+    00-runtime.bash \
+    10-configuration.bash \
+    20-orchestration.bash \
+    30-commands.bash \
+    40-publication-lifecycle.bash \
+    90-main.bash; do
+    [ -f "$rig_root/src/rig/$module" ] || {
+      printf 'assemble-rig: missing source module: %s\n' "$module" >&2
+      return 1
+    }
+    command cat "$rig_root/src/rig/$module" || return
+  done
+}
+
+assemble >"$temporary" || exit
+
+case "$mode" in
+  --check)
+    if ! cmp -s "$temporary" "$output"; then
+      printf 'assemble-rig: bin/rig differs from its authored modules; run scripts/assemble-rig --write\n' >&2
+      exit 1
+    fi
+    ;;
+  --write)
+    chmod 755 "$temporary" || exit
+    command cp "$temporary" "$output" || exit
+    trap - EXIT HUP INT TERM
+    rm -f "$temporary"
+    ;;
+  -h|--help)
+    printf '%s\n' 'Usage: scripts/assemble-rig [--check|--write]'
+    ;;
+  *)
+    printf 'assemble-rig: unsupported option: %s\n' "$mode" >&2
+    exit 2
+    ;;
+esac
