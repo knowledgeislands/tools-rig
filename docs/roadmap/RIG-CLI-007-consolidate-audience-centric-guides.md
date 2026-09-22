@@ -4,13 +4,13 @@ title: Consolidate audience-centric guides
 area: CLI
 theme: cli
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 transferred_from: ki-website
 baseline_ref: 8e3dc95af5d7631300f46368d62386b87533df48
 created_at: 2026-09-21T17:20:00Z
-updated_at: 2026-09-22T03:55:52Z
+updated_at: 2026-09-22T05:08:23Z
 ---
 
 ## Goal
@@ -113,6 +113,10 @@ The new structure gives a first-time reader a short route from purpose to a safe
 ### Mini recap
 
 Rig now has one coherent practical documentation journey for users and maintainers. Verification found no behaviour, portability, assembly, manual, or repository-governance regression, and no further work was created.
+
+## Done
+
+Accepted 2026-09-22.
 
 ## Discussion
 

@@ -4,12 +4,12 @@ title: Improve operation progress
 area: CLI
 theme: cli
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 8c16b27afc059c93430b3d9283260545cab66ec2
 created_at: 2026-09-21T23:41:42Z
-updated_at: 2026-09-22T03:43:48Z
+updated_at: 2026-09-22T05:08:23Z
 ---
 
 ## Goal
@@ -105,6 +105,10 @@ The implementation preserves `RIG-CORE-020`'s indexed parser, command-local obse
 ### Mini recap
 
 Rig now treats progress as a terminal event stream rather than an activity counter: `running` never advances completion, each enumerated item advances once on a terminal outcome, consequential work declares scope before invocation, and failure or interruption closes the active phase truthfully. The durable behaviour lives in `RIG-ORCH-019`; the user procedure and example live in the command guide.
+
+## Done
+
+Accepted 2026-09-22.
 
 ## Discussion
 

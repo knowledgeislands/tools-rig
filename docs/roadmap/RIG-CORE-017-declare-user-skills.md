@@ -4,12 +4,12 @@ title: Declare user skills
 area: CORE
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 41e7ecc0dfc017dcd172fa10e885d26c15263d4d
 created_at: 2026-09-21T18:02:02Z
-updated_at: 2026-09-22T02:44:42Z
+updated_at: 2026-09-22T05:08:23Z
 ---
 
 ## Goal
@@ -107,6 +107,10 @@ The implementation stays inside the locked scope and preserves Bash 3.2, the XDG
 ### Mini recap
 
 User-level skills are now declarative, explainable, observable, selectively materialisable, and privately safe. The remaining work is personal configuration reconciliation after this delivery is accepted.
+
+## Done
+
+Accepted 2026-09-22.
 
 ## Discussion
 

@@ -4,12 +4,12 @@ title: Humanise configuration model
 area: CORE
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 6c2db6a6399ad60850c5d20917c5428eca46f27e
 created_at: 2026-09-21T23:35:16Z
-updated_at: 2026-09-22T01:07:13Z
+updated_at: 2026-09-22T05:08:23Z
 ---
 
 ## Goal
@@ -109,6 +109,10 @@ The delivered grammar is materially easier to maintain while remaining determini
 ### Mini recap
 
 Rig configuration can now be formatted for humans, describe one tool across supported platforms, and order related managed resources without returning to duplicate identities or generic scripts. Personal-data migration remains separately owned by `RIG-MIG-007`.
+
+## Done
+
+Accepted 2026-09-22.
 
 ## Discussion
 

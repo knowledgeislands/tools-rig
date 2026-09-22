@@ -4,12 +4,12 @@ title: Curate personal rig
 area: MIG
 theme: migration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 9bb2a753281f94a2e91ff65ca71995a3db787b2e
 created_at: 2026-09-21T23:35:16Z
-updated_at: 2026-09-22T04:38:19Z
+updated_at: 2026-09-22T05:08:23Z
 ---
 
 ## Goal
@@ -113,6 +113,10 @@ The source migration exercises every accepted portable contract without widening
 ### Mini recap
 
 Personal configuration now demonstrates human-oriented profiles, private ports, a reviewed user skill, and a safe public data projection. Verification is green at the source and export boundaries; live application, skill installation, publisher delivery, and personal rationale review remain explicit follow-up decisions.
+
+## Done
+
+Accepted 2026-09-22.
 
 ## Discussion
 

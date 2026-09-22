@@ -4,12 +4,12 @@ title: Define reconciliation authority
 area: CORE
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: f84233051bc7301fa84b78e03c4055ba6e33c1bf
 created_at: 2026-09-21T23:35:16Z
-updated_at: 2026-09-22T00:31:39Z
+updated_at: 2026-09-22T05:08:23Z
 ---
 
 ## Goal
@@ -110,6 +110,10 @@ The implementation satisfies the locked model without adding runtime dependencie
 ### Mini recap
 
 Rig now has one unambiguous profile authority per configuration, safe non-mutating views, deterministic resolved-target validation, visible mutation scope, and serialized receipt-backed application.
+
+## Done
+
+Accepted 2026-09-22.
 
 ## Discussion
 

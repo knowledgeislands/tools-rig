@@ -4,12 +4,12 @@ title: Declare private ports
 area: CORE
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 5e5e2a574516aac249d9824cdfe5f1e1b3e7499a
 created_at: 2026-09-21T17:54:55Z
-updated_at: 2026-09-22T01:35:43Z
+updated_at: 2026-09-22T05:08:23Z
 ---
 
 ## Goal
@@ -103,6 +103,10 @@ The delivered model answers which stable ports are allocated, who owns them, whe
 ### Mini recap
 
 Rig gained a human-readable private TCP declaration, profile-aware inert queries, one bounded macOS observation source, state and doctor synthesis, and optional unmanaged listener discovery. Verification covers the complete accepted behavior without real sockets. Durable learning landed in the existing product, configuration, publication, and operational-resource Decision Records; configuration, query, state, orchestration, and publication Specifications; and the user resource guide. Personal values route to `RIG-MIG-007` after acceptance.
+
+## Done
+
+Accepted 2026-09-22.
 
 ## Discussion
 

@@ -4,12 +4,12 @@ title: Align next preview
 area: DIST
 theme: distribution
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: da0ddd42bd0aa10d684af7f8f4e3cbdc970368d7
 created_at: 2026-09-21T23:35:16Z
-updated_at: 2026-09-22T04:56:20Z
+updated_at: 2026-09-22T05:08:23Z
 ---
 
 ## Goal
@@ -108,6 +108,10 @@ The candidate is internally consistent and preserves the release authority bound
 ### Mini recap
 
 Development truth, immutable-install truth, command surfaces, release procedure, and verification evidence now agree. The candidate is ready for human review; publication work is explicitly deferred.
+
+## Done
+
+Accepted 2026-09-22.
 
 ## Discussion
 

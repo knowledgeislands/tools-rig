@@ -4,12 +4,12 @@ title: Improve runtime scalability
 area: CORE
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 28b7d426b1caa9c8228843931b3df3f16d292731
 created_at: 2026-09-21T23:35:16Z
-updated_at: 2026-09-22T03:16:26Z
+updated_at: 2026-09-22T05:08:23Z
 ---
 
 ## Goal
@@ -108,6 +108,10 @@ The implementation removes the measured parser bottleneck without weakening dupl
 ### Mini recap
 
 Rig now queries a representative personal catalogue near the two-second reference target, reuses only equivalent command-local observations, and is authored in reviewable modules while shipping the same standalone Bash executable. Durable rationale, accepted quality requirements, contributor procedure, release procedure, and regression evidence are all recorded in their canonical homes; no additional learning promotion is required.
+
+## Done
+
+Accepted 2026-09-22.
 
 ## Discussion
 

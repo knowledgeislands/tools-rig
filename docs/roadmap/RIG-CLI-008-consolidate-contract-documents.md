@@ -4,12 +4,12 @@ title: Consolidate contract documents
 area: CLI
 theme: cli
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 8e47d336aa2ccec747bc8dd661e51661c87d3441
 created_at: 2026-09-21T23:35:16Z
-updated_at: 2026-09-22T04:14:58Z
+updated_at: 2026-09-22T05:08:23Z
 ---
 
 ## Goal
@@ -107,6 +107,10 @@ Fresh review found the four-document split coherent: Decisions explain why, Spec
 ### Mini recap
 
 This delivery consolidated contract authority, corrected bootstrap and lifecycle wording, added the human readability gate, and passed the full repository verification suite. No automatic learning promotion is proposed because the durable guidance already lives in the repository's decisions, specifications, manual, and developer checklists.
+
+## Done
+
+Accepted 2026-09-22.
 
 ## Discussion
 
