@@ -7,7 +7,7 @@
 
 # Rig — declarative description and manager of a working setup.
 
-RIG_VERSION=0.2.0+dev
+RIG_VERSION=0.3.0
 
 # Indexed arrays keep the installed executable compatible with macOS Bash 3.2.
 RIG_SECTION_NAMES=()

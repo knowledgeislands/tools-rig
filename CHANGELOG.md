@@ -4,7 +4,13 @@ All notable changes to `rig` are documented here. Dated `0.x` entries record imm
 
 ## [Unreleased]
 
-These changes are available from a linked development checkout and are not yet an immutable release.
+No unreleased changes.
+
+## [0.3.0] — 2026-09-22
+
+Third public preview of Rig, establishing the declarative lifecycle baseline for tools, skills, managed resources, ports, native providers, and private-safe publication.
+
+This release includes the following commands, behaviours, distribution baseline, and documentation.
 
 ### Shipped commands
 

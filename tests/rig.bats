@@ -418,16 +418,16 @@ write_query_config() {
 @test "release surfaces distinguish immutable release from linked development" {
   repo_root=$BATS_TEST_DIRNAME/..
 
-  grep -Fxq 'RIG_VERSION=0.2.0+dev' "$repo_root/src/rig/00-runtime.bash"
-  grep -Fxq 'RIG_VERSION=0.2.0+dev' "$repo_root/bin/rig"
+  grep -Fxq 'RIG_VERSION=0.3.0' "$repo_root/src/rig/00-runtime.bash"
+  grep -Fxq 'RIG_VERSION=0.3.0' "$repo_root/bin/rig"
   grep -Fq '## [Unreleased]' "$repo_root/CHANGELOG.md"
   grep -Fq '## [0.2.0]' "$repo_root/CHANGELOG.md"
   ! grep -Fq '## [1.0.0] — in progress' "$repo_root/CHANGELOG.md"
-  grep -Fq 'v0.2.0/install.sh' "$repo_root/README.md"
-  grep -Fq 'rig 0.2.0+dev' "$repo_root/README.md"
-  grep -Fq 'v0.2.0/install.sh' "$repo_root/docs/guides/user/getting-started.md"
-  grep -Fq 'rig 0.2.0+dev' "$repo_root/docs/guides/user/getting-started.md"
-  grep -Fq 'v0.2.0/install.sh' "$repo_root/man/rig.1"
+  grep -Fq 'v0.3.0/install.sh' "$repo_root/README.md"
+  grep -Fq 'rig 0.3.0' "$repo_root/README.md"
+  grep -Fq 'v0.3.0/install.sh' "$repo_root/docs/guides/user/getting-started.md"
+  grep -Fq 'rig 0.3.0' "$repo_root/docs/guides/user/getting-started.md"
+  grep -Fq 'v0.3.0/install.sh' "$repo_root/man/rig.1"
   grep -Fq 'development version marker' "$repo_root/man/rig.1"
   grep -Fq "grep -Eq '^[0-9]+\\.[0-9]+\\.[0-9]+$'" "$repo_root/.github/workflows/ci.yml"
 }
@@ -436,7 +436,7 @@ write_query_config() {
   run "$RIG" --version
 
   [ "$status" -eq 0 ]
-  [ "$output" = "rig 0.2.0+dev" ]
+  [ "$output" = "rig 0.3.0" ]
 }
 
 @test "diag reports stable runtime, default paths, and missing configuration" {
@@ -448,7 +448,7 @@ write_query_config() {
     "$RIG" diag
 
   [ "$status" -eq 1 ]
-  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.2.0+dev\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s/.config/rig\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/.config/rig/rig.toml (absent)\n  Fragment count: 0\n  Status: missing' "$RIG" "$BASH_VERSION" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME")" ]
+  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.3.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s/.config/rig\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/.config/rig/rig.toml (absent)\n  Fragment count: 0\n  Status: missing' "$RIG" "$BASH_VERSION" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME")" ]
 }
 
 @test "diag follows XDG base directories" {
@@ -632,7 +632,7 @@ write_query_config() {
     XDG_DATA_HOME= XDG_STATE_HOME= XDG_CACHE_HOME= RIG_PLATFORM=fixture "$RIG" diag
 
   [ "$status" -eq 0 ]
-  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.2.0+dev\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.toml\n  Fragment count: 2\n  Status: valid\n  Schema: 1\n  Default profile: default\n  Selection mode: central\n  Profiles: 1\n  Tools: 1\n  Skills: 0\n  Managed resources: 0\n  Ports: 0\n  Tool variants: 0' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]
+  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.3.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.toml\n  Fragment count: 2\n  Status: valid\n  Schema: 1\n  Default profile: default\n  Selection mode: central\n  Profiles: 1\n  Tools: 1\n  Skills: 0\n  Managed resources: 0\n  Ports: 0\n  Tool variants: 0' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]
 }
 
 @test "diag accepts fragment-only configuration and reports the optional root absent" {
@@ -904,7 +904,7 @@ write_query_config() {
   run "$install_bin/rig" --version
 
   [ "$status" -eq 0 ]
-  [ "$output" = "rig 0.2.0+dev" ]
+  [ "$output" = "rig 0.3.0" ]
 }
 
 @test "release installer validates both artifacts before installing either" {
@@ -1094,7 +1094,7 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
   run bash -c '. "$1"; printf "sourced:%s\n" "$RIG_VERSION"' _ "$RIG"
 
   [ "$status" -eq 0 ]
-  [ "$output" = "sourced:0.2.0+dev" ]
+  [ "$output" = "sourced:0.3.0" ]
 }
 
 @test "configuration loads only the XDG root and bytewise ordered fragments" {

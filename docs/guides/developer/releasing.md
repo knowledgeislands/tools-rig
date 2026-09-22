@@ -4,17 +4,17 @@ Rig owns its release artifacts and version. The Homebrew tap owns formula distri
 
 Expected public routes are:
 
-- `https://knowledgeislands.info/tooling/rig/` for people;
+- `https://knowledgeislands.info/projects/rig/` for people;
 - `https://knowledgeislands.info/install/rig` for installers.
 
 ## Prepare a local development candidate
 
-Keep the authored runtime version at `0.2.0+dev` and the changelog headed `Unreleased` until an exact next preview is explicitly selected. The development marker distinguishes the linked checkout from the latest immutable release without promising that `0.3.0`, or any other version, will be published next.
+Keep the authored runtime version at the latest release plus `+dev` and the changelog headed `Unreleased` until an exact next preview is explicitly selected. The development marker distinguishes the linked checkout from the latest immutable release without promising a version.
 
 Release-facing documentation must distinguish these two paths:
 
-- the README, getting-started guide, and manual identify `v0.2.0` as the latest immutable release and use its immutable installer URL;
-- a contributor links the current checkout with `./install.sh --link`, and that executable reports `rig 0.2.0+dev`.
+- the README, getting-started guide, and manual identify the latest immutable release and use its immutable installer URL;
+- a contributor links the current checkout with `./install.sh --link`, and that executable reports the matching development version.
 
 Before proposing an exact version, review the complete diff from the latest immutable tag and run the complete repository gate. Verify a disposable linked installation, the release-installer fixture, staged bootstrap tests, bounded native-provider smoke, and an offline public export. This produces local evidence only: it does not select a version or authorise a tag, push, GitHub release, tap update, website deployment, personal apply, or any other external mutation.
 
@@ -60,6 +60,6 @@ A first-time website entry, maturity change, or consumer not enrolled in automat
 
 - the exact `vX.Y.Z` version;
 - `https://raw.githubusercontent.com/knowledgeislands/tools-rig/vX.Y.Z/install.sh` as the immutable installer target;
-- the expected `/tooling/rig/` and `/install/rig` routes.
+- the expected `/projects/rig/` and `/install/rig` routes.
 
 Rig stores no shared release credentials and does not duplicate the tap or website's own verification.

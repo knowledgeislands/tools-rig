@@ -4,16 +4,16 @@ This guide takes you from no Rig installation to a readable catalogue, a machine
 
 ## Install the public preview
 
-Install the latest immutable release, currently `v0.2.0`:
+Install the latest immutable release, currently `v0.3.0`:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.2.0/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.3.0/install.sh | bash
 ```
 
 To make the selected release explicit:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.2.0/install.sh | bash -s -- v0.2.0
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.3.0/install.sh | bash -s -- v0.3.0
 ```
 
 The executable defaults to `~/.local/bin/rig`. The manual defaults beneath `${XDG_DATA_HOME:-$HOME/.local/share}/man/man1`. Set `RIG_INSTALL_DIR` or `RIG_MAN_INSTALL_DIR` before running the installer when you need different destinations.
@@ -25,9 +25,9 @@ rig --version
 man rig
 ```
 
-The released command reports `rig 0.2.0`. It does not include behaviour documented under `Unreleased` in a later development checkout.
+The released command reports `rig 0.3.0`.
 
-For a local checkout, use `./install.sh --link`. It links the executable and manual so subsequent repository changes are visible without reinstalling. The current checkout reports `rig 0.2.0+dev`; that marker means development after the latest immutable release and does not choose the next preview number.
+For a local checkout, use `./install.sh --link`. It links the executable and manual so subsequent repository changes are visible without reinstalling. This selected release checkout reports `rig 0.3.0`.
 
 ## Create a small catalogue
 
