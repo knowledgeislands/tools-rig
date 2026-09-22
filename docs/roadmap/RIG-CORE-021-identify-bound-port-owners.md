@@ -64,7 +64,7 @@ The reporting workstation carries a repository-side check, `bin/workstation_surf
 
 ## Dependencies / blocks
 
-No delivery dependency. Related to `RIG-CLI-010` only in that the revised detail string is human output; do not turn it into a parsing contract.
+No delivery dependency. Sibling to `RIG-CORE-022`: both exist because a local repository had to compensate for an observation Rig makes dishonestly, and together they retire `bin/workstation_surfaces` entirely. Related to `RIG-CLI-010` only in that the revised detail string is human output; do not turn it into a parsing contract.
 
 ## Documentation impact
 
