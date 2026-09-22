@@ -4,12 +4,12 @@ title: Render adaptive terminal progress
 area: CLI
 theme: cli
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: 38887870c4099679f92d317b9b7133439df25002
 created_at: 2026-09-22T06:08:41Z
-updated_at: 2026-09-22T06:08:41Z
+updated_at: 2026-09-22T06:25:47Z
 ---
 
 ## Goal
@@ -30,7 +30,7 @@ Rig already emits truthful operational progress on stderr and keeps stdout deter
 
 - In operational `auto` mode with terminal stderr, render an ASCII progress bar on one in-place line, including phase, completed and total counts, and current safe identifier.
 - On successful completion, failure, or interruption, terminate the active line with one truthful summary and a newline.
-- Clear or suspend the transient line before provider-owned diagnostics and redraw it afterwards where Rig controls the invocation boundary.
+- Keep provider diagnostics unbuffered and provider-owned; when they interrupt the transient line, redraw the bar on the next Rig event.
 - Preserve line-oriented progress when stderr is redirected and `RIG_PROGRESS=always` is set.
 - Add `RIG_PROGRESS=lines` to request line-oriented progress even on a terminal.
 - Preserve `RIG_PROGRESS=never`; invalid values continue to follow safe automatic behaviour.
@@ -39,18 +39,17 @@ Rig already emits truthful operational progress on stderr and keeps stdout deter
 
 ## Steps
 
-- [ ] Separate progress enablement from terminal versus line rendering mode.
-- [ ] Add fixed-width ASCII bar rendering, safe label compaction, in-place clearing, and final-line termination.
-- [ ] Preserve the existing line event grammar for redirected and explicitly line-oriented output.
-- [ ] Integrate provider-diagnostic suspension without buffering, hiding, or rewriting native diagnostics.
-- [ ] Add pseudo-terminal and redirected-channel Bats coverage for progress shape, counts, privacy, failures, interruption, modes, and unchanged stdout.
-- [ ] Align the orchestration Specification, user command guide, manual, changelog, release surfaces, and assembled executable.
-- [ ] Run the complete repository verification gate and revalidate the pending v0.3.0 candidate.
+- [x] Separate progress enablement from terminal versus line rendering mode.
+- [x] Add fixed-width ASCII bar rendering, safe label compaction, in-place clearing, and final-line termination.
+- [x] Preserve the existing line event grammar for redirected and explicitly line-oriented output.
+- [x] Keep provider diagnostics unbuffered and redraw the bar on the next Rig event.
+- [x] Add pseudo-terminal and redirected-channel Bats coverage for progress shape, counts, privacy, failures, interruption, modes, and unchanged stdout.
+- [x] Align the orchestration Specification, user command guide, manual, changelog, release surfaces, and assembled executable.
+- [x] Run the complete repository verification gate and revalidate the pending v0.3.0 candidate.
 
 ## Files touched
 
 - `src/rig/00-runtime.bash` and assembled `bin/rig` for rendering state and terminal output.
-- Operational invocation modules only where provider diagnostics require explicit suspension.
 - `tests/` for terminal and redirected-channel behaviour.
 - `docs/specs/orchestration.md`, `docs/guides/user/commands.md`, `man/rig.1`, and `CHANGELOG.md` for the public contract.
 - This roadmap record and issue ledger for delivery evidence.
@@ -82,6 +81,41 @@ Explain automatic bar mode, forced line mode, redirected behaviour, provider dia
 
 Record implementation and verification evidence here; do not create a second progress item.
 
+## Review
+
+### Delivered
+
+Delivered adaptive progress without changing stdout, provider protocols, operation ordering, native diagnostic ownership, or the Bash 3.2 runtime boundary.
+
+### Summary of changes
+
+- Interactive operational phases now rewrite a 16-cell ASCII bar with truthful counts, safe current identity, scope, and outcome.
+- Redirected `RIG_PROGRESS=always` output preserves the existing event grammar; `RIG_PROGRESS=lines` explicitly selects it on any stderr.
+- Automatic and invalid modes remain quiet outside an operational terminal, while `never` still suppresses Rig-authored progress.
+
+### Verification
+
+Evidence:
+
+- Focused progress, help, command-inventory, and release-surface Bats cases pass.
+- Full Bats suite passes with 223 cases, including the cross-platform pseudo-terminal bar case.
+- ShellCheck and Bash syntax pass for the assembled executable, authored modules, installer, and scripts; assembly is byte-identical.
+- `mandoc`, Rumdl, the performance benchmark, native-provider smoke, and the complete 16-skill KI repository audit pass.
+
+### Outstanding concerns
+
+Provider-owned diagnostics remain unbuffered and can interrupt the transient bar. The next Rig event clears and redraws it; Rig does not hide or rewrite native output.
+
+### Post-change review
+
+The implementation retains the completed-not-started event semantics from `RIG-CLI-009`, uses Bash built-ins only, and leaves deterministic stdout and public data unchanged. The bar represents completed items, not elapsed time.
+
+### Mini recap
+
+Interactive operations now present compact progress while redirected logs remain durable and machine-friendly.
+
 ## Discussion
 
 The renderer should prefer honest, stable information over animation. A progress bar advances only when an item reaches a terminal outcome; it does not imply elapsed-time percentage or estimated completion time.
+
+Implementation keeps native diagnostics streaming directly rather than buffering or wrapping provider stderr. A diagnostic may interrupt the transient display; the next Rig event clears and redraws the bar. This preserves provider timing, native exit semantics, and the manager-of-managers boundary.

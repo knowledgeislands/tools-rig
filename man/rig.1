@@ -458,19 +458,23 @@ to
 .B RIG_PROGRESS
 Set to
 .B always
-to retain line-oriented operational progress when stderr is
-redirected, or
+to force operational progress. A terminal receives an in-place fixed-width
+ASCII bar; redirected stderr receives stable line-oriented events. Set to
+.B lines
+to request those durable events even on a terminal, or
 .B never
 to suppress it. The default is
 .BR auto ,
-which reports progress only for operational commands when stderr is a terminal;
-declaration-only queries remain quiet. Enumerable phases report a running item
-without advancing the completed count, then advance once on a succeeded,
-skipped, or failed outcome. Consequential work names declaration, manifest, or
-provider-wide scope before invocation. Failure and interruption terminate the
-active phase explicitly. Rig progress omits private paths, locators, arguments,
-environment values, titles, observed details, credentials, and native output.
-Progress never changes the deterministic report on stdout.
+which reports the bar only for operational commands when stderr is a terminal;
+declaration-only queries remain quiet. The bar is not a duration estimate.
+Enumerable phases report a running item without advancing the completed count,
+then advance once on a succeeded, skipped, or failed outcome. Consequential
+work names declaration, manifest, or provider-wide scope before invocation.
+Failure and interruption terminate the active phase explicitly. Native
+provider diagnostics may temporarily interrupt the bar; the next Rig event
+redraws it. Rig progress omits private paths, locators, arguments, environment
+values, titles, observed details, credentials, and native output. Progress
+never changes the deterministic report on stdout.
 .TP
 .B XDG_CONFIG_HOME
 Set the base configuration directory when

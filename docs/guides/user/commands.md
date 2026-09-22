@@ -108,8 +108,8 @@ Some direct dispatch commands preserve a provider-native non-zero status. Profil
 
 ## Follow progress
 
-Operational commands report phases, completed counts, safe current identities, mutation scope, and terminal outcomes on stderr. Tables, JSON, and other command results remain on stdout.
+Operational commands report phases, completed counts, safe current identities, mutation scope, and terminal outcomes on stderr. Interactive phases update a fixed-width ASCII progress bar in place instead of printing one line for every event. Tables, JSON, and other command results remain on stdout.
 
-The default `RIG_PROGRESS=auto` shows progress for operational work on an interactive terminal and keeps fast declaration queries quiet. Use `RIG_PROGRESS=always` for stable line-oriented progress when stderr is redirected, or `RIG_PROGRESS=never` to suppress Rig-authored progress.
+The default `RIG_PROGRESS=auto` shows the bar for operational work on an interactive terminal and keeps fast declaration queries quiet. `RIG_PROGRESS=always` forces progress: it uses the bar on a terminal and stable line-oriented events when stderr is redirected. Use `RIG_PROGRESS=lines` to request those durable events even on a terminal, or `RIG_PROGRESS=never` to suppress Rig-authored progress.
 
-Progress labels omit private values such as paths, locators, arguments, environment entries, publication titles, observed details, and credentials. Native provider diagnostics may still use stderr in their own format.
+The bar advances only after a real succeeded, skipped, or failed outcome; it is not a duration estimate. Progress labels omit private values such as paths, locators, arguments, environment entries, publication titles, observed details, and credentials. Native provider diagnostics may still use stderr in their own format and can temporarily interrupt the bar; the next Rig event redraws it.

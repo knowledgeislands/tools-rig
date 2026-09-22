@@ -1887,6 +1887,51 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [[ "$progress_output" != *'observing finished'* ]]
 }
 
+@test "interactive progress rewrites an ASCII bar and lines mode stays durable" {
+  local wrapper
+
+  wrapper=$BATS_TEST_TMPDIR/progress-terminal-$BATS_TEST_NUMBER
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    '. "$1"' \
+    'RIG_PROGRESS=auto' \
+    'RIG_PROGRESS_CONTEXT=operational' \
+    'rig_progress_start applying 2' \
+    'rig_progress_begin alpha declaration' \
+    'rig_progress_result succeeded alpha declaration' \
+    'rig_progress_begin beta declaration' \
+    'rig_progress_result skipped beta declaration' \
+    'rig_progress_finish' >"$wrapper"
+  chmod +x "$wrapper"
+
+  if [ "$(uname -s)" = Darwin ]; then
+    run script -q /dev/null /bin/bash "$wrapper" "$RIG"
+  else
+    run script -qec "/bin/bash '$wrapper' '$RIG'" /dev/null
+  fi
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'[----------------] 0/2'* ]]
+  [[ "$output" == *'[########--------] 1/2'* ]]
+  [[ "$output" == *'[################] 2/2'* ]]
+  [[ "$output" == *'1 succeeded, 1 skipped, 0 failed'* ]]
+  [[ "$output" != *'rig: progress:'* ]]
+
+  run bash -c '
+    . "$1"
+    RIG_PROGRESS=lines
+    RIG_PROGRESS_CONTEXT=operational
+    rig_progress_start applying 1
+    rig_progress_begin alpha declaration
+    rig_progress_result succeeded alpha declaration
+    rig_progress_finish
+  ' _ "$RIG"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'rig: progress: applying 0/1: alpha [declaration] running'* ]]
+  [[ "$output" == *'rig: progress: applying finished completed=1/1 succeeded=1 skipped=0 failed=0'* ]]
+}
+
 @test "automatic progress keeps query commands quiet and never exposes authored payloads" {
   local progress_file progress_output
 
