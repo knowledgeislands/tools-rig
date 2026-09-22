@@ -256,6 +256,16 @@ rig_export_cleanup() {
   fi
 }
 
+rig_export_interrupted() {
+  local exit_code
+
+  exit_code=$1
+  trap - HUP INT TERM
+  rig_progress_interrupted
+  rig_export_cleanup
+  exit "$exit_code"
+}
+
 rig_replace_export_tree() {
   local target report parent basename temporary backup suffix
 
@@ -295,7 +305,10 @@ rig_replace_export_tree() {
   done
   mkdir -- "$temporary" || rig_fail "cannot create export staging directory: $temporary" || return
   RIG_EXPORT_TEMP=$temporary
-  trap rig_export_cleanup EXIT HUP INT TERM
+  trap rig_export_cleanup EXIT
+  trap 'rig_export_interrupted 129' HUP
+  trap 'rig_export_interrupted 130' INT
+  trap 'rig_export_interrupted 143' TERM
   rig_render_publication_json \
     "$RIG_EXPORT_PUBLICATION" "$RIG_EXPORT_TITLE" "$RIG_RESOLVED_PROFILE" "$RIG_PUBLICATION_BASE_URL" \
     >"$temporary/rig.json" || return
@@ -326,7 +339,7 @@ rig_replace_export_tree() {
 }
 
 rig_command_export() {
-  local publication output profile platform title base_url
+  local publication output profile platform title base_url native_status
 
   if [ "$#" -eq 1 ]; then
     case "$1" in
@@ -358,7 +371,17 @@ rig_command_export() {
   RIG_EXPORT_TITLE=$title
   (
     umask 022
-    rig_replace_export_tree "$output"
+    rig_progress_start 'publication export' 1
+    rig_progress_begin "$publication" declaration
+    if rig_replace_export_tree "$output"; then
+      rig_progress_result succeeded "$publication" declaration
+      rig_progress_finish
+    else
+      native_status=$?
+      rig_progress_result failed "$publication" declaration
+      rig_progress_finish
+      return "$native_status"
+    fi
   )
 }
 
@@ -436,6 +459,7 @@ rig_publish_interrupted() {
 
   exit_code=$1
   trap - HUP INT TERM
+  rig_progress_interrupted
   if [ "${RIG_PUBLISH_COMPLETE:-0}" -eq 1 ]; then
     rig_retain_publish_stage || true
     printf 'rig: publish interrupted; retained export: %s\n' "$RIG_PUBLISH_STAGE" >&2
@@ -588,21 +612,27 @@ rig_command_publish() {
     RIG_EXPORT_PUBLICATION=$publication
     RIG_EXPORT_TITLE=$title
     umask 077
+    rig_progress_start 'publication staging' 1
+    rig_progress_begin "$publication" declaration
     rig_prepare_publish_stage "$publication" || return
     stage=$RIG_VALUE
+    rig_progress_result succeeded "$publication" declaration
+    rig_progress_finish
     if ! rig_prepare_custom_invocation publish "$publisher" "$publication" directory "$stage"; then
       rig_cleanup_publish_stage || true
       return 2
   fi
-  executable=$RIG_VALUE
+    executable=$RIG_VALUE
 
-  rig_progress_start publishing 1
-  rig_progress_step "$publication via $publisher"
-  if "$executable" "${RIG_INVOKE_ARGUMENTS[@]}"; then
-    exit_code=0
-  else
-    exit_code=$?
-  fi
+    rig_progress_start publishing 1
+    rig_progress_begin "$publication via $publisher" declaration
+    if "$executable" "${RIG_INVOKE_ARGUMENTS[@]}"; then
+      exit_code=0
+      rig_progress_result succeeded "$publication via $publisher" declaration
+    else
+      exit_code=$?
+      rig_progress_result failed "$publication via $publisher" declaration
+    fi
   rig_progress_finish
 
     if [ "$exit_code" -ne 0 ]; then
@@ -742,6 +772,7 @@ rig_clean_interrupted() {
 
   exit_code=$1
   trap - HUP INT TERM
+  rig_progress_interrupted
   if [ -n "${RIG_CLEAN_CLAIM:-}" ]; then
     printf 'rig: clean interrupted; resumable claim: %s\n' "$RIG_CLEAN_CLAIM" >&2
   else
@@ -980,7 +1011,7 @@ rig_execute_lifecycle_task() {
 }
 
 rig_run_lifecycle_tasks() {
-  local action dry_run index label provider binding supported executable native_status
+  local action dry_run index label provider binding supported executable native_status progress_scope
   local planned completed failed skipped supported_total exit_code
 
   action=$1
@@ -991,19 +1022,25 @@ rig_run_lifecycle_tasks() {
   skipped=0
   supported_total=0
   exit_code=0
+  rig_progress_start "$action preflight" "${#RIG_LIFECYCLE_KEYS[@]}"
   index=0
   while [ "$index" -lt "${#RIG_LIFECYCLE_KEYS[@]}" ]; do
+    label=${RIG_LIFECYCLE_LABELS[$index]}
+    provider=${RIG_LIFECYCLE_PROVIDERS[$index]}
+    rig_progress_begin "$label via $provider"
     if [ "${RIG_LIFECYCLE_SUPPORTED[$index]}" -eq 1 ]; then
-      provider=${RIG_LIFECYCLE_PROVIDERS[$index]}
       binding=${RIG_LIFECYCLE_BINDINGS[$index]}
       rig_preflight_lifecycle_task "$action" "$provider" "$binding" || return
       RIG_LIFECYCLE_EXECUTABLES[$index]=$RIG_VALUE
       supported_total=$((supported_total + 1))
+      rig_progress_result succeeded "$label via $provider"
     else
       RIG_LIFECYCLE_EXECUTABLES[$index]=-
+      rig_progress_result skipped "$label via $provider"
     fi
     index=$((index + 1))
   done
+  rig_progress_finish
 
   printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   case "$action" in
@@ -1026,16 +1063,25 @@ rig_run_lifecycle_tasks() {
       printf '%s\t%s\tplanned\t%s\n' "$label" "$provider" "$action"
       planned=$((planned + 1))
     else
-      rig_progress_step "$label via $provider"
+      if [ "$action" = maintain ]; then
+        progress_scope='provider-wide'
+      elif rig_lifecycle_manifest "$provider"; then
+        progress_scope=manifest
+      else
+        progress_scope=declaration
+      fi
+      rig_progress_begin "$label via $provider" "$progress_scope"
       rig_execute_lifecycle_task "$action" "$provider" "$binding" "$executable"
       native_status=$?
       if [ "$native_status" -eq 0 ]; then
         printf '%s\t%s\tcompleted\t%s\n' "$label" "$provider" "$action"
         completed=$((completed + 1))
+        rig_progress_result succeeded "$label via $provider" "$progress_scope"
       else
         printf '%s\t%s\tfailed\texit:%s\n' "$label" "$provider" "$native_status"
         failed=$((failed + 1))
         exit_code=1
+        rig_progress_result failed "$label via $provider" "$progress_scope"
       fi
     fi
     index=$((index + 1))
@@ -1132,7 +1178,11 @@ rig_command_capture() {
   adapter=$RIG_VALUE
   rig_lifecycle_supported capture "$adapter" ||
     rig_fail "provider '$provider' does not support capture" || return
+  rig_progress_start preflight 1
+  rig_progress_begin "$provider"
   rig_preflight_lifecycle_task capture "$provider" '' || return
+  rig_progress_result succeeded "$provider"
+  rig_progress_finish
   executable=$RIG_VALUE
   printf 'Operation scope: manifest\n'
   printf 'PROVIDER\tRESULT\tDETAIL\n'
@@ -1141,9 +1191,14 @@ rig_command_capture() {
     return 0
   fi
   rig_progress_start capturing 1
-  rig_progress_step "$provider manifest"
+  rig_progress_begin "$provider" manifest
   rig_execute_lifecycle_task capture "$provider" '' "$executable"
   native_status=$?
+  if [ "$native_status" -eq 0 ]; then
+    rig_progress_result succeeded "$provider" manifest
+  else
+    rig_progress_result failed "$provider" manifest
+  fi
   rig_progress_finish
   if [ "$native_status" -eq 0 ]; then
     printf '%s\tcompleted\tcapture\n' "$provider"
@@ -1244,23 +1299,27 @@ rig_command_clean() {
       action=skipped
       case "$state" in
         cleanup-claim)
-          rig_progress_step "${path##*/}"
+          rig_progress_begin 'publication artifact' declaration
           if rig_clean_remove_claim "$path"; then
             action=removed
             removed=$((removed + 1))
+            rig_progress_result succeeded 'publication artifact' declaration
           else
             skipped=$((skipped + 1))
             exit_code=1
+            rig_progress_result failed 'publication artifact' declaration
           fi
           ;;
         retained)
-          rig_progress_step "${path##*/}"
+          rig_progress_begin 'publication artifact' declaration
           if rig_clean_claim "$path" && rig_clean_remove_claim "$RIG_CLEAN_CLAIM"; then
             action=removed
             removed=$((removed + 1))
+            rig_progress_result succeeded 'publication artifact' declaration
           else
             skipped=$((skipped + 1))
             exit_code=1
+            rig_progress_result failed 'publication artifact' declaration
           fi
           ;;
         *) exit_code=1 ;;

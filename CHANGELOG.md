@@ -75,7 +75,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - Bootstrap-profile selection with explicit-profile precedence and default-profile fallback through Rig's native staged bootstrap plan and safety boundaries.
 - Built-in provider operations plus configuration-defined external observe and mutate actions with literal `arguments`, exact `allowed-arguments`, optional provider-owned validation, and native outcome propagation.
 - Failure handling that suppresses only transitive dependants while independent work continues.
-- Terminal-aware, line-oriented stderr progress for configuration loading, provider observation, inventory, application, actions, and publication, with stable stdout and explicit `RIG_PROGRESS=always|never` control.
+- Truthful terminal-aware, line-oriented stderr progress across operational phases, with completed-not-started counts, succeeded/skipped/failed outcomes, interruption termination, pre-mutation scope, private-value redaction, stable stdout, quiet declaration queries, and explicit `RIG_PROGRESS=always|never` control.
 - Indexed configuration declarations and fast-path TOML parsing keep the representative 1,434-line catalogue near a two-second macOS query target, guarded by a portable deterministic benchmark.
 - Equivalent built-in native observation commands share one command-local in-memory snapshot while preserving per-tool identity, dependency, artifact, and progress evaluation.
 - Domain-focused authored Bash modules assemble deterministically into the single dependency-free `bin/rig` installation payload, with byte-drift, Bash 3.2, ShellCheck, and bounded native-smoke gates.

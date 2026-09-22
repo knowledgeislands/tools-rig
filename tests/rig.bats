@@ -58,7 +58,7 @@ write_recording_provider() {
     '  observe:diagnostics) printf "%s\\n" observation-diagnostic >&2; printf "%s\\n" present ;;' \
     '  observe:*) printf "%s\\n" "$locator" ;;' \
     '  apply:fail) exit 7 ;;' \
-    '  apply:exit-126) exit 126 ;;' \
+    '  apply:exit-126) printf "%s\\n" provider-marker >&2; exit 126 ;;' \
     '  apply:diagnostics) printf "%s\\n" application-stdout; printf "%s\\n" application-stderr >&2; exit 0 ;;' \
     '  apply:*) exit 0 ;;' \
     '  *) exit 65 ;;' \
@@ -1800,13 +1800,16 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [[ "$output" == Profile:* ]]
   [[ "$output" != *'rig: observing'* ]]
   progress_output=$(<"$progress_file")
-  [[ "$progress_output" == *'rig: loading configuration 0/1'* ]]
-  [[ "$progress_output" == *'rig: loading configuration 1/1: 1 sources'* ]]
-  [[ "$progress_output" == *'rig: loading configuration complete (1)'* ]]
-  [[ "$progress_output" == *'rig: observing 0/4'* ]]
-  [[ "$progress_output" == *'rig: observing 1/4: base via runner'* ]]
-  [[ "$progress_output" == *'rig: observing 4/4: notes'* ]]
-  [[ "$progress_output" == *'rig: observing complete (4)'* ]]
+  [[ "$progress_output" == *'rig: progress: configuration discovery 0/1: sources running'* ]]
+  [[ "$progress_output" == *'rig: progress: configuration discovery 1/1: sources succeeded'* ]]
+  [[ "$progress_output" == *'rig: progress: configuration parsing finished completed=1/1'* ]]
+  [[ "$progress_output" == *'rig: progress: resolution finished completed=2/2'* ]]
+  [[ "$progress_output" == *'rig: progress: planning finished completed=2/2'* ]]
+  [[ "$progress_output" == *'rig: progress: tool observation 0/4: base via runner running'* ]]
+  [[ "$progress_output" == *'rig: progress: tool observation 1/4: base via runner succeeded'* ]]
+  [[ "$progress_output" == *'rig: progress: tool observation 4/4: notes skipped'* ]]
+  [[ "$progress_output" == *'rig: progress: tool observation finished completed=4/4 succeeded=3 skipped=1 failed=0'* ]]
+  [[ "$progress_output" != *'failed completed='* ]]
 
   : >"$progress_file"
   run bash -c 'progress_file=$1; shift; "$@" 2>"$progress_file"' _ "$progress_file" \
@@ -1815,6 +1818,125 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
 
   [ "$status" -eq 0 ]
   [ ! -s "$progress_file" ]
+}
+
+@test "progress counts only terminal outcomes and reports failure interruption breakdowns" {
+  local progress_file progress_output
+
+  progress_file=$BATS_TEST_TMPDIR/progress-events-$BATS_TEST_NUMBER
+  run bash -c '
+    . "$1"
+    RIG_PROGRESS=always
+    RIG_PROGRESS_CONTEXT=operational
+    rig_progress_start applying 2
+    rig_progress_begin alpha declaration
+    printf "before=%s\n" "$RIG_PROGRESS_CURRENT"
+    rig_progress_result failed alpha declaration
+    rig_progress_begin beta declaration
+    rig_progress_result skipped beta declaration
+    rig_progress_finish
+  ' _ "$RIG" 2>"$progress_file"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'before=0'* ]]
+  progress_output=$(<"$progress_file")
+  [[ "$progress_output" == *'applying 0/2: alpha [declaration] running'* ]]
+  [[ "$progress_output" == *'applying 1/2: alpha [declaration] failed'* ]]
+  [[ "$progress_output" == *'applying 2/2: beta [declaration] skipped'* ]]
+  [[ "$progress_output" == *'finished completed=2/2 succeeded=0 skipped=1 failed=1'* ]]
+
+  : >"$progress_file"
+  run bash -c '
+    . "$1"
+    RIG_PROGRESS=always
+    RIG_PROGRESS_CONTEXT=operational
+    rig_progress_start observing 2
+    rig_progress_begin alpha
+    rig_progress_result succeeded alpha
+    rig_progress_begin beta
+    rig_progress_interrupted
+  ' _ "$RIG" 2>"$progress_file"
+
+  [ "$status" -eq 0 ]
+  progress_output=$(<"$progress_file")
+  [[ "$progress_output" == *'interrupted completed=1/2 succeeded=1 skipped=0 failed=0'* ]]
+  [[ "$progress_output" != *'observing finished'* ]]
+}
+
+@test "automatic progress keeps query commands quiet and never exposes authored payloads" {
+  local progress_file progress_output
+
+  progress_file=$BATS_TEST_TMPDIR/progress-privacy-$BATS_TEST_NUMBER
+  run bash -c '
+    . "$1"
+    RIG_PROGRESS=auto
+    RIG_PROGRESS_CONTEXT=query
+    rig_progress_start query 1
+    rig_progress_begin safe-id
+    rig_progress_result succeeded safe-id
+    rig_progress_finish
+  ' _ "$RIG" 2>"$progress_file"
+
+  [ "$status" -eq 0 ]
+  [ ! -s "$progress_file" ]
+
+  write_orchestration_config
+  run bash -c 'progress_file=$1; shift; "$@" 2>"$progress_file"' _ "$progress_file" \
+    env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_PROGRESS=always RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
+
+  [ "$status" -eq 0 ]
+  progress_output=$(<"$progress_file")
+  [[ "$progress_output" != *'provider value'* ]]
+  [[ "$progress_output" != *'touch '* ]]
+  [[ "$progress_output" != *"$CONFIG_HOME"* ]]
+}
+
+@test "application progress discloses scope before provider output and terminates failed work" {
+  local progress_file progress_output running_line provider_line failed_line
+
+  write_orchestration_config
+  sed '/\[tool.base\]/,/\[tool.independent\]/ s/install.locator = "present"/install.locator = "exit-126"/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/native-exit.toml"
+  mv "$CONFIG_HOME/native-exit.toml" "$CONFIG_HOME/rig.toml"
+  progress_file=$BATS_TEST_TMPDIR/progress-apply-$BATS_TEST_NUMBER
+  run bash -c 'progress_file=$1; shift; "$@" 2>"$progress_file"' _ "$progress_file" \
+    env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_PROGRESS=always RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply
+
+  [ "$status" -eq 1 ]
+  progress_output=$(<"$progress_file")
+  [[ "$progress_output" == *'base via runner [declaration] running'* ]]
+  [[ "$progress_output" == *'provider-marker'* ]]
+  [[ "$progress_output" == *'base via runner [declaration] failed'* ]]
+  [[ "$progress_output" == *'applying finished completed=3/3 succeeded=1 skipped=1 failed=1'* ]]
+  [[ "$progress_output" != *'exit-126'* ]]
+  running_line=$(grep -n 'base via runner \[declaration\] running' "$progress_file" | cut -d: -f1)
+  provider_line=$(grep -n '^provider-marker$' "$progress_file" | cut -d: -f1)
+  failed_line=$(grep -n 'base via runner \[declaration\] failed' "$progress_file" | cut -d: -f1)
+  [ "$running_line" -lt "$provider_line" ]
+  [ "$provider_line" -lt "$failed_line" ]
+}
+
+@test "bootstrap reports its distinct preflight before applying the selected plan" {
+  local progress_file progress_output bootstrap_line apply_preflight_line
+
+  write_bootstrap_config
+  progress_file=$BATS_TEST_TMPDIR/progress-bootstrap-$BATS_TEST_NUMBER
+  run bash -c 'progress_file=$1; shift; "$@" 2>"$progress_file"' _ "$progress_file" \
+    env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+      RIG_PROGRESS=always RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" bootstrap --dry-run
+
+  [ "$status" -eq 0 ]
+  progress_output=$(<"$progress_file")
+  [[ "$progress_output" == *'bootstrap preflight 0/2: selected plan running'* ]]
+  [[ "$progress_output" == *'bootstrap preflight 1/2: selected plan succeeded'* ]]
+  [[ "$progress_output" == *'bootstrap preflight 2/2: homebrew policy succeeded'* ]]
+  [[ "$progress_output" == *'bootstrap preflight finished completed=2/2 succeeded=2 skipped=0 failed=0'* ]]
+  [[ "$progress_output" == *'preflight 0/1: selected plan running'* ]]
+  bootstrap_line=$(grep -n 'bootstrap preflight finished' "$progress_file" | cut -d: -f1)
+  apply_preflight_line=$(grep -n 'progress: preflight 0/1: selected plan running' "$progress_file" | cut -d: -f1)
+  [ "$bootstrap_line" -lt "$apply_preflight_line" ]
 }
 
 @test "doctor gives a compact healthy synthesis using observation capabilities only" {
@@ -2987,10 +3109,12 @@ write_publish_config() {
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
     RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" \
-    RIG_OTHER_PUBLISH_LOG="$OTHER_PUBLISH_LOG" RIG_PUBLISH_SIGNAL=term \
+    RIG_OTHER_PUBLISH_LOG="$OTHER_PUBLISH_LOG" RIG_PUBLISH_SIGNAL=term RIG_PROGRESS=always \
     "$RIG" publish site
 
   [ "$status" -eq 143 ]
+  [[ "$output" == *'rig: progress: publishing interrupted completed=0/1 succeeded=0 skipped=0 failed=0'* ]]
+  [[ "$output" != *'rig: progress: publishing finished'* ]]
   stage=$(printf '%s\n' "$output" | sed -n 's/^rig: publish interrupted; retained export: //p')
   case "$stage" in
     */publish/retained/site.rig-publish.*) ;;
@@ -3165,7 +3289,7 @@ write_publish_config() {
 
   run env HOME="$TEST_HOME" RIG_CACHE_HOME="$cache" RIG_PROGRESS=always "$RIG" clean
   [ "$status" -eq 0 ]
-  [[ "$output" == *'rig: cleaning 0/3'* ]] || false
+  [[ "$output" == *'rig: progress: cleaning 0/3 started'* ]] || false
   [[ "$output" == *'Summary: eligible=3 removed=3 skipped=0'* ]] || false
   [ -z "$(find "$retained" "$claim" -mindepth 1 -print -quit)" ]
 }
@@ -4305,11 +4429,12 @@ ports = ["required-api", "on-demand-api", "allocated-api", "free-allocation"]' \
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" \
-    RIG_TEST_LSOF_OUTPUT="$listener_output" "$RIG" status --unmanaged
+      RIG_TEST_LSOF_OUTPUT="$listener_output" RIG_PROGRESS=always "$RIG" status --unmanaged
   [ "$status" -eq 1 ]
   [[ "$output" == *$'required-api\t4101\ttcp\trequired\ttool:alpha\tpresent\tlistening:loopback;owner:alpha'* ]] || false
   [[ "$output" == *$'on-demand-api\t4102\ttcp\ton-demand\ttool:alpha\tdrifted\tscope:all-interfaces;expected:loopback'* ]] || false
   [[ "$output" == *$'allocated-api\t4103\ttcp\tallocated\ttool:alpha\tconflicting\towner:foreign;expected:alpha'* ]] || false
+  [[ "$output" == *'port observation finished completed=4/4 succeeded=4 skipped=0 failed=0'* ]] || false
   [[ "$output" == *$'free-allocation\t4104\ttcp\tallocated\ttool:alpha\tpresent\tavailable:allocated'* ]] || false
   [[ "$output" == *$'4999\ttcp\tloopback\tunmanaged\towner:dynamic;pid:104'* ]] || false
   [ "$(wc -l <"$PORT_LSOF_LOG")" -eq 1 ]

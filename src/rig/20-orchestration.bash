@@ -1058,11 +1058,24 @@ rig_resolve_operational_plan() {
   profile=$1
   receipt_mode=${2:-load}
   rig_load_config || return
+  rig_progress_start resolution 2
+  rig_progress_begin platform
   rig_current_platform || return
   platform=$RIG_VALUE
+  rig_progress_result succeeded platform
+  rig_progress_begin profile
   rig_resolve_profile "$profile" "$platform" || return
+  rig_progress_result succeeded profile
+  rig_progress_finish
+
+  rig_progress_start planning 2
+  rig_progress_begin bindings
   rig_resolve_bindings || return
+  rig_progress_result succeeded bindings
+  rig_progress_begin dependencies
   rig_build_plan || return
+  rig_progress_result succeeded dependencies
+  rig_progress_finish
   RIG_RESOURCE_PLAN_SECTIONS=()
   index=0
   while [ "$index" -lt "${#RIG_SELECTED_RESOURCE_SECTIONS[@]}" ]; do
@@ -1138,6 +1151,7 @@ rig_reconciliation_signal() {
 
   exit_code=$1
   trap - HUP INT TERM
+  rig_progress_interrupted
   rig_release_reconciliation_lock || true
   exit "$exit_code"
 }
@@ -2086,10 +2100,13 @@ rig_collect_unmanaged() {
     provider=${RIG_QUERY_ITEMS[$index]}
     index=$((index + 1))
     rig_provider_has_capability "$provider" inventory || continue
-    rig_progress_step "$provider"
+    rig_progress_begin "$provider"
     rig_inventory_provider "$provider" || return
     if [ "$RIG_INVENTORY_STATE" != observed ]; then
       RIG_UNMANAGED_PROBLEMS[${#RIG_UNMANAGED_PROBLEMS[@]}]="$provider	$RIG_INVENTORY_STATE	$RIG_INVENTORY_DETAIL"
+      rig_progress_result failed "$provider"
+    else
+      rig_progress_result succeeded "$provider"
     fi
   done
   rig_progress_finish
@@ -2252,16 +2269,23 @@ rig_observe_resource_plan() {
   RIG_RESOURCE_PLAN_RESULTS=()
   RIG_RESOURCE_PLAN_DETAILS=()
   RIG_RESOURCE_PLAN_STATES=()
+  rig_progress_start 'resource observation' "${#RIG_RESOURCE_PLAN_SECTIONS[@]}"
   index=0
   while [ "$index" -lt "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" ]; do
     section_name=${RIG_RESOURCE_PLAN_SECTIONS[$index]}
+    rig_progress_begin "$section_name"
     if rig_resource_blocker "$section_name"; then
       state=unknown
       detail=blocked-by:$RIG_VALUE
+      rig_progress_result skipped "$section_name"
     else
       rig_observe_resource "$section_name" || return
       state=$RIG_OBSERVATION
       detail=$RIG_OBSERVATION_DETAIL
+      case "$state" in
+        unknown|unavailable) rig_progress_result failed "$section_name" ;;
+        *) rig_progress_result succeeded "$section_name" ;;
+      esac
     fi
     RIG_RESOURCE_PLAN_STATES[$index]=$state
     RIG_RESOURCE_PLAN_DETAILS[$index]=$detail
@@ -2271,6 +2295,7 @@ rig_observe_resource_plan() {
     esac
     index=$((index + 1))
   done
+  rig_progress_finish
 }
 
 rig_lsof_command() {
@@ -2402,13 +2427,16 @@ rig_observe_ports() {
   RIG_PORT_STATES=()
   RIG_PORT_DETAILS=()
   rig_load_listeners || return
+  rig_progress_start 'port observation' "${#RIG_SELECTED_PORTS[@]}"
   index=0
   while [ "$index" -lt "${#RIG_SELECTED_PORTS[@]}" ]; do
     port=${RIG_SELECTED_PORTS[$index]}
     section_name=port.$port
+    rig_progress_begin "$section_name"
     if [ "$RIG_LISTENER_OBSERVATION_AVAILABLE" -ne 1 ]; then
       RIG_PORT_STATES[$index]=unavailable
       RIG_PORT_DETAILS[$index]=$([ "$RIG_RESOLVED_PLATFORM" = macos ] && printf listener-observation-unavailable || printf unsupported-platform)
+      rig_progress_result succeeded "$section_name"
       index=$((index + 1))
       continue
     fi
@@ -2472,8 +2500,10 @@ rig_observe_ports() {
     fi
     RIG_PORT_STATES[$index]=$state
     RIG_PORT_DETAILS[$index]=$detail
+    rig_progress_result succeeded "$section_name"
     index=$((index + 1))
   done
+  rig_progress_finish
 }
 
 rig_print_port_status() {
@@ -2775,14 +2805,21 @@ rig_observe_skills() {
   local index skill
   RIG_SKILL_STATES=()
   RIG_SKILL_DETAILS=()
+  rig_progress_start 'skill observation' "${#RIG_SELECTED_SKILLS[@]}"
   index=0
   while [ "$index" -lt "${#RIG_SELECTED_SKILLS[@]}" ]; do
     skill=${RIG_SELECTED_SKILLS[$index]}
+    rig_progress_begin "skill.$skill"
     rig_observe_skill "$skill" || return
     RIG_SKILL_STATES[$index]=$RIG_OBSERVATION
     RIG_SKILL_DETAILS[$index]=$RIG_OBSERVATION_DETAIL
+    case "$RIG_OBSERVATION" in
+      unknown|unavailable) rig_progress_result failed "skill.$skill" ;;
+      *) rig_progress_result succeeded "skill.$skill" ;;
+    esac
     index=$((index + 1))
   done
+  rig_progress_finish
 }
 
 rig_print_skill_status() {
@@ -3026,13 +3063,13 @@ rig_observe_plan() {
   RIG_PLAN_RESULTS=()
   RIG_PLAN_DETAILS=()
   RIG_PLAN_STATES=()
-  rig_progress_start observing "${#RIG_PLAN_TOOLS[@]}"
+  rig_progress_start 'tool observation' "${#RIG_PLAN_TOOLS[@]}"
   index=0
   while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
     tool=${RIG_PLAN_TOOLS[$index]}
     binding=${RIG_PLAN_BINDINGS[$index]}
     provider=${RIG_PLAN_PROVIDERS[$index]}
-    rig_progress_step "$tool${provider:+ via $provider}"
+    rig_progress_begin "$tool${provider:+ via $provider}"
     detail=-
     if [ -z "$binding" ]; then
       state=unavailable
@@ -3089,6 +3126,11 @@ rig_observe_plan() {
       findings_output="${findings_output}  ${tool}: ${state} via ${provider} (${detail}); owner=${provider}; action=${RIG_OBSERVATION_DETAIL}"$'\n'
       findings=$((findings + 1))
     fi
+    case "${RIG_PLAN_RESULTS[$index]}" in
+      neutral|skipped) rig_progress_result skipped "$tool${provider:+ via $provider}" ;;
+      observed) rig_progress_result succeeded "$tool${provider:+ via $provider}" ;;
+      *) rig_progress_result failed "$tool${provider:+ via $provider}" ;;
+    esac
     index=$((index + 1))
   done
   rig_progress_finish
@@ -3418,11 +3460,13 @@ rig_run_skill_apply() {
     skill=${RIG_SELECTED_SKILLS[$index]}
     rig_get_value "skill.$skill" authority || return 2
     authority=$RIG_VALUE
+    [ "$dry_run" -eq 1 ] || rig_progress_begin "skill.$skill via $authority" declaration
     if [ -n "${RIG_SKILL_PREFLIGHT_DETAILS[$index]:-}" ]; then
       RIG_SKILL_RESULTS[$index]=failed
       RIG_SKILL_DETAILS[$index]=preflight:${RIG_SKILL_PREFLIGHT_DETAILS[$index]}
       RIG_SKILL_APPLY_FAILURE=1
       RIG_SKILL_FAILED=$((RIG_SKILL_FAILED + 1))
+      [ "$dry_run" -eq 1 ] || rig_progress_result failed "skill.$skill via $authority" declaration
     elif [ "$dry_run" -eq 1 ]; then
       RIG_SKILL_RESULTS[$index]=planned
       RIG_SKILL_DETAILS[$index]=-
@@ -3433,19 +3477,21 @@ rig_run_skill_apply() {
       RIG_SKILL_DETAILS[$index]=blocked-by:$blocker
       RIG_SKILL_APPLY_FAILURE=1
       RIG_SKILL_SKIPPED=$((RIG_SKILL_SKIPPED + 1))
+      rig_progress_result skipped "skill.$skill via $authority" declaration
     else
-      rig_progress_step "skill.$skill via $authority"
       rig_apply_skill "$skill"
       native_status=$?
       if [ "$native_status" -eq 0 ]; then
         RIG_SKILL_RESULTS[$index]=completed
         RIG_SKILL_DETAILS[$index]=-
         RIG_SKILL_COMPLETED=$((RIG_SKILL_COMPLETED + 1))
+        rig_progress_result succeeded "skill.$skill via $authority" declaration
       else
         RIG_SKILL_RESULTS[$index]=failed
         RIG_SKILL_DETAILS[$index]=exit:$native_status
         RIG_SKILL_APPLY_FAILURE=1
         RIG_SKILL_FAILED=$((RIG_SKILL_FAILED + 1))
+        rig_progress_result failed "skill.$skill via $authority" declaration
       fi
     fi
     printf '%s\t%s\t%s\t%s\tdeclaration\n' "$skill" "$authority" \
@@ -3708,7 +3754,11 @@ rig_command_apply() {
       RIG_PLAN_PROVIDERS=()
       ;;
   esac
+  rig_progress_start preflight 1
+  rig_progress_begin 'selected plan'
   rig_preflight_apply "$scope" || return
+  rig_progress_result succeeded 'selected plan'
+  rig_progress_finish
   printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   printf 'Operation scope: declaration\n'
   printf 'TOOL\tPROVIDER\tRESULT\tDETAIL\tSCOPE\n'
@@ -3733,7 +3783,7 @@ rig_command_apply() {
     binding=${RIG_PLAN_BINDINGS[$index]}
     provider=${RIG_PLAN_PROVIDERS[$index]}
     if [ "$dry_run" -eq 0 ] && [ -n "$binding" ]; then
-      rig_progress_step "$tool via $provider"
+      rig_progress_begin "$tool via $provider" declaration
     fi
     if [ -z "$binding" ]; then
       RIG_PLAN_RESULTS[$index]=skipped
@@ -3748,6 +3798,7 @@ rig_command_apply() {
       RIG_PLAN_DETAILS[$index]=blocked-by:$blocker
       skipped=$((skipped + 1))
       operational_failure=1
+      rig_progress_result skipped "$tool via $provider" declaration
     else
       rig_apply_provider "$tool" "$binding" "$provider"
       native_status=$?
@@ -3755,11 +3806,13 @@ rig_command_apply() {
         RIG_PLAN_RESULTS[$index]=completed
         RIG_PLAN_DETAILS[$index]=-
         completed=$((completed + 1))
+        rig_progress_result succeeded "$tool via $provider" declaration
       else
         RIG_PLAN_RESULTS[$index]=failed
         RIG_PLAN_DETAILS[$index]=exit:$native_status
         failed=$((failed + 1))
         operational_failure=1
+        rig_progress_result failed "$tool via $provider" declaration
       fi
     fi
     printf '%s\t%s\t%s\t%s\tdeclaration\n' "$tool" "$provider" \
@@ -3788,11 +3841,13 @@ rig_command_apply() {
     provider=$RIG_VALUE
     rig_resource_locator_summary "$section_name" || return 2
     locator=$RIG_VALUE
+    [ "$dry_run" -eq 1 ] || rig_progress_begin "$kind.$id via $provider" declaration
     if [ -n "${RIG_RESOURCE_PREFLIGHT_DETAILS[$index]:-}" ]; then
       RIG_RESOURCE_PLAN_RESULTS[$index]=failed
       RIG_RESOURCE_PLAN_DETAILS[$index]=preflight:${RIG_RESOURCE_PREFLIGHT_DETAILS[$index]}
       failed=$((failed + 1))
       operational_failure=1
+      [ "$dry_run" -eq 1 ] || rig_progress_result failed "$kind.$id via $provider" declaration
     elif [ "$dry_run" -eq 1 ]; then
       RIG_RESOURCE_PLAN_RESULTS[$index]=planned
       RIG_RESOURCE_PLAN_DETAILS[$index]=reconcile:$locator
@@ -3803,19 +3858,21 @@ rig_command_apply() {
       RIG_RESOURCE_PLAN_DETAILS[$index]=blocked-by:$blocker
       skipped=$((skipped + 1))
       operational_failure=1
+      rig_progress_result skipped "$kind.$id via $provider" declaration
     else
-      rig_progress_step "$kind.$id via $provider"
       rig_apply_resource "$section_name"
       native_status=$?
       if [ "$native_status" -eq 0 ]; then
         RIG_RESOURCE_PLAN_RESULTS[$index]=completed
         RIG_RESOURCE_PLAN_DETAILS[$index]=reconciled:$locator
         completed=$((completed + 1))
+        rig_progress_result succeeded "$kind.$id via $provider" declaration
       else
         RIG_RESOURCE_PLAN_RESULTS[$index]=failed
         RIG_RESOURCE_PLAN_DETAILS[$index]=exit:$native_status
         failed=$((failed + 1))
         operational_failure=1
+        rig_progress_result failed "$kind.$id via $provider" declaration
       fi
     fi
     printf '%s\t%s\t%s\t%s\t%s\tdeclaration\n' "$id" "$kind" "$provider" \
@@ -3831,23 +3888,26 @@ rig_command_apply() {
     kind=${RIG_STALE_RESOURCE_KINDS[$index]}
     id=${RIG_STALE_RESOURCE_IDS[$index]}
     locator=${RIG_STALE_RESOURCE_LOCATORS[$index]}
+    [ "$dry_run" -eq 1 ] || rig_progress_begin "retire $kind.$id via $provider" declaration
     if [ "$operational_failure" -ne 0 ]; then
       printf '%s\t%s\t%s\tskipped\tblocked-by:resource-failure\tdeclaration\n' "$id" "$kind" "$provider"
       skipped=$((skipped + 1))
+      [ "$dry_run" -eq 1 ] || rig_progress_result skipped "retire $kind.$id via $provider" declaration
     elif [ "$dry_run" -eq 1 ]; then
       printf '%s\t%s\t%s\tplanned\tretire:%s\tdeclaration\n' "$id" "$kind" "$provider" "$locator"
       planned=$((planned + 1))
     else
-      rig_progress_step "retire $kind.$id via $provider"
       rig_retire_resource "$provider" "$kind" "$id" "$locator"
       native_status=$?
       if [ "$native_status" -eq 0 ]; then
         printf '%s\t%s\t%s\tcompleted\tretired:%s\tdeclaration\n' "$id" "$kind" "$provider" "$locator"
         completed=$((completed + 1))
+        rig_progress_result succeeded "retire $kind.$id via $provider" declaration
       else
         printf '%s\t%s\t%s\tfailed\texit:%s\tdeclaration\n' "$id" "$kind" "$provider" "$native_status"
         failed=$((failed + 1))
         operational_failure=1
+        rig_progress_result failed "retire $kind.$id via $provider" declaration
       fi
     fi
     index=$((index + 1))
@@ -4062,13 +4122,27 @@ rig_command_bootstrap() {
   esac
   RIG_BOOTSTRAP_ALLOW_DEFERRED_MANAGERS=1
   RIG_BOOTSTRAP_ALLOW_DEFERRED_SKILLS=1
+  rig_progress_start 'bootstrap preflight' 2
+  rig_progress_begin 'selected plan'
   rig_preflight_apply "$scope"
   native_status=$?
   if [ "$native_status" -ne 0 ]; then
+    rig_progress_result failed 'selected plan'
+    rig_progress_finish
     RIG_BOOTSTRAP_ALLOW_DEFERRED_MANAGERS=0
     return "$native_status"
   fi
-  rig_bootstrap_preflight_homebrew_manifest "$scope" || return
+  rig_progress_result succeeded 'selected plan'
+  rig_progress_begin 'homebrew policy'
+  if rig_bootstrap_preflight_homebrew_manifest "$scope"; then
+    rig_progress_result succeeded 'homebrew policy'
+  else
+    native_status=$?
+    rig_progress_result failed 'homebrew policy'
+    rig_progress_finish
+    return "$native_status"
+  fi
+  rig_progress_finish
   if [ -n "$RIG_BOOTSTRAP_MANIFEST" ] || [ -n "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL" ] ||
     [ "$RIG_BOOTSTRAP_DEFER_MISE" -eq 1 ] || [ "$RIG_BOOTSTRAP_DEFER_NPM" -eq 1 ]; then
     printf 'Operation scopes: declaration, manifest, provider-wide\n'
@@ -4095,46 +4169,54 @@ rig_command_bootstrap() {
       [ "$RIG_BOOTSTRAP_DEFER_NPM" -eq 0 ] || manager_total=$((manager_total + 1))
       rig_progress_start bootstrapping "$manager_total"
       if [ -n "$RIG_BOOTSTRAP_MANIFEST" ]; then
-        rig_progress_step 'homebrew manifest'
+        rig_progress_begin 'homebrew manifest' manifest
         rig_bootstrap_apply_homebrew_manifest
         native_status=$?
         if [ "$native_status" -ne 0 ]; then
+          rig_progress_result failed 'homebrew manifest' manifest
           rig_progress_finish
           printf 'manifest\thomebrew\tfailed\texit:%s\tmanifest\n' "$native_status"
           return "$native_status"
         fi
+        rig_progress_result succeeded 'homebrew manifest' manifest
         printf 'manifest\thomebrew\tcompleted\tbundle:%s\tmanifest\n' "$RIG_BOOTSTRAP_MANIFEST"
       fi
       if [ -n "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL" ]; then
-        rig_progress_step 'homebrew autoupdate'
+        rig_progress_begin 'homebrew autoupdate' provider-wide
         rig_bootstrap_apply_homebrew_autoupdate
         native_status=$?
         if [ "$native_status" -ne 0 ]; then
+          rig_progress_result failed 'homebrew autoupdate' provider-wide
           rig_progress_finish
           printf 'autoupdate\thomebrew\tfailed\texit:%s\tprovider-wide\n' "$native_status"
           return "$native_status"
         fi
+        rig_progress_result succeeded 'homebrew autoupdate' provider-wide
         printf 'autoupdate\thomebrew\tcompleted\tinterval:%s\tprovider-wide\n' "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL"
       fi
       RIG_BOOTSTRAP_ALLOW_DEFERRED_MANAGERS=0
       if [ "$RIG_BOOTSTRAP_DEFER_MISE" -eq 1 ]; then
-        rig_progress_step 'verify provider mise'
+        rig_progress_begin 'provider mise' declaration
         if ! rig_bootstrap_verify_deferred_mise; then
+          rig_progress_result failed 'provider mise' declaration
           rig_progress_finish
           printf 'provider:mise\thomebrew\tfailed\tunavailable\tdeclaration\n'
           return 1
         fi
+        rig_progress_result succeeded 'provider mise' declaration
         printf 'provider:mise\thomebrew\tcompleted\tavailable\tdeclaration\n'
       fi
       if [ "$RIG_BOOTSTRAP_DEFER_NPM" -eq 1 ]; then
-        rig_progress_step 'materialise provider npm'
+        rig_progress_begin 'provider npm' declaration
         rig_bootstrap_apply_npm_prerequisite
         native_status=$?
         if [ "$native_status" -ne 0 ]; then
+          rig_progress_result failed 'provider npm' declaration
           rig_progress_finish
           printf 'provider:npm\tmise\tfailed\texit:%s\tdeclaration\n' "$native_status"
           return "$native_status"
         fi
+        rig_progress_result succeeded 'provider npm' declaration
         printf 'provider:npm\tmise\tcompleted\tavailable\tdeclaration\n'
       fi
       rig_progress_finish

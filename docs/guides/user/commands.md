@@ -84,4 +84,16 @@ Resource-local preflight findings are operational outcomes, not invalid configur
 - Status 2 means Rig rejected its own command syntax, configuration, or profile resolution.
 - `rig run`, `rig capture`, and publication dispatch preserve provider-native failure status where their contract requires it; profile-wide update and maintenance report independent provider failures and return status 1.
 
-Progress is written to stderr when interactive so reports remain stable on stdout. Set `RIG_PROGRESS=always` for redirected progress or `RIG_PROGRESS=never` to suppress it.
+## Follow long-running work
+
+Operational commands report configuration, resolution, planning, preflight, observation, execution, publication, and cleanup phases on interactive stderr. Each enumerable phase starts at `0/N`; a `running` line names the safe declaration or provider identity without advancing the count; and the following `succeeded`, `skipped`, or `failed` line advances it. Mutation lines include `declaration`, `manifest`, or `provider-wide` scope before the native command starts. A final line gives the completed denominator and outcome totals. Interrupted work says `interrupted` rather than `finished` and retains the native signal exit status.
+
+Rig never writes this progress to stdout, so tables, JSON, and other command reports remain composable. Progress labels omit paths, locators, configured arguments, environment values, publication titles, observed details, credentials, and native output. Provider diagnostics may still share stderr under the provider's own format.
+
+The default `RIG_PROGRESS=auto` shows progress only for operational commands on an interactive terminal; fast `show`, `list`, `explain`, and `diag` queries remain quiet. Set `RIG_PROGRESS=always` for the same stable line-oriented events when stderr is redirected, or `RIG_PROGRESS=never` to suppress progress.
+
+```text
+rig: progress: applying 0/3: base via homebrew [declaration] running
+rig: progress: applying 1/3: base via homebrew [declaration] succeeded
+rig: progress: applying finished completed=3/3 succeeded=2 skipped=1 failed=0
+```

@@ -184,6 +184,8 @@ The [command guide](docs/guides/user/commands.md) groups these commands by user 
 
 Rig-cache cleanup is deliberately separate from provider maintenance. Retained publication diagnostics remain available until you explicitly inspect them with `rig clean --dry-run` and remove eligible artifacts with `rig clean`; provider-native caches remain provider-owned and are touched only by an explicit supported `rig maintain` operation.
 
+Operational commands show phase, completed denominator, current safe identity, terminal outcome, and mutation scope on interactive stderr without changing their stdout reports. `RIG_PROGRESS=always` retains the same line-oriented events when redirected, while `RIG_PROGRESS=never` suppresses them. Fast declaration queries remain quiet in the default automatic mode, and Rig-authored progress omits private configuration values and machine paths.
+
 ## Safety and ownership
 
 Rig configuration is inert TOML; Rig never sources it as shell code. Built-in operations are fixed by Rig, while external operations require an explicit `adapter = "custom"` declaration and allow-list. A custom executable is either named directly or resolved at the exact `${RIG_DATA_HOME}/providers/ID` path. Literal argument boundaries are preserved, and read-only inspection remains separate from mutation and publication.

@@ -4,11 +4,20 @@
 # shellcheck disable=SC2004,SC2034,SC2094
 
 main() {
-  local command_name
+  local command_name exit_code
 
   set -u
   RIG_INVOKED_PATH=$0
   command_name=${1:-help}
+  case "$command_name" in
+    status|doctor|apply|bootstrap|update|maintain|capture|run|export|publish|clean)
+      RIG_PROGRESS_CONTEXT=operational
+      ;;
+    *) RIG_PROGRESS_CONTEXT=query ;;
+  esac
+  trap 'rig_progress_signal 129' HUP
+  trap 'rig_progress_signal 130' INT
+  trap 'rig_progress_signal 143' TERM
   case "$command_name" in
     -h|--help)
       [ "$#" -eq 1 ] || syntax_error "unexpected arguments for $command_name" || return
@@ -102,6 +111,14 @@ main() {
       ;;
     *) syntax_error "unknown command: $command_name" || return ;;
   esac
+  exit_code=$?
+  if [ "$exit_code" -ne 0 ]; then
+    rig_progress_fail
+  elif [ "$RIG_PROGRESS_ACTIVE" -eq 1 ]; then
+    rig_progress_finish
+  fi
+  trap - HUP INT TERM
+  return "$exit_code"
 }
 
 if [[ ${BASH_SOURCE[0]} = "$0" ]]; then

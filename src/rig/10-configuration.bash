@@ -2034,7 +2034,8 @@ rig_validate_model() {
 }
 
 rig_load_config() {
-  local config_home root_file fragment source_count
+  local config_home root_file fragment source_count source_index
+  local -a sources
   local LC_ALL=C
 
   rig_model_reset
@@ -2045,23 +2046,45 @@ rig_load_config() {
     config_home=${XDG_CONFIG_HOME:-$HOME/.config}/rig
   fi
 
-  rig_progress_start 'loading configuration' 1
   root_file=$config_home/rig.toml
+  sources=()
+  rig_progress_start 'configuration discovery' 1
+  rig_progress_begin sources
   source_count=0
   if [ -e "$root_file" ]; then
-    rig_parse_file "$root_file" || return
+    sources[${#sources[@]}]=$root_file
     source_count=$((source_count + 1))
   fi
   for fragment in "$config_home"/conf.d/*.toml; do
     [ -f "$fragment" ] || continue
-    rig_parse_file "$fragment" || return
+    sources[${#sources[@]}]=$fragment
     source_count=$((source_count + 1))
   done
   [ "$source_count" -gt 0 ] ||
     rig_fail "no configuration sources under: $config_home" || return
+  rig_progress_result succeeded sources
+  rig_progress_finish
+
+  rig_progress_start 'configuration parsing' "$source_count"
+  source_index=0
+  while [ "$source_index" -lt "$source_count" ]; do
+    rig_progress_begin "source $((source_index + 1))"
+    rig_parse_file "${sources[$source_index]}" || return
+    rig_progress_result succeeded "source $((source_index + 1))"
+    source_index=$((source_index + 1))
+  done
+  rig_progress_finish
+
+  rig_progress_start 'configuration synthesis' 1
+  rig_progress_begin model
   rig_synthesise_bindings || return
+  rig_progress_result succeeded model
+  rig_progress_finish
+
+  rig_progress_start 'configuration validation' 1
+  rig_progress_begin model
   rig_validate_model || return
-  rig_progress_step "$source_count sources"
+  rig_progress_result succeeded model
   rig_progress_finish
 }
 

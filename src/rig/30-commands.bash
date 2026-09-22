@@ -172,7 +172,7 @@ rig_command_run_launchd_action() {
   domain=$RIG_VALUE
 
   rig_progress_start running 1
-  rig_progress_step "launchd $action"
+  rig_progress_begin "launchd $action" declaration
   case "$action" in
     status)
       "$command" print "$domain/$label"
@@ -210,13 +210,18 @@ rig_command_run_launchd_action() {
       native_status=$?
       ;;
   esac
+  if [ "$native_status" -eq 0 ]; then
+    rig_progress_result succeeded "launchd $action" declaration
+  else
+    rig_progress_result failed "launchd $action" declaration
+  fi
   rig_progress_finish
   return "$native_status"
 }
 
 rig_command_run_action() {
   local provider action section_name platform mode verb adapter executable argument argument_policy native_status
-  local resource_count target kind id resource_section resource_index locator index
+  local resource_count target kind id resource_section resource_index locator index progress_scope
   local -a caller_arguments remaining_arguments
 
   if [ "$#" -eq 1 ]; then
@@ -342,10 +347,20 @@ rig_command_run_action() {
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$argument
     done
   fi
+  if [ -n "$resource_section" ]; then
+    progress_scope=declaration
+  else
+    progress_scope='provider-wide'
+  fi
   rig_progress_start running 1
-  rig_progress_step "$provider $action"
+  rig_progress_begin "$provider $action" "$progress_scope"
   "$executable" "${RIG_INVOKE_ARGUMENTS[@]}"
   native_status=$?
+  if [ "$native_status" -eq 0 ]; then
+    rig_progress_result succeeded "$provider $action" "$progress_scope"
+  else
+    rig_progress_result failed "$provider $action" "$progress_scope"
+  fi
   rig_progress_finish
   return "$native_status"
 }

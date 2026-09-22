@@ -181,13 +181,13 @@ _Evidence:_ `rig_command_apply` redirects provider stdout to stderr while leavin
 
 ### RIG-ORCH-019 — Provider progress channel
 
-Configuration loading and provider-backed observation, inventory, application, declared actions, and publication MUST report line-oriented progress on stderr when stderr is a terminal. Rig MUST keep deterministic reports and exported data on stdout. `RIG_PROGRESS=always` MUST retain progress when stderr is redirected, and `RIG_PROGRESS=never` MUST suppress it.
+Operational configuration, resolution, planning, preflight, observation, materialisation, lifecycle, publication, export, and cleanup phases MUST report line-oriented progress on stderr when stderr is a terminal. Enumerable work MUST retain its declared denominator, MUST leave the completed count unchanged while an item is running, and MUST advance it exactly once only after that item has succeeded, skipped, or failed. Consequential work MUST disclose declaration, manifest, or provider-wide scope before invocation. Failure and interruption MUST terminate an active phase truthfully with completed and outcome counts, including signal-compatible exit status. Rig-authored progress MUST use fixed phase terms and validated public identifiers, MUST NOT expose paths, locators, arguments, environment values, titles, observed details, credentials, or native output, and MUST keep deterministic reports and exported data byte-stable on stdout. `RIG_PROGRESS=always` MUST retain progress when stderr is redirected, `RIG_PROGRESS=never` MUST suppress it, and the default `auto` mode MUST keep declaration-only queries quiet.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats redirects stdout and stderr separately, forces and suppresses progress, and proves the command report is unchanged.
+_Verify:_ Bats redirects stdout and stderr separately; proves completed-not-started counts, scope-before-invocation ordering, successful, skipped, failed, and interrupted termination; injects authored payload sentinels; forces and suppresses progress; and proves command reports are unchanged.
 
-_Evidence:_ `rig_progress_start`, `rig_progress_step`, and `rig_progress_finish` gate progress independently of provider diagnostics; `tests/rig.bats` covers the forced and suppressed modes.
+_Evidence:_ `rig_progress_start`, `rig_progress_begin`, `rig_progress_result`, `rig_progress_finish`, `rig_progress_fail`, and `rig_progress_interrupted` implement the terminal event contract independently of provider diagnostics; focused progress tests in `tests/rig.bats` cover count truth, privacy, scope, failure, interruption, and forced, automatic, and suppressed modes.
 
 ## Declared provider actions
 

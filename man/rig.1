@@ -452,13 +452,19 @@ to
 .B RIG_PROGRESS
 Set to
 .B always
-to retain line-oriented configuration and provider progress when stderr is
+to retain line-oriented operational progress when stderr is
 redirected, or
 .B never
 to suppress it. The default is
 .BR auto ,
-which reports progress only when stderr is a terminal. Progress never changes
-the deterministic report on stdout.
+which reports progress only for operational commands when stderr is a terminal;
+declaration-only queries remain quiet. Enumerable phases report a running item
+without advancing the completed count, then advance once on a succeeded,
+skipped, or failed outcome. Consequential work names declaration, manifest, or
+provider-wide scope before invocation. Failure and interruption terminate the
+active phase explicitly. Rig progress omits private paths, locators, arguments,
+environment values, titles, observed details, credentials, and native output.
+Progress never changes the deterministic report on stdout.
 .TP
 .B XDG_CONFIG_HOME
 Set the base configuration directory when

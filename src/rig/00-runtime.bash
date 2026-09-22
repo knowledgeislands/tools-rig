@@ -94,6 +94,12 @@ RIG_PROGRESS_ACTIVE=0
 RIG_PROGRESS_CURRENT=0
 RIG_PROGRESS_LABEL=
 RIG_PROGRESS_TOTAL=0
+RIG_PROGRESS_ITEM=
+RIG_PROGRESS_SCOPE=
+RIG_PROGRESS_SUCCEEDED=0
+RIG_PROGRESS_SKIPPED=0
+RIG_PROGRESS_FAILED=0
+RIG_PROGRESS_CONTEXT=query
 RIG_PROFILE_SELECTION_MODE=
 RIG_RESOLVED_PROFILE_KIND=
 RIG_RECONCILIATION_LOCK=
@@ -132,7 +138,7 @@ print_help() {
     '' \
     "Run 'rig COMMAND --help' for command usage." \
     '' \
-    'Configuration loading and provider work report progress on stderr when interactive.'
+    'Operational phases report truthful progress on stderr when interactive.'
 }
 
 syntax_error() {
@@ -142,6 +148,7 @@ syntax_error() {
 }
 
 rig_fail() {
+  rig_progress_fail
   printf 'rig: error: %s\n' "$1" >&2
   return 2
 }
@@ -150,33 +157,108 @@ rig_progress_enabled() {
   case "${RIG_PROGRESS:-auto}" in
     always) return 0 ;;
     never) return 1 ;;
-    auto|'') [ -t 2 ] ;;
-    *) [ -t 2 ] ;;
+    auto|'') [ "${RIG_PROGRESS_CONTEXT:-query}" = operational ] && [ -t 2 ] ;;
+    *) [ "${RIG_PROGRESS_CONTEXT:-query}" = operational ] && [ -t 2 ] ;;
   esac
 }
 
 rig_progress_start() {
+  rig_progress_fail
   RIG_PROGRESS_ACTIVE=0
   RIG_PROGRESS_CURRENT=0
   RIG_PROGRESS_LABEL=$1
   RIG_PROGRESS_TOTAL=$2
+  RIG_PROGRESS_ITEM=
+  RIG_PROGRESS_SCOPE=
+  RIG_PROGRESS_SUCCEEDED=0
+  RIG_PROGRESS_SKIPPED=0
+  RIG_PROGRESS_FAILED=0
   [ "$RIG_PROGRESS_TOTAL" -gt 0 ] || return 0
   rig_progress_enabled || return 0
   RIG_PROGRESS_ACTIVE=1
-  printf 'rig: %s 0/%s\n' "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_TOTAL" >&2
+  printf 'rig: progress: %s 0/%s started\n' \
+    "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_TOTAL" >&2
 }
 
-rig_progress_step() {
+rig_progress_begin() {
   [ "$RIG_PROGRESS_ACTIVE" -eq 1 ] || return 0
+  RIG_PROGRESS_ITEM=$1
+  RIG_PROGRESS_SCOPE=${2:-}
+  if [ -n "$RIG_PROGRESS_SCOPE" ]; then
+    printf 'rig: progress: %s %s/%s: %s [%s] running\n' \
+      "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" \
+      "$RIG_PROGRESS_ITEM" "$RIG_PROGRESS_SCOPE" >&2
+  else
+    printf 'rig: progress: %s %s/%s: %s running\n' \
+      "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" \
+      "$RIG_PROGRESS_ITEM" >&2
+  fi
+}
+
+rig_progress_result() {
+  local result item scope
+
+  [ "$RIG_PROGRESS_ACTIVE" -eq 1 ] || return 0
+  result=$1
+  item=${2:-$RIG_PROGRESS_ITEM}
+  scope=${3:-$RIG_PROGRESS_SCOPE}
+  case "$result" in
+    succeeded) RIG_PROGRESS_SUCCEEDED=$((RIG_PROGRESS_SUCCEEDED + 1)) ;;
+    skipped) RIG_PROGRESS_SKIPPED=$((RIG_PROGRESS_SKIPPED + 1)) ;;
+    failed) RIG_PROGRESS_FAILED=$((RIG_PROGRESS_FAILED + 1)) ;;
+    *) return 2 ;;
+  esac
   RIG_PROGRESS_CURRENT=$((RIG_PROGRESS_CURRENT + 1))
-  printf 'rig: %s %s/%s: %s\n' \
-    "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" "$1" >&2
+  if [ -n "$scope" ]; then
+    printf 'rig: progress: %s %s/%s: %s [%s] %s\n' \
+      "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" \
+      "$item" "$scope" "$result" >&2
+  else
+    printf 'rig: progress: %s %s/%s: %s %s\n' \
+      "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" \
+      "$item" "$result" >&2
+  fi
+  RIG_PROGRESS_ITEM=
+  RIG_PROGRESS_SCOPE=
 }
 
 rig_progress_finish() {
   [ "$RIG_PROGRESS_ACTIVE" -eq 1 ] || return 0
-  printf 'rig: %s complete (%s)\n' "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" >&2
+  printf 'rig: progress: %s finished completed=%s/%s succeeded=%s skipped=%s failed=%s\n' \
+    "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" \
+    "$RIG_PROGRESS_SUCCEEDED" "$RIG_PROGRESS_SKIPPED" "$RIG_PROGRESS_FAILED" >&2
   RIG_PROGRESS_ACTIVE=0
+  RIG_PROGRESS_ITEM=
+  RIG_PROGRESS_SCOPE=
+}
+
+rig_progress_fail() {
+  [ "${RIG_PROGRESS_ACTIVE:-0}" -eq 1 ] || return 0
+  printf 'rig: progress: %s failed completed=%s/%s succeeded=%s skipped=%s failed=%s\n' \
+    "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" \
+    "$RIG_PROGRESS_SUCCEEDED" "$RIG_PROGRESS_SKIPPED" "$RIG_PROGRESS_FAILED" >&2
+  RIG_PROGRESS_ACTIVE=0
+  RIG_PROGRESS_ITEM=
+  RIG_PROGRESS_SCOPE=
+}
+
+rig_progress_interrupted() {
+  [ "${RIG_PROGRESS_ACTIVE:-0}" -eq 1 ] || return 0
+  printf 'rig: progress: %s interrupted completed=%s/%s succeeded=%s skipped=%s failed=%s\n' \
+    "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" \
+    "$RIG_PROGRESS_SUCCEEDED" "$RIG_PROGRESS_SKIPPED" "$RIG_PROGRESS_FAILED" >&2
+  RIG_PROGRESS_ACTIVE=0
+  RIG_PROGRESS_ITEM=
+  RIG_PROGRESS_SCOPE=
+}
+
+rig_progress_signal() {
+  local exit_code
+
+  exit_code=$1
+  trap - HUP INT TERM
+  rig_progress_interrupted
+  exit "$exit_code"
 }
 
 require_home() {
