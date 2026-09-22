@@ -5868,7 +5868,10 @@ rig_skills_cli_load_inventory() {
     fi
     index=$((index + 1))
   done
-  [ "$depth" -eq 0 ] && [ "$quoted" -eq 0 ] || { RIG_SKILLS_INVENTORY_DETAIL='malformed-json'; return 0; }
+  if [ "$depth" -ne 0 ] || [ "$quoted" -ne 0 ]; then
+    RIG_SKILLS_INVENTORY_DETAIL='malformed-json'
+    return 0
+  fi
   RIG_SKILLS_INVENTORY_STATUS=ok
   RIG_SKILLS_INVENTORY_DETAIL=-
 }
