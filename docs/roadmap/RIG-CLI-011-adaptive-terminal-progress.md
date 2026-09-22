@@ -4,12 +4,12 @@ title: Render adaptive terminal progress
 area: CLI
 theme: cli
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 38887870c4099679f92d317b9b7133439df25002
 created_at: 2026-09-22T06:08:41Z
-updated_at: 2026-09-22T06:25:47Z
+updated_at: 2026-09-22T06:35:44Z
 ---
 
 ## Goal
@@ -87,6 +87,8 @@ Record implementation and verification evidence here; do not create a second pro
 
 Delivered adaptive progress without changing stdout, provider protocols, operation ordering, native diagnostic ownership, or the Bash 3.2 runtime boundary.
 
+Accepted by the repository owner on 2026-09-22.
+
 ### Summary of changes
 
 - Interactive operational phases now rewrite a 16-cell ASCII bar with truthful counts, safe current identity, scope, and outcome.
@@ -113,6 +115,10 @@ The implementation retains the completed-not-started event semantics from `RIG-C
 ### Mini recap
 
 Interactive operations now present compact progress while redirected logs remain durable and machine-friendly.
+
+## Done
+
+Accepted by the repository owner on 2026-09-22. The implementation remains part of the pending v0.3.0 candidate.
 
 ## Discussion
 
