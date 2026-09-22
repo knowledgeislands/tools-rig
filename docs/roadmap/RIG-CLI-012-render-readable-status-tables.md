@@ -4,12 +4,12 @@ title: Render readable status tables
 area: CLI
 theme: cli
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 55130abbe1307d425a1b5de7e9b2d2cf9d1a33c1
 created_at: 2026-09-22T06:43:59Z
-updated_at: 2026-09-22T07:13:37Z
+updated_at: 2026-09-22T22:15:29Z
 ---
 
 ## Goal
@@ -106,6 +106,10 @@ The implementation adds no runtime dependency and remains compatible with the as
 ### Mini recap
 
 Large status reports are now consistently aligned and bounded without altering what Rig observes or how it classifies machine state.
+
+## Done
+
+Accepted by the repository owner on 2026-09-22. The implementation remains part of the pending v0.3.0 candidate.
 
 ## Discussion
 
