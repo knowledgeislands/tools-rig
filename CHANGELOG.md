@@ -11,11 +11,11 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - `rig`
 - `rig show [--profile NAME]`
 - `rig list [--category ID] [--profile NAME]`
-- `rig explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID`
+- `rig explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID`
 - `rig status [--profile NAME] [--unmanaged]`
 - `rig doctor [--profile NAME]`
-- `rig apply [--profile NAME] [--scope tools|resources|all] [--dry-run]`
-- `rig bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]`
+- `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]`
+- `rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]`
 - `rig update [--profile NAME] [--dry-run]`
 - `rig maintain [--profile NAME] [--dry-run]`
 - `rig capture PROVIDER [--dry-run]`
@@ -29,6 +29,9 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 
 ### Behaviours
 
+- First-class user-level skill declarations with human meaning, reviewed provenance, native authority, intended runtimes, item-owned profile membership, read-only queries, expected-versus-observed state, doctor findings, and informational unmanaged Skills CLI inventory.
+- Bounded skill lifecycle through a deliberately installed Skills CLI, non-invoked KI authority, canonical local leaf-symlink projection, observation-only runtime/plugin ownership, tools → skills → resources application order, explicit update, and no lifecycle removal on deselection, maintain, or clean.
+- Deterministic `rig-publication` version 2 JSON with explicit skill view membership, an always-present `profile.skills` array, narrow public metadata allow-list, and exclusion of authorities, native sources, runtime mappings, paths, roots, locks, arguments, state, unmanaged inventory, and private ports.
 - Typed string settings and Dock paths resolve bounded whole-value home forms consistently across observation, preflight, and application while preserving inert authored configuration and literal query output.
 - Resource-local preflight findings produce failed rows without blocking independent work; shared safety failures remain fail-before-mutation, and any selected resource failure withholds retirement and receipt replacement.
 - Tool-owned generated artifacts remain observation-only under the lifecycle of their native tool.
@@ -73,7 +76,7 @@ Rig 1.0.0 is not yet released. Pre-v1 work remains summarised as an evolving bas
 - Built-in provider operations plus configuration-defined external observe and mutate actions with literal `arguments`, exact `allowed-arguments`, optional provider-owned validation, and native outcome propagation.
 - Failure handling that suppresses only transitive dependants while independent work continues.
 - Terminal-aware, line-oriented stderr progress for configuration loading, provider observation, inventory, application, actions, and publication, with stable stdout and explicit `RIG_PROGRESS=always|never` control.
-- Deterministic offline `rig-publication` version 1 JSON export of an explicitly selected, platform-neutral public profile with relationship closure, canonical URL metadata, disclosure allow-listing, and safe complete-tree replacement.
+- Deterministic offline `rig-publication` version 2 JSON export of an explicitly selected, platform-neutral public profile with relationship closure, skill metadata allow-listing, canonical URL metadata, disclosure allow-listing, and safe complete-tree replacement.
 - Explicit trusted publication dispatch through one selected custom provider, with isolated one-file cache staging, fixed literal handoff, native outcome propagation, phase-aware interruption handling, exact-file fail-closed cleanup, and retained complete failure artifacts.
 - Explicit `rig clean` maintenance safely classifies Rig-owned retained publication exports, supports non-mutating preview, preserves them until requested, atomically claims deletion work, resumes interrupted claims, and skips unsafe legacy entries.
 

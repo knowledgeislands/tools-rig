@@ -21,6 +21,7 @@ RIG_FIELD_SECTIONS=()
 RIG_FIELD_KEYS=()
 RIG_FIELD_VALUES=()
 RIG_SELECTED_TOOLS=()
+RIG_SELECTED_SKILLS=()
 RIG_SELECTED_BINDINGS=()
 RIG_SELECTED_VARIANTS=()
 RIG_SELECTED_RESOURCE_SECTIONS=()
@@ -50,6 +51,20 @@ RIG_CLEAN_PATHS=()
 RIG_CLEAN_STATES=()
 RIG_PORT_STATES=()
 RIG_PORT_DETAILS=()
+RIG_SKILL_STATES=()
+RIG_SKILL_DETAILS=()
+RIG_SKILL_RESULTS=()
+RIG_SKILL_PREFLIGHT_DETAILS=()
+RIG_SKILL_PLANNED=0
+RIG_SKILL_COMPLETED=0
+RIG_SKILL_FAILED=0
+RIG_SKILL_SKIPPED=0
+RIG_SKILLS_INVENTORY_NAMES=()
+RIG_SKILLS_INVENTORY_SOURCES=()
+RIG_SKILLS_INVENTORY_AGENTS=()
+RIG_SKILLS_INVENTORY_LOADED=0
+RIG_SKILLS_INVENTORY_STATUS=
+RIG_SKILLS_INVENTORY_DETAIL=
 RIG_LISTENER_PORTS=()
 RIG_LISTENER_SCOPES=()
 RIG_LISTENER_COMMANDS=()
@@ -77,6 +92,7 @@ RIG_PROFILE_SELECTION_MODE=
 RIG_RESOLVED_PROFILE_KIND=
 RIG_RECONCILIATION_LOCK=
 RIG_RECONCILIATION_LOCK_ACQUIRED=0
+RIG_BOOTSTRAP_ALLOW_DEFERRED_SKILLS=0
 RIG_LISTENER_OBSERVATION_AVAILABLE=0
 
 print_help() {
@@ -90,14 +106,14 @@ print_help() {
     '  -V, --version         Print the Rig version.' \
     '' \
     'Commands:' \
-    '  show        Describe a resolved profile.' \
+    '  show        Describe a resolved profile with tools and skills.' \
     '  list        Browse declared catalogue tools.' \
-    '  explain     Explain a declared tool, resource, or private port.' \
-    '  status      Compare expected and observed state.' \
+    '  explain     Explain a declared tool, skill, resource, or private port.' \
+    '  status      Compare expected and observed tool, skill, and resource state.' \
     '  doctor      Check whether Rig can operate.' \
     '  apply       Materialise a resolved profile.' \
     '  bootstrap   Materialise the bootstrap profile.' \
-    '  update      Update selected provider-managed tools.' \
+    '  update      Update selected provider-managed tools and skills.' \
     '  maintain    Run explicit selected-provider maintenance.' \
     '  capture     Refresh one provider-native manifest.' \
     '  run         Invoke a declared provider action.' \
@@ -182,8 +198,8 @@ print_bash_completion() {
     '    explain) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
     '    status) COMPREPLY=($(compgen -W "-h --help --profile --unmanaged" -- "$current")) ;;' \
     '    doctor) COMPREPLY=($(compgen -W "-h --help --profile" -- "$current")) ;;' \
-    '    apply) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools resources all" -- "$current")) ;;' \
-    '    bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools resources all" -- "$current")) ;;' \
+    '    apply) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all" -- "$current")) ;;' \
+    '    bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all" -- "$current")) ;;' \
     '    update|maintain) COMPREPLY=($(compgen -W "-h --help --profile --dry-run" -- "$current")) ;;' \
     '    capture) COMPREPLY=($(compgen -W "-h --help --dry-run homebrew" -- "$current")) ;;' \
     '    run) COMPREPLY=($(compgen -W "-h --help --" -- "$current")) ;;' \
@@ -236,8 +252,8 @@ print_zsh_completion() {
     "        explain) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:tool, qualified resource, or private port:' ;;" \
     "        status) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--unmanaged[report observed items no tool installation declares]' ;;" \
     "        doctor) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' ;;" \
-    "        apply) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--scope[select plan scope]:scope:(tools resources all)' '--dry-run[print plan without invoking providers]' ;;" \
-    "        bootstrap) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--scope[select plan scope]:scope:(tools resources all)' '--dry-run[print plan without invoking providers]' ;;" \
+    "        apply) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--scope[select plan scope]:scope:(tools skills resources all)' '--dry-run[print plan without invoking providers]' ;;" \
+    "        bootstrap) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--scope[select plan scope]:scope:(tools skills resources all)' '--dry-run[print plan without invoking providers]' ;;" \
     "        update|maintain) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \
     "        capture) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:provider:(homebrew)' '--dry-run[print plan without invoking provider]' ;;" \
     "        run) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:provider name:' '2:action name:' '3:separator:(--)' '*::action argument:' ;;" \
@@ -268,6 +284,7 @@ rig_model_reset() {
   RIG_FIELD_KEYS=()
   RIG_FIELD_VALUES=()
   RIG_SELECTED_TOOLS=()
+  RIG_SELECTED_SKILLS=()
   RIG_SELECTED_BINDINGS=()
   RIG_SELECTED_VARIANTS=()
   RIG_SELECTED_RESOURCE_SECTIONS=()
@@ -295,6 +312,20 @@ rig_model_reset() {
   RIG_DECLARED_FIELDS=()
   RIG_PORT_STATES=()
   RIG_PORT_DETAILS=()
+  RIG_SKILL_STATES=()
+  RIG_SKILL_DETAILS=()
+  RIG_SKILL_RESULTS=()
+  RIG_SKILL_PREFLIGHT_DETAILS=()
+  RIG_SKILL_PLANNED=0
+  RIG_SKILL_COMPLETED=0
+  RIG_SKILL_FAILED=0
+  RIG_SKILL_SKIPPED=0
+  RIG_SKILLS_INVENTORY_NAMES=()
+  RIG_SKILLS_INVENTORY_SOURCES=()
+  RIG_SKILLS_INVENTORY_AGENTS=()
+  RIG_SKILLS_INVENTORY_LOADED=0
+  RIG_SKILLS_INVENTORY_STATUS=
+  RIG_SKILLS_INVENTORY_DETAIL=
   RIG_LISTENER_PORTS=()
   RIG_LISTENER_SCOPES=()
   RIG_LISTENER_COMMANDS=()
@@ -383,7 +414,7 @@ rig_parse_section_identity() {
   fi
 
   case "$name" in
-    category.*|tool.*|profile.*|provider.*|publication.*|service.*|scheduled-job.*|setting.*|dock.*|dock-item.*|port.*)
+    category.*|tool.*|skill.*|profile.*|provider.*|publication.*|service.*|scheduled-job.*|setting.*|dock.*|dock-item.*|port.*)
       RIG_SECTION_TYPE=${name%%.*}
       rest=${name#*.}
       rig_valid_id "$rest" || return 1
@@ -462,6 +493,8 @@ rig_field_kind() {
     rig:schema|rig:default-profile|rig:bootstrap-profile|\
     category:name|category:purpose|\
     tool:name|tool:category|tool:purpose|tool:rationale|\
+    skill:name|skill:purpose|skill:rationale|skill:authority|skill:source|\
+    skill:source-skill|skill:trust|skill:public-source|\
     profile:name|profile:purpose|profile:kind|\
     tool:install-provider|tool:install-kind|tool:install-locator|\
     tool:install-destination|tool:install-checksum|\
@@ -491,7 +524,8 @@ rig_field_kind() {
     tool:platform|tool:requires|tool:related|tool:alternative|tool:artifact|tool:member-profile|\
     tool:variant:*:platform|tool:variant:*:artifact|tool:variant:*:install-argument|\
     tool:install-platform|tool:install-argument|\
-    profile:profile|profile:inherit|profile:tool|profile:service|profile:scheduled-job|\
+    skill:platform|skill:runtime|skill:requires|skill:member-profile|\
+    profile:profile|profile:inherit|profile:tool|profile:skill|profile:service|profile:scheduled-job|\
     profile:setting|profile:dock|profile:port|\
     provider:argument|provider:capability|provider:autoupdate-option|\
     binding:platform|binding:argument|\
@@ -552,6 +586,8 @@ rig_toml_field() {
     rig:default-profile|rig:bootstrap-profile|\
     category:name|category:purpose|profile:name|profile:purpose|profile:kind|\
     tool:name|tool:category|tool:purpose|tool:rationale|\
+    skill:name|skill:purpose|skill:rationale|skill:authority|skill:source|\
+    skill:source-skill|skill:trust|skill:public-source|\
     provider:adapter|provider:command|provider:executable|provider:manifest|\
     binding:kind|binding:locator|binding:destination|binding:checksum|\
     publication:profile|publication:title|publication:base-url|publication:publisher|\
@@ -590,11 +626,16 @@ rig_toml_field() {
     tool:alternatives) RIG_TOML_FIELD_KEY=alternative ; RIG_TOML_FIELD_TYPE=array ;;
     tool:artifacts) RIG_TOML_FIELD_KEY=artifact ; RIG_TOML_FIELD_TYPE=array ;;
     tool:profiles) RIG_TOML_FIELD_KEY=member-profile ; RIG_TOML_FIELD_TYPE=array ;;
+    skill:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
+    skill:runtimes) RIG_TOML_FIELD_KEY=runtime ; RIG_TOML_FIELD_TYPE=array ;;
+    skill:requires) RIG_TOML_FIELD_KEY=requires ; RIG_TOML_FIELD_TYPE=array ;;
+    skill:profiles) RIG_TOML_FIELD_KEY=member-profile ; RIG_TOML_FIELD_TYPE=array ;;
     tool:install.platforms) RIG_TOML_FIELD_KEY=install-platform ; RIG_TOML_FIELD_TYPE=array ;;
     tool:install.arguments) RIG_TOML_FIELD_KEY=install-argument ; RIG_TOML_FIELD_TYPE=array ;;
     profile:profiles) RIG_TOML_FIELD_KEY=profile ; RIG_TOML_FIELD_TYPE=array ;;
     profile:inherits) RIG_TOML_FIELD_KEY=inherit ; RIG_TOML_FIELD_TYPE=array ;;
     profile:tools) RIG_TOML_FIELD_KEY=tool ; RIG_TOML_FIELD_TYPE=array ;;
+    profile:skills) RIG_TOML_FIELD_KEY=skill ; RIG_TOML_FIELD_TYPE=array ;;
     profile:services) RIG_TOML_FIELD_KEY=service ; RIG_TOML_FIELD_TYPE=array ;;
     profile:scheduled-jobs) RIG_TOML_FIELD_KEY=scheduled-job ; RIG_TOML_FIELD_TYPE=array ;;
     profile:settings) RIG_TOML_FIELD_KEY=setting ; RIG_TOML_FIELD_TYPE=array ;;
@@ -1183,7 +1224,8 @@ rig_detect_profile_selection_mode() {
     section_name=${RIG_SECTION_NAMES[$index]}
     case "$section_type" in
       profile)
-        if rig_field_declared "$section_name" tool ||
+      if rig_field_declared "$section_name" tool ||
+        rig_field_declared "$section_name" skill ||
           rig_field_declared "$section_name" service ||
           rig_field_declared "$section_name" scheduled-job ||
           rig_field_declared "$section_name" setting ||
@@ -1192,7 +1234,7 @@ rig_detect_profile_selection_mode() {
           central=1
         fi
         ;;
-      tool|service|scheduled-job|setting|dock|port)
+    tool|skill|service|scheduled-job|setting|dock|port)
         if rig_field_declared "$section_name" member-profile; then
           item=1
         fi
@@ -1363,14 +1405,14 @@ rig_validate_provider_adapter() {
   adapter=$2
   case "$adapter" in
     custom) ;;
-    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock) ;;
+    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|skills-cli|ki) ;;
     *) rig_fail "[$section_name] has unsupported adapter '$adapter'" || return ;;
   esac
 }
 
 rig_builtin_provider_adapter() {
   case "$1" in
-    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock)
+    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|skills-cli|ki)
       RIG_VALUE=$1
       return 0
       ;;
@@ -1411,7 +1453,7 @@ rig_validate_binding_adapter() {
     custom:*) ;;
     homebrew:formula|homebrew:cask|homebrew:mas|uv:tool|mise:tool|npm:global|chezmoi:target) ;;
     direct-download:executable) ;;
-    launchd:*|macos-applications:*|macos-defaults:*|macos-dock:*)
+    launchd:*|macos-applications:*|macos-defaults:*|macos-dock:*|skills-cli:*|ki:*)
       rig_fail "[$section_name] adapter '$adapter' cannot install tools" || return
       ;;
     homebrew:*|uv:*|mise:*|npm:*|chezmoi:*|direct-download:*)
@@ -1955,6 +1997,63 @@ rig_validate_tool_variants() {
   done
 }
 
+rig_validate_skill() {
+  local section_name section_index authority trust source source_skill field_index field_end runtime
+
+  section_name=$1
+  section_index=$2
+  rig_require_field "$section_name" name || return
+  rig_require_field "$section_name" purpose || return
+  rig_require_field "$section_name" rationale || return
+  rig_require_field "$section_name" authority || return
+  authority=$RIG_VALUE
+  rig_require_field "$section_name" source || return
+  source=$RIG_VALUE
+  rig_require_field "$section_name" trust || return
+  trust=$RIG_VALUE
+  case "$authority:$trust" in
+    skills-cli:reviewed|ki:reviewed|local:reviewed|runtime:authority-owned|plugin:authority-owned) ;;
+    skills-cli:*|ki:*|local:*)
+      rig_fail "[$section_name] materialising authority '$authority' requires trust 'reviewed'" || return
+      ;;
+    runtime:*|plugin:*)
+      rig_fail "[$section_name] observation-only authority '$authority' requires trust 'authority-owned'" || return
+      ;;
+    *) rig_fail "[$section_name] has unsupported authority '$authority'" || return ;;
+  esac
+  if rig_get_value "$section_name" source-skill; then
+    source_skill=$RIG_VALUE
+    rig_valid_id "$source_skill" || rig_fail "[$section_name] has invalid source-skill '$source_skill'" || return
+  fi
+  if [ "$authority" = local ]; then
+    case "$source" in /*|\~/*|\$HOME/*) ;; *)
+          rig_fail "[$section_name] local source must be absolute or start with '~/' or '\$HOME/'" || return ;;
+    esac
+  fi
+  if rig_get_value "$section_name" public-source; then
+    case "$RIG_VALUE" in https://*|http://*) ;; *)
+      rig_fail "[$section_name] public-source must be an absolute HTTP or HTTPS URL" || return ;;
+    esac
+  fi
+  rig_field_count "$section_index" platform
+  [ "$RIG_COUNT" -gt 0 ] || rig_fail "[$section_name] requires field 'platform'" || return
+  rig_field_count "$section_index" runtime
+  [ "$RIG_COUNT" -gt 0 ] || rig_fail "[$section_name] requires field 'runtime'" || return
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = runtime ]; then
+      runtime=${RIG_FIELD_VALUES[$field_index]}
+      case "$runtime" in agents|claude-code|codex|github-copilot|warp|zed) ;;
+        *) rig_fail "[$section_name] has unsupported runtime '$runtime'" || return ;;
+      esac
+    fi
+    field_index=$((field_index + 1))
+  done
+  rig_validate_references_for_field "$section_index" requires tool || return
+  rig_validate_references_for_field "$section_index" member-profile profile
+}
+
 rig_validate_model() {
   local index section_name section_type section_id secondary_id adapter provider profile
   local field_index field_end
@@ -2009,10 +2108,14 @@ rig_validate_model() {
         rig_validate_references_for_field "$index" alternative tool || return
         rig_validate_references_for_field "$index" member-profile profile || return
         ;;
+      skill)
+        rig_validate_skill "$section_name" "$index" || return
+        ;;
       profile)
         rig_validate_references_for_field "$index" profile profile || return
         rig_validate_references_for_field "$index" inherit profile || return
         rig_validate_references_for_field "$index" tool tool || return
+        rig_validate_references_for_field "$index" skill skill || return
         rig_validate_references_for_field "$index" service service || return
         rig_validate_references_for_field "$index" scheduled-job scheduled-job || return
         rig_validate_references_for_field "$index" setting setting || return
@@ -2254,6 +2357,71 @@ rig_select_tool() {
       rig_select_tool "$child" "$platform" "$tool" || return
     fi
     field_index=$((field_index + 1))
+  done
+}
+
+rig_skill_supports_platform() {
+  local skill platform section_index field_index field_end
+
+  [ "$RIG_PUBLICATION_PLATFORM_NEUTRAL" -ne 1 ] || return 0
+  skill=$1
+  platform=$2
+  rig_section_index "skill.$skill" || return 1
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = platform ] && {
+      [ "${RIG_FIELD_VALUES[$field_index]}" = any ] ||
+        [ "${RIG_FIELD_VALUES[$field_index]}" = "$platform" ];
+    }; then
+      return 0
+    fi
+    field_index=$((field_index + 1))
+  done
+  return 1
+}
+
+rig_select_skill() {
+  local skill platform section_index field_index field_end tool
+
+  skill=$1
+  platform=$2
+  rig_skill_supports_platform "$skill" "$platform" || return 0
+  if [ "${#RIG_SELECTED_SKILLS[@]}" -gt 0 ] &&
+    rig_array_contains "$skill" "${RIG_SELECTED_SKILLS[@]}"; then
+    return 0
+  fi
+  rig_section_index "skill.$skill" || return 2
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = requires ]; then
+      tool=${RIG_FIELD_VALUES[$field_index]}
+      rig_select_tool "$tool" "$platform" "skill.$skill" || return
+    fi
+    field_index=$((field_index + 1))
+  done
+  RIG_SELECTED_SKILLS[${#RIG_SELECTED_SKILLS[@]}]=$skill
+}
+
+rig_sort_selected_skills() {
+  local index scan value previous
+  local LC_ALL=C
+
+  index=1
+  while [ "$index" -lt "${#RIG_SELECTED_SKILLS[@]}" ]; do
+    value=${RIG_SELECTED_SKILLS[$index]}
+    scan=$index
+    while [ "$scan" -gt 0 ]; do
+      previous=${RIG_SELECTED_SKILLS[$((scan - 1))]}
+      [[ "$value" < "$previous" ]] || break
+      RIG_SELECTED_SKILLS[$scan]=$previous
+      scan=$((scan - 1))
+    done
+    RIG_SELECTED_SKILLS[$scan]=$value
+    index=$((index + 1))
   done
 }
 
@@ -2502,12 +2670,13 @@ rig_select_item_memberships() {
     section_type=${RIG_SECTION_TYPES[$index]}
     section_name=${RIG_SECTION_NAMES[$index]}
     section_id=${RIG_SECTION_IDS[$index]}
-    case "$section_type" in tool|service|scheduled-job|setting|dock|port) ;; *)
+    case "$section_type" in tool|skill|service|scheduled-job|setting|dock|port) ;; *)
       index=$((index + 1)); continue ;;
     esac
     if rig_item_selected_by_active_profiles "$section_name"; then
       case "$section_type" in
         tool) rig_select_tool "$section_id" "$platform" || return ;;
+        skill) rig_select_skill "$section_id" "$platform" || return ;;
         port) rig_select_port "$section_id" || return ;;
         *) rig_select_resource "$section_type" "$section_id" "$platform" || return ;;
       esac
@@ -2532,6 +2701,7 @@ rig_select_central_profile() {
       case "$key" in
         profile|inherit) rig_select_central_profile "$target" "$platform" || return ;;
         tool) rig_select_tool "$target" "$platform" || return ;;
+        skill) rig_select_skill "$target" "$platform" || return ;;
         service) rig_select_resource service "$target" "$platform" || return ;;
         scheduled-job) rig_select_resource scheduled-job "$target" "$platform" || return ;;
         setting) rig_select_resource setting "$target" "$platform" || return ;;
@@ -2567,13 +2737,41 @@ rig_view_tool_is_explicit() {
   return 1
 }
 
+rig_view_skill_is_explicit() {
+  local skill profile section_index field_index field_end
+
+  skill=$1
+  if [ "$RIG_PROFILE_SELECTION_MODE" = item ]; then
+    rig_item_selected_by_active_profiles "skill.$skill"
+    return
+  fi
+  for profile in "${RIG_ACTIVE_PROFILES[@]}"; do
+    rig_section_index "profile.$profile" || return 2
+    section_index=$RIG_INDEX
+    field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+    field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+    while [ "$field_index" -lt "$field_end" ]; do
+      if [ "${RIG_FIELD_KEYS[$field_index]}" = skill ] &&
+        [ "${RIG_FIELD_VALUES[$field_index]}" = "$skill" ]; then
+        return 0
+      fi
+      field_index=$((field_index + 1))
+    done
+  done
+  return 1
+}
+
 rig_validate_view_closure() {
-  local profile tool
+  local profile tool skill
 
   profile=$1
   for tool in "${RIG_SELECTED_TOOLS[@]+"${RIG_SELECTED_TOOLS[@]}"}"; do
     rig_view_tool_is_explicit "$tool" ||
       rig_fail "view profile '$profile' dependency '$tool' is not explicitly opted in" || return
+  done
+  for skill in "${RIG_SELECTED_SKILLS[@]+"${RIG_SELECTED_SKILLS[@]}"}"; do
+    rig_view_skill_is_explicit "$skill" ||
+      rig_fail "view profile '$profile' skill '$skill' is not explicitly opted in" || return
   done
 }
 
@@ -2739,6 +2937,7 @@ rig_resolve_profile() {
   profile=${1:-}
   platform=${2:-}
   RIG_SELECTED_TOOLS=()
+  RIG_SELECTED_SKILLS=()
   RIG_SELECTED_BINDINGS=()
   RIG_SELECTED_VARIANTS=()
   RIG_SELECTED_RESOURCE_SECTIONS=()
@@ -2761,6 +2960,7 @@ rig_resolve_profile() {
     rig_select_central_profile "$profile" "$platform" || return
   fi
   rig_sort_selected_tools
+  rig_sort_selected_skills
   rig_select_tool_variants "$platform" || return
   rig_sort_selected_resources
   rig_sort_selected_ports
@@ -2903,7 +3103,9 @@ rig_provider_has_capability() {
       launchd:resource-observe|launchd:resource-apply|launchd:resource-retire|\
       macos-applications:inventory|\
       macos-defaults:resource-observe|macos-defaults:resource-apply|\
-      macos-dock:resource-observe|macos-dock:resource-apply)
+      macos-dock:resource-observe|macos-dock:resource-apply|\
+      skills-cli:skill-observe|skills-cli:skill-apply|skills-cli:skill-update|skills-cli:skill-inventory|\
+      ki:skill-apply|ki:skill-update)
         return 0
         ;;
     esac
@@ -4204,6 +4406,8 @@ rig_provider_executable() {
     npm:*) RIG_VALUE=npm ;;
     chezmoi:*) RIG_VALUE=chezmoi ;;
     direct-download:*) RIG_VALUE=curl ;;
+    skills-cli:*) RIG_VALUE=skills ;;
+    ki:*) RIG_VALUE=ki ;;
     *) return 1 ;;
   esac
 }
@@ -5366,6 +5570,271 @@ rig_print_resource_status() {
   RIG_COUNT=$unhealthy
 }
 
+rig_skill_runtime_path() {
+  local runtime skill
+
+  runtime=$1
+  skill=$2
+  [ -n "${HOME:-}" ] || return 1
+  case "$runtime" in
+    agents) RIG_VALUE=$HOME/.agents/skills/$skill ;;
+    claude-code) RIG_VALUE=$HOME/.claude/skills/$skill ;;
+    codex) RIG_VALUE=$HOME/.codex/skills/$skill ;;
+    github-copilot) RIG_VALUE=$HOME/.copilot/skills/$skill ;;
+    warp) RIG_VALUE=$HOME/.warp/skills/$skill ;;
+    zed) RIG_VALUE=${XDG_CONFIG_HOME:-$HOME/.config}/zed/skills/$skill ;;
+    *) return 1 ;;
+  esac
+}
+
+rig_skill_source_name() {
+  local skill
+  skill=$1
+  if rig_get_value "skill.$skill" source-skill; then return 0; fi
+  RIG_VALUE=$skill
+}
+
+rig_skills_cli_load_inventory() {
+  local executable version name_re source_re agents_re text index character escaped quoted depth object name source agents
+
+  [ "$RIG_SKILLS_INVENTORY_LOADED" -eq 0 ] || return 0
+  RIG_SKILLS_INVENTORY_LOADED=1
+  RIG_SKILLS_INVENTORY_STATUS=unavailable
+  RIG_SKILLS_INVENTORY_DETAIL=inventory-unavailable
+  rig_provider_executable skills-cli skills-cli skill || return 0
+  executable=$RIG_VALUE
+  rig_executable_available "$executable" || { RIG_SKILLS_INVENTORY_DETAIL='executable-unavailable'; return 0; }
+  version=$("$executable" --version 2>/dev/null) || { RIG_SKILLS_INVENTORY_DETAIL='version-unavailable'; return 0; }
+  case "$version" in 1.*|skills\ 1.*) ;; *) RIG_SKILLS_INVENTORY_DETAIL=unsupported-version; return 0 ;; esac
+  RIG_INVOKE_ARGUMENTS=(list --global --json)
+  rig_capture_invocation "$executable"
+  [ "$RIG_NATIVE_STATUS" -eq 0 ] || { RIG_SKILLS_INVENTORY_DETAIL=exit:$RIG_NATIVE_STATUS; return 0; }
+  text=$RIG_CAPTURED_OUTPUT
+  case "$text" in \[*\]) ;; *) RIG_SKILLS_INVENTORY_DETAIL='malformed-json'; return 0 ;; esac
+  name_re='"name"[[:space:]]*:[[:space:]]*"([^"\\]*)"'
+  source_re='"source"[[:space:]]*:[[:space:]]*"([^"\\]*)"'
+  agents_re='"agents"[[:space:]]*:[[:space:]]*\[([^]]*)\]'
+  index=0
+  quoted=0
+  escaped=0
+  depth=0
+  object=
+  while [ "$index" -lt "${#text}" ]; do
+    character=${text:$index:1}
+    if [ "$depth" -gt 0 ]; then object=$object$character; fi
+    if [ "$quoted" -eq 1 ]; then
+      if [ "$escaped" -eq 1 ]; then
+        escaped=0
+      else
+        case "$character" in
+          \\) escaped=1 ;;
+          '"') quoted=0 ;;
+        esac
+      fi
+    else
+      case "$character" in
+        '"') quoted=1 ;;
+        '{')
+          depth=$((depth + 1))
+          [ "$depth" -ne 1 ] || object='{'
+          ;;
+        '}')
+          depth=$((depth - 1))
+          [ "$depth" -ge 0 ] || { RIG_SKILLS_INVENTORY_DETAIL='malformed-json'; return 0; }
+          if [ "$depth" -eq 0 ]; then
+            [[ "$object" =~ $name_re ]] || { RIG_SKILLS_INVENTORY_DETAIL='malformed-json'; return 0; }
+            name=${BASH_REMATCH[1]}
+            source=
+            [[ "$object" =~ $source_re ]] && source=${BASH_REMATCH[1]}
+            agents=
+            [[ "$object" =~ $agents_re ]] && agents=${BASH_REMATCH[1]}
+            RIG_SKILLS_INVENTORY_NAMES[${#RIG_SKILLS_INVENTORY_NAMES[@]}]=$name
+            RIG_SKILLS_INVENTORY_SOURCES[${#RIG_SKILLS_INVENTORY_SOURCES[@]}]=$source
+            RIG_SKILLS_INVENTORY_AGENTS[${#RIG_SKILLS_INVENTORY_AGENTS[@]}]=$agents
+            object=
+          fi
+          ;;
+      esac
+    fi
+    index=$((index + 1))
+  done
+  [ "$depth" -eq 0 ] && [ "$quoted" -eq 0 ] || { RIG_SKILLS_INVENTORY_DETAIL='malformed-json'; return 0; }
+  RIG_SKILLS_INVENTORY_STATUS=ok
+  RIG_SKILLS_INVENTORY_DETAIL=-
+}
+
+rig_skill_runtime_display() {
+  case "$1" in
+    agents) RIG_VALUE=Agents ;;
+    claude-code) RIG_VALUE='Claude Code' ;;
+    codex) RIG_VALUE=Codex ;;
+    github-copilot) RIG_VALUE='GitHub Copilot' ;;
+    warp) RIG_VALUE=Warp ;;
+    zed) RIG_VALUE=Zed ;;
+    *) return 1 ;;
+  esac
+}
+
+rig_observe_skill() {
+  local skill section_name authority source source_skill index found observed_source agents runtime display target root canonical
+
+  skill=$1
+  section_name=skill.$skill
+  rig_get_value "$section_name" authority || return 2
+  authority=$RIG_VALUE
+  rig_get_value "$section_name" source || return 2
+  source=$RIG_VALUE
+  rig_skill_source_name "$skill" || return 2
+  source_skill=$RIG_VALUE
+  RIG_OBSERVATION=unknown
+  RIG_OBSERVATION_DETAIL=-
+  case "$authority" in
+    ki)
+      RIG_OBSERVATION=unavailable
+      RIG_OBSERVATION_DETAIL=inventory-unavailable
+      return 0
+      ;;
+    skills-cli)
+      rig_skills_cli_load_inventory || return 2
+      if [ "$RIG_SKILLS_INVENTORY_STATUS" != ok ]; then
+        RIG_OBSERVATION=unavailable
+        RIG_OBSERVATION_DETAIL=$RIG_SKILLS_INVENTORY_DETAIL
+        return 0
+      fi
+      found=0
+      index=0
+      while [ "$index" -lt "${#RIG_SKILLS_INVENTORY_NAMES[@]}" ]; do
+        if [ "${RIG_SKILLS_INVENTORY_NAMES[$index]}" = "$source_skill" ]; then
+          found=1
+          observed_source=${RIG_SKILLS_INVENTORY_SOURCES[$index]}
+          agents=${RIG_SKILLS_INVENTORY_AGENTS[$index]}
+          break
+        fi
+        index=$((index + 1))
+      done
+      if [ "$found" -eq 0 ]; then RIG_OBSERVATION=missing; RIG_OBSERVATION_DETAIL=not-installed; return 0; fi
+      if [ -z "$observed_source" ]; then RIG_OBSERVATION=drifted; RIG_OBSERVATION_DETAIL=provenance-missing; return 0; fi
+      if [ "$observed_source" != "$source" ]; then RIG_OBSERVATION=drifted; RIG_OBSERVATION_DETAIL='source-mismatch'; return 0; fi
+      rig_collect_field_values "$section_name" runtime
+      for runtime in "${RIG_QUERY_ITEMS[@]}"; do
+        rig_skill_runtime_display "$runtime" || return 2
+        display=$RIG_VALUE
+        case "$agents" in *"\"$display\""*) ;; *) RIG_OBSERVATION=missing; RIG_OBSERVATION_DETAIL=runtime-missing:$runtime; return 0 ;; esac
+      done
+      RIG_OBSERVATION=present
+      RIG_OBSERVATION_DETAIL=verified-source-and-runtimes
+      return 0
+      ;;
+    local)
+      rig_normalize_artifact_identity "$source"
+      root=$RIG_VALUE
+      if [ -L "$root" ] || [ ! -d "$root" ] || [ ! -f "$root/SKILL.md" ]; then
+        RIG_OBSERVATION=unavailable
+        RIG_OBSERVATION_DETAIL=unsafe-local-source
+        return 0
+      fi
+      canonical=$(cd "$root" 2>/dev/null && pwd -P) || { RIG_OBSERVATION=unavailable; RIG_OBSERVATION_DETAIL=unsafe-local-source; return 0; }
+      ;;
+    runtime|plugin) canonical= ;;
+  esac
+  rig_collect_field_values "$section_name" runtime
+  for runtime in "${RIG_QUERY_ITEMS[@]}"; do
+    rig_skill_runtime_path "$runtime" "$source_skill" || return 2
+    target=$RIG_VALUE
+    if [ ! -e "$target" ] && [ ! -L "$target" ]; then RIG_OBSERVATION=missing; RIG_OBSERVATION_DETAIL=runtime-missing:$runtime; return 0; fi
+    if [ "$authority" = local ]; then
+      [ -L "$target" ] || { RIG_OBSERVATION=drifted; RIG_OBSERVATION_DETAIL=foreign-target:$runtime; return 0; }
+      [ "$(readlink "$target")" = "$canonical" ] || { RIG_OBSERVATION=drifted; RIG_OBSERVATION_DETAIL=source-mismatch:$runtime; return 0; }
+    elif [ ! -d "$target" ] || [ ! -f "$target/SKILL.md" ]; then
+      RIG_OBSERVATION=drifted
+      RIG_OBSERVATION_DETAIL=invalid-projection:$runtime
+      return 0
+    fi
+  done
+  RIG_OBSERVATION=present
+  RIG_OBSERVATION_DETAIL='authority-owned'
+}
+
+rig_observe_skills() {
+  local index skill
+  RIG_SKILL_STATES=()
+  RIG_SKILL_DETAILS=()
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_SKILLS[@]}" ]; do
+    skill=${RIG_SELECTED_SKILLS[$index]}
+    rig_observe_skill "$skill" || return
+    RIG_SKILL_STATES[$index]=$RIG_OBSERVATION
+    RIG_SKILL_DETAILS[$index]=$RIG_OBSERVATION_DETAIL
+    index=$((index + 1))
+  done
+}
+
+rig_print_skill_status() {
+  local index skill authority state detail unhealthy
+  printf '\nSKILL\tAUTHORITY\tSTATE\tDETAIL\n'
+  unhealthy=0
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_SKILLS[@]}" ]; do
+    skill=${RIG_SELECTED_SKILLS[$index]}
+    rig_get_value "skill.$skill" authority || return 2
+    authority=$RIG_VALUE
+    state=${RIG_SKILL_STATES[$index]}
+    detail=${RIG_SKILL_DETAILS[$index]}
+    [ "$state" = present ] || unhealthy=$((unhealthy + 1))
+    printf '%s\t%s\t%s\t%s\n' "$skill" "$authority" "$state" "$detail"
+    index=$((index + 1))
+  done
+  RIG_COUNT=$unhealthy
+}
+
+rig_skill_source_is_declared() {
+  local wanted section_index section_name source_name
+
+  wanted=$1
+  section_index=0
+  while [ "$section_index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+    section_name=${RIG_SECTION_NAMES[$section_index]}
+    case "$section_name" in
+      skill.*)
+        if rig_get_value "$section_name" authority && [ "$RIG_VALUE" = skills-cli ]; then
+          if rig_get_value "$section_name" source-skill; then
+            source_name=$RIG_VALUE
+          else
+            source_name=${section_name#skill.}
+          fi
+          if [ "$source_name" = "$wanted" ]; then
+            return 0
+          fi
+        fi
+        ;;
+    esac
+    section_index=$((section_index + 1))
+  done
+  return 1
+}
+
+rig_print_unmanaged_skills() {
+  local index name count
+
+  rig_skills_cli_load_inventory || return 2
+  if [ "$RIG_SKILLS_INVENTORY_STATUS" != ok ]; then
+    printf '\nUnmanaged skills unavailable: %s\n' "$RIG_SKILLS_INVENTORY_DETAIL"
+    return 0
+  fi
+  count=0
+  printf '\nSKILL\tAUTHORITY\tSTATE\tDETAIL\n'
+  index=0
+  while [ "$index" -lt "${#RIG_SKILLS_INVENTORY_NAMES[@]}" ]; do
+    name=${RIG_SKILLS_INVENTORY_NAMES[$index]}
+    if ! rig_skill_source_is_declared "$name"; then
+      printf '%s\tskills-cli\tunmanaged\tglobal\n' "$name"
+      count=$((count + 1))
+    fi
+    index=$((index + 1))
+  done
+  printf 'Unmanaged skills: %s\n' "$count"
+}
+
 rig_command_status() {
   local profile index tool provider state detail unhealthy unmanaged_requested
   local present missing drifted unavailable unknown catalogue_only
@@ -5406,6 +5875,9 @@ rig_command_status() {
   if [ "${#RIG_SELECTED_PORTS[@]}" -gt 0 ]; then
     rig_observe_ports || return
   fi
+  if [ "${#RIG_SELECTED_SKILLS[@]}" -gt 0 ]; then
+    rig_observe_skills || return
+  fi
   printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   printf 'TOOL\tPROVIDER\tSTATE\tDETAIL\n'
   unhealthy=0
@@ -5437,6 +5909,10 @@ rig_command_status() {
   done
   printf 'Summary: present=%s missing=%s drifted=%s unavailable=%s unknown=%s catalogue-only=%s\n' \
     "$present" "$missing" "$drifted" "$unavailable" "$unknown" "$catalogue_only"
+  if [ "${#RIG_SELECTED_SKILLS[@]}" -gt 0 ]; then
+    rig_print_skill_status || return
+    [ "$RIG_COUNT" -eq 0 ] || unhealthy=$((unhealthy + RIG_COUNT))
+  fi
   if [ "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" -gt 0 ] ||
     [ "${#RIG_STALE_RESOURCE_IDS[@]}" -gt 0 ]; then
     rig_print_resource_status || return
@@ -5464,6 +5940,7 @@ rig_command_status() {
     done
     printf 'Unmanaged: %s\n' "${#RIG_UNMANAGED_IDENTITIES[@]}"
     rig_print_unmanaged_listeners || return
+    rig_print_unmanaged_skills || return
   fi
   [ "$unhealthy" -eq 0 ]
 }
@@ -5606,8 +6083,8 @@ rig_observe_plan() {
 }
 
 rig_command_doctor() {
-  local profile findings incompatible xdg_findings tool_findings resource_findings port_findings
-  local index section_name state detail port owner action
+  local profile findings incompatible xdg_findings tool_findings resource_findings port_findings skill_findings
+  local index section_name state detail port owner action skill authority
 
   profile=
   case "$#" in
@@ -5679,6 +6156,29 @@ rig_command_doctor() {
     done
     port_findings=${port_findings%$'\n'}
   fi
+  skill_findings=
+  if [ "${#RIG_SELECTED_SKILLS[@]}" -gt 0 ]; then
+    rig_observe_skills || return
+    index=0
+    while [ "$index" -lt "${#RIG_SELECTED_SKILLS[@]}" ]; do
+      skill=${RIG_SELECTED_SKILLS[$index]}
+      state=${RIG_SKILL_STATES[$index]}
+      detail=${RIG_SKILL_DETAILS[$index]}
+      if [ "$state" != present ]; then
+        rig_get_value "skill.$skill" authority || return 2
+        authority=$RIG_VALUE
+        case "$state" in
+          missing) action=run-rig-apply ;;
+          drifted) action=review-source-and-run-rig-apply ;;
+          *) action=inspect-native-authority ;;
+        esac
+        skill_findings="${skill_findings} skill.${skill}: ${state} (${detail}); owner=${authority}; action=${action}"$'\n'
+        findings=$((findings + 1))
+      fi
+      index=$((index + 1))
+    done
+    skill_findings=${skill_findings%$'\n'}
+  fi
   xdg_findings=$(rig_doctor_path_finding config "$RIG_DIAG_CONFIG_HOME"; \
     rig_doctor_path_finding data "$RIG_DIAG_DATA_HOME"; \
     rig_doctor_path_finding state "$RIG_DIAG_STATE_HOME"; \
@@ -5702,6 +6202,9 @@ rig_command_doctor() {
   if [ -n "$port_findings" ]; then
     printf 'Port findings:\n%s\n' "$port_findings"
   fi
+  if [ -n "$skill_findings" ]; then
+    printf 'Skill findings:\n%s\n' "$skill_findings"
+  fi
   rig_doctor_incompatible_tools "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   incompatible=$RIG_COUNT
   if [ -n "$RIG_VALUE" ]; then
@@ -5712,11 +6215,234 @@ rig_command_doctor() {
   [ "$findings" -eq 0 ]
 }
 
+rig_local_skill_roots() {
+  local skill section_name source runtime target parent canonical_source canonical_parent
+
+  skill=$1
+  section_name=skill.$skill
+  rig_get_value "$section_name" source || return 2
+  rig_normalize_artifact_identity "$RIG_VALUE"
+  source=$RIG_VALUE
+  [ ! -L "$source" ] && [ -d "$source" ] && [ -f "$source/SKILL.md" ] && [ ! -L "$source/SKILL.md" ] || return 1
+  canonical_source=$(cd "$source" 2>/dev/null && pwd -P) || return 1
+  rig_skill_source_name "$skill" || return 2
+  skill=$RIG_VALUE
+  rig_collect_field_values "$section_name" runtime
+  for runtime in "${RIG_QUERY_ITEMS[@]}"; do
+    rig_skill_runtime_path "$runtime" "$skill" || return 2
+    target=$RIG_VALUE
+    parent=${target%/*}
+    [ ! -L "$parent" ] && [ -d "$parent" ] && [ -w "$parent" ] || return 1
+    canonical_parent=$(cd "$parent" 2>/dev/null && pwd -P) || return 1
+    target=$canonical_parent/${target##*/}
+    case "$target" in "$canonical_parent"/*) ;; *) return 1 ;; esac
+    if [ -e "$target" ] || [ -L "$target" ]; then
+      [ -L "$target" ] && [ "$(readlink "$target")" = "$canonical_source" ] || return 1
+    fi
+  done
+  RIG_VALUE=$canonical_source
+}
+
+rig_preflight_skill() {
+  local skill authority executable version
+
+  skill=$1
+  RIG_SKILL_PREFLIGHT_DETAIL=
+  rig_get_value "skill.$skill" authority || return 2
+  authority=$RIG_VALUE
+  case "$authority" in
+    skills-cli)
+      rig_provider_executable skills-cli skills-cli skill || return 2
+      executable=$RIG_VALUE
+      if ! rig_executable_available "$executable"; then
+        if [ "${RIG_BOOTSTRAP_ALLOW_DEFERRED_SKILLS:-0}" -eq 1 ] &&
+          rig_skill_has_materializer_tool "$skill"; then return 0; fi
+        RIG_SKILL_PREFLIGHT_DETAIL='executable-unavailable'
+        return 1
+      fi
+      version=$("$executable" --version 2>/dev/null) || { RIG_SKILL_PREFLIGHT_DETAIL='version-unavailable'; return 1; }
+      case "$version" in 1.*|skills\ 1.*) ;; *) RIG_SKILL_PREFLIGHT_DETAIL=unsupported-version; return 1 ;; esac
+      ;;
+    local)
+      rig_local_skill_roots "$skill" || { RIG_SKILL_PREFLIGHT_DETAIL=unsafe-local-boundary; return 1; }
+      ;;
+    ki) RIG_SKILL_PREFLIGHT_DETAIL=inventory-unavailable; return 1 ;;
+    runtime|plugin) RIG_SKILL_PREFLIGHT_DETAIL=observation-only; return 1 ;;
+  esac
+}
+
+rig_skill_has_materializer_tool() {
+  local skill section_index field_index field_end tool binding provider locator
+
+  skill=$1
+  rig_section_index "skill.$skill" || return 1
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = requires ]; then
+      tool=${RIG_FIELD_VALUES[$field_index]}
+      if rig_plan_index "$tool"; then
+        binding=${RIG_PLAN_BINDINGS[$RIG_INDEX]:-}
+        provider=${RIG_PLAN_PROVIDERS[$RIG_INDEX]:-}
+        if [ "$provider" = npm ] && [ -n "$binding" ]; then
+          rig_get_value "$binding" locator || return 1
+          locator=$RIG_VALUE
+          case "$locator" in skills|skills@*) return 0 ;; esac
+        fi
+      fi
+    fi
+    field_index=$((field_index + 1))
+  done
+  return 1
+}
+
+rig_preflight_skills() {
+  local index skill
+
+  RIG_SKILL_PREFLIGHT_DETAILS=()
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_SKILLS[@]}" ]; do
+    skill=${RIG_SELECTED_SKILLS[$index]}
+    RIG_SKILL_PREFLIGHT_DETAIL=
+    if rig_preflight_skill "$skill"; then
+      RIG_SKILL_PREFLIGHT_DETAILS[$index]=
+    else
+      RIG_SKILL_PREFLIGHT_DETAILS[$index]=${RIG_SKILL_PREFLIGHT_DETAIL:-preflight-failed}
+    fi
+    index=$((index + 1))
+  done
+}
+
+rig_skill_tool_blocker() {
+  local skill section_index field_index field_end tool
+
+  skill=$1
+  rig_section_index "skill.$skill" || return 2
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = requires ]; then
+      tool=${RIG_FIELD_VALUES[$field_index]}
+      if rig_plan_index "$tool"; then
+        case "${RIG_PLAN_RESULTS[$RIG_INDEX]:-}" in completed|planned|neutral|observed) ;; *) RIG_VALUE=$tool; return 0 ;; esac
+      fi
+    fi
+    field_index=$((field_index + 1))
+  done
+  return 1
+}
+
+rig_apply_skill() {
+  local skill section_name authority source source_skill executable runtime target parent canonical_source
+
+  skill=$1
+  section_name=skill.$skill
+  rig_get_value "$section_name" authority || return 2
+  authority=$RIG_VALUE
+  case "$authority" in
+    skills-cli)
+      rig_provider_executable skills-cli skills-cli skill || return 2
+      executable=$RIG_VALUE
+      rig_get_value "$section_name" source || return 2
+      source=$RIG_VALUE
+      rig_skill_source_name "$skill" || return 2
+      source_skill=$RIG_VALUE
+      RIG_INVOKE_ARGUMENTS=(add "$source" --global --skill "$source_skill")
+      rig_collect_field_values "$section_name" runtime
+      for runtime in "${RIG_QUERY_ITEMS[@]}"; do
+        [ "$runtime" != agents ] || continue
+        RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--agent
+        RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$runtime
+      done
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--yes
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--json
+      "$executable" "${RIG_INVOKE_ARGUMENTS[@]}" 1>&2
+      ;;
+    local)
+      rig_local_skill_roots "$skill" || return 2
+      canonical_source=$RIG_VALUE
+      rig_skill_source_name "$skill" || return 2
+      source_skill=$RIG_VALUE
+      rig_collect_field_values "$section_name" runtime
+      for runtime in "${RIG_QUERY_ITEMS[@]}"; do
+        rig_skill_runtime_path "$runtime" "$source_skill" || return 2
+        target=$RIG_VALUE
+        parent=${target%/*}
+        # Revalidate every component immediately before creating only a missing leaf.
+        [ ! -L "$canonical_source" ] && [ -d "$canonical_source" ] && [ -f "$canonical_source/SKILL.md" ] || return 2
+        [ ! -L "$parent" ] && [ -d "$parent" ] || return 2
+        parent=$(cd "$parent" && pwd -P) || return 2
+        target=$parent/${target##*/}
+        if [ ! -e "$target" ] && [ ! -L "$target" ]; then
+          ln -s -- "$canonical_source" "$target" || return
+        elif [ ! -L "$target" ] || [ "$(readlink "$target")" != "$canonical_source" ]; then
+          return 2
+        fi
+      done
+      ;;
+    *) return 2 ;;
+  esac
+}
+
+rig_run_skill_apply() {
+  local dry_run index skill authority blocker native_status
+
+  dry_run=$1
+  RIG_SKILL_APPLY_FAILURE=0
+  RIG_SKILL_PLANNED=0
+  RIG_SKILL_COMPLETED=0
+  RIG_SKILL_FAILED=0
+  RIG_SKILL_SKIPPED=0
+  [ "${#RIG_SELECTED_SKILLS[@]}" -gt 0 ] || return 0
+  printf '\nSKILL\tAUTHORITY\tRESULT\tDETAIL\tSCOPE\n'
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_SKILLS[@]}" ]; do
+    skill=${RIG_SELECTED_SKILLS[$index]}
+    rig_get_value "skill.$skill" authority || return 2
+    authority=$RIG_VALUE
+    if [ -n "${RIG_SKILL_PREFLIGHT_DETAILS[$index]:-}" ]; then
+      RIG_SKILL_RESULTS[$index]=failed
+      RIG_SKILL_DETAILS[$index]=preflight:${RIG_SKILL_PREFLIGHT_DETAILS[$index]}
+      RIG_SKILL_APPLY_FAILURE=1
+      RIG_SKILL_FAILED=$((RIG_SKILL_FAILED + 1))
+    elif [ "$dry_run" -eq 1 ]; then
+      RIG_SKILL_RESULTS[$index]=planned
+      RIG_SKILL_DETAILS[$index]=-
+      RIG_SKILL_PLANNED=$((RIG_SKILL_PLANNED + 1))
+    elif rig_skill_tool_blocker "$skill"; then
+      blocker=$RIG_VALUE
+      RIG_SKILL_RESULTS[$index]=skipped
+      RIG_SKILL_DETAILS[$index]=blocked-by:$blocker
+      RIG_SKILL_APPLY_FAILURE=1
+      RIG_SKILL_SKIPPED=$((RIG_SKILL_SKIPPED + 1))
+    else
+      rig_progress_step "skill.$skill via $authority"
+      rig_apply_skill "$skill"
+      native_status=$?
+      if [ "$native_status" -eq 0 ]; then
+        RIG_SKILL_RESULTS[$index]=completed
+        RIG_SKILL_DETAILS[$index]=-
+        RIG_SKILL_COMPLETED=$((RIG_SKILL_COMPLETED + 1))
+      else
+        RIG_SKILL_RESULTS[$index]=failed
+        RIG_SKILL_DETAILS[$index]=exit:$native_status
+        RIG_SKILL_APPLY_FAILURE=1
+        RIG_SKILL_FAILED=$((RIG_SKILL_FAILED + 1))
+      fi
+    fi
+    printf '%s\t%s\t%s\t%s\tdeclaration\n' "$skill" "$authority" \
+      "${RIG_SKILL_RESULTS[$index]}" "${RIG_SKILL_DETAILS[$index]}"
+    index=$((index + 1))
+  done
+}
+
 rig_preflight_apply() {
   local scope index section_name native_status
 
   scope=${1:-all}
-  if [ "$scope" != resources ]; then
+  if [ "$scope" = tools ] || [ "$scope" = all ]; then
     index=0
     while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
       if [ -n "${RIG_PLAN_BINDINGS[$index]}" ]; then
@@ -5726,7 +6452,12 @@ rig_preflight_apply() {
       index=$((index + 1))
     done
   fi
-  [ "$scope" != tools ] || return 0
+  if [ "$scope" = skills ] || [ "$scope" = all ]; then
+    rig_preflight_skills || return
+  else
+    RIG_SKILL_PREFLIGHT_DETAILS=()
+  fi
+  { [ "$scope" = resources ] || [ "$scope" = all ]; } || return 0
   RIG_RESOURCE_PREFLIGHT_DETAILS=()
   index=0
   while [ "$index" -lt "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" ]; do
@@ -5886,13 +6617,13 @@ rig_command_apply() {
   while [ "$#" -gt 0 ]; do
     case "$1" in
       -h|--help)
-        [ "$#" -eq 1 ] || { syntax_error 'usage: rig apply [--profile NAME] [--scope tools|resources|all] [--dry-run]'; return; }
-        printf '%s\n' 'Usage: rig apply [--profile NAME] [--scope tools|resources|all] [--dry-run]'
+      [ "$#" -eq 1 ] || { syntax_error 'usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'; return; }
+      printf '%s\n' 'Usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'
         return
         ;;
       --profile)
         if [ "$profile_seen" -ne 0 ] || [ "$#" -lt 2 ] || [ -z "$2" ]; then
-          syntax_error 'usage: rig apply [--profile NAME] [--scope tools|resources|all] [--dry-run]'
+        syntax_error 'usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'
           return
         fi
         profile=$2
@@ -5901,24 +6632,24 @@ rig_command_apply() {
         ;;
       --scope)
         if [ "$scope_seen" -ne 0 ] || [ "$#" -lt 2 ]; then
-          syntax_error 'usage: rig apply [--profile NAME] [--scope tools|resources|all] [--dry-run]'
+        syntax_error 'usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'
           return
         fi
-        case "$2" in tools|resources|all) scope=$2 ;; *)
-          syntax_error 'usage: rig apply [--profile NAME] [--scope tools|resources|all] [--dry-run]'
+        case "$2" in tools|skills|resources|all) scope=$2 ;; *)
+          syntax_error 'usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'
           return ;;
         esac
         scope_seen=1
         shift 2
         ;;
       --dry-run)
-        [ "$dry_run_seen" -eq 0 ] ||
-          { syntax_error 'usage: rig apply [--profile NAME] [--scope tools|resources|all] [--dry-run]'; return; }
+      [ "$dry_run_seen" -eq 0 ] ||
+        { syntax_error 'usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'; return; }
         dry_run=1
         dry_run_seen=1
         shift
         ;;
-      *) syntax_error 'usage: rig apply [--profile NAME] [--scope tools|resources|all] [--dry-run]'; return ;;
+      *) syntax_error 'usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'; return ;;
     esac
   done
 
@@ -5926,7 +6657,8 @@ rig_command_apply() {
   [ "$RIG_RESOLVED_PROFILE_KIND" = complete ] ||
     rig_fail "profile '$RIG_RESOLVED_PROFILE' is a non-appliable view" || return
   lock_acquired=0
-  if [ "$scope" != tools ] && rig_reconciliation_needed "$RIG_RESOLVED_PLATFORM"; then
+  if { [ "$scope" = resources ] || [ "$scope" = all ]; } &&
+    rig_reconciliation_needed "$RIG_RESOLVED_PLATFORM"; then
     if [ "$dry_run" -eq 0 ]; then
       rig_acquire_reconciliation_lock \
         "$RIG_RESOLVED_PLATFORM" "$RIG_RESOLVED_PROFILE" apply || return
@@ -5936,6 +6668,17 @@ rig_command_apply() {
   fi
   case "$scope" in
     tools)
+      RIG_SELECTED_SKILLS=()
+      RIG_RESOURCE_PLAN_SECTIONS=()
+      RIG_STALE_RESOURCE_PROVIDERS=()
+      RIG_STALE_RESOURCE_KINDS=()
+      RIG_STALE_RESOURCE_IDS=()
+      RIG_STALE_RESOURCE_LOCATORS=()
+      ;;
+    skills)
+      RIG_PLAN_TOOLS=()
+      RIG_PLAN_BINDINGS=()
+      RIG_PLAN_PROVIDERS=()
       RIG_RESOURCE_PLAN_SECTIONS=()
       RIG_STALE_RESOURCE_PROVIDERS=()
       RIG_STALE_RESOURCE_KINDS=()
@@ -5943,6 +6686,7 @@ rig_command_apply() {
       RIG_STALE_RESOURCE_LOCATORS=()
       ;;
     resources)
+      RIG_SELECTED_SKILLS=()
       RIG_PLAN_TOOLS=()
       RIG_PLAN_BINDINGS=()
       RIG_PLAN_PROVIDERS=()
@@ -5964,7 +6708,7 @@ rig_command_apply() {
   done
   resource_total=$((${#RIG_RESOURCE_PLAN_SECTIONS[@]} + ${#RIG_STALE_RESOURCE_IDS[@]}))
   if [ "$dry_run" -eq 0 ]; then
-    rig_progress_start applying "$((planned + resource_total))"
+    rig_progress_start applying "$((planned + ${#RIG_SELECTED_SKILLS[@]} + resource_total))"
   fi
 
   index=0
@@ -6006,6 +6750,12 @@ rig_command_apply() {
       "${RIG_PLAN_RESULTS[$index]}" "${RIG_PLAN_DETAILS[$index]}"
     index=$((index + 1))
   done
+  rig_run_skill_apply "$dry_run" || return
+  planned=$((planned + RIG_SKILL_PLANNED))
+  completed=$((completed + RIG_SKILL_COMPLETED))
+  failed=$((failed + RIG_SKILL_FAILED))
+  skipped=$((skipped + RIG_SKILL_SKIPPED))
+  [ "$RIG_SKILL_APPLY_FAILURE" -eq 0 ] || operational_failure=1
   if [ "$resource_total" -gt 0 ]; then
     printf '\nRESOURCE\tKIND\tPROVIDER\tRESULT\tDETAIL\tSCOPE\n'
   fi
@@ -6208,15 +6958,15 @@ rig_command_bootstrap() {
     case "$1" in
       -h|--help)
         [ "$#" -eq 1 ] || {
-          syntax_error 'usage: rig bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]'
+          syntax_error 'usage: rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'
           return
         }
-        printf '%s\n' 'Usage: rig bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]'
+      printf '%s\n' 'Usage: rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'
         return
         ;;
       --profile)
         if [ "$profile_seen" -ne 0 ] || [ "$#" -lt 2 ] || [ -z "$2" ]; then
-          syntax_error 'usage: rig bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]'
+        syntax_error 'usage: rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'
           return
         fi
         profile=$2
@@ -6225,11 +6975,11 @@ rig_command_bootstrap() {
         ;;
       --scope)
         if [ "$scope_seen" -ne 0 ] || [ "$#" -lt 2 ]; then
-          syntax_error 'usage: rig bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]'
+        syntax_error 'usage: rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'
           return
         fi
-        case "$2" in tools|resources|all) scope=$2 ;; *)
-          syntax_error 'usage: rig bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]'
+        case "$2" in tools|skills|resources|all) scope=$2 ;; *)
+          syntax_error 'usage: rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'
           return ;;
         esac
         scope_seen=1
@@ -6237,14 +6987,14 @@ rig_command_bootstrap() {
         ;;
       --dry-run)
         [ "$dry_run_seen" -eq 0 ] || {
-          syntax_error 'usage: rig bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]'
+          syntax_error 'usage: rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'
           return
         }
         dry_run=1
         dry_run_seen=1
         shift
         ;;
-      *) syntax_error 'usage: rig bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]'; return ;;
+      *) syntax_error 'usage: rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'; return ;;
     esac
   done
 
@@ -6260,7 +7010,8 @@ rig_command_bootstrap() {
   [ "$RIG_RESOLVED_PROFILE_KIND" = complete ] ||
     rig_fail "profile '$profile' is a non-appliable view" || return
   lock_acquired=0
-  if [ "$scope" != tools ] && rig_reconciliation_needed "$RIG_RESOLVED_PLATFORM"; then
+  if { [ "$scope" = resources ] || [ "$scope" = all ]; } &&
+    rig_reconciliation_needed "$RIG_RESOLVED_PLATFORM"; then
     if [ "$dry_run" -eq 0 ]; then
       rig_acquire_reconciliation_lock "$RIG_RESOLVED_PLATFORM" "$profile" bootstrap || return
       lock_acquired=$RIG_RECONCILIATION_LOCK_ACQUIRED
@@ -6269,6 +7020,17 @@ rig_command_bootstrap() {
   fi
   case "$scope" in
     tools)
+      RIG_SELECTED_SKILLS=()
+      RIG_RESOURCE_PLAN_SECTIONS=()
+      RIG_STALE_RESOURCE_PROVIDERS=()
+      RIG_STALE_RESOURCE_KINDS=()
+      RIG_STALE_RESOURCE_IDS=()
+      RIG_STALE_RESOURCE_LOCATORS=()
+      ;;
+    skills)
+      RIG_PLAN_TOOLS=()
+      RIG_PLAN_BINDINGS=()
+      RIG_PLAN_PROVIDERS=()
       RIG_RESOURCE_PLAN_SECTIONS=()
       RIG_STALE_RESOURCE_PROVIDERS=()
       RIG_STALE_RESOURCE_KINDS=()
@@ -6276,12 +7038,14 @@ rig_command_bootstrap() {
       RIG_STALE_RESOURCE_LOCATORS=()
       ;;
     resources)
+      RIG_SELECTED_SKILLS=()
       RIG_PLAN_TOOLS=()
       RIG_PLAN_BINDINGS=()
       RIG_PLAN_PROVIDERS=()
       ;;
   esac
   RIG_BOOTSTRAP_ALLOW_DEFERRED_MANAGERS=1
+  RIG_BOOTSTRAP_ALLOW_DEFERRED_SKILLS=1
   rig_preflight_apply "$scope"
   native_status=$?
   if [ "$native_status" -ne 0 ]; then
@@ -6787,7 +7551,7 @@ rig_count_config_fragments() {
 
 rig_command_diag() {
   local platform root_file root_display fragment_count config_status schema default_profile exit_code
-  local index key profiles tools resources ports variants variant rest
+  local index key profiles tools skills resources ports variants variant rest
   local -a seen_variants
 
   if [ "$#" -eq 1 ]; then
@@ -6811,6 +7575,7 @@ rig_command_diag() {
   default_profile=
   profiles=0
   tools=0
+  skills=0
   resources=0
   ports=0
   variants=0
@@ -6827,7 +7592,8 @@ rig_command_diag() {
       while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
         case "${RIG_SECTION_TYPES[$index]}" in
           profile) profiles=$((profiles + 1)) ;;
-          tool) tools=$((tools + 1)) ;;
+        tool) tools=$((tools + 1)) ;;
+        skill) skills=$((skills + 1)) ;;
           service|scheduled-job|setting|dock) resources=$((resources + 1)) ;;
           port) ports=$((ports + 1)) ;;
         esac
@@ -6863,8 +7629,8 @@ rig_command_diag() {
   if [ "$config_status" = valid ]; then
     printf '  Schema: %s\n  Default profile: %s\n  Selection mode: %s\n' \
       "$schema" "$default_profile" "$RIG_PROFILE_SELECTION_MODE"
-    printf '  Profiles: %s\n  Tools: %s\n  Managed resources: %s\n  Ports: %s\n  Tool variants: %s\n' \
-      "$profiles" "$tools" "$resources" "$ports" "$variants"
+    printf '  Profiles: %s\n  Tools: %s\n  Skills: %s\n  Managed resources: %s\n  Ports: %s\n  Tool variants: %s\n' \
+      "$profiles" "$tools" "$skills" "$resources" "$ports" "$variants"
   fi
   return "$exit_code"
 }
@@ -7385,6 +8151,24 @@ rig_print_profile_ports() {
   done
 }
 
+rig_print_profile_skills() {
+  local skill name authority runtimes
+
+  printf '\nSkills: %s\n' "${#RIG_SELECTED_SKILLS[@]}"
+  [ "${#RIG_SELECTED_SKILLS[@]}" -gt 0 ] || return 0
+  printf 'ID\tNAME\tAUTHORITY\tRUNTIMES\n'
+  for skill in "${RIG_SELECTED_SKILLS[@]}"; do
+    rig_get_value "skill.$skill" name || return 2
+    name=$RIG_VALUE
+    rig_get_value "skill.$skill" authority || return 2
+    authority=$RIG_VALUE
+    rig_collect_field_values "skill.$skill" runtime
+    rig_join_query_items
+    runtimes=$RIG_VALUE
+    printf '%s\t%s\t%s\t%s\n' "$skill" "$name" "$authority" "$runtimes"
+  done
+}
+
 rig_command_show() {
   local profile platform
 
@@ -7412,6 +8196,7 @@ rig_command_show() {
   printf 'Profile:  %s\nPlatform: %s\nTools:    %s\n\n' \
     "$RIG_RESOLVED_PROFILE" "$platform" "${#RIG_SELECTED_TOOLS[@]}"
   rig_print_profile_tool_table
+  rig_print_profile_skills || return
   if [ "${#RIG_SELECTED_RESOURCE_SECTIONS[@]}" -gt 0 ]; then
     rig_print_profile_resource_tables
   fi
@@ -7520,7 +8305,7 @@ rig_profile_contains_resource() {
       target=${RIG_FIELD_VALUES[$field_index]}
       case "$key" in
         profile|inherit) rig_profile_contains_resource "$target" "$wanted" && return 0 ;;
-        service|scheduled-job|setting|dock|port) [ "$key.$target" = "$wanted" ] && return 0 ;;
+        skill|service|scheduled-job|setting|dock|port) [ "$key.$target" = "$wanted" ] && return 0 ;;
       esac
     fi
     field_index=$((field_index + 1))
@@ -7619,19 +8404,47 @@ rig_explain_resource() {
   fi
 }
 
+rig_explain_skill() {
+  local target id section_name name purpose rationale authority source source_skill trust
+  local platforms runtimes requires profiles public_source
+
+  target=$1
+  id=${target#skill:}
+  [ "$target" != "$id" ] && rig_valid_id "$id" && rig_section_index "skill.$id" ||
+    rig_fail "unknown skill '$target'" || return
+  section_name=skill.$id
+  rig_get_value "$section_name" name || return 2; name=$RIG_VALUE
+  rig_get_value "$section_name" purpose || return 2; purpose=$RIG_VALUE
+  rig_get_value "$section_name" rationale || return 2; rationale=$RIG_VALUE
+  rig_get_value "$section_name" authority || return 2; authority=$RIG_VALUE
+  rig_get_value "$section_name" source || return 2; source=$RIG_VALUE
+  if rig_get_value "$section_name" source-skill; then source_skill=$RIG_VALUE; else source_skill=$id; fi
+  rig_get_value "$section_name" trust || return 2; trust=$RIG_VALUE
+  if rig_get_value "$section_name" public-source; then public_source=$RIG_VALUE; else public_source=-; fi
+  rig_collect_field_values "$section_name" platform; rig_join_query_items; platforms=$RIG_VALUE
+  rig_collect_field_values "$section_name" runtime; rig_join_query_items; runtimes=$RIG_VALUE
+  rig_collect_field_values "$section_name" requires; rig_join_query_items; requires=$RIG_VALUE
+  rig_collect_resource_memberships "$section_name"; rig_join_query_items; profiles=$RIG_VALUE
+  printf 'Skill: %s\nName: %s\nPurpose: %s\nRationale: %s\n' "$id" "$name" "$purpose" "$rationale"
+  printf 'Authority: %s\nSource: %s\nSource skill: %s\nTrust: %s\n' "$authority" "$source" "$source_skill" "$trust"
+  printf 'Platforms: %s\nRuntimes: %s\nRequires: %s\nProfiles: %s\nPublic source: %s\n' \
+    "$platforms" "$runtimes" "$requires" "$profiles" "$public_source"
+}
+
 rig_command_explain() {
   local tool name category category_name purpose rationale platforms requires related alternatives profiles platform binding
   local artifacts
 
   if [ "$#" -eq 1 ]; then
     case "$1" in
-      -h|--help) printf '%s\n' 'Usage: rig explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID'; return ;;
+      -h|--help) printf '%s\n' 'Usage: rig explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID'; return ;;
     esac
   fi
-  [ "$#" -eq 1 ] || syntax_error 'usage: rig explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID' || return
+  [ "$#" -eq 1 ] || syntax_error 'usage: rig explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID' || return
   tool=$1
   rig_load_config || return
   case "$tool" in
+    skill:*) rig_explain_skill "$tool"; return ;;
     service:*|scheduled-job:*|setting:*|dock:*|port:*) rig_explain_resource "$tool"; return ;;
   esac
   rig_valid_id "$tool" && rig_section_index "tool.$tool" ||
@@ -7698,7 +8511,7 @@ rig_json_escape() {
       $'\t') escaped=$escaped'\t' ;;
       *)
         printf -v code '%d' "'$character"
-        if [ "$code" -lt 32 ]; then
+        if [ "$code" -ge 0 ] && [ "$code" -lt 32 ]; then
           printf -v character '\\u%04x' "$code"
         fi
         escaped=$escaped$character
@@ -7847,6 +8660,28 @@ rig_render_public_tool() {
   printf '\n          }\n        }'
 }
 
+rig_render_public_skill() {
+  local skill name purpose rationale public_source
+
+  skill=$1
+  rig_get_value "skill.$skill" name || return
+  name=$RIG_VALUE
+  rig_get_value "skill.$skill" purpose || return
+  purpose=$RIG_VALUE
+  rig_get_value "skill.$skill" rationale || return
+  rationale=$RIG_VALUE
+  public_source=
+  if rig_get_value "skill.$skill" public-source; then public_source=$RIG_VALUE; fi
+  rig_json_escape "$skill"; printf '        {"id": "%s", ' "$RIG_VALUE"
+  rig_json_escape "$name"; printf '"name": "%s", ' "$RIG_VALUE"
+  rig_json_escape "$purpose"; printf '"purpose": "%s", ' "$RIG_VALUE"
+  rig_json_escape "$rationale"; printf '"rationale": "%s"' "$RIG_VALUE"
+  if [ -n "$public_source" ]; then
+    rig_json_escape "$public_source"; printf ', "source": "%s"' "$RIG_VALUE"
+  fi
+  printf '}'
+}
+
 rig_render_publication_json() {
   local publication title profile base_url tool category index
   local -a categories
@@ -7868,11 +8703,11 @@ rig_render_publication_json() {
     fi
     index=$((index + 1))
   done
-  RIG_QUERY_ITEMS=("${categories[@]}")
+  RIG_QUERY_ITEMS=("${categories[@]+"${categories[@]}"}")
   rig_sort_query_items
-  categories=("${RIG_QUERY_ITEMS[@]}")
+  categories=("${RIG_QUERY_ITEMS[@]+"${RIG_QUERY_ITEMS[@]}"}")
 
-  printf '{\n  "format": "rig-publication",\n  "version": 1,\n  "publication": {\n'
+  printf '{\n  "format": "rig-publication",\n  "version": 2,\n  "publication": {\n'
   rig_json_escape "$publication"
   printf '    "id": "%s",\n' "$RIG_VALUE"
   rig_json_escape "$title"
@@ -7892,6 +8727,13 @@ rig_render_publication_json() {
   while [ "$index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
     [ "$index" -eq 0 ] || printf ',\n'
     rig_render_public_tool "${RIG_SELECTED_TOOLS[$index]}" || return
+    index=$((index + 1))
+  done
+  printf '\n    ],\n    "skills": [\n'
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_SKILLS[@]}" ]; do
+    [ "$index" -eq 0 ] || printf ',\n'
+    rig_render_public_skill "${RIG_SELECTED_SKILLS[$index]}" || return
     index=$((index + 1))
   done
   printf '\n    ]\n  }\n}\n'
@@ -8399,7 +9241,7 @@ rig_clean_interrupted() {
 
 rig_lifecycle_supported() {
   case "$1:$2" in
-    update:homebrew|update:uv|update:mise|update:npm|\
+    update:homebrew|update:uv|update:mise|update:npm|update:skills-cli|\
       maintain:homebrew|maintain:uv|maintain:mise|maintain:npm|\
       capture:homebrew) return 0 ;;
   esac
@@ -8429,7 +9271,7 @@ rig_lifecycle_add_task() {
 }
 
 rig_collect_lifecycle_tasks() {
-  local action index tool binding provider adapter key label supported
+  local action index tool binding provider adapter key label supported skill authority
 
   action=$1
   RIG_LIFECYCLE_KEYS=()
@@ -8463,6 +9305,16 @@ rig_collect_lifecycle_tasks() {
     fi
     index=$((index + 1))
   done
+  if [ "$action" = update ]; then
+    for skill in "${RIG_SELECTED_SKILLS[@]+"${RIG_SELECTED_SKILLS[@]}"}"; do
+      rig_get_value "skill.$skill" authority || return 2
+      authority=$RIG_VALUE
+      supported=0
+      [ "$authority" != skills-cli ] || supported=1
+      rig_lifecycle_add_task "skill:$skill" "skill:$skill" "$authority" "skill.$skill" \
+        "$supported" "$skill"
+    done
+  fi
 }
 
 rig_lifecycle_manifest() {
@@ -8495,6 +9347,14 @@ rig_preflight_lifecycle_task() {
   action=$1
   provider=$2
   binding=$3
+  case "$binding" in
+    skill.*)
+      rig_preflight_skill "${binding#skill.}" ||
+        rig_fail "skill '${binding#skill.}' update unavailable: ${RIG_SKILL_PREFLIGHT_DETAIL:-preflight-failed}" || return
+      rig_provider_executable skills-cli skills-cli skill || return 2
+      return 0
+      ;;
+  esac
   rig_provider_adapter "$provider" || return 2
   adapter=$RIG_VALUE
   rig_lifecycle_supported "$action" "$adapter" || return 0
@@ -8538,6 +9398,13 @@ rig_execute_lifecycle_task() {
   provider=$2
   binding=$3
   executable=$4
+  case "$binding" in
+    skill.*)
+      rig_skill_source_name "${binding#skill.}" || return 2
+      "$executable" update "$RIG_VALUE" --global --yes 1>&2
+      return
+      ;;
+  esac
   rig_provider_adapter "$provider" || return 2
   adapter=$RIG_VALUE
   kind=

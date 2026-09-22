@@ -1,7 +1,7 @@
 ---
 id: ADR-RIG-004
 title: 'Static Publication Projection'
-date: 2026-09-15
+date: 2026-09-22
 status: current
 decision_type: architecture
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/adr
@@ -20,13 +20,15 @@ Generating an HTML and CSS tree would make one presentation part of Rig's durabl
 
 Rig treats a published rig as a derived, versioned data projection of one explicitly configured non-appliable view. Every disclosed declaration opts into that view. A view cannot inherit a complete profile, and each dependency in its resolved relationship closure must also opt in explicitly. `rig export` generates exactly one `rig.json` file in a complete local output tree without invoking providers, publishers, or the network.
 
-The projection is platform-neutral: profile membership records public intent, while each tool retains its declared supported platforms. It has top-level format identity `rig-publication`, integer schema version `1`, publication metadata, profile identity, selected categories, and selected tools with public catalogue metadata and closed relationships. The publication's configured `base-url` is projected as `canonical_url` metadata.
+The projection is platform-neutral: profile membership records public intent, while each tool retains its declared supported platforms. It has top-level format identity `rig-publication`, integer schema version `2`, publication metadata, profile identity, selected categories, selected tools with public catalogue metadata and closed relationships, and a deterministic `profile.skills` array including when empty. A skill enters a view only through explicit membership. Its allow-list contains `id`, `name`, `purpose`, `rationale`, and an optional reviewed `public-source` projected as `source`. The publication's configured `base-url` is projected as `canonical_url` metadata.
 
 `rig publish` remains a separate explicit operation that invokes the publication's configured trusted publisher. The publisher and receiving website own rendering, credentials, hosting destination, deployment, and rollback. Rig owns deterministic selection, schema serialization, bounded artifact generation, trusted dispatch, and outcome reporting.
 
 The local catalogue remains canonical. A published file is never authority for private configuration or observed machine state. Rebuilding from the same schema version, resolved public profile, and publication configuration produces byte-equivalent data regardless of declaration order or publishing host platform.
 
 Port declarations, port numbers, qualified owners, listener observations, and unmanaged listener inventory are categorically private. They never enter a public projection, even when a port is assigned to the publication view.
+
+Skill authorities, installation sources, runtime mappings, local paths and roots, locks, arguments, observed state, and unmanaged skill inventory are categorically private. They never enter the public projection even when the skill is selected by the publication view.
 
 ## Consequences
 

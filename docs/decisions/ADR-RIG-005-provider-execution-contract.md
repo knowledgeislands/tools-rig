@@ -1,7 +1,7 @@
 ---
 id: ADR-RIG-005
 title: 'Provider Execution Contract'
-date: 2026-09-21
+date: 2026-09-22
 status: current
 decision_type: architecture
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/adr
@@ -17,6 +17,8 @@ Rig resolves profiles into tools and managed resources, then compares that desir
 External executables cross the trust boundary established by XDR-RIG-001. Their invocation must preserve literal argument boundaries, distinguish observation from mutation, and remain evolvable without exposing the protocol as ordinary user configuration.
 
 ## Decision
+
+User-level skill materialisation follows a separate fixed authority registry. Rig invokes only a deliberately installed `skills` executable with literal arguments and bounded JSON inventory; it never uses unqualified `npx`. An absent, failing, unsupported, or malformed Skills CLI inventory is unavailable. KI remains honest observation-unavailable and is never invoked until it offers a stable machine-readable inventory. Bounded local authority may create only a missing leaf symlink after canonical source/root containment checks and immediate revalidation; it never replaces a collision. Runtime and plugin authorities are observation-only. Apply and bootstrap order selected tools before skills before managed resources. Only explicit update advances selected Skills CLI skills; profile deselection, maintain, and clean never update or remove them.
 
 Built-in provider policy is bounded data, not an extension escape hatch. Homebrew may declare its native autoupdate interval and a closed set of supported options; bootstrap translates those values into fixed `brew autoupdate` invocations only when the selected profile uses Homebrew. Configuration cannot supply an autoupdate command or arbitrary arguments.
 

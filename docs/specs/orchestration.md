@@ -332,3 +332,13 @@ _Conformance:_ conforming
 _Verify:_ Bats uses a deterministic `lsof -F` fake, asserts one exact read-only invocation across selected and unmanaged reporting, proves no real sockets are opened, and verifies apply and dry-run omit ports.
 
 _Evidence:_ `rig_load_listeners`, `rig_print_unmanaged_listeners`, and private-port tests implement the bounded built-in source and no-mutation boundary.
+
+### RIG-ORCH-032 — User-level skill authority lifecycle
+
+Rig MUST materialise full apply and bootstrap plans in tools → skills → resources order and MUST expose `skills` as an explicit scope. Skills CLI operations MUST invoke a deliberately installed `skills` executable directly with literal arguments and bounded JSON parsing, never unqualified `npx`; KI MUST NOT be invoked; local authority MUST canonicalise real non-symlink source and runtime roots, enforce component containment, revalidate immediately before mutation, and create only a missing leaf symlink without replacing a collision; runtime and plugin authorities MUST be observation-only. Only `rig update` MAY advance selected Skills CLI skills. Profile deselection, `rig maintain`, and `rig clean` MUST NOT update or remove skills.
+
+_Conformance:_ conforming
+
+_Verify:_ Isolated Bats fakes prove literal CLI arguments, no KI invocation, canonical local containment and collision preservation, tools → skills → resources ordering, explicit update, and absence of removal in apply, bootstrap, update, maintain, and clean.
+
+_Evidence:_ `rig_preflight_skills`, `rig_apply_skill`, `rig_run_skill_apply`, `rig_collect_lifecycle_tasks`, and `tests/rig-skills.bats` implement and verify the lifecycle.

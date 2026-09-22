@@ -267,3 +267,13 @@ _Conformance:_ conforming
 _Verify:_ Deterministic Bats command fakes emit no listener, loopback, IPv4 and IPv6 wildcard, matching owner, different owner, missing command, malformed output, and native failure records without opening real sockets.
 
 _Evidence:_ `rig_load_listeners` and `rig_observe_ports` normalise one cached observation; private-port status and doctor tests verify every mode and outcome.
+
+### RIG-STATE-027 — User-level skill expected-versus-observed state
+
+For each selected skill, Rig MUST compare declaration with its fixed native authority and report `present`, `missing`, `drifted`, `unavailable`, or `unknown` without evaluating instruction content. Skills CLI absence, non-zero execution, unsupported version, or malformed bounded JSON MUST report unavailable; KI MUST report inventory unavailable without invocation; local authority MUST distinguish a matching projection, missing leaf, and collision; runtime/plugin ownership MUST remain observation-only. `status --unmanaged` MAY report Skills CLI global identities absent from any matching `source-skill` declaration.
+
+_Conformance:_ conforming
+
+_Verify:_ Isolated Bats fakes cover remote, KI, local, runtime/plugin, missing, drifted, unavailable, malformed, collision, and unmanaged cases without reading real user roots.
+
+_Evidence:_ `rig_observe_skill`, `rig_skills_cli_load_inventory`, `rig_print_unmanaged_skills`, and `tests/rig-skills.bats` implement and verify the contract.

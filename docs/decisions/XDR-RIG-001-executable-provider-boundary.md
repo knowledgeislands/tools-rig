@@ -1,7 +1,7 @@
 ---
 id: XDR-RIG-001
 title: 'Executable Provider Boundary'
-date: 2026-09-16
+date: 2026-09-22
 status: current
 decision_type: security
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/xdr
@@ -17,6 +17,8 @@ Rig must inspect declarative intent without silently executing it. Built-in prov
 Publication adds a separate disclosure risk because a useful private rig can contain rationale, machine policy, paths, and relationships that do not belong in a public projection.
 
 ## Decision
+
+Skill materialisation is an instruction-content trust transition. A managed skill therefore requires an explicit authority/trust pair and a reviewable source identity; Rig never infers trust from a directory found on disk, evaluates skill content, or copies native manager state into configuration. Local projection is confined to canonical real directories and a missing leaf symlink. Runtime- and plugin-owned skills are observation-only. Public disclosure is a second explicit opt-in and cannot expose native sources, runtime projections, local roots, locks, arguments, state, or unmanaged inventory.
 
 Rig never sources or evaluates configuration. Built-in adapters are trusted code shipped and reviewed with Rig. Their provider identities, supported operations, executable defaults, platform gates, and argument construction are owned by the executable rather than granted through user capability declarations.
 

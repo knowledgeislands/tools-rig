@@ -36,6 +36,8 @@ platforms = ["macos", "linux"]
 profiles = ["developer"]
 ```
 
+Skills use the same item-owned membership rule as tools and managed resources. Omitted `profiles` selects the configured default profile, an empty array selects none, and every skill disclosed through a view must name that view explicitly. Changing profiles never removes an installed or projected skill.
+
 ## Inherit shared complete intent
 
 A complete machine or role profile can inherit another profile explicitly. Inheritance adds the parent membership before Rig closes tool dependencies:
@@ -78,6 +80,8 @@ kind = "view"
 ```
 
 If a public tool requires another tool, that dependency must also opt into `public`. Rig rejects an implicit dependency rather than disclosing it accidentally. A view can be shown, listed, explained, checked, or exported, but `apply`, `bootstrap`, `update`, `maintain`, and selected-resource mutation reject it. It never owns retirement receipts.
+
+A public skill follows the same explicit membership rule as a public tool. It exports only allow-listed public metadata, never its authority, runtime projections, local source, or observed state.
 
 ## Read an application plan
 

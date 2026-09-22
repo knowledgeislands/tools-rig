@@ -4,12 +4,12 @@ title: Declare user skills
 area: CORE
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 41e7ecc0dfc017dcd172fa10e885d26c15263d4d
 created_at: 2026-09-21T18:02:02Z
-updated_at: 2026-09-21T23:43:26Z
+updated_at: 2026-09-22T02:44:42Z
 ---
 
 ## Goal
@@ -34,12 +34,12 @@ The global inventory is split among Skills CLI state, KI symlinks, physical runt
 
 ## Steps
 
-- [ ] Decide whether skills are catalogue capabilities or managed resources, their profile and publication semantics, and the authority classes Rig recognises.
-- [ ] Define explicit source trust, agent-runtime projection, provenance, update scope, and profile-deselection behaviour.
-- [ ] Record the product, security, configuration, orchestration, state, query, and publication contracts.
-- [ ] Implement provider-native observation and bounded materialisation without evaluating skill content or copying provider state into Rig.
-- [ ] Cover remote, KI-projected, runtime-owned, plugin-owned, local, missing, drifted, and unmanaged cases with isolated tests.
-- [ ] Align every public CLI and documentation surface and define the later personal-skill migration boundary.
+- [x] Decide whether skills are catalogue capabilities or managed resources, their profile and publication semantics, and the authority classes Rig recognises.
+- [x] Define explicit source trust, agent-runtime projection, provenance, update scope, and profile-deselection behaviour.
+- [x] Record the product, security, configuration, orchestration, state, query, and publication contracts.
+- [x] Implement provider-native observation and bounded materialisation without evaluating skill content or copying provider state into Rig.
+- [x] Cover remote, KI-projected, runtime-owned, plugin-owned, local, missing, drifted, and unmanaged cases with isolated tests.
+- [x] Align every public CLI and documentation surface and define the later personal-skill migration boundary.
 
 ## Files touched
 
@@ -70,6 +70,43 @@ Explain global versus repository-local versus runtime-owned skills, source trust
 ### Roadmap
 
 The personal-skill source cleanup remains part of the separate personal-rig migration outcome.
+
+## Review
+
+### Delivered
+
+Rig now models user-level agent skills as first-class, profile-selected capabilities with explicit native authority, source, trust, runtime projections, tool dependencies, platform compatibility, and optional reviewed public provenance. Query, state, doctor, unmanaged inventory, apply, bootstrap, update, diagnostics, and publication surfaces understand the model without making Rig a skill registry.
+
+### Summary of changes
+
+- Added the bounded `[skill.ID]` schema and item-centric profile selection for `skills-cli`, `ki`, `local`, `runtime`, and `plugin` authorities.
+- Added Skills CLI observation, materialisation, explicit update, and unmanaged inventory using a deliberately installed executable and bounded JSON parsing; KI, runtime, and plugin authorities remain observation-only.
+- Added trusted local-source projection with canonical non-symlink source checks, contained runtime roots, last-moment collision checks, and missing-leaf-only symlink creation.
+- Extended lifecycle ordering to tools, then skills, then resources; deselection, maintain, and clean never remove or update skills.
+- Advanced the public projection to `rig-publication` version 2 with a deterministic skills array and an explicit reviewed allow-list while retaining the previous private-data exclusions.
+- Aligned help, completions, manual, README, changelog, user guides, Decision Records, Specifications, and isolated tests. No personal skill roots, native locks, website code, or migration data changed.
+
+### Verification
+
+- `bash -n bin/rig` — passed.
+- `shellcheck bin/rig install.sh` — passed.
+- `bats tests/` — passed, 214 tests including 9 isolated skill-authority and publication cases.
+- `mandoc -T lint man/rig.1` — passed.
+- `ki repo audit --skill ki-authoring --repo .`, `ki-decision-records`, `ki-specs`, and `ki-guides` — passed.
+- `ki repo audit --repo .` — passed after the final review packet.
+- `git diff --check` — passed.
+
+### Outstanding concerns
+
+KI skill inventory is deliberately reported unavailable until KI exposes a stable machine-readable inventory; Rig never parses its human output or invokes KI for skill lifecycle work. Personal inventory reconciliation and declaration remain a separate migration outcome. Publication consumers must adopt format version 2 before using the new skills array.
+
+### Post-change review
+
+The implementation stays inside the locked scope and preserves Bash 3.2, the XDG contract, native provider authority, explicit trust, and non-destructive lifecycle behaviour. The delivery advances one intentional public data contract from version 1 to version 2; it makes no website change and preserves the allow-listed category and tool semantics. No divergence from the approved plan was required.
+
+### Mini recap
+
+User-level skills are now declarative, explainable, observable, selectively materialisable, and privately safe. The remaining work is personal configuration reconciliation after this delivery is accepted.
 
 ## Discussion
 

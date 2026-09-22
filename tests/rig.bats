@@ -234,7 +234,7 @@ run_loader() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" show
   [ "$status" -eq 0 ]
   [[ "$output" == $'Profile:  default\nPlatform: macos\nTools:    100\n\nID'* ]] || false
-  [[ "$output" == *'tool-100  Tool 100  category-1  Exercise deterministic catalogue query 100' ]] || false
+  [[ "$output" == *'tool-100'*'Tool 100'*'category-1'*'Exercise deterministic catalogue query 100'* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" explain tool-100
@@ -372,11 +372,11 @@ write_query_config() {
   for synopsis in \
     'show [--profile NAME]' \
     'list [--category ID] [--profile NAME]' \
-    'explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID' \
+    'explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID' \
     'status [--profile NAME] [--unmanaged]' \
     'doctor [--profile NAME]' \
-    'apply [--profile NAME] [--scope tools|resources|all] [--dry-run]' \
-    'bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]' \
+    'apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]' \
+    'bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]' \
     'update [--profile NAME] [--dry-run]' \
     'maintain [--profile NAME] [--dry-run]' \
     'capture PROVIDER [--dry-run]' \
@@ -477,8 +477,8 @@ write_query_config() {
   [[ "$output" == *'explain) COMPREPLY=($(compgen -W "-h --help"'* ]]
   [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile --unmanaged"'* ]] || false
   [[ "$output" == *'doctor) COMPREPLY=($(compgen -W "-h --help --profile"'* ]] || false
-  [[ "$output" == *'apply) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools resources all"'* ]] || false
-  [[ "$output" == *'bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools resources all"'* ]] || false
+  [[ "$output" == *'apply) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all"'* ]] || false
+  [[ "$output" == *'bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all"'* ]] || false
   [[ "$output" == *'update|maintain) COMPREPLY=($(compgen -W "-h --help --profile --dry-run"'* ]] || false
   [[ "$output" == *'capture) COMPREPLY=($(compgen -W "-h --help --dry-run homebrew"'* ]] || false
   [[ "$output" == *'run) COMPREPLY=($(compgen -W "-h --help --"'* ]] || false
@@ -613,7 +613,7 @@ write_query_config() {
     XDG_DATA_HOME= XDG_STATE_HOME= XDG_CACHE_HOME= RIG_PLATFORM=fixture "$RIG" diag
 
   [ "$status" -eq 0 ]
-  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.2.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.toml\n  Fragment count: 2\n  Status: valid\n  Schema: 1\n  Default profile: default\n  Selection mode: central\n  Profiles: 1\n  Tools: 1\n  Managed resources: 0\n  Ports: 0\n  Tool variants: 0' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]
+  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.2.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.toml\n  Fragment count: 2\n  Status: valid\n  Schema: 1\n  Default profile: default\n  Selection mode: central\n  Profiles: 1\n  Tools: 1\n  Skills: 0\n  Managed resources: 0\n  Ports: 0\n  Tool variants: 0' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]
 }
 
 @test "diag accepts fragment-only configuration and reports the optional root absent" {
@@ -688,12 +688,12 @@ write_query_config() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" OSTYPE=unrecognised RIG_PLATFORM=macos \
     "$RIG" show
   [ "$status" -eq 0 ]
-  [ "$output" = $'Profile:  default\nPlatform: macos\nTools:    3\n\nID    NAME  CATEGORY    PURPOSE\n----  ----  ----------  --------------------------\nfzf   fzf   navigation  Select entries quickly\ngit   Git   foundation  Track source history\nmgit  MGit  navigation  Navigate many repositories' ]
+  [ "$output" = $'Profile:  default\nPlatform: macos\nTools:    3\n\nID    NAME  CATEGORY    PURPOSE\n----  ----  ----------  --------------------------\nfzf   fzf   navigation  Select entries quickly\ngit   Git   foundation  Track source history\nmgit  MGit  navigation  Navigate many repositories\n\nSkills: 0' ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" show --profile minimal
   [ "$status" -eq 0 ]
-  [ "$output" = $'Profile:  minimal\nPlatform: macos\nTools:    1\n\nID    NAME  CATEGORY    PURPOSE\n----  ----  ----------  --------------------\ngit   Git   foundation  Track source history' ]
+  [ "$output" = $'Profile:  minimal\nPlatform: macos\nTools:    1\n\nID    NAME  CATEGORY    PURPOSE\n----  ----  ----------  --------------------\ngit   Git   foundation  Track source history\n\nSkills: 0' ]
 }
 
 @test "show bounds wide table rows and marks abbreviated values" {
@@ -865,7 +865,7 @@ write_query_config() {
 
     run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" explain "$flag"
     [ "$status" -eq 0 ]
-    [ "$output" = "Usage: rig explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID" ]
+    [ "$output" = "Usage: rig explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID" ]
   done
 }
 
@@ -2314,19 +2314,19 @@ bootstrap-profile = "absent"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.t
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --help
   [ "$status" -eq 0 ]
-  [ "$output" = 'Usage: rig apply [--profile NAME] [--scope tools|resources|all] [--dry-run]' ]
+  [ "$output" = 'Usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]' ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" bootstrap --help
   [ "$status" -eq 0 ]
-  [ "$output" = 'Usage: rig bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]' ]
+  [ "$output" = 'Usage: rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]' ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --dry-run --dry-run
   [ "$status" -eq 2 ]
-  [[ "$output" == *'usage: rig apply [--profile NAME] [--scope tools|resources|all] [--dry-run]'* ]] || false
+  [[ "$output" == *'usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" bootstrap --profile
   [ "$status" -eq 2 ]
-  [[ "$output" == *'usage: rig bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]'* ]] || false
+  [[ "$output" == *'usage: rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'* ]] || false
 }
 
 @test "built-in adapters observe dry-run and apply with exact native commands" {
@@ -2715,7 +2715,8 @@ import json, sys
 with open(sys.argv[1], encoding="utf-8") as source:
     data = json.load(source)
 assert data["format"] == "rig-publication"
-assert data["version"] == 1
+assert data["version"] == 2
+assert data["profile"]["skills"] == []
 assert data["publication"] == {
     "id": "site",
     "title": "Kris & Rig",

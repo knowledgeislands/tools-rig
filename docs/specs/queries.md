@@ -73,3 +73,13 @@ _Conformance:_ conforming
 _Verify:_ Bats invokes both queries with a recording listener command and asserts deterministic content and no command invocation.
 
 _Evidence:_ `rig_print_profile_ports`, `rig_explain_resource`, and the private-port query test implement and verify the contract.
+
+### RIG-QUERY-008 — User-level skill disclosure
+
+`rig show` MUST render the resolved profile's skills in a deterministic table, `rig explain skill:ID` MUST report the authored meaning, authority, source identity, runtime projections, trust, and profile membership, and `rig diag` MUST report the declared skill count. These queries MUST remain inert and MUST NOT invoke any skill authority.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats invokes show, explain, and diag with fake Skills CLI and KI executables, asserts stable output, and proves neither executable ran.
+
+_Evidence:_ `rig_print_profile_skills`, `rig_explain_skill`, `rig_command_diag`, and `tests/rig-skills.bats` implement and verify the contract.

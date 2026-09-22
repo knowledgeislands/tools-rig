@@ -1,7 +1,7 @@
 ---
 id: ADR-RIG-003
 title: 'Declarative Configuration Grammar'
-date: 2026-09-21
+date: 2026-09-22
 status: current
 decision_type: architecture
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/adr
@@ -17,6 +17,8 @@ Rig needs structured categories, tools, profiles, managed resources, relationshi
 Configuration must remain editable with familiar tooling while the installed core stays compatible with Bash 3.2 and has no required runtime dependency beyond Bash. Sourcing shell configuration would turn inspection into arbitrary execution, while a complete TOML implementation would add disproportionate parser complexity.
 
 ## Decision
+
+Schema 1 includes one `[skill.ID]` table per user-level skill. It records `name`, `purpose`, `rationale`, `authority`, immutable reviewable `source`, optional `source-skill`, `trust`, supported `platforms`, intended `runtimes`, optional required tools, item-owned `profiles`, and optional reviewed `public-source`. The first authorities are `skills-cli` and `ki` with `trust = "reviewed"`, bounded `local` projections with the same explicit trust, and observation-only `runtime` or `plugin` ownership with `trust = "authority-owned"`. A configuration cannot combine item-owned skill membership with central `profile.skills` selection.
 
 Rig uses TOML for schema 1 configuration. It reads the optional root file `${RIG_CONFIG_HOME}/rig.toml` first, then regular `${RIG_CONFIG_HOME}/conf.d/*.toml` fragments in deterministic bytewise filename order. At least one source must exist, and the merged model must contain exactly one `[rig]` table.
 

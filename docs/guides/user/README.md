@@ -18,6 +18,7 @@ Rig is useful when you want durable answers to questions such as:
 ## Understand the five core concepts
 
 - **Catalogue** — the complete description of tools you care about. Each entry can record category, purpose, rationale, relationships, supported platforms, and installation metadata.
+- **Skill** — a user-level agent capability whose reviewed source, native authority, and runtime projections are declared without copying its instructions into Rig.
 - **Managed resource** — a service, scheduled job, typed setting, or semantic layout whose identity, intent, and desired state Rig declares while a provider owns native projection and operation.
 - **Private port** — stable TCP allocation whose number, expected bind scope, lifecycle mode, and qualified tool or service owner Rig records and observes without controlling sockets.
 - **Profile** — complete machine or role intent, or a non-appliable view. Selectable declarations own direct membership; omission means the configured default, and profiles inherit shared intent explicitly. A workstation is a complete profile, not a provider.
@@ -33,7 +34,7 @@ Publication is an optional projection of that model. It exports one deliberately
 3. **Check Rig itself** with `rig diag`.
 4. **Assess the machine** with `rig doctor` for a summary or `rig status` for full expected-versus-observed detail.
 5. **Preview change** with `rig apply --dry-run`.
-6. **Materialise** with `rig apply`, or use Rig's native `rig bootstrap` lifecycle to stage the fixed Homebrew → mise → npm manager chain when declared and then materialise the selected bootstrap profile.
+6. **Materialise** with `rig apply` in tools → skills → resources order, or use Rig's native `rig bootstrap` lifecycle to stage required managers and then materialise the selected bootstrap profile.
 7. **Advance explicitly** with dry-run-first `rig update`, `rig maintain`, or `rig capture` when tools, provider state, or a native manifest should change outside reconciliation.
 8. **Publish deliberately** with offline `rig export` followed by explicit `rig publish` when configured.
 
@@ -47,6 +48,7 @@ One catalogue tool can use bounded `variant.ID.*` declarations when its installa
 
 - [Get started](getting-started.md) — install Rig, create a small configuration, understand it, check a machine, and preview the first application.
 - [Build complete profiles and safe views](profiles.md) — place membership beside declarations, inherit shared intent, switch complete profiles safely, and publish an explicit view.
+- [Manage user-level skills](skills.md) — choose a native authority, declare reviewed provenance, inspect state, and understand non-removal and publication boundaries.
 - [Use commands](commands.md) — choose the right command and understand whether it reads declarations, observes providers, mutates state, or publishes data.
 - [Publish a rig](publishing.md) — choose a safe public profile, inspect its versioned JSON, and hand it to a trusted publisher.
 - [Run external provider actions](provider-actions.md) — expose bounded host-specific operations only when no built-in declarative integration fits.

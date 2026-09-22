@@ -239,3 +239,13 @@ _Conformance:_ conforming
 _Verify:_ Bats accepts the complete declaration, item-owned membership and central `ports` compatibility, then rejects missing fields, invalid integer ranges and enums, unqualified or unsupported owners, unknown references, and selected collisions.
 
 _Evidence:_ `rig_toml_field`, `rig_validate_port`, `rig_select_port`, and `rig_validate_selected_ports` implement the contract; private-port tests cover accepted, rejected, and conflicting forms.
+
+### RIG-CONF-024 — User-level skill declarations
+
+Schema 1 MUST accept one `[skill.ID]` table per user-level skill with required `name`, `purpose`, `rationale`, `authority`, `source`, `trust`, and `platforms`; optional `source-skill`, `runtimes`, `requires`, `profiles`, and `public-source`; and the same item-owned profile semantics as other selectable declarations. `skills-cli`, `ki`, and `local` MUST require `trust = "reviewed"`; `runtime` and `plugin` MUST require `trust = "authority-owned"`; a merged configuration MUST NOT mix item-owned skill membership with central `profile.skills` selection.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats tests accept each authority/trust pair and reject unknown fields, invalid pairs, invalid sources, invalid runtime identifiers, unresolved required tools, and mixed selection models.
+
+_Evidence:_ `tests/rig-skills.bats` exercises skill schema, trust, source, and profile-selection validation.

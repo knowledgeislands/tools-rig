@@ -68,6 +68,8 @@ _Evidence:_ `install.sh` implements the exact-version contract and `tests/rig.ba
 
 ### RIG-PORT-007 — Public interface alignment
 
+*** End of File
+
 The shipped command inventory and each command synopsis MUST agree across top-level and command-local help, README, consumer command guide, `rig(1)`, Bash and Zsh completion output, and the current changelog baseline. User and developer guides, Specifications, and Decision Records MUST describe affected configuration, lifecycle, built-in-provider, extension, and trust-boundary behaviour consistently. The release procedure MUST include an explicit pre-release alignment check.
 
 _Conformance:_ conforming
@@ -75,3 +77,13 @@ _Conformance:_ conforming
 _Verify:_ Bats checks the shipped command inventory across README, consumer command guide, changelog, manual, and generated completions; compares human-facing synopsis; and exercises command-local help plus targeted manual structure. Repository guide, specification, and decision audits verify documentation structure.
 
 _Evidence:_ `help describes the current command surface`, `public command inventory stays aligned across documentation`, `completion help provide command-local help`, and `completion definitions evaluate and expose accepted options` in `tests/rig.bats` enforce the shipped interface alignment.
+
+### RIG-PORT-008 — Optional skill-authority executables
+
+Rig core MUST remain Bash 3.2-compatible and dependency-free. Skill-authority executables MUST be optional native integrations discovered only for observation or explicit mutation; their absence MUST produce a bounded unavailable result rather than prevent declaration queries. Tests MUST isolate fake homes and executables and MUST NOT read or modify real user skill roots.
+
+_Conformance:_ conforming
+
+_Verify:_ ShellCheck and Bash syntax gates cover the runtime; isolated Bats tests exercise absent executables and temporary runtime roots.
+
+_Evidence:_ `bin/rig` implements skill parsing and state in Bash; `tests/rig-skills.bats` supplies fake HOME, configuration, Skills CLI, KI, and runtime roots.

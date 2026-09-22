@@ -6,9 +6,9 @@ Rig commands follow a deliberate progression from understanding declared intent 
 
 These commands parse configuration and never invoke providers:
 
-- `rig show [--profile NAME]` — describe the resolved default or named profile in a readable tool table.
+- `rig show [--profile NAME]` — describe the resolved default or named profile in readable tool and skill tables.
 - `rig list [--category ID] [--profile NAME]` — list declared tools, optionally restricted by category and resolved profile.
-- `rig explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID` — show one tool, qualified managed resource, or private port allocation with complete declaration and profile membership.
+- `rig explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID` — show one tool, user-level skill, qualified managed resource, or private port allocation with complete declaration and profile membership.
 - `rig diag` — report the running Rig version, executable, Bash, platform, XDG paths, configuration sources, validity, profile-selection mode, and model counts.
 
 Use `show` for the whole selected setup, `list` to browse, `explain` for one tool, and `diag` when Rig itself cannot find or parse what you expect.
@@ -28,8 +28,8 @@ Neither command applies changes.
 
 Apply and bootstrap preflight the complete selected plan before mutation. Shared configuration, trust, executable, platform, and receipt-boundary failures reject the plan with status 2. A resource-local environmental finding produces a failed row with status 1, prevents that resource from being invoked, and leaves independent work available.
 
-- `rig apply [--profile NAME] [--scope tools|resources|all] [--dry-run]` — preflight the resolved profile, print the selected scope in dry-run mode, or invoke built-in and explicitly allowed external mutation operations.
-- `rig bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]` — run Rig's native new-machine lifecycle for the configured bootstrap profile, an explicit profile, or the default-profile fallback.
+- `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]` — preflight the resolved profile, print the selected scope in dry-run mode, or materialise tools → skills → resources.
+- `rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]` — run Rig's native new-machine lifecycle for the configured bootstrap profile, an explicit profile, or the default-profile fallback.
 
 Run the dry-run form first. A dry run invokes no provider and writes no state. Without `--dry-run`, apply reconciles a complete profile after complete preflight. A non-appliable view is rejected by apply, bootstrap, update, maintain, and selected-resource mutation. Reports disclose whether work affects one declaration, a native manifest, or a provider-wide surface before execution. Receipt-backed work serialises the platform target before reading its receipt. Bootstrap can stage only the fixed Homebrew → mise → npm manager chain when the corresponding prerequisite tools are selected; all external and unrelated managers must already be available. It reports each stage before completing a normal apply preflight.
 
@@ -53,7 +53,7 @@ Built-in operations are fixed by Rig. An external action is an advanced trust tr
 
 ## Export or publish a public view
 
-- `rig export PUBLICATION --output DIRECTORY` — generate deterministic `rig-publication` version 1 data without invoking a publisher.
+- `rig export PUBLICATION --output DIRECTORY` — generate deterministic `rig-publication` version 2 data without invoking a publisher.
 - `rig publish PUBLICATION` — generate the same isolated data and pass it to the publication's explicitly selected custom publisher.
 
 Export is the review boundary; publish is the network-capable transition. See [publish a rig](publishing.md).

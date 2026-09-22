@@ -1,7 +1,7 @@
 ---
 id: PDR-RIG-001
 title: 'Catalogue-led Working Setup'
-date: 2026-09-21
+date: 2026-09-22
 status: current
 decision_type: product
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/pdr
@@ -17,6 +17,8 @@ A person's working setup is more than a package list or bootstrap sequence. It i
 Package managers, configuration managers, service managers, and platform facilities already own native resolution, execution, and state. Rig must coordinate those authorities without requiring a person to describe Rig's adapter implementation or provider protocol in ordinary configuration.
 
 ## Decision
+
+Rig treats user-level agent skills as first-class catalogue capabilities distinct from executable tools. A skill records human meaning, reviewed provenance, native authority, and intended runtime projections without copying or evaluating its instruction content. Tools, skills, and managed resources use the same item-owned profile membership rule. Changing profile selection never implies uninstalling or removing a skill.
 
 Rig is the declarative description and manager of a person's working setup. Its primary product concept is a catalogue of categorised tools with stable identities, purposes, personal rationale, relationships, supported platforms, and optional provider-backed installation metadata.
 

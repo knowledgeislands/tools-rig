@@ -38,7 +38,7 @@ rig export personal-site --output ./public-rig
 cat ./public-rig/rig.json
 ```
 
-The output contains exactly one regular file, `rig.json`. Consumers must check `format` is `rig-publication` and integer `version` is `1` before reading the remaining document.
+The output contains exactly one regular file, `rig.json`. Consumers must check `format` is `rig-publication` and integer `version` is `2` before reading the remaining document. The profile always contains a deterministic `skills` array, including when empty. A selected skill contributes only `id`, `name`, `purpose`, `rationale`, and optional reviewed `public-source` as `source`. Provider configuration, authorities, install sources, runtime projections, local paths, roots, locks, arguments, observed state, and unmanaged inventory remain private.
 
 Export invokes no provider and performs no network operation. It includes only the selected profile's public catalogue fields and relationships whose endpoints are also public. It excludes provider configuration, other profiles, executable paths, credentials, and observed machine state.
 

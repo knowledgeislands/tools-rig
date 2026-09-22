@@ -1,4 +1,4 @@
-.TH RIG 1 "2026-09-21" "Knowledge Islands" "User Commands"
+.TH RIG 1 "2026-09-22" "Knowledge Islands" "User Commands"
 .SH NAME
 \&
 .PP
@@ -14,7 +14,7 @@ rig \- describe and manage a personal working setup
 .RI [ \-\-profile " NAME" ]
 .br
 .B rig explain
-.I TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID
+.I TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID
 .br
 .B rig status
 .RI [ \-\-profile " NAME" ]
@@ -25,12 +25,12 @@ rig \- describe and manage a personal working setup
 .br
 .B rig apply
 .RI [ \-\-profile " NAME" ]
-.RI [ \-\-scope " tools|resources|all" ]
+.RI [ \-\-scope " tools|skills|resources|all" ]
 .RI [ \-\-dry-run ]
 .br
 .B rig bootstrap
 .RI [ \-\-profile " NAME" ]
-.RI [ \-\-scope " tools|resources|all" ]
+.RI [ \-\-scope " tools|skills|resources|all" ]
 .RI [ \-\-dry-run ]
 .br
 .B rig update
@@ -72,8 +72,10 @@ setup, explains why they belong, and compares the selected setup with the
 current machine. Managed resources include services, scheduled jobs, typed
 macOS settings, and semantic Dock layouts.
 .PP
-The catalogue records tool meaning. Managed resources record declarative
-machine intent. Profiles select tools and resources for machines, roles, or
+The catalogue records tool meaning and user-level skill intent. Skills retain
+reviewed provenance and native authority without copying instruction content.
+Managed resources record declarative machine intent. Profiles select tools,
+skills, and resources for machines, roles, or
 contexts. Rig chooses its built-in integration from each declaration's
 provider identity; explicitly declared external providers extend that built-in
 set. State compares resolved intent with native observations.
@@ -177,8 +179,10 @@ Narrow the list to tools in the declared category.
 Narrow the list to tools selected by the resolved profile.
 The category and profile filters may be combined.
 .TP
-.BI "rig explain " TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID
-Show a tool's identity and installation metadata, or a qualified operational
+.BI "rig explain " TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID
+Show a tool's identity and installation metadata, a user-level skill's
+meaning, authority, source, trust, runtime projections, and profile
+membership, or a qualified operational
 resource's purpose, rationale, native ownership, desired values, policies,
 tool dependencies, and profile membership. Dock explanations include ordered
 item details. Tool explanations include declared artifacts. Port explanations
@@ -186,7 +190,8 @@ include TCP number, bind scope, mode, qualified owner, purpose, rationale, and
 profile membership.
 .TP
 .B rig status
-Compare every tool and operational resource in the resolved default profile
+Compare every tool, user-level skill, and operational resource in the
+resolved default profile
 with its selected native observation. Catalogue-only tools are reported as
 neutral unavailable rows; stale resource receipts are pending retirement.
 .TP
@@ -194,6 +199,10 @@ neutral unavailable rows; stale resource receipts are pending retirement.
 Compare a named resolved profile without changing the configured default.
 .TP
 .B rig status \-\-unmanaged
+Also ask a directly installed Skills CLI for global skill identities not
+represented by a matching declaration. An absent, failing, unsupported, or
+malformed inventory is reported unavailable. KI inventory remains unavailable
+and is never invoked.
 On macOS, also report read-only TCP listener observations whose port is not
 declared. Listener inventory is private and informational; it never opens,
 reserves, closes, or kills a socket.
@@ -208,7 +217,8 @@ installed software was ever declared.
 .B rig doctor
 Check the resolved default profile and print one compact operational health
 answer. Doctor checks effective XDG path accessibility, native-manager and
-external-provider availability, and selected tool and resource observations.
+external-provider availability, and selected tool, skill, and resource
+observations.
 Catalogue-only and
 incompatible-platform tools are informational.
 .TP
@@ -221,7 +231,8 @@ applies, repairs, publishes, or invokes unselected providers.
 .B rig apply
 Preflight every selected bound tool, operational resource, stale receipt
 entry, and receipt target before invoking providers. Tools run in
-dependency-first order, followed by selected resources and stale retirement.
+dependency-first order, followed by selected skills, selected resources, and
+stale retirement.
 A failure skips only dependent work; independent work continues. A
 resource-local preflight finding produces a failed row and prevents only that
 resource from being invoked. Shared configuration, trust, executable,
@@ -241,9 +252,9 @@ Apply a named resolved profile without changing the configured default.
 Perform complete preflight and print planned or resource-local failed work
 without invoking a provider.
 .TP
-.BI "rig apply \-\-scope " tools|resources|all
-Limit reconciliation to selected tool installations, to managed resources and
-their stale receipts, or to both. The default is
+.BI "rig apply \-\-scope " tools|skills|resources|all
+Limit reconciliation to selected tool installations, selected user-level skills,
+managed resources and their stale receipts, or all three. The default is
 .BR all .
 The scope changes execution, not profile resolution or declaration ownership.
 .TP
@@ -270,11 +281,15 @@ option has the same values and meaning as for
 .B rig update
 .RI [ \-\-profile " NAME" ]
 .RI [ \-\-dry-run ]
-Advance tools selected by the resolved default or named profile through fixed
-Homebrew, uv, mise, and npm native operations. A Homebrew provider with a
+Advance tools and user-level skills selected by the resolved default or named
+profile through fixed Homebrew, uv, mise, npm, and Skills CLI native
+operations. A Homebrew provider with a
 manifest is updated once through that manifest; other update work is
 deduplicated by selected installation. Unsupported selected providers are
-reported as skipped and are not invoked. Dry run performs the same resolution
+reported as skipped and are not invoked. Skill update invokes the deliberately
+installed Skills CLI directly; runtime, plugin, KI, and local authorities are
+not advanced. No lifecycle command removes a skill. Dry run performs the same
+resolution
 and preflight without provider mutation.
 .TP
 .B rig maintain
@@ -500,6 +515,33 @@ string array, plus optional
 and
 .B artifacts
 string arrays; and
+.B [skill.ID]
+requires
+.BR name ,
+.BR purpose ,
+.BR rationale ,
+.BR authority ,
+.BR source ,
+.BR trust ,
+and a non-empty
+.B platforms
+string array. Optional fields are
+.BR source-skill ,
+.BR runtimes ,
+.BR requires ,
+.BR profiles ,
+and reviewed HTTP or HTTPS
+.BR public-source .
+Authorities
+.BR skills-cli ,
+.BR ki ,
+and
+.B local
+require reviewed trust;
+.B runtime
+and
+.B plugin
+require authority-owned trust.
 .B [profile.ID]
 may declare
 .BR name ,
@@ -878,9 +920,14 @@ is
 .B rig-publication
 and its integer
 .B version
-is 1. It contains publication metadata, profile identity, selected categories,
+is 2. It contains publication metadata, profile identity, selected categories,
 and selected tool identity, name, purpose, rationale, declared platforms, and
-closed relationships. Category, tool, platform, and relationship values use
+closed relationships. It always includes a deterministic profile skills array,
+including when empty. A selected skill contributes only identity, name, purpose,
+rationale, and optional reviewed public source. Skill authority, native source,
+runtime projections, paths, roots, locks, arguments, observed state, and
+unmanaged inventory are never rendered. Category, tool, skill, platform, and
+relationship values use
 deterministic bytewise ordering.
 .PP
 The public profile must be a non-appliable view and is resolved independently

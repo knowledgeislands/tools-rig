@@ -1,6 +1,6 @@
 # Rig
 
-Rig helps you describe the tools, managed resources, and private port allocations that make up your working setup, explain why each one belongs, and see whether the setup you expect is present on a machine.
+Rig helps you describe the tools, user-level agent skills, managed resources, and private port allocations that make up your working setup, explain why each one belongs, and see whether the setup you expect is present on a machine.
 
 Instead of treating a Brewfile, dotfiles repository, language tool manager, and download scripts as separate answers to “what is my setup?”, Rig gives them one catalogue and one set of profiles. Those native systems still install and configure their own tools; Rig describes the whole and coordinates them.
 
@@ -16,6 +16,7 @@ Instead of treating a Brewfile, dotfiles repository, language tool manager, and 
 ## The model in plain language
 
 - A **catalogue** describes your tools: their category, purpose, rationale, relationships, platforms, and optional installation.
+- A **skill** describes one user-level agent capability, its reviewed source, native authority, and intended runtime projections without copying its instruction content into Rig.
 - A **managed resource** declares a service, scheduled job, typed machine setting, or semantic layout together with its desired state.
 - A **profile** selects catalogue tools and managed resources for a machine, role, or context. One `default` profile is enough unless two contexts genuinely select different intent.
 - A **provider** is the native system that owns a declaration, such as Homebrew, uv, mise, npm, chezmoi, launchd, or macOS defaults. Rig knows its built-in providers; ordinary configuration does not register their adapters or capabilities.
@@ -32,7 +33,7 @@ Rig is therefore a manager of managers. It does not replace package-manager mani
 3. Use `rig show`, `rig list`, and `rig explain` to understand the declaration.
 4. Use `rig diag`, `rig doctor`, and `rig status` to inspect Rig and compare intent with the machine.
 5. Use `rig apply --dry-run` to review the complete plan before allowing provider changes.
-6. Use `rig apply` to reconcile an operable machine, or `rig bootstrap` to stage the fixed Homebrew → mise → npm manager chain when declared and then materialise the selected bootstrap profile.
+6. Use `rig apply` to reconcile an operable machine in tools → skills → resources order, or `rig bootstrap` to stage required managers and then materialise the selected bootstrap profile.
 7. Use explicit `rig update` and `rig maintain` runs when selected tools or provider state should advance; use `rig capture` only when deliberately refreshing a provider-native manifest.
 8. Optionally use `rig export` and `rig publish` to share a deliberately public view.
 
@@ -96,6 +97,8 @@ rig apply --dry-run
 ```
 
 The `homebrew` provider is built into Rig, so the declaration says only what owns the installation. Catalogue queries and diagnostics do not invoke providers. Doctor and status use only built-in observations or explicitly trusted extension observations. A dry run preflights the complete tool and resource plan, including stale-resource retirement, without invoking provider changes or writing state.
+
+User-level agent skills are separate catalogue capabilities. A skill declaration names a reviewed source and one native authority: the deliberately installed `skills` CLI, a KI projection, a bounded local-source projection, or observation-only runtime/plugin ownership. See [Manage user-level skills](docs/guides/user/skills.md) before adding one; Rig never evaluates or stores skill instructions.
 
 ## Workstations are profiles
 
@@ -161,11 +164,11 @@ Managed resources can declare deterministic ordering with qualified dependencies
 - `rig` shows top-level help.
 - `rig show [--profile NAME]` describes the default or named resolved profile.
 - `rig list [--category ID] [--profile NAME]` lists catalogue tools, optionally filtered by category and profile.
-- `rig explain TOOL|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID` explains one tool, qualified managed resource, or private port allocation.
+- `rig explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID` explains one tool, user-level skill, qualified managed resource, or private port allocation.
 - `rig status [--profile NAME] [--unmanaged]` compares selected tools, resources, and private ports with read-only observations and can report undeclared tool identities and TCP listeners.
 - `rig doctor [--profile NAME]` gives a compact health assessment for configuration, paths, providers, selected tools, selected resources, and private ports.
-- `rig apply [--profile NAME] [--scope tools|resources|all] [--dry-run]` previews or materialises the resolved tool and resource plan.
-- `rig bootstrap [--profile NAME] [--scope tools|resources|all] [--dry-run]` previews or runs the native bootstrap lifecycle for the configured bootstrap profile.
+- `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]` previews or materialises the resolved plan in tools → skills → resources order.
+- `rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]` previews or runs the native bootstrap lifecycle for the configured bootstrap profile.
 - `rig update [--profile NAME] [--dry-run]` advances selected Homebrew, uv, mise, and npm tools through their native managers.
 - `rig maintain [--profile NAME] [--dry-run]` runs one bounded native maintenance work item for each supported selected provider.
 - `rig capture PROVIDER [--dry-run]` deliberately refreshes a supported provider-native manifest; Homebrew capture is the current built-in operation.
@@ -188,6 +191,8 @@ Rig configuration is inert TOML; Rig never sources it as shell code. Built-in op
 Personal catalogue data, host-specific paths, credentials, provider-native state, and observed machine state belong in private configuration or their native systems. A public export contains only the selected public profile's allow-listed catalogue data. Port declarations and listener observations are always private and never enter `rig.json`.
 
 Rig resolves only documented whole-value home forms for typed string settings and Dock paths; configuration remains inert and queries retain authored values. Application completes preflight before mutation: shared safety failures reject the plan, while a resource-local environmental finding fails only that resource and leaves independent work available. Any selected resource failure blocks retirement and receipt replacement.
+
+Skill publication is explicit and limited to `id`, `name`, `purpose`, `rationale`, and an optional reviewed public source. Authorities, runtime projections, local paths, locks, and observed state never enter `rig.json`.
 
 ## Documentation
 

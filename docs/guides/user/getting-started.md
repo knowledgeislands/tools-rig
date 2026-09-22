@@ -261,6 +261,18 @@ Add `profiles = ["workstation"]` to the `show-file-extensions` setting declarati
 
 The `macos-defaults` provider is built in. The same rule applies to launchd services and scheduled jobs: declare the desired resource and select it from a profile, without a `[provider.launchd]` table.
 
+## Add a user-level skill
+
+Treat agent skills as separate capabilities rather than executable tools. Each skill declaration names its purpose, rationale, reviewed source, intended runtimes, and one native authority. Start with the [user-level skills guide](skills.md) because applying a skill crosses an instruction-content trust boundary and authority-specific lifecycle rules differ.
+
+Queries remain safe before materialisation:
+
+```sh
+rig explain skill:SKILL_ID
+rig status --unmanaged
+rig apply --scope skills --dry-run
+```
+
 ## Enable completion
 
 Print completion source for your shell:
