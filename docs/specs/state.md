@@ -220,7 +220,7 @@ _Evidence:_ `rig_setting_observe`, `rig_setting_apply`, `rig_dock_observe`, `rig
 
 ### RIG-STATE-022 — Lifecycle preflight and preview
 
-`rig update`, `rig maintain`, and `rig capture` MUST provide a non-mutating dry run that reports planned and unsupported work without invoking a provider or writing a manifest. Before a non-dry-run lifecycle mutation, Rig MUST preflight every supported target's executable and required manifest boundary before invoking the first provider. Lifecycle reports MUST be deterministic, MUST keep native diagnostics off the report channel, and MUST report independent completed, failed, and skipped outcomes.
+`rig update`, `rig maintain`, and `rig capture` MUST provide a non-mutating dry run that reports planned and unsupported work without invoking a provider or writing a manifest. Before a non-dry-run lifecycle mutation, Rig MUST preflight every supported target's executable and required manifest boundary before invoking the first provider. Lifecycle reports MUST be deterministic, MUST keep native diagnostics off the report channel, and MUST report independent completed, failed, unavailable, and skipped outcomes.
 
 _Conformance:_ conforming
 

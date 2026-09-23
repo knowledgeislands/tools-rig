@@ -9893,6 +9893,7 @@ rig_collect_lifecycle_tasks() {
   RIG_LIFECYCLE_SUPPORTED=()
   RIG_LIFECYCLE_EXECUTABLES=()
   RIG_LIFECYCLE_TOOLS=()
+  RIG_LIFECYCLE_DETAILS=()
   index=0
   while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
     tool=${RIG_PLAN_TOOLS[$index]}
@@ -9953,6 +9954,16 @@ rig_lifecycle_executable() {
   rig_provider_executable "$provider" "$adapter" "$kind"
 }
 
+rig_lifecycle_unavailable() {
+  local detail message
+
+  detail=$1
+  message=$2
+  RIG_LIFECYCLE_PREFLIGHT_DETAIL=$detail
+  [ "${RIG_LIFECYCLE_PREFLIGHT_SOFT:-0}" -eq 0 ] || return 1
+  rig_fail "$message"
+}
+
 rig_preflight_lifecycle_task() {
   local action provider binding adapter executable manifest parent
 
@@ -9962,7 +9973,8 @@ rig_preflight_lifecycle_task() {
   case "$binding" in
     skill.*)
       rig_preflight_skill "${binding#skill.}" ||
-        rig_fail "skill '${binding#skill.}' update unavailable: ${RIG_SKILL_PREFLIGHT_DETAIL:-preflight-failed}" || return
+        rig_lifecycle_unavailable "${RIG_SKILL_PREFLIGHT_DETAIL:-preflight-failed}" \
+          "skill '${binding#skill.}' update unavailable: ${RIG_SKILL_PREFLIGHT_DETAIL:-preflight-failed}" || return
       rig_provider_executable skills-cli skills-cli skill || return 2
       return 0
       ;;
@@ -9973,7 +9985,8 @@ rig_preflight_lifecycle_task() {
   rig_lifecycle_executable "$provider" "$binding" || return 2
   executable=$RIG_VALUE
   rig_executable_available "$executable" ||
-    rig_fail "provider '$provider' lifecycle executable unavailable: $executable" || return
+    rig_lifecycle_unavailable executable-unavailable \
+      "provider '$provider' lifecycle executable unavailable: $executable" || return
   RIG_VALUE=$executable
   if [ "$adapter" = homebrew ] && rig_lifecycle_manifest "$provider"; then
     manifest=$RIG_VALUE
@@ -10082,13 +10095,14 @@ rig_execute_lifecycle_task() {
 
 rig_run_lifecycle_tasks() {
   local action dry_run index label provider binding supported executable native_status progress_scope
-  local planned completed failed skipped supported_total exit_code
+  local planned completed failed unavailable skipped supported_total exit_code preflight_status
 
   action=$1
   dry_run=$2
   planned=0
   completed=0
   failed=0
+  unavailable=0
   skipped=0
   supported_total=0
   exit_code=0
@@ -10100,10 +10114,24 @@ rig_run_lifecycle_tasks() {
     rig_progress_begin "$label via $provider"
     if [ "${RIG_LIFECYCLE_SUPPORTED[$index]}" -eq 1 ]; then
       binding=${RIG_LIFECYCLE_BINDINGS[$index]}
-      rig_preflight_lifecycle_task "$action" "$provider" "$binding" || return
-      RIG_LIFECYCLE_EXECUTABLES[$index]=$RIG_VALUE
-      supported_total=$((supported_total + 1))
-      rig_progress_result succeeded "$label via $provider"
+      RIG_LIFECYCLE_PREFLIGHT_DETAIL=
+      RIG_LIFECYCLE_PREFLIGHT_SOFT=1
+      rig_preflight_lifecycle_task "$action" "$provider" "$binding"
+      preflight_status=$?
+      RIG_LIFECYCLE_PREFLIGHT_SOFT=0
+      case "$preflight_status" in
+        0)
+          RIG_LIFECYCLE_EXECUTABLES[$index]=$RIG_VALUE
+          supported_total=$((supported_total + 1))
+          rig_progress_result succeeded "$label via $provider"
+          ;;
+        1)
+          RIG_LIFECYCLE_EXECUTABLES[$index]=-
+          RIG_LIFECYCLE_DETAILS[$index]=${RIG_LIFECYCLE_PREFLIGHT_DETAIL:-preflight-failed}
+          rig_progress_result skipped "$label via $provider"
+          ;;
+        *) return "$preflight_status" ;;
+      esac
     else
       RIG_LIFECYCLE_EXECUTABLES[$index]=-
       rig_progress_result skipped "$label via $provider"
@@ -10129,6 +10157,10 @@ rig_run_lifecycle_tasks() {
     if [ "$supported" -ne 1 ]; then
       printf '%s\t%s\tskipped\tunsupported-%s\n' "$label" "$provider" "$action"
       skipped=$((skipped + 1))
+    elif [ -n "${RIG_LIFECYCLE_DETAILS[$index]-}" ]; then
+      printf '%s\t%s\tunavailable\t%s\n' "$label" "$provider" "${RIG_LIFECYCLE_DETAILS[$index]}"
+      unavailable=$((unavailable + 1))
+      exit_code=1
     elif [ "$dry_run" -eq 1 ]; then
       printf '%s\t%s\tplanned\t%s\n' "$label" "$provider" "$action"
       planned=$((planned + 1))
@@ -10157,8 +10189,8 @@ rig_run_lifecycle_tasks() {
     index=$((index + 1))
   done
   rig_progress_finish
-  printf 'Summary: planned=%s completed=%s failed=%s skipped=%s\n' \
-    "$planned" "$completed" "$failed" "$skipped"
+  printf 'Summary: planned=%s completed=%s failed=%s unavailable=%s skipped=%s\n' \
+    "$planned" "$completed" "$failed" "$unavailable" "$skipped"
   return "$exit_code"
 }
 

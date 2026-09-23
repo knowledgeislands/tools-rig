@@ -298,7 +298,11 @@ profile through fixed Homebrew, uv, mise, npm, and Skills CLI native
 operations. A Homebrew provider with a
 manifest is updated once through that manifest; other update work is
 deduplicated by selected installation. Unsupported selected providers are
-reported as skipped and are not invoked. Skill update invokes the deliberately
+reported as skipped and are not invoked. A selected target whose provider
+executable, Skills CLI executable, or declared manifest is unavailable is
+reported as unavailable with its preflight detail, is not invoked, and does
+not prevent independent update work; the run then returns 1. Skill update
+invokes the deliberately
 installed Skills CLI directly; runtime, plugin, KI, and local authorities are
 not advanced. No lifecycle command removes a skill. Dry run performs the same
 resolution
@@ -310,7 +314,9 @@ and preflight without provider mutation.
 Run one bounded native maintenance work item for each supported provider
 selected by the resolved profile. Homebrew performs cleanup, optional
 manifest cleanup, and doctor; uv prunes its cache; mise rebuilds shims; npm
-verifies its cache. Unsupported selected providers are reported as skipped.
+verifies its cache. Unsupported selected providers are reported as skipped and
+a provider whose executable is unavailable is reported as unavailable without
+blocking the others.
 Dry run performs the same resolution and preflight without provider mutation.
 .TP
 .BI "rig capture " PROVIDER
@@ -1372,15 +1378,15 @@ lifecycle skips.
 .TP
 .B 1
 Valid unhealthy observation or doctor finding, resource-local preflight
-finding, provider runtime failure, dependency suppression, or diagnostic
-finding. For
+finding, unavailable lifecycle target, provider runtime failure, dependency
+suppression, or diagnostic finding. For
 .B rig diag
 this means configuration is missing or invalid.
 .TP
 .B 2
 Invalid command syntax, unknown query identity, invalid configuration,
-resolution failure, or shared apply, bootstrap, update, maintain, or capture
-preflight safety failure.
+resolution failure, or shared apply, bootstrap, or capture preflight safety
+failure.
 .SH SEE ALSO
 \&
 .BR bash (1),

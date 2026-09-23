@@ -129,6 +129,7 @@ write_skill_config() {
 
   unset RIG_TEST_SKILLS_EXIT
   rm "$BIN/skills"
+  printf '%s\n' '[provider.skills-cli]' "executable = \"$BIN/skills\"" >>"$CONFIG_HOME/rig.toml"
   run "$RIG" status
   [ "$status" -eq 1 ]
   output_has_table_row $'caveman\tskills-cli\tunavailable\texecutable-unavailable'
@@ -310,4 +311,16 @@ with open(sys.argv[1], encoding="utf-8") as source:
 assert data["profile"]["skills"] == []
 ' "$export_dir/rig.json"
   [ "$status" -eq 0 ]
+}
+
+@test "update reports an unavailable Skills CLI skill without blocking other work" {
+  write_skill_config
+  printf '%s\n' '[provider.skills-cli]' "executable = \"$BIN/absent-skills\"" >>"$CONFIG_HOME/rig.toml"
+
+  run "$RIG" update
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'skill:caveman\tskills-cli\tunavailable\texecutable-unavailable'* ]]
+  [[ "$output" == *'unavailable=1'* ]]
+  [ ! -s "$SKILLS_LOG" ]
 }

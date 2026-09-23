@@ -72,6 +72,8 @@ Reconciliation makes declared intent present. It does not silently upgrade every
 
 Use dry run first. These commands have broader provider effects than applying one declaration, and Rig reports whether each operation has declaration, manifest, or provider-wide scope.
 
+Update and maintenance work is independent per target, so one target Rig cannot advance does not stop the others. A target whose native manager is not installed is reported as `unavailable` with the reason, is never invoked, and leaves the rest of the run to complete; the command then returns 1 so the gap stays visible. Install the missing manager — usually with `rig apply` — and run the command again.
+
 ## Run a bounded provider action
 
 `rig run PROVIDER ACTION [-- ARGUMENT...]` invokes a fixed built-in action or one action allow-listed for an explicitly trusted custom provider.

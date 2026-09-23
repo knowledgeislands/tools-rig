@@ -201,3 +201,25 @@ run_rig() {
   [[ "$output" == *"manifest is not a safe regular-file target"* ]]
   [ ! -e "$CALL_LOG" ]
 }
+
+@test "update reports an unavailable lifecycle executable and still advances the rest" {
+  printf '%s\n' '' '[provider.uv]' "executable = \"$FAKE_BIN/absent-uv\"" >>"$CONFIG_HOME/rig.toml"
+
+  run run_rig update --dry-run
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'ruff\tuv\tunavailable\texecutable-unavailable'* ]]
+  [[ "$output" == *$'manifest\thomebrew\tplanned\tupdate'* ]]
+  [[ "$output" == *'Summary: planned=3 completed=0 failed=0 unavailable=1 skipped=1'* ]]
+  [ ! -e "$CALL_LOG" ]
+
+  run run_rig update
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *$'ruff\tuv\tunavailable\texecutable-unavailable'* ]]
+  [[ "$output" == *'Summary: planned=0 completed=3 failed=0 unavailable=1 skipped=1'* ]]
+  grep -Fqx $'brew\tbundle install --upgrade --file='"$MANIFEST" "$CALL_LOG"
+  grep -Fqx $'mise\tupgrade node' "$CALL_LOG"
+  grep -Fqx $'npm\tinstall --global typescript' "$CALL_LOG"
+  [ "$(grep -Fc uv "$CALL_LOG")" -eq 0 ]
+}

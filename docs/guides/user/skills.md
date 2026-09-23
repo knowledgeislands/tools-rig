@@ -72,7 +72,7 @@ rig apply --scope skills --dry-run
 rig apply --scope skills
 ```
 
-Full application orders tools → skills → resources. `rig update --dry-run` previews explicit Skills CLI updates, and `rig update` advances selected `skills-cli` skills. Maintenance, cleanup, and profile selection never remove a skill.
+Full application orders tools → skills → resources. `rig update --dry-run` previews explicit Skills CLI updates, and `rig update` advances selected `skills-cli` skills. When the Skills CLI itself is not installed, each `skills-cli` skill is reported as `unavailable` and the rest of the update still runs. Maintenance, cleanup, and profile selection never remove a skill.
 
 ## Publish only deliberate metadata
 

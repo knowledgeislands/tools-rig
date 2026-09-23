@@ -141,7 +141,7 @@ _Evidence:_ `rig_custom_provider_executable` resolves one explicit or convention
 
 ### RIG-ORCH-011 — Ordered failure boundary
 
-After a work unit fails, Rig MUST suppress only its transitive dependants, identify a blocking tool when one exists, and continue independent work. A resource-local preflight finding MUST fail only that resource, MUST prevent its invocation, and MUST NOT block an independent tool or resource. Configuration, provider trust, executable availability, platform, and shared state-boundary failures MUST remain fatal before mutation.
+After a work unit fails, Rig MUST suppress only its transitive dependants, identify a blocking tool when one exists, and continue independent work. A resource-local preflight finding MUST fail only that resource, MUST prevent its invocation, and MUST NOT block an independent tool or resource. Configuration, provider trust, executable availability, platform, and shared state-boundary failures MUST remain fatal before `rig apply` and `rig bootstrap` mutation, because those commands converge a dependency-ordered plan. `rig update` and `rig maintain` dispatch independent per-task operations and instead bound an availability finding to its own task under RIG-ORCH-024.
 
 _Conformance:_ conforming
 
@@ -257,11 +257,13 @@ _Evidence:_ `rig_launchd_observe_resource`, `rig_launchd_apply_resource`, `rig_l
 
 `rig update` MUST advance selected Homebrew, uv, mise, and npm tools through fixed native operations; `rig maintain` MUST perform at most one fixed maintenance work item for each selected provider among those four; and `rig capture PROVIDER` MUST refresh only a declared Homebrew manifest through its fixed native capture operation. Rig MUST derive these capabilities from its built-in registry, MUST NOT accept configuration-defined lifecycle commands or lifecycle capability grants, and MUST report unsupported selected providers without dispatching them.
 
+A lifecycle preflight finding bounded to one selected task — an unavailable provider or Skills CLI executable, an unreadable declared manifest, or a skill that its authority cannot advance — MUST report that task as `unavailable` with its finding detail, MUST prevent only that task's invocation, and MUST NOT prevent an independent task from running; the run MUST complete every other selected task and MUST return a non-zero status. `rig capture PROVIDER` names one explicit target and MUST keep the same finding fatal.
+
 _Conformance:_ conforming
 
-_Verify:_ Bats selects duplicate and unsupported provider work, compares exact native update, maintenance, and capture invocations, and proves configuration cannot redirect lifecycle dispatch through an external provider.
+_Verify:_ Bats selects duplicate and unsupported provider work, compares exact native update, maintenance, and capture invocations, proves an unavailable provider or Skills CLI executable is reported per task while independent work still runs, and proves configuration cannot redirect lifecycle dispatch through an external provider.
 
-_Evidence:_ `rig_lifecycle_supported`, `rig_collect_lifecycle_tasks`, `rig_execute_lifecycle_task`, and `rig_command_capture` implement the fixed lifecycle registry and deduplicated dispatch; `tests/rig-lifecycle.bats` covers each supported provider, unsupported reporting, and Homebrew manifest capture.
+_Evidence:_ `rig_lifecycle_supported`, `rig_collect_lifecycle_tasks`, `rig_execute_lifecycle_task`, and `rig_command_capture` implement the fixed lifecycle registry and deduplicated dispatch, while `rig_lifecycle_unavailable` and `rig_run_lifecycle_tasks` bound a preflight finding to its own task; `tests/rig-lifecycle.bats` covers each supported provider, unsupported reporting, per-task unavailability, and Homebrew manifest capture, and `tests/rig-skills.bats` covers an unavailable Skills CLI.
 
 ### RIG-ORCH-025 — Artifact lifecycle ownership
 
