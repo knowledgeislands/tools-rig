@@ -260,7 +260,7 @@ _Evidence:_ `rig_acquire_reconciliation_lock`, signal traps, `rig_release_reconc
 
 ### RIG-STATE-026 — Private port expected-versus-observed state
 
-For a selected private TCP port, Rig MUST report a required absent listener as `missing`; MUST treat absent on-demand and allocated ports as healthy availability; MUST report a listener with a different bind scope as `drifted`; MUST report positively different ownership as `conflicting`; and MUST report inaccessible ownership or observation as `unknown` or `unavailable` rather than infer absence, drift, or ownership. Allocated occupancy with no positively different owner MUST remain informational.
+For a selected private TCP port, Rig MUST report a required absent listener as `missing`; MUST treat absent on-demand and allocated ports as healthy availability; MUST report a listener with a different bind scope as `drifted`; MUST report positively different ownership as `conflicting`; and MUST report inaccessible ownership or observation as `unknown` or `unavailable` rather than infer absence, drift, or ownership. Allocated occupancy with no positively different owner MUST remain informational. An ownership match MUST rest on the listener's full command line compared against the owner's declaration — a service's or scheduled job's home-expanded `program`, a tool's selected locator without package extras — matched as a complete argument token or path component, with an exact executable-name match as fallback evidence. A listener whose command line cannot be read and whose executable name differs MUST be reported as unverified ownership, never as `conflicting`, and the `conflicting` detail MUST name the listener whose command line positively identified a different process.
 
 _Conformance:_ conforming
 

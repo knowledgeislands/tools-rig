@@ -4,12 +4,12 @@ title: Identify bound port owners
 area: CORE
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: 0603938d0c8041b3409193706aaac84d834ae9c1
 created_at: 2026-09-22T07:55:00Z
-updated_at: 2026-09-22T22:23:05Z
+updated_at: 2026-09-23T14:41:06Z
 ---
 
 ## Goal
@@ -43,13 +43,13 @@ The approved implementation takes one additional macOS `ps` snapshot after `lsof
 
 ## Steps
 
-- [ ] Capture each listener's full command line alongside its pid during observation, preferring a single additional bounded call over a per-port invocation.
-- [ ] Resolve the owner's expectation from its declaration — a service's `program`, a tool's locator — rather than from the resource identifier alone.
-- [ ] Match the expectation against the command line, keeping the executable name as a fallback so an unidentifiable listener is reported rather than excused.
-- [ ] Distinguish "bound by something else" from "could not identify what is bound" in both state and detail, so an observation failure never reads as a conflict.
-- [ ] Keep the check working where command-line observation is unavailable or refused, degrading to an explicit unavailable observation rather than a false pass.
-- [ ] Add fixtures for an interpreted listener matching its declared program, a genuinely foreign occupant, and an unidentifiable listener.
-- [ ] Align the user command guide, the state Specification, the manual, and the changelog with the revised detail contract.
+- [x] Capture each listener's full command line alongside its pid during observation, preferring a single additional bounded call over a per-port invocation.
+- [x] Resolve the owner's expectation from its declaration — a service's `program`, a tool's locator — rather than from the resource identifier alone.
+- [x] Match the expectation against the command line, keeping the executable name as a fallback so an unidentifiable listener is reported rather than excused.
+- [x] Distinguish "bound by something else" from "could not identify what is bound" in both state and detail, so an observation failure never reads as a conflict.
+- [x] Keep the check working where command-line observation is unavailable or refused, degrading to an explicit unavailable observation rather than a false pass.
+- [x] Add fixtures for an interpreted listener matching its declared program, a genuinely foreign occupant, and an unidentifiable listener.
+- [x] Align the user command guide, the state Specification, the manual, and the changelog with the revised detail contract.
 
 ## Delegation
 
@@ -58,6 +58,7 @@ No delegation is planned. Listener capture, owner resolution, state classificati
 ## Files touched
 
 - `src/rig/20-orchestration.bash` for listener observation and the port-owner comparison.
+- `src/rig/00-runtime.bash` and `src/rig/10-configuration.bash` for the captured argv state and its reset, plus assembled `bin/rig`.
 - `tests/` for the interpreted, foreign, and unidentifiable listener fixtures.
 - `docs/guides/user/commands.md`, `docs/specs/state.md`, `man/rig.1`, and `CHANGELOG.md` for the revised detail contract.
 - This roadmap record and the issue ledger for delivery evidence.
@@ -89,6 +90,42 @@ Explain what `conflicting` now asserts and what it no longer asserts, so a reade
 ### Roadmap
 
 Record the delivered evidence here, and note the downstream repository-side check that this work retires.
+
+## Review
+
+### Delivered
+
+A declared port's owner check now identifies the process actually bound, without weakening into a pass whenever identification is uncertain. The port declaration schema, the `required` and `on-demand` modes, scope classification, the state vocabulary, exit status, and every other resource kind's observation are unchanged.
+
+### Summary of changes
+
+- Listener observation takes one additional bounded `ps -axo pid=,command=` snapshot after `lsof` and joins full command lines to the pids already captured, never invoking `ps` per port.
+- Service and scheduled-job ownership matches the home-expanded first `program` value as a complete argv token or path component; tool ownership matches the selected locator with package extras removed.
+- An exact executable name remains positive fallback evidence where no command line is readable, so an unidentifiable listener is reported rather than excused.
+- `conflicting` now requires a readable command line that positively identifies a different process, and names that listener rather than whichever listener the enumeration happened to reach last.
+- An unreadable command line whose executable name also differs reports `unknown` with `owner-unavailable`, or stays informational for an `allocated` port.
+- `rig_expected_owner_command` is removed; the argv-aware `rig_expected_owner_identity` supersedes it and the old helper had no remaining callers.
+
+### Verification
+
+Evidence:
+
+- `tests/rig.bats` covers the interpreted `node`-fronted service and `python`-fronted tool forms, a genuinely foreign occupant, an unidentifiable listener in both `required` and `allocated` modes, and the `conflicting` detail under both listener orderings.
+- The attribution fixture was confirmed to fail against the pre-fix detail expression and to pass after it, so it guards the defect rather than merely describing it.
+- Full Bats suite passes with 230 cases; ShellCheck, `bash -n`, `scripts/assemble-rig --check`, `mandoc -T lint`, the performance benchmark, native-provider smoke, and `ki repo audit` all pass.
+- On the reporting workstation, `rig status` now reports `port:mcporter-http` as `present` with `owner:mcporter-proxy` and `port:headroom` as `present` with `owner:headroom-ai`; both previously read `conflicting`. Port summary is `selected=2 unhealthy=0`.
+
+### Outstanding concerns
+
+Command-line observation is macOS `ps` only, consistent with the existing macOS-only `lsof` listener observation; other platforms continue to report the observation as unavailable rather than guessing. A listener owned by another user, or one that exits between enumeration and inspection, reports unverified ownership by design.
+
+### Post-change review
+
+The downstream repository-side check in `krisb/dotfiles` that compared listener argv against declared programs is retired by this work; that repository no longer needs to compensate for a dishonest observation, and the two `conflicting` findings it treated as known false positives are gone. The revised detail string remains human output and is not a parsing contract, per `RIG-CLI-010`.
+
+### Mini recap
+
+A correctly bound interpreted listener now reads as healthy, a stranger on the port still reads as `conflicting`, and a process Rig cannot inspect says so instead of pretending to either.
 
 ## Discussion
 

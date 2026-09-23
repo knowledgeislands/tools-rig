@@ -148,12 +148,22 @@ bootstrap-profile = "bootstrap"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstra
 write_port_fixture() {
   PORT_LSOF=$BATS_TEST_TMPDIR/lsof-$BATS_TEST_NUMBER
   PORT_LSOF_LOG=$BATS_TEST_TMPDIR/lsof-log-$BATS_TEST_NUMBER
+  PORT_PS=$BATS_TEST_TMPDIR/ps-$BATS_TEST_NUMBER
+  PORT_PS_LOG=$BATS_TEST_TMPDIR/ps-log-$BATS_TEST_NUMBER
   printf '%s\n' \
     '#!/usr/bin/env bash' \
     'printf "%s\n" "$*" >>"$RIG_TEST_LSOF_LOG"' \
     'printf "%s" "${RIG_TEST_LSOF_OUTPUT:-}"' \
     'exit "${RIG_TEST_LSOF_EXIT:-0}"' >"$PORT_LSOF"
   chmod +x "$PORT_LSOF"
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'printf "%s\n" "$*" >>"$RIG_TEST_PS_LOG"' \
+    'printf "%s" "${RIG_TEST_PS_OUTPUT:-}"' \
+    'exit "${RIG_TEST_PS_EXIT:-0}"' >"$PORT_PS"
+  chmod +x "$PORT_PS"
+  export RIG_PS_COMMAND=$PORT_PS
+  export RIG_TEST_PS_LOG=$PORT_PS_LOG
   printf '%s\n' \
     '[rig]' \
     'schema = 1' \
@@ -4564,13 +4574,64 @@ ports = ["required-api", "on-demand-api", "allocated-api", "free-allocation"]' \
   [ ! -e "$PORT_LSOF_LOG" ]
 }
 
+@test "port ownership resolves service programs and interpreted tool command lines" {
+  write_port_fixture
+  printf '%s\n' \
+    '[tool.headroom]' \
+    'name = "Headroom"' \
+    'category = "core"' \
+    'purpose = "Exercise interpreted tool ownership"' \
+    'rationale = "The package identity appears in its interpreter environment."' \
+    'platforms = ["macos"]' \
+    'profiles = ["default"]' \
+    'install.provider = "uv"' \
+    'install.kind = "tool"' \
+    'install.locator = "headroom-ai[all]"' \
+    'install.platforms = ["macos"]' \
+    '[service.mcporter]' \
+    'name = "mcporter"' \
+    'purpose = "Exercise interpreted service ownership"' \
+    'rationale = "The service program follows an interpreter in process argv."' \
+    'provider = "launchd"' \
+    'locator = "example.mcporter"' \
+    'platforms = ["macos"]' \
+    'profiles = ["default"]' \
+    'desired-state = "running"' \
+    'program = ["~/bin/mcporter-proxy", "serve", "--http", "3333"]' \
+    'restart-policy = "always"' \
+    'start-policy = "load"' >>"$CONFIG_HOME/rig.toml"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" bash -c '
+    . "$1"
+    rig_load_config || exit
+    rig_resolve_profile default macos || exit
+    rig_resolve_bindings || exit
+    rig_build_plan || exit
+    rig_expected_owner_identity tool:headroom || exit
+    printf "tool=%s:%s\n" "$RIG_OWNER_IDENTITY" "$RIG_OWNER_COMMAND"
+    rig_owner_matches_listener \
+      "/Users/test/.local/share/uv/tools/headroom-ai/bin/python -m headroom.cli --host --port 8787" \
+      python "$RIG_OWNER_IDENTITY" "$RIG_OWNER_COMMAND" || exit
+    rig_expected_owner_identity service:mcporter || exit
+    printf "service=%s:%s\n" "$RIG_OWNER_IDENTITY" "$RIG_OWNER_COMMAND"
+    rig_owner_matches_listener \
+      "/opt/homebrew/opt/node/bin/node $HOME/bin/mcporter-proxy serve --http 3333" \
+      node "$RIG_OWNER_IDENTITY" "$RIG_OWNER_COMMAND" || exit
+  ' _ "$RIG"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "$(printf 'tool=headroom-ai:headroom-ai\nservice=%s/bin/mcporter-proxy:mcporter-proxy' "$TEST_HOME")" ]
+}
+
 @test "status observes private ports once and reports mode scope owner and unmanaged listeners" {
   write_port_fixture
-  listener_output=$'p101\ncalpha\nn127.0.0.1:4101 (LISTEN)\np102\ncalpha\nn*:4102 (LISTEN)\np103\ncforeign\nn127.0.0.1:4103 (LISTEN)\np104\ncdynamic\nn127.0.0.1:4999 (LISTEN)\n'
+  listener_output=$'p101\ncnode\nn127.0.0.1:4101 (LISTEN)\np102\ncpython\nn*:4102 (LISTEN)\np103\ncforeign\nn127.0.0.1:4103 (LISTEN)\np104\ncdynamic\nn127.0.0.1:4999 (LISTEN)\n'
+  ps_output="$(printf '  101 /opt/homebrew/bin/node %s/bin/alpha --port 4101\n  102 %s/.local/share/uv/tools/alpha/bin/python -m alpha.cli --port 4102\n  103 /usr/bin/foreign --port 4103\n  104 /usr/bin/dynamic --port 4999\n' "$TEST_HOME" "$TEST_HOME")"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" \
-      RIG_TEST_LSOF_OUTPUT="$listener_output" RIG_PROGRESS=always "$RIG" status --unmanaged
+    RIG_TEST_LSOF_OUTPUT="$listener_output" RIG_TEST_PS_OUTPUT="$ps_output" \
+    RIG_PROGRESS=always "$RIG" status --unmanaged
   [ "$status" -eq 1 ]
   output_has_table_row $'required-api\t4101\ttcp\trequired\ttool:alpha\tpresent\tlistening:loopback;owner:alpha'
   output_has_table_row $'on-demand-api\t4102\ttcp\ton-demand\ttool:alpha\tdrifted\tscope:all-interfaces;expected:loopback'
@@ -4580,6 +4641,44 @@ ports = ["required-api", "on-demand-api", "allocated-api", "free-allocation"]' \
   output_has_table_row $'4999\ttcp\tloopback\tunmanaged\towner:dynamic;pid:104'
   [ "$(wc -l <"$PORT_LSOF_LOG")" -eq 1 ]
   [[ "$(<"$PORT_LSOF_LOG")" == *'-nP -iTCP -sTCP:LISTEN -Fpcn'* ]] || false
+  [ "$(wc -l <"$PORT_PS_LOG")" -eq 1 ]
+  [ "$(<"$PORT_PS_LOG")" = '-axo pid=,command=' ]
+}
+
+@test "an unreadable listener command line reports unverified ownership rather than a conflict" {
+  write_port_fixture
+  listener_output=$'p201\ncmystery\nn127.0.0.1:4101 (LISTEN)\np203\ncghost\nn127.0.0.1:4103 (LISTEN)\n'
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" \
+    RIG_TEST_LSOF_OUTPUT="$listener_output" RIG_TEST_PS_OUTPUT='' \
+    "$RIG" status
+
+  [ "$status" -eq 1 ]
+  output_has_table_row $'required-api\t4101\ttcp\trequired\ttool:alpha\tunknown\towner-unavailable'
+  output_has_table_row $'allocated-api\t4103\ttcp\tallocated\ttool:alpha\tpresent\toccupied:owner-unverified'
+  [[ "$output" != *conflicting* ]] || false
+}
+
+@test "a conflicting port names the foreign listener whichever order it is observed" {
+  write_port_fixture
+  ps_output="$(printf '  203 /usr/bin/foreign --port 4103\n')"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" \
+    RIG_TEST_LSOF_OUTPUT=$'p203\ncforeign\nn127.0.0.1:4103 (LISTEN)\np204\ncghost\nn127.0.0.1:4103 (LISTEN)\n' \
+    RIG_TEST_PS_OUTPUT="$ps_output" "$RIG" status
+
+  [ "$status" -eq 1 ]
+  output_has_table_row $'allocated-api\t4103\ttcp\tallocated\ttool:alpha\tconflicting\towner:foreign;expected:alpha'
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" \
+    RIG_TEST_LSOF_OUTPUT=$'p204\ncghost\nn127.0.0.1:4103 (LISTEN)\np203\ncforeign\nn127.0.0.1:4103 (LISTEN)\n' \
+    RIG_TEST_PS_OUTPUT="$ps_output" "$RIG" status
+
+  [ "$status" -eq 1 ]
+  output_has_table_row $'allocated-api\t4103\ttcp\tallocated\ttool:alpha\tconflicting\towner:foreign;expected:alpha'
 }
 
 @test "port absence and unavailable observation preserve mode and platform semantics" {
@@ -4623,10 +4722,11 @@ ports = ["required-api", "on-demand-api", "allocated-api", "free-allocation"]' \
 @test "doctor synthesizes private port findings without socket mutation" {
   write_port_fixture
   listener_output=$'p101\ncalpha\nn127.0.0.1:4101 (LISTEN)\np102\ncforeign\nn127.0.0.1:4103 (LISTEN)\n'
+  ps_output=$'  101 /usr/bin/alpha --port 4101\n  102 /usr/bin/foreign --port 4103\n'
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" \
-    RIG_TEST_LSOF_OUTPUT="$listener_output" "$RIG" doctor
+    RIG_TEST_LSOF_OUTPUT="$listener_output" RIG_TEST_PS_OUTPUT="$ps_output" "$RIG" doctor
   [ "$status" -eq 1 ]
   [[ "$output" == *'Port findings:'* ]] || false
   [[ "$output" == *'port.allocated-api: conflicting (owner:foreign;expected:alpha); owner=tool:alpha; action=stop-or-reconfigure-occupant'* ]] || false

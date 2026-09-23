@@ -10,6 +10,7 @@ All notable changes to `rig` are documented here. Dated `0.x` entries record imm
 
 ### Fixed
 
+- A declared private port now identifies the process actually bound to it by reading the listener's whole command line, so a service or tool started through an interpreter no longer reports `conflicting` against its own declaration. `conflicting` now asserts that a readable command line identifies a different process and names it; a listener Rig cannot inspect reports `unknown` with `owner-unavailable` instead.
 - The interactive progress bar now erases the whole line it previously drew and keeps each redraw within the terminal's width, so a long item name no longer leaves fragments of an earlier line stranded to the right of a shorter one.
 
 ## [0.3.0] — 2026-09-22

@@ -206,6 +206,18 @@ values with
 .BR ... ;
 path-like unmanaged identities retain leading and trailing context.
 The spacing is not a machine-readable interface.
+A declared private port compares its owner against the whole command line of
+the bound process, so a listener started through an interpreter still matches
+the service program or tool locator it was declared to run.
+.B conflicting
+asserts that a readable command line identifies a different process, and names
+that process. An unreadable command line whose executable name does not match
+is reported as
+.B unknown
+with
+.BR owner-unavailable ,
+or remains informational for an allocated port; it is never reported as a
+conflict.
 .TP
 .BI "rig status \-\-profile " NAME
 Compare a named resolved profile without changing the configured default.
