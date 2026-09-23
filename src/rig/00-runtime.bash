@@ -103,6 +103,8 @@ RIG_PROGRESS_CONTEXT=query
 RIG_PROGRESS_RENDER=off
 RIG_PROGRESS_BAR=
 RIG_PROGRESS_BAR_WIDTH=16
+RIG_PROGRESS_RENDERED=0
+RIG_PROGRESS_COLUMNS=
 RIG_PROFILE_SELECTION_MODE=
 RIG_RESOLVED_PROFILE_KIND=
 RIG_RECONCILIATION_LOCK=
@@ -216,46 +218,110 @@ rig_progress_make_bar() {
   done
 }
 
+rig_progress_columns() {
+  local columns size
+
+  [ -z "$RIG_PROGRESS_COLUMNS" ] || return 0
+  columns=${COLUMNS:-}
+  case "$columns" in
+    ''|*[!0-9]*)
+      columns=
+      if [ -t 2 ]; then
+        size=$(stty size <&2 2>/dev/null) || size=
+        columns=${size#* }
+      fi
+      ;;
+  esac
+  case "$columns" in
+    ''|*[!0-9]*) columns=100 ;;
+  esac
+  [ "$columns" -ge 40 ] || columns=100
+  RIG_PROGRESS_COLUMNS=$columns
+}
+
 rig_progress_compact() {
+  local width
+
   RIG_VALUE=$1
-  if [ "${#RIG_VALUE}" -gt 44 ]; then
-    RIG_VALUE=${RIG_VALUE:0:41}...
+  width=$2
+  if [ "$width" -lt 4 ]; then
+    RIG_VALUE=
+    return 0
+  fi
+  if [ "${#RIG_VALUE}" -gt "$width" ]; then
+    RIG_VALUE=${RIG_VALUE:0:$((width - 3))}...
   fi
 }
 
 rig_progress_bar_render() {
-  local state detail summary
+  local state detail summary label_width head_width budget line_width
 
   state=$1
+  rig_progress_columns
   rig_progress_make_bar "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL"
   detail=$RIG_PROGRESS_ITEM
   if [ -n "$RIG_PROGRESS_SCOPE" ]; then
     detail="$detail [$RIG_PROGRESS_SCOPE]"
   fi
-  rig_progress_compact "$detail"
-  detail=$RIG_VALUE
+
+  label_width=${#RIG_PROGRESS_LABEL}
+  [ "$label_width" -ge 22 ] || label_width=22
+  head_width=$((5 + label_width + 2 + ${#RIG_PROGRESS_BAR} + 2 \
+    + ${#RIG_PROGRESS_CURRENT} + 1 + ${#RIG_PROGRESS_TOTAL}))
+  budget=$((RIG_PROGRESS_COLUMNS - head_width - 3))
+
   summary=
   case "$state" in
-    started) summary=starting ;;
-    running) summary=$detail ;;
-    succeeded|skipped|failed) summary="$detail $state" ;;
+    started)
+      rig_progress_compact starting "$budget"
+      summary=$RIG_VALUE
+      ;;
+    running)
+      rig_progress_compact "$detail" "$budget"
+      summary=$RIG_VALUE
+      ;;
+    succeeded|skipped|failed)
+      rig_progress_compact "$detail" "$((budget - ${#state} - 1))"
+      summary=$RIG_VALUE
+      [ -z "$summary" ] || summary="$summary $state"
+      ;;
     finished)
-      summary="$RIG_PROGRESS_SUCCEEDED succeeded, $RIG_PROGRESS_SKIPPED skipped, $RIG_PROGRESS_FAILED failed"
+      rig_progress_compact \
+        "$RIG_PROGRESS_SUCCEEDED succeeded, $RIG_PROGRESS_SKIPPED skipped, $RIG_PROGRESS_FAILED failed" \
+        "$budget"
+      summary=$RIG_VALUE
       ;;
     interrupted)
-      summary="interrupted; $RIG_PROGRESS_SUCCEEDED succeeded, $RIG_PROGRESS_SKIPPED skipped, $RIG_PROGRESS_FAILED failed"
+      rig_progress_compact \
+        "interrupted; $RIG_PROGRESS_SUCCEEDED succeeded, $RIG_PROGRESS_SKIPPED skipped, $RIG_PROGRESS_FAILED failed" \
+        "$budget"
+      summary=$RIG_VALUE
       ;;
     phase-failed)
-      summary="$RIG_PROGRESS_SUCCEEDED succeeded, $RIG_PROGRESS_SKIPPED skipped, $RIG_PROGRESS_FAILED failed"
+      rig_progress_compact \
+        "$RIG_PROGRESS_SUCCEEDED succeeded, $RIG_PROGRESS_SKIPPED skipped, $RIG_PROGRESS_FAILED failed" \
+        "$budget"
+      summary=$RIG_VALUE
       ;;
   esac
-  printf '\r%100s\r' '' >&2
-  printf 'rig: %-22s [%s] %s/%s' \
+
+  line_width=$head_width
+  [ -z "$summary" ] || line_width=$((line_width + 2 + ${#summary}))
+
+  printf '\rrig: %-22s [%s] %s/%s' \
     "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_BAR" \
     "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" >&2
   [ -z "$summary" ] || printf '  %s' "$summary" >&2
+  if [ "$RIG_PROGRESS_RENDERED" -gt "$line_width" ]; then
+    printf '%*s' "$((RIG_PROGRESS_RENDERED - line_width))" '' >&2
+  fi
+  printf '\r' >&2
+  RIG_PROGRESS_RENDERED=$line_width
   case "$state" in
-    finished|phase-failed|interrupted) printf '\n' >&2 ;;
+    finished|phase-failed|interrupted)
+      printf '\n' >&2
+      RIG_PROGRESS_RENDERED=0
+      ;;
   esac
 }
 
@@ -263,6 +329,7 @@ rig_progress_start() {
   rig_progress_fail
   RIG_PROGRESS_ACTIVE=0
   RIG_PROGRESS_CURRENT=0
+  RIG_PROGRESS_RENDERED=0
   RIG_PROGRESS_LABEL=$1
   RIG_PROGRESS_TOTAL=$2
   RIG_PROGRESS_ITEM=

@@ -1947,6 +1947,39 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [[ "$output" == *'rig: progress: applying finished completed=1/1 succeeded=1 skipped=0 failed=0'* ]]
 }
 
+@test "interactive progress fits the terminal and erases the whole previous line" {
+  local wrapper long erased
+
+  long=alpha-with-a-long-item-name-that-once-left-residue-behind
+  wrapper=$BATS_TEST_TMPDIR/progress-residue-$BATS_TEST_NUMBER
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    '. "$1"' \
+    'COLUMNS=120' \
+    'RIG_PROGRESS=auto' \
+    'RIG_PROGRESS_CONTEXT=operational' \
+    'rig_progress_start applying 2' \
+    "rig_progress_begin $long declaration" \
+    "rig_progress_result succeeded $long declaration" \
+    'rig_progress_begin beta' \
+    'rig_progress_result succeeded beta' \
+    'rig_progress_finish' >"$wrapper"
+  chmod +x "$wrapper"
+
+  if [ "$(uname -s)" = Darwin ]; then
+    run script -q /dev/null /bin/bash "$wrapper" "$RIG"
+  else
+    run script -qec "/bin/bash '$wrapper' '$RIG'" /dev/null
+  fi
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'residue-beh... succeeded'* ]]
+  [[ "$output" != *"$long [declaration] succeeded"* ]]
+
+  erased=$(printf '%63s' '')
+  [[ "$output" == *"[########--------] 1/2  beta$erased"* ]]
+}
+
 @test "automatic progress keeps query commands quiet and never exposes authored payloads" {
   local progress_file progress_output
 

@@ -8,6 +8,10 @@ All notable changes to `rig` are documented here. Dated `0.x` entries record imm
 
 - `rig status` now renders every expected, observed, and unmanaged section as an aligned human-readable table bounded to 120 characters, with deterministic visible ellipsis and useful path-tail context.
 
+### Fixed
+
+- The interactive progress bar now erases the whole line it previously drew and keeps each redraw within the terminal's width, so a long item name no longer leaves fragments of an earlier line stranded to the right of a shorter one.
+
 ## [0.3.0] — 2026-09-22
 
 Third public preview of Rig, establishing the declarative lifecycle baseline for tools, skills, managed resources, ports, native providers, and private-safe publication.
