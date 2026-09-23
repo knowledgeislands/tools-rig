@@ -232,11 +232,13 @@ _Evidence:_ `rig_preflight_lifecycle_task` and `rig_run_lifecycle_tasks` impleme
 
 Artifact observation MUST remain read-only and authoritative for `rig status` and `rig doctor`. A macOS application artifact MUST be a real directory with a readable regular `Contents/Info.plist` and at least one entry beneath a real `Contents/MacOS` directory that resolves to a regular executable; otherwise Rig MUST report drift. Profile deselection MUST NOT uninstall a tool or delete its artifacts.
 
+A declared artifact that is a symbolic link MUST be observed through the target it resolves to. Resolution MUST follow at most 40 leaf links, resolving a relative target against the link's own directory, and MUST NOT be constrained to any root: the declaration is the trusted expectation, and the resolved target supplies the evidence. The resolved target MUST then satisfy every test a directly declared artifact satisfies, so resolution can never report `present` for a target that is absent, damaged, or neither a regular file nor a directory. A link whose resolution exhausts the bound, cycles, or yields no target MUST be `unavailable` with a detail naming failed resolution rather than an unsafe artifact. Where a link was followed, the reported detail MUST carry the resolved target alongside the declared path.
+
 _Conformance:_ conforming
 
-_Verify:_ Bats covers missing, unsafe, structurally damaged, broken-executable, and healthy application artifacts without invoking a generator.
+_Verify:_ Bats covers missing, unsafe, structurally damaged, broken-executable, and healthy application artifacts without invoking a generator, and covers a link into a healthy application, a dangling link, a link into a damaged application, a cyclic link, a relative link target, and a link to an unsupported target.
 
-_Evidence:_ `rig_observe_tool_artifacts` implements the state contract; `tests/rig-artifacts.bats` supplies isolated filesystem evidence.
+_Evidence:_ `rig_observe_tool_artifacts` and `rig_resolve_artifact_link` implement the state contract; [ADR-RIG-007](../decisions/ADR-RIG-007-resolved-artifact-link-evidence.md) records the evidence boundary; `tests/rig-artifacts.bats` supplies isolated filesystem evidence.
 
 ### RIG-STATE-024 — Declaration-kind deselection
 

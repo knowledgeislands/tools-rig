@@ -5059,10 +5059,48 @@ rig_selected_variant_for_tool() {
   return 1
 }
 
+rig_artifact_home_form() {
+  local path
+
+  path=$1
+  if [ -n "${HOME:-}" ] && [ "$path" != "${path#"$HOME"/}" ]; then
+    # shellcheck disable=SC2088 # the literal tilde is the reported display form
+    RIG_VALUE='~/'${path#"$HOME"/}
+  else
+    RIG_VALUE=$path
+  fi
+}
+
+rig_resolve_artifact_link() {
+  local path hops target parent
+
+  path=$1
+  hops=0
+  while [ -L "$path" ]; do
+    if [ "$hops" -ge 40 ]; then
+      RIG_VALUE=$path
+      return 1
+    fi
+    target=$(readlink "$path" 2>/dev/null) || target=
+    [ -n "$target" ] || { RIG_VALUE=$path; return 1; }
+    case "$target" in
+      /*) path=$target ;;
+      *)
+        parent=${path%/*}
+        [ "$parent" != "$path" ] || parent=.
+        path=$parent/$target
+        ;;
+    esac
+    hops=$((hops + 1))
+  done
+  RIG_VALUE=$path
+  return 0
+}
+
 rig_observe_tool_artifacts() {
   local tool section_name section_index field_index field_end declared artifact variant artifact_key
   local state detail rank candidate_state candidate_detail candidate_rank info_plist
-  local macos_dir app_exec app_exec_found
+  local macos_dir app_exec app_exec_found resolved evidence
 
   tool=$1
   section_name=tool.$tool
@@ -5086,28 +5124,36 @@ rig_observe_tool_artifacts() {
       candidate_state=
       candidate_detail=
       candidate_rank=0
+      resolved=$artifact
       if [ -L "$artifact" ]; then
-        candidate_state=unavailable
-        candidate_detail=unsafe
-        candidate_rank=3
-      elif [ ! -e "$artifact" ]; then
+        if rig_resolve_artifact_link "$artifact"; then
+          resolved=$RIG_VALUE
+        else
+          candidate_state=unavailable
+          candidate_detail=unresolved-link
+          candidate_rank=3
+        fi
+      fi
+      if [ -n "$candidate_state" ]; then
+        :
+      elif [ ! -e "$resolved" ]; then
         candidate_state=missing
         candidate_detail=missing
         candidate_rank=1
-      elif [ ! -f "$artifact" ] && [ ! -d "$artifact" ]; then
+      elif [ ! -f "$resolved" ] && [ ! -d "$resolved" ]; then
         candidate_state=unavailable
         candidate_detail=unsafe
         candidate_rank=3
-      elif [ -d "$artifact" ]; then
-        case "$artifact" in
+      elif [ -d "$resolved" ]; then
+        case "$resolved" in
         *.app|*.app/)
-          info_plist=${artifact%/}/Contents/Info.plist
+          info_plist=${resolved%/}/Contents/Info.plist
           if [ ! -f "$info_plist" ] || [ ! -r "$info_plist" ]; then
             candidate_state=drifted
             candidate_detail=damaged-app
             candidate_rank=2
           else
-            macos_dir=${artifact%/}/Contents/MacOS
+            macos_dir=${resolved%/}/Contents/MacOS
             app_exec_found=0
             if [ ! -L "$macos_dir" ] && [ -d "$macos_dir" ]; then
               for app_exec in "$macos_dir"/*; do
@@ -5128,7 +5174,12 @@ rig_observe_tool_artifacts() {
       fi
       if [ "$candidate_rank" -gt "$rank" ]; then
         state=$candidate_state
-        rig_artifact_detail "$candidate_detail" "$declared"
+        evidence=$declared
+        if [ "$resolved" != "$artifact" ]; then
+          rig_artifact_home_form "$resolved"
+          evidence="$declared->$RIG_VALUE"
+        fi
+        rig_artifact_detail "$candidate_detail" "$evidence"
         detail=$RIG_VALUE
         rank=$candidate_rank
       fi

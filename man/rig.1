@@ -840,6 +840,23 @@ and at least one entry resolving to a regular executable beneath a real
 directory. Artifacts are observation-only; their native tool remains
 responsible for creation, update, and removal.
 .PP
+A declared artifact that is a symbolic link is observed through the target it
+resolves to, so a command line an application installs into a shared executable
+directory can be declared. Resolution follows at most 40 leaf links and
+resolves a relative target against the link's own directory. The resolved
+target must satisfy the same tests as a directly declared path, so a dangling
+link is
+.BR missing ,
+a link into a damaged application bundle is
+.BR drifted ,
+and a target that is neither a regular file nor a directory stays
+.BR unavailable .
+A link Rig cannot resolve, because it cycles or exhausts the bound, is
+.B unavailable
+with a detail naming failed resolution. Where a link was followed, the detail
+reports the resolved target beside the declared path. Rig never creates,
+repairs, or repoints a link.
+.PP
 One tool may declare bounded platform variants through dotted
 .B variant.ID.*
 fields. Every variant requires a non-empty

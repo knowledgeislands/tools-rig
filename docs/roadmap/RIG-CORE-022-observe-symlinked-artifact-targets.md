@@ -4,12 +4,12 @@ title: Observe symlinked artifact targets
 area: CORE
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: 0603938d0c8041b3409193706aaac84d834ae9c1
 created_at: 2026-09-22T00:00:00Z
-updated_at: 2026-09-22T22:23:05Z
+updated_at: 2026-09-23T16:05:00Z
 ---
 
 # Observe Symlinked Artifact Targets
@@ -42,13 +42,13 @@ The approved implementation follows at most 40 declared leaf-link hops with the 
 
 ## Steps
 
-- [ ] Resolve a declared artifact that is a symlink to its target, bounding the resolution against cycles and an unreadable path.
-- [ ] Report a link whose target does not exist as `missing`, carrying the resolved target in the detail rather than the word `unsafe`.
-- [ ] Observe a resolved target with the existing tests, so a link into a damaged application bundle reports `drifted` exactly as the bundle would.
-- [ ] Keep `unavailable` for a link that cannot be resolved, and say in the detail that resolution failed rather than that the artifact is unsafe.
-- [ ] Decide and document whether a resolved target is constrained to any root, and if so express it as an observation rather than a refusal.
-- [ ] Add fixtures for a link into a healthy bundle, a dangling link, a link into a damaged bundle, and a cyclic link.
-- [ ] Align the user command guide, the state Specification, the manual, and the changelog with the revised artifact contract.
+- [x] Resolve a declared artifact that is a symlink to its target, bounding the resolution against cycles and an unreadable path.
+- [x] Report a link whose target does not exist as `missing`, carrying the resolved target in the detail rather than the word `unsafe`.
+- [x] Observe a resolved target with the existing tests, so a link into a damaged application bundle reports `drifted` exactly as the bundle would.
+- [x] Keep `unavailable` for a link that cannot be resolved, and say in the detail that resolution failed rather than that the artifact is unsafe.
+- [x] Decide and document whether a resolved target is constrained to any root, and if so express it as an observation rather than a refusal.
+- [x] Add fixtures for a link into a healthy bundle, a dangling link, a link into a damaged bundle, and a cyclic link.
+- [x] Align the user command guide, the state Specification, the manual, and the changelog with the revised artifact contract.
 
 ## Delegation
 
@@ -56,10 +56,11 @@ No delegation is planned. Symlink resolution, artifact classification, adversari
 
 ## Files touched
 
-- `src/rig/20-orchestration.bash` for artifact observation.
-- `tests/` for the four link fixtures.
+- `src/rig/20-orchestration.bash` for artifact observation, and the assembled `bin/rig`.
+- `tests/rig-artifacts.bats` for the link fixtures.
+- `docs/decisions/ADR-RIG-007-resolved-artifact-link-evidence.md` and `docs/decisions/README.md` for the evidence boundary.
 - `docs/guides/user/commands.md`, `docs/specs/state.md`, `man/rig.1`, and `CHANGELOG.md` for the revised artifact contract.
-- This roadmap record and the issue ledger for delivery evidence.
+- This roadmap record for delivery evidence.
 
 ## Verify
 
@@ -88,6 +89,37 @@ Explain that a command line may now be declared as an artifact, and what each st
 ### Roadmap
 
 Record the delivered evidence here, and note the downstream repository-side check that this work retires.
+
+## Review
+
+### Delivered
+
+A declared artifact that is a symbolic link is now observed through the target it resolves to, so the command line an application installs into a shared executable directory is declarable state. The artifact declaration schema, the state vocabulary, every non-link artifact observation, and Rig's refusal to create or repair anything are unchanged.
+
+### Summary of changes
+
+- `rig_resolve_artifact_link` follows at most 40 leaf links with the native `readlink`, resolving a relative target against the link's own directory, and fails closed on a cycle, an exhausted bound, or an empty target.
+- Resolution is not constrained to any root. The declaration is the trusted expectation; the resolved target then runs the existing existence, file-kind, and application-bundle tests before it can be `present`, so resolution cannot manufacture a healthy answer.
+- A dangling link is `missing`, a link into a damaged bundle is `drifted`, a target that is neither a regular file nor a directory stays `unavailable` with `unsafe`, and a link that cannot be resolved is `unavailable` with the new `unresolved-link` detail rather than `unsafe`.
+- Where a link was followed, `rig_artifact_home_form` renders the resolved target beside the declared path in the detail, so the indirection is reviewable instead of silent.
+- The blanket `-L` refusal that set `unavailable`/`unsafe` at rank 3 ahead of every other test is gone.
+
+### Verification
+
+- `tests/rig-artifacts.bats` covers a relative link to a regular file, a link into a healthy application, a dangling link that names its resolved target, a link into a damaged bundle, a cyclic link, and a link to a FIFO that must not become `present`.
+- Full gate green: `scripts/assemble-rig --check`, ShellCheck, `bash -n`, `scripts/benchmark-rig`, `scripts/smoke-native-providers`, `mandoc -T lint man/rig.1`, and 235 Bats cases.
+
+### Outstanding concerns
+
+Only the leaf link is followed; a symlinked intermediate directory component is still resolved by the kernel rather than reported. That is the same footing a directly declared path has, so it is deliberate rather than a gap. The `->` detail form is human output, not a parsing contract, per `RIG-CLI-010`.
+
+### Post-change review
+
+This retires the repository-side check in `krisb/dotfiles` that enumerated `/usr/local/bin` and resolved each link: that check was removed on the grounds that a general defect in Rig should not acquire a local answer, and the answer now lives here. Together with `RIG-CORE-021` it retires `bin/workstation_surfaces` entirely. The absence case the local check could never cover — a command line an application never installed — is now reportable, because the artifact list can hold the expectation.
+
+### Mini recap
+
+A healthy `code` or `subl` now reads `present` instead of `unavailable`, a link left dangling by an upgrade says which target went missing, and nothing a link points at can report healthy without passing the same tests a direct path passes.
 
 ## Discussion
 

@@ -8,6 +8,10 @@ All notable changes to `rig` are documented here. Dated `0.x` entries record imm
 
 - `rig status` now renders every expected, observed, and unmanaged section as an aligned human-readable table bounded to 120 characters, with deterministic visible ellipsis and useful path-tail context.
 
+### Added
+
+- A declared tool artifact may now be a symbolic link. Rig resolves it and observes the target, so a command line an application installs into a shared executable directory is declarable state: healthy links are `present`, a dangling link is `missing` and names the target it resolved to, a link into a damaged application bundle is `drifted`, and a link that cannot be resolved is `unavailable` with a detail saying so rather than calling the artifact unsafe.
+
 ### Fixed
 
 - A declared private port now identifies the process actually bound to it by reading the listener's whole command line, so a service or tool started through an interpreter no longer reports `conflicting` against its own declaration. `conflicting` now asserts that a readable command line identifies a different process and names it; a listener Rig cannot inspect reports `unknown` with `owner-unavailable` instead.

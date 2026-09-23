@@ -80,14 +80,70 @@ run_status() {
   output_has_table_row $'subject\tfixture\tdrifted\tartifact-damaged-app:$HOME/Applications/Damaged.app'
 }
 
-@test "unsafe artifact target refines provider present state to unavailable" {
-  : >"$TEST_HOME/real"
-  ln -s "$TEST_HOME/real" "$TEST_HOME/link"
+@test "a link to a regular file resolves through its relative target" {
+  mkdir -p "$TEST_HOME/bundle"
+  : >"$TEST_HOME/bundle/real"
+  ln -s bundle/real "$TEST_HOME/link"
+  write_artifact_config '["~/link"]'
+
+  run_status
+  [ "$status" -eq 0 ]
+  output_has_table_row $'subject\tfixture\tpresent\t-'
+}
+
+@test "a link into a healthy application is observed through its target" {
+  mkdir -p "$TEST_HOME/Applications/Healthy.app/Contents/MacOS"
+  printf '%s\n' \
+    '<plist><dict><key>CFBundleExecutable</key><string>Healthy</string></dict></plist>' \
+    >"$TEST_HOME/Applications/Healthy.app/Contents/Info.plist"
+  : >"$TEST_HOME/Applications/Healthy.app/Contents/MacOS/Healthy"
+  chmod +x "$TEST_HOME/Applications/Healthy.app/Contents/MacOS/Healthy"
+  ln -s "$TEST_HOME/Applications/Healthy.app" "$TEST_HOME/linked.app"
+  write_artifact_config '["~/linked.app"]'
+
+  run_status
+  [ "$status" -eq 0 ]
+  output_has_table_row $'subject\tfixture\tpresent\t-'
+}
+
+@test "a dangling link is missing and names the target it resolved to" {
+  ln -s "$TEST_HOME/Applications/Gone.app" "$TEST_HOME/code"
+  write_artifact_config '["~/code"]'
+
+  run_status
+  [ "$status" -ne 0 ]
+  output_has_table_row $'subject\tfixture\tmissing\tartifact-missing:~/code->~/Applications/Gone.app'
+}
+
+@test "a link into a damaged application drifts exactly as the bundle would" {
+  mkdir -p "$TEST_HOME/Damaged.app/Contents"
+  ln -s "$TEST_HOME/Damaged.app" "$TEST_HOME/bad.app"
+  write_artifact_config '["~/bad.app"]'
+
+  run_status
+  [ "$status" -ne 0 ]
+  output_has_table_row $'subject\tfixture\tdrifted\tartifact-damaged-app:~/bad.app->~/Damaged.app'
+}
+
+@test "a cyclic link reports failed resolution rather than an unsafe artifact" {
+  ln -s "$TEST_HOME/beta" "$TEST_HOME/alpha"
+  ln -s "$TEST_HOME/alpha" "$TEST_HOME/beta"
+  write_artifact_config '["~/alpha"]'
+
+  run_status
+  [ "$status" -ne 0 ]
+  output_has_table_row $'subject\tfixture\tunavailable\tartifact-unresolved-link:~/alpha'
+  [[ "$output" != *'artifact-unsafe'* ]]
+}
+
+@test "resolution never turns an unsupported target into a present artifact" {
+  mkfifo "$TEST_HOME/pipe"
+  ln -s "$TEST_HOME/pipe" "$TEST_HOME/link"
   write_artifact_config '["~/link"]'
 
   run_status
   [ "$status" -ne 0 ]
-  output_has_table_row $'subject\tfixture\tunavailable\tartifact-unsafe:~/link'
+  output_has_table_row $'subject\tfixture\tunavailable\tartifact-unsafe:~/link->~/pipe'
 }
 
 @test "artifact expansion is limited to documented leading home forms" {
