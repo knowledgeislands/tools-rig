@@ -398,8 +398,8 @@ write_query_config() {
     'show [--profile NAME]' \
     'list [--category ID] [--profile NAME]' \
     'explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID' \
-    'status [--profile NAME] [--unmanaged]' \
-    'doctor [--profile NAME]' \
+    'status [--profile NAME] [--unmanaged] [--format text|json]' \
+    'doctor [--profile NAME] [--format text|json]' \
     'apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]' \
     'bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]' \
     'update [--profile NAME] [--dry-run]' \
