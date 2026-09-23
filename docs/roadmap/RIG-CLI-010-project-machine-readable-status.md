@@ -4,13 +4,13 @@ area: CLI
 title: Project machine-readable status
 theme: cli
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: e8b4f99a425b3516042a9b0c4f25740c7bbaf244
 transferred_from: KI-OBS-BRG-001
 created_at: 2026-09-22T07:20:00Z
-updated_at: 2026-09-23T16:40:00Z
+updated_at: 2026-09-23T18:05:00Z
 ---
 
 ## Goal
@@ -48,13 +48,13 @@ The Shaping questions are answered as follows, so the payload is stable enough t
 
 ## Steps
 
-- [ ] Add a JSON string encoder that escapes the characters a detail or identity can actually contain, without a per-character loop that would break the status performance budget.
-- [ ] Accept `--format text|json` on `rig status` and `rig doctor`, rejecting any other value with status 2 and the existing syntax-error contract.
-- [ ] Emit the versioned `rig status` payload from the observation arrays the text tables already read, so the two renderings cannot disagree.
-- [ ] Emit the `rig doctor` payload in the same envelope, carrying its findings and its verdict.
-- [ ] Keep the exit status, the stderr progress contract, and every observed state identical between the two renderings.
-- [ ] Cover the payload with Bats: shape and version, both commands, a drifted machine's non-zero exit beside `healthy: false`, `--unmanaged`, a rejected `--format` value, and a detail containing a quote and a backslash.
-- [ ] Align the CLI specification, the state Specification where it names the rendering, the user command guide, the manual, shell completion, and the changelog.
+- [x] Add a JSON string encoder that escapes the characters a detail or identity can actually contain, without a per-character loop that would break the status performance budget.
+- [x] Accept `--format text|json` on `rig status` and `rig doctor`, rejecting any other value with status 2 and the existing syntax-error contract.
+- [x] Emit the versioned `rig status` payload from the observation arrays the text tables already read, so the two renderings cannot disagree.
+- [x] Emit the `rig doctor` payload in the same envelope, carrying its findings and its verdict.
+- [x] Keep the exit status, the stderr progress contract, and every observed state identical between the two renderings.
+- [x] Cover the payload with Bats: shape and version, both commands, a drifted machine's non-zero exit beside `healthy: false`, `--unmanaged`, a rejected `--format` value, and a detail containing a quote and a backslash.
+- [x] Align the CLI specification, the state Specification where it names the rendering, the user command guide, the manual, shell completion, and the changelog.
 
 ## Delegation
 
@@ -66,7 +66,7 @@ No delegation is planned. The encoder, the option, both payloads, and the contra
 - `src/rig/20-orchestration.bash` for the option and both payloads, and the assembled `bin/rig`.
 - `src/rig/30-commands.bash` for completion output if the option appears there.
 - `tests/rig.bats` for the payload contract.
-- `docs/specs/cli.md`, `docs/guides/user/commands.md`, `man/rig.1`, and `CHANGELOG.md`.
+- `docs/specs/state.md`, `docs/guides/user/commands.md`, `man/rig.1`, and `CHANGELOG.md`.
 - This roadmap record for delivery evidence.
 
 ## Verify
@@ -87,7 +87,7 @@ None. The structured projection renders an answer Rig already computes and makes
 
 ### Specifications
 
-The CLI Specification gains the `--format` option, the envelope, its versioning rule, and the stream and exit-status guarantees.
+There is no CLI Specification in this repository. The State Specification gains RIG-STATE-028, which states the `--format` option, the envelope and its fields, the versioning rule, the stdout-only stream guarantee, the path-disclosure boundary, and the unchanged exit status.
 
 ### Guides
 
@@ -96,6 +96,46 @@ The user command guide explains when to ask for the structured form and that the
 ### Roadmap
 
 Record the delivered shape here so the consuming record can cite a version rather than an intention.
+
+## Review
+
+### Delivered
+
+`rig status` and `rig doctor` accept `--format text|json`. The `json` rendering is a projection of the same observation the tables render: both call one `rig_status_totals` for the counts and read the same `RIG_PLAN_*`, `RIG_SKILL_*`, `RIG_RESOURCE_PLAN_*`, and `RIG_PORT_*` arrays, so the two renderings cannot disagree about a state, a count, or a verdict. Nothing about observation, the state vocabulary, or the exit-status contract changed.
+
+### Summary of changes
+
+- `rig_json_escape` is now the single encoder, moved from `40-publication-lifecycle.bash` into `00-runtime.bash` and shared with publication, rather than a second encoder shipping beside it. `rig_json_field` writes one escaped key and value.
+- `rig_status_totals` computes the summary counts once for both renderings, which is what makes disagreement structurally impossible rather than merely tested for.
+- `rig_json_envelope` emits `schema`, `rig`, `command`, `profile`, `platform`, and `observed_at`; `rig status` adds `tools`, `skills`, `resources`, `ports`, and the `unmanaged` pair, and `rig doctor` adds `findings` grouped by origin and `information`.
+- `--format` is validated before anything is observed, so an unsupported value costs a status 2 and no provider invocation. Both completions and both usage strings carry it.
+- `unmanaged` and `unmanaged_problems` are `null` until `--unmanaged` is asked for, which distinguishes "not requested" from "requested and empty".
+
+### Verification
+
+- `tests/rig-projection.bats` covers the envelope, both commands, a healthy machine and a drifted one, agreement between the text and JSON summary and exit status, `--unmanaged`, a rejected format value, a detail containing a quote and a backslash, and stdout carrying nothing but the payload while progress lands on stderr.
+- Full gate green: `ki repo audit --repo .`, ShellCheck, `bash -n`, `scripts/assemble-rig --check`, `scripts/benchmark-rig` (status 6s against an 8s budget), `scripts/smoke-native-providers`, `mandoc -T lint man/rig.1`, 243 Bats cases.
+- Checked against this workstation's real configuration: `rig status --format json` parses, exits 0, and reports the same 88 present, 12 unavailable, 12 catalogue-only and zero unhealthy the tables print; `rig doctor --format json` reports `healthy: true` with no findings.
+
+### Outstanding concerns
+
+The encoder is a per-character loop, which the Shaping step worried would cost too much. It does not: only details and identities pass through it, and the status benchmark is unchanged. If a provider ever emits a very long detail this is the first place to look.
+
+`detail` stays an opaque string. Decomposing provider-specific detail would make every provider's detail vocabulary part of the contract, which is a far larger promise than the consumer asked for, and `schema` exists so it can be added later without silence.
+
+Only `status` and `doctor` project. `show`, `list`, and `explain` project declarations, which `rig export` already serialises, and no consumer has asked for them.
+
+### Post-change review
+
+The three open questions the Shaping step left are now answered in the record rather than in the code: the projection stays on the two observation commands, `doctor` shares the envelope, and `observed_at` is carried because a caching consumer needs it and a person reading a terminal does not.
+
+`docs/specs/cli.md` named in Files touched does not exist; the clause landed as RIG-STATE-028 in the State Specification, beside the state vocabulary it projects. The record's own Files touched list has been corrected rather than left naming a file nobody wrote.
+
+`KI-OBS-BRG-001` in `knowledgeislands/apps-observatory` can now cite `schema: 1` rather than an intention. Nothing here waits on that record, and it never waited on this one.
+
+### Mini recap
+
+A program can now ask Rig what it observed and get a versioned object, and the object cannot drift away from what the tables say, because both come from the same counts and the same arrays.
 
 ## Discussion
 

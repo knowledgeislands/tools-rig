@@ -3057,16 +3057,204 @@ rig_print_unmanaged_skills() {
   printf 'Unmanaged skills: %s\n' "$count"
 }
 
+rig_status_totals() {
+  local index state
+
+  RIG_STATUS_PRESENT=0
+  RIG_STATUS_MISSING=0
+  RIG_STATUS_DRIFTED=0
+  RIG_STATUS_UNAVAILABLE=0
+  RIG_STATUS_UNKNOWN=0
+  RIG_STATUS_CATALOGUE_ONLY=0
+  RIG_STATUS_UNHEALTHY=0
+  index=0
+  while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
+    state=${RIG_PLAN_STATES[$index]}
+    case "$state" in
+      present) RIG_STATUS_PRESENT=$((RIG_STATUS_PRESENT + 1)) ;;
+      missing) RIG_STATUS_MISSING=$((RIG_STATUS_MISSING + 1)) ;;
+      drifted) RIG_STATUS_DRIFTED=$((RIG_STATUS_DRIFTED + 1)) ;;
+      unavailable)
+        RIG_STATUS_UNAVAILABLE=$((RIG_STATUS_UNAVAILABLE + 1))
+        [ "${RIG_PLAN_RESULTS[$index]}" = neutral ] &&
+          RIG_STATUS_CATALOGUE_ONLY=$((RIG_STATUS_CATALOGUE_ONLY + 1))
+        ;;
+      unknown) RIG_STATUS_UNKNOWN=$((RIG_STATUS_UNKNOWN + 1)) ;;
+    esac
+    [ "${RIG_PLAN_RESULTS[$index]}" = neutral ] || [ "$state" = present ] ||
+      RIG_STATUS_UNHEALTHY=$((RIG_STATUS_UNHEALTHY + 1))
+    index=$((index + 1))
+  done
+  index=0
+  while [ "$index" -lt "${#RIG_SKILL_STATES[@]}" ]; do
+    [ "${RIG_SKILL_STATES[$index]}" = present ] ||
+      RIG_STATUS_UNHEALTHY=$((RIG_STATUS_UNHEALTHY + 1))
+    index=$((index + 1))
+  done
+  index=0
+  while [ "$index" -lt "${#RIG_RESOURCE_PLAN_STATES[@]}" ]; do
+    [ "${RIG_RESOURCE_PLAN_STATES[$index]}" = present ] ||
+      RIG_STATUS_UNHEALTHY=$((RIG_STATUS_UNHEALTHY + 1))
+    index=$((index + 1))
+  done
+  RIG_STATUS_UNHEALTHY=$((RIG_STATUS_UNHEALTHY + ${#RIG_STALE_RESOURCE_IDS[@]}))
+  index=0
+  while [ "$index" -lt "${#RIG_PORT_STATES[@]}" ]; do
+    [ "${RIG_PORT_STATES[$index]}" = present ] ||
+      RIG_STATUS_UNHEALTHY=$((RIG_STATUS_UNHEALTHY + 1))
+    index=$((index + 1))
+  done
+}
+
+rig_json_envelope() {
+  rig_json_escape "$RIG_VERSION"
+  printf '{"schema":1,"rig":"%s","command":"%s"' "$RIG_VALUE" "$1"
+  rig_json_field ',' profile "$RIG_RESOLVED_PROFILE"
+  rig_json_field ',' platform "$RIG_RESOLVED_PLATFORM"
+  RIG_VALUE=$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null) || RIG_VALUE=
+  if [ -n "$RIG_VALUE" ]; then
+    printf ',"observed_at":"%s"' "$RIG_VALUE"
+  else
+    printf ',"observed_at":null'
+  fi
+}
+
+rig_status_json() {
+  local unmanaged_requested index separator healthy port section_name number mode owner
+
+  unmanaged_requested=$1
+  rig_json_envelope status
+  [ "$RIG_STATUS_UNHEALTHY" -eq 0 ] && healthy=true || healthy=false
+  printf ',"healthy":%s' "$healthy"
+  printf ',"summary":{"present":%s,"missing":%s,"drifted":%s,"unavailable":%s,"unknown":%s,"catalogue_only":%s,"unhealthy":%s}' \
+    "$RIG_STATUS_PRESENT" "$RIG_STATUS_MISSING" "$RIG_STATUS_DRIFTED" \
+    "$RIG_STATUS_UNAVAILABLE" "$RIG_STATUS_UNKNOWN" "$RIG_STATUS_CATALOGUE_ONLY" \
+    "$RIG_STATUS_UNHEALTHY"
+
+  printf ',"tools":['
+  index=0
+  separator=
+  while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
+    rig_json_field "$separator{" id "${RIG_PLAN_TOOLS[$index]}"
+    rig_json_field ',' provider "${RIG_PLAN_PROVIDERS[$index]}"
+    rig_json_field ',' state "${RIG_PLAN_STATES[$index]}"
+    rig_json_field ',' detail "${RIG_PLAN_DETAILS[$index]}"
+    printf '}'
+    separator=,
+    index=$((index + 1))
+  done
+  printf ']'
+
+  printf ',"skills":['
+  index=0
+  separator=
+  while [ "$index" -lt "${#RIG_SKILL_STATES[@]}" ]; do
+    rig_get_value "skill.${RIG_SELECTED_SKILLS[$index]}" authority || return 2
+    rig_json_field "$separator{" id "${RIG_SELECTED_SKILLS[$index]}"
+    rig_json_field ',' authority "$RIG_VALUE"
+    rig_json_field ',' state "${RIG_SKILL_STATES[$index]}"
+    rig_json_field ',' detail "${RIG_SKILL_DETAILS[$index]}"
+    printf '}'
+    separator=,
+    index=$((index + 1))
+  done
+  printf ']'
+
+  printf ',"resources":['
+  index=0
+  separator=
+  while [ "$index" -lt "${#RIG_RESOURCE_PLAN_STATES[@]}" ]; do
+    section_name=${RIG_RESOURCE_PLAN_SECTIONS[$index]}
+    rig_section_index "$section_name" || return 2
+    rig_get_value "$section_name" provider || return 2
+    owner=$RIG_VALUE
+    rig_json_field "$separator{" id "${RIG_SECTION_IDS[$RIG_INDEX]}"
+    rig_json_field ',' kind "${RIG_SECTION_TYPES[$RIG_INDEX]}"
+    rig_json_field ',' provider "$owner"
+    rig_json_field ',' state "${RIG_RESOURCE_PLAN_STATES[$index]}"
+    rig_json_field ',' detail "${RIG_RESOURCE_PLAN_DETAILS[$index]}"
+    printf '}'
+    separator=,
+    index=$((index + 1))
+  done
+  index=0
+  while [ "$index" -lt "${#RIG_STALE_RESOURCE_IDS[@]}" ]; do
+    rig_json_field "$separator{" id "${RIG_STALE_RESOURCE_IDS[$index]}"
+    rig_json_field ',' kind "${RIG_STALE_RESOURCE_KINDS[$index]}"
+    rig_json_field ',' provider "${RIG_STALE_RESOURCE_PROVIDERS[$index]}"
+    rig_json_field ',' state drifted
+    rig_json_field ',' detail "retire-pending:${RIG_STALE_RESOURCE_LOCATORS[$index]}"
+    printf '}'
+    separator=,
+    index=$((index + 1))
+  done
+  printf ']'
+
+  printf ',"ports":['
+  index=0
+  separator=
+  while [ "$index" -lt "${#RIG_PORT_STATES[@]}" ]; do
+    port=${RIG_SELECTED_PORTS[$index]}
+    section_name=port.$port
+    rig_get_value "$section_name" port || return 2
+    number=$RIG_VALUE
+    rig_get_value "$section_name" mode || return 2
+    mode=$RIG_VALUE
+    rig_get_value "$section_name" owner || return 2
+    owner=$RIG_VALUE
+    rig_json_field "$separator{" id "$port"
+    printf ',"number":%s' "$number"
+    rig_json_field ',' protocol tcp
+    rig_json_field ',' mode "$mode"
+    rig_json_field ',' owner "$owner"
+    rig_json_field ',' state "${RIG_PORT_STATES[$index]}"
+    rig_json_field ',' detail "${RIG_PORT_DETAILS[$index]}"
+    printf '}'
+    separator=,
+    index=$((index + 1))
+  done
+  printf ']'
+
+  if [ "$unmanaged_requested" -eq 1 ]; then
+    printf ',"unmanaged":['
+    index=0
+    separator=
+    while [ "$index" -lt "${#RIG_UNMANAGED_IDENTITIES[@]}" ]; do
+      rig_json_field "$separator{" id "${RIG_UNMANAGED_IDENTITIES[$index]}"
+      rig_json_field ',' provider "${RIG_UNMANAGED_PROVIDERS[$index]}"
+      rig_json_field ',' state unmanaged
+      rig_json_field ',' detail "${RIG_UNMANAGED_DETAILS[$index]}"
+      printf '}'
+      separator=,
+      index=$((index + 1))
+    done
+    printf '],"unmanaged_problems":['
+    index=0
+    separator=
+    while [ "$index" -lt "${#RIG_UNMANAGED_PROBLEMS[@]}" ]; do
+      rig_json_escape "${RIG_UNMANAGED_PROBLEMS[$index]}"
+      printf '%s"%s"' "$separator" "$RIG_VALUE"
+      separator=,
+      index=$((index + 1))
+    done
+    printf ']'
+  else
+    printf ',"unmanaged":null,"unmanaged_problems":null'
+  fi
+  printf '}\n'
+  [ "$RIG_STATUS_UNHEALTHY" -eq 0 ]
+}
+
 rig_command_status() {
-  local profile index tool provider state detail unhealthy unmanaged_requested
-  local present missing drifted unavailable unknown catalogue_only
+  local profile index tool provider state detail unmanaged_requested format
 
   profile=
   unmanaged_requested=0
+  format=text
   while [ "$#" -gt 0 ]; do
     case "$1" in
       -h|--help)
-        printf '%s\n' 'Usage: rig status [--profile NAME] [--unmanaged]'
+        printf '%s\n' 'Usage: rig status [--profile NAME] [--unmanaged] [--format text|json]'
         return
         ;;
       --unmanaged)
@@ -3075,14 +3263,24 @@ rig_command_status() {
         ;;
       --profile)
         if [ "$#" -lt 2 ] || [ -z "$2" ]; then
-          syntax_error 'usage: rig status [--profile NAME] [--unmanaged]'
+          syntax_error 'usage: rig status [--profile NAME] [--unmanaged] [--format text|json]'
           return
         fi
         profile=$2
         shift 2
         ;;
+      --format)
+        case "${2:-}" in
+          text|json) format=$2 ;;
+          *)
+            syntax_error 'usage: rig status [--profile NAME] [--unmanaged] [--format text|json]'
+            return
+            ;;
+        esac
+        shift 2
+        ;;
       *)
-        syntax_error 'usage: rig status [--profile NAME] [--unmanaged]'
+        syntax_error 'usage: rig status [--profile NAME] [--unmanaged] [--format text|json]'
         return
         ;;
     esac
@@ -3100,57 +3298,44 @@ rig_command_status() {
   if [ "${#RIG_SELECTED_SKILLS[@]}" -gt 0 ]; then
     rig_observe_skills || return
   fi
+  if [ "$unmanaged_requested" -eq 1 ]; then
+    rig_collect_unmanaged || return
+  fi
+  rig_status_totals
+  if [ "$format" = json ]; then
+    rig_status_json "$unmanaged_requested"
+    return
+  fi
   printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   rig_table_reset
   rig_table_add_column TOOL 28
   rig_table_add_column PROVIDER 18
   rig_table_add_column STATE 12
   rig_table_add_column DETAIL 56
-  unhealthy=0
-  present=0
-  missing=0
-  drifted=0
-  unavailable=0
-  unknown=0
-  catalogue_only=0
   index=0
   while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
     tool=${RIG_PLAN_TOOLS[$index]}
     provider=${RIG_PLAN_PROVIDERS[$index]}
     state=${RIG_PLAN_STATES[$index]}
     detail=${RIG_PLAN_DETAILS[$index]}
-    case "$state" in
-      present) present=$((present + 1)) ;;
-      missing) missing=$((missing + 1)) ;;
-      drifted) drifted=$((drifted + 1)) ;;
-      unavailable)
-        unavailable=$((unavailable + 1))
-        [ "${RIG_PLAN_RESULTS[$index]}" = neutral ] && catalogue_only=$((catalogue_only + 1))
-        ;;
-      unknown) unknown=$((unknown + 1)) ;;
-    esac
-    [ "${RIG_PLAN_RESULTS[$index]}" = neutral ] || [ "$state" = present ] || unhealthy=$((unhealthy + 1))
     rig_table_add_row "$tool" "$provider" "$state" "$detail" || return 2
     index=$((index + 1))
   done
   rig_table_print
   printf 'Summary: present=%s missing=%s drifted=%s unavailable=%s unknown=%s catalogue-only=%s\n' \
-    "$present" "$missing" "$drifted" "$unavailable" "$unknown" "$catalogue_only"
+    "$RIG_STATUS_PRESENT" "$RIG_STATUS_MISSING" "$RIG_STATUS_DRIFTED" \
+    "$RIG_STATUS_UNAVAILABLE" "$RIG_STATUS_UNKNOWN" "$RIG_STATUS_CATALOGUE_ONLY"
   if [ "${#RIG_SELECTED_SKILLS[@]}" -gt 0 ]; then
     rig_print_skill_status || return
-    [ "$RIG_COUNT" -eq 0 ] || unhealthy=$((unhealthy + RIG_COUNT))
   fi
   if [ "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" -gt 0 ] ||
     [ "${#RIG_STALE_RESOURCE_IDS[@]}" -gt 0 ]; then
     rig_print_resource_status || return
-    [ "$RIG_COUNT" -eq 0 ] || unhealthy=$((unhealthy + RIG_COUNT))
   fi
   if [ "${#RIG_SELECTED_PORTS[@]}" -gt 0 ]; then
     rig_print_port_status || return
-    [ "$RIG_COUNT" -eq 0 ] || unhealthy=$((unhealthy + RIG_COUNT))
   fi
   if [ "$unmanaged_requested" -eq 1 ]; then
-    rig_collect_unmanaged || return
     printf '\n'
     rig_table_reset
     rig_table_add_column IDENTITY 32 middle
@@ -3176,7 +3361,7 @@ rig_command_status() {
     rig_print_unmanaged_listeners || return
     rig_print_unmanaged_skills || return
   fi
-  [ "$unhealthy" -eq 0 ]
+  [ "$RIG_STATUS_UNHEALTHY" -eq 0 ]
 }
 
 rig_doctor_path_finding() {
@@ -3321,28 +3506,60 @@ rig_observe_plan() {
   RIG_DOCTOR_CATALOGUE_ONLY=$catalogue_only
 }
 
+rig_json_lines() {
+  local blob line separator
+
+  blob=$1
+  printf '['
+  separator=
+  if [ -n "$blob" ]; then
+    while IFS= read -r line; do
+      line=${line#"${line%%[![:space:]]*}"}
+      [ -n "$line" ] || continue
+      rig_json_escape "$line"
+      printf '%s"%s"' "$separator" "$RIG_VALUE"
+      separator=,
+    done <<< "$blob"
+  fi
+  printf ']'
+}
+
 rig_command_doctor() {
   local profile findings incompatible xdg_findings tool_findings resource_findings port_findings skill_findings
-  local index section_name state detail port owner action skill authority
+  local index section_name state detail port owner action skill authority format information
 
   profile=
-  case "$#" in
-    0) ;;
-    1)
-      case "$1" in
-        -h|--help) printf '%s\n' 'Usage: rig doctor [--profile NAME]'; return ;;
-        *) syntax_error 'usage: rig doctor [--profile NAME]'; return ;;
-      esac
-      ;;
-    2)
-      if [ "$1" != --profile ] || [ -z "$2" ]; then
-        syntax_error 'usage: rig doctor [--profile NAME]'
+  format=text
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      -h|--help)
+        printf '%s\n' 'Usage: rig doctor [--profile NAME] [--format text|json]'
         return
-      fi
-      profile=$2
-      ;;
-    *) syntax_error 'usage: rig doctor [--profile NAME]'; return ;;
-  esac
+        ;;
+      --profile)
+        if [ "$#" -lt 2 ] || [ -z "$2" ]; then
+          syntax_error 'usage: rig doctor [--profile NAME] [--format text|json]'
+          return
+        fi
+        profile=$2
+        shift 2
+        ;;
+      --format)
+        case "${2:-}" in
+          text|json) format=$2 ;;
+          *)
+            syntax_error 'usage: rig doctor [--profile NAME] [--format text|json]'
+            return
+            ;;
+        esac
+        shift 2
+        ;;
+      *)
+        syntax_error 'usage: rig doctor [--profile NAME] [--format text|json]'
+        return
+        ;;
+    esac
+  done
 
   rig_resolve_operational_plan "$profile" || return
   rig_effective_paths || return 2
@@ -3426,6 +3643,31 @@ rig_command_doctor() {
     while IFS= read -r _; do findings=$((findings + 1)); done <<< "$xdg_findings"
   fi
 
+  rig_doctor_incompatible_tools "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
+  incompatible=$RIG_COUNT
+  information=$RIG_VALUE
+  if [ "$format" = json ]; then
+    rig_json_envelope doctor
+    [ "$findings" -eq 0 ] && state=true || state=false
+    printf ',"healthy":%s' "$state"
+    printf ',"summary":{"findings":%s,"present":%s,"catalogue_only":%s,"incompatible_platform":%s}' \
+      "$findings" "$RIG_DOCTOR_PRESENT" "$RIG_DOCTOR_CATALOGUE_ONLY" "$incompatible"
+    printf ',"findings":{"xdg":'
+    rig_json_lines "$xdg_findings"
+    printf ',"tools":'
+    rig_json_lines "$tool_findings"
+    printf ',"resources":'
+    rig_json_lines "$resource_findings"
+    printf ',"ports":'
+    rig_json_lines "$port_findings"
+    printf ',"skills":'
+    rig_json_lines "$skill_findings"
+    printf '},"information":'
+    rig_json_lines "$information"
+    printf '}\n'
+    [ "$findings" -eq 0 ]
+    return
+  fi
   printf 'Rig doctor: %s\nProfile: %s\nPlatform: %s\n' \
     "$([ "$findings" -eq 0 ] && printf healthy || printf findings)" \
     "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
@@ -3444,10 +3686,8 @@ rig_command_doctor() {
   if [ -n "$skill_findings" ]; then
     printf 'Skill findings:\n%s\n' "$skill_findings"
   fi
-  rig_doctor_incompatible_tools "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
-  incompatible=$RIG_COUNT
-  if [ -n "$RIG_VALUE" ]; then
-    printf 'Information:\n%s\n' "$RIG_VALUE"
+  if [ -n "$information" ]; then
+    printf 'Information:\n%s\n' "$information"
   fi
   printf 'Summary: findings=%s present=%s catalogue-only=%s incompatible-platform=%s\n' \
     "$findings" "$RIG_DOCTOR_PRESENT" "$RIG_DOCTOR_CATALOGUE_ONLY" "$incompatible"

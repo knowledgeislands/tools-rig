@@ -517,8 +517,8 @@ write_query_config() {
   [[ "$output" == *"-h --help -V --version show list explain status doctor apply bootstrap update maintain capture run export publish clean diag completion help"* ]] || false
   [[ "$output" == *'show) COMPREPLY=($(compgen -W "-h --help --profile"'* ]]
   [[ "$output" == *'explain) COMPREPLY=($(compgen -W "-h --help"'* ]]
-  [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile --unmanaged"'* ]] || false
-  [[ "$output" == *'doctor) COMPREPLY=($(compgen -W "-h --help --profile"'* ]] || false
+  [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile --unmanaged --format"'* ]] || false
+  [[ "$output" == *'doctor) COMPREPLY=($(compgen -W "-h --help --profile --format"'* ]] || false
   [[ "$output" == *'apply) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all"'* ]] || false
   [[ "$output" == *'bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all"'* ]] || false
   [[ "$output" == *'update|maintain) COMPREPLY=($(compgen -W "-h --help --profile --dry-run"'* ]] || false
@@ -2166,7 +2166,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
 
   run "$RIG" doctor --help
   [ "$status" -eq 0 ]
-  [ "$output" = 'Usage: rig doctor [--profile NAME]' ]
+  [ "$output" = 'Usage: rig doctor [--profile NAME] [--format text|json]' ]
 }
 
 @test "custom provider ABI preserves versioned literal argument boundaries" {
@@ -2583,7 +2583,7 @@ bootstrap-profile = "absent"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.t
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" status --help
   [ "$status" -eq 0 ]
-  [ "$output" = 'Usage: rig status [--profile NAME] [--unmanaged]' ]
+  [ "$output" = 'Usage: rig status [--profile NAME] [--unmanaged] [--format text|json]' ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --help
   [ "$status" -eq 0 ]

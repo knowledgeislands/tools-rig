@@ -10,6 +10,7 @@ All notable changes to `rig` are documented here. Dated `0.x` entries record imm
 
 ### Added
 
+- `rig status` and `rig doctor` now accept `--format text|json`. The `json` rendering prints one versioned JSON object on a single line on stdout, projecting the same observation the tables render, so the two cannot disagree about a state, a count, or a verdict. The exit status is unchanged, the payload carries `healthy` and the summary counts, and only `detail`, `findings`, and `information` may carry a local path.
 - A declared tool artifact may now be a symbolic link. Rig resolves it and observes the target, so a command line an application installs into a shared executable directory is declarable state: healthy links are `present`, a dangling link is `missing` and names the target it resolved to, a link into a damaged application bundle is `drifted`, and a link that cannot be resolved is `unavailable` with a detail saying so rather than calling the artifact unsafe.
 
 ### Fixed

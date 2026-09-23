@@ -7,8 +7,8 @@ Rig's commands follow a deliberate progression from understanding declared inten
 - `rig show [--profile NAME]`
 - `rig list [--category ID] [--profile NAME]`
 - `rig explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID`
-- `rig status [--profile NAME] [--unmanaged]`
-- `rig doctor [--profile NAME]`
+- `rig status [--profile NAME] [--unmanaged] [--format text|json]`
+- `rig doctor [--profile NAME] [--format text|json]`
 - `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]`
 - `rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]`
 - `rig update [--profile NAME] [--dry-run]`
@@ -39,8 +39,8 @@ Use `show` for the whole selected setup, `list` to browse tools, `explain` for o
 
 These commands are read-only, but may invoke built-in observations or observations explicitly allowed for a trusted extension:
 
-- `rig doctor [--profile NAME]` gives a compact health answer and actionable findings.
-- `rig status [--profile NAME] [--unmanaged]` gives the detailed expected-versus-observed comparison. `--unmanaged` also asks supported inventory sources for undeclared tools, skills, or listeners.
+- `rig doctor [--profile NAME] [--format text|json]` gives a compact health answer and actionable findings.
+- `rig status [--profile NAME] [--unmanaged] [--format text|json]` gives the detailed expected-versus-observed comparison. `--unmanaged` also asks supported inventory sources for undeclared tools, skills, or listeners.
 
 Status groups tools, skills, managed resources, private ports, and unmanaged observations into aligned tables. Columns grow to fit ordinary values but each table remains within 120 characters; unusually long values use a visible `...` marker, with paths retaining both their beginning and identifying tail where useful. The display is for people rather than scripts: use `rig explain ID` for the complete declaration, and do not parse spacing as a machine interface.
 
@@ -49,6 +49,19 @@ The port table compares each declared owner against the process actually bound. 
 A declared artifact may be a symbolic link, which is how applications install their command line into a shared executable directory. Rig observes the link through the target it resolves to, so a healthy `code` or `subl` is `present` rather than an unexplained `unavailable`. The resolved target still has to answer for itself: a link whose target has gone is `missing`, a link into a damaged application bundle is `drifted`, and a link Rig cannot resolve at all is `unavailable` with a detail saying resolution failed. Where a link was followed, the detail names the resolved target beside the declared path, so you can see what answered the question. Declaring a command line this way also makes its absence visible — a link an application never created is reported against the tool that owes it.
 
 Neither command applies changes. A healthy `doctor` is a concise confidence check; `status` is the diagnostic detail behind it.
+
+### Ask for a machine-readable answer
+
+Add `--format json` to either command for a single JSON object on one line on stdout, emitted after observation finishes. It is a projection of the same observation the tables render, so the two can never disagree about a state, a count, or a verdict; the exit status is unchanged, and the payload carries `healthy` and the summary counts so a script never has to read it.
+
+```sh
+rig status --format json | jq '.summary'
+rig doctor --format json | jq -r '.findings.tools[]'
+```
+
+The payload opens with `schema`, the running `rig` version, the `command`, the resolved `profile` and `platform`, and an `observed_at` timestamp. `rig status` then carries `tools`, `skills`, `resources`, and `ports` arrays naming each item's identity, owner, state, and detail, plus `unmanaged` and `unmanaged_problems`, which stay `null` unless you asked for `--unmanaged`. `rig doctor` carries its `findings` grouped by origin and its `information`. Pin `schema`: a change that removes or repurposes a field increments it.
+
+One caution about disclosure. `detail`, `findings`, and `information` are human-facing text and are the only fields that may carry a local path; no other field does. A consumer that must not publish paths can discard exactly those three and keep everything else. Progress and native provider diagnostics stay on stderr, so redirecting stdout gives you the payload alone.
 
 ## Preview and reconcile
 

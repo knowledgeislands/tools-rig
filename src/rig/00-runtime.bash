@@ -153,6 +153,44 @@ syntax_error() {
   return 2
 }
 
+rig_json_escape() {
+  local value escaped index character code
+  local LC_ALL=C
+
+  value=$1
+  escaped=
+  index=0
+  while [ "$index" -lt "${#value}" ]; do
+    character=${value:$index:1}
+    case "$character" in
+      '"') escaped="${escaped}\\\"" ;;
+      \\) escaped="${escaped}\\\\" ;;
+      $'\b') escaped=$escaped'\b' ;;
+      $'\f') escaped=$escaped'\f' ;;
+      $'\n') escaped=$escaped'\n' ;;
+      $'\r') escaped=$escaped'\r' ;;
+      $'\t') escaped=$escaped'\t' ;;
+      *)
+        printf -v code '%d' "'$character"
+        if [ "$code" -ge 0 ] && [ "$code" -lt 32 ]; then
+          printf -v character '\\u%04x' "$code"
+        fi
+        escaped=$escaped$character
+        ;;
+    esac
+    index=$((index + 1))
+  done
+  RIG_VALUE=$escaped
+}
+
+rig_json_field() {
+  local separator
+
+  separator=$1
+  rig_json_escape "$3"
+  printf '%s"%s":"%s"' "$separator" "$2" "$RIG_VALUE"
+}
+
 rig_fail() {
   rig_progress_fail
   printf 'rig: error: %s\n' "$1" >&2
@@ -487,8 +525,8 @@ print_bash_completion() {
     '    show) COMPREPLY=($(compgen -W "-h --help --profile" -- "$current")) ;;' \
     '    list) COMPREPLY=($(compgen -W "-h --help --category --profile" -- "$current")) ;;' \
     '    explain) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
-    '    status) COMPREPLY=($(compgen -W "-h --help --profile --unmanaged" -- "$current")) ;;' \
-    '    doctor) COMPREPLY=($(compgen -W "-h --help --profile" -- "$current")) ;;' \
+    '    status) COMPREPLY=($(compgen -W "-h --help --profile --unmanaged --format" -- "$current")) ;;' \
+    '    doctor) COMPREPLY=($(compgen -W "-h --help --profile --format" -- "$current")) ;;' \
     '    apply) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all" -- "$current")) ;;' \
     '    bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all" -- "$current")) ;;' \
     '    update|maintain) COMPREPLY=($(compgen -W "-h --help --profile --dry-run" -- "$current")) ;;' \
@@ -541,8 +579,8 @@ print_zsh_completion() {
     "        show) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select a profile]:profile name:' ;;" \
     "        list) _arguments '(-h --help)'{-h,--help}'[show command help]' '--category[select a category]:category id:' '--profile[select a profile]:profile name:' ;;" \
     "        explain) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:tool, qualified resource, or private port:' ;;" \
-    "        status) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--unmanaged[report observed items no tool installation declares]' ;;" \
-    "        doctor) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' ;;" \
+    "        status) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--unmanaged[report observed items no tool installation declares]' '--format[select rendering]:format:(text json)' ;;" \
+    "        doctor) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--format[select rendering]:format:(text json)' ;;" \
     "        apply) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--scope[select plan scope]:scope:(tools skills resources all)' '--dry-run[print plan without invoking providers]' ;;" \
     "        bootstrap) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--scope[select plan scope]:scope:(tools skills resources all)' '--dry-run[print plan without invoking providers]' ;;" \
     "        update|maintain) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \

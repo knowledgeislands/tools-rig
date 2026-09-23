@@ -19,9 +19,11 @@ rig \- describe and manage a personal working setup
 .B rig status
 .RI [ \-\-profile " NAME" ]
 .RI [ \-\-unmanaged ]
+.RI [ \-\-format " text|json" ]
 .br
 .B rig doctor
 .RI [ \-\-profile " NAME" ]
+.RI [ \-\-format " text|json" ]
 .br
 .B rig apply
 .RI [ \-\-profile " NAME" ]
@@ -238,6 +240,39 @@ the result unhealthy. Reverse reconciliation answers the opposite question to
 the tool table: not whether declared software is installed, but whether
 installed software was ever declared.
 .TP
+.BI "rig status \-\-format " text|json
+Select the rendering. The default
+.B text
+prints the tables described above.
+.B json
+prints one JSON object on a single line on standard output once observation
+has finished, projecting the same observation the tables render, so the two
+can never disagree about a state, a count, or a verdict. The exit status is
+unchanged, and the payload carries
+.B healthy
+and the summary counts so a consumer never has to read it. The envelope
+carries an integer
+.BR schema ,
+the running
+.BR rig " version, the " command ,
+the resolved
+.BR profile " and " platform ", and " observed_at .
+.B rig status
+adds
+.BR tools ", " skills ", " resources ", and " ports
+arrays naming each item's identity, owner, kind, state, and detail, with
+.BR unmanaged " and " unmanaged_problems
+left null unless
+.B \-\-unmanaged
+was requested.
+A field named
+.BR detail ", a " findings " entry, or an " information " entry"
+is human-facing text and is the only place a local path may appear; no other
+field carries one. Progress and native provider diagnostics remain on standard
+error. Any other value is rejected with status 2 before anything is observed,
+and a change that removes or repurposes a field increments
+.BR schema .
+.TP
 .B rig doctor
 Check the resolved default profile and print one compact operational health
 answer. Doctor checks effective XDG path accessibility, native-manager and
@@ -251,6 +286,36 @@ Check a named resolved profile without changing the configured default.
 Doctor invokes only fixed built-in observation operations or external
 observation operations explicitly allowed for selected providers. It never
 applies, repairs, publishes, or invokes unselected providers.
+.TP
+.BI "rig doctor \-\-format " text|json
+Select the rendering. The default
+.B text
+prints the tables described above.
+.B json
+prints one JSON object on a single line on standard output once observation
+has finished, projecting the same observation the tables render, so the two
+can never disagree about a state, a count, or a verdict. The exit status is
+unchanged, and the payload carries
+.B healthy
+and the summary counts so a consumer never has to read it. The envelope
+carries an integer
+.BR schema ,
+the running
+.BR rig " version, the " command ,
+the resolved
+.BR profile " and " platform ", and " observed_at .
+.B rig doctor
+adds its
+.B findings
+grouped by origin and its
+.BR information .
+A field named
+.BR detail ", a " findings " entry, or an " information " entry"
+is human-facing text and is the only place a local path may appear; no other
+field carries one. Progress and native provider diagnostics remain on standard
+error. Any other value is rejected with status 2 before anything is observed,
+and a change that removes or repurposes a field increments
+.BR schema .
 .TP
 .B rig apply
 Preflight every selected bound tool, operational resource, stale receipt

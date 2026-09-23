@@ -3,36 +3,6 @@
 # Cross-module state is intentionally consumed by later assembled modules.
 # shellcheck disable=SC2004,SC2034,SC2094
 
-rig_json_escape() {
-  local value escaped index character code
-  local LC_ALL=C
-
-  value=$1
-  escaped=
-  index=0
-  while [ "$index" -lt "${#value}" ]; do
-    character=${value:$index:1}
-    case "$character" in
-      '"') escaped="${escaped}\\\"" ;;
-      \\) escaped="${escaped}\\\\" ;;
-      $'\b') escaped=$escaped'\b' ;;
-      $'\f') escaped=$escaped'\f' ;;
-      $'\n') escaped=$escaped'\n' ;;
-      $'\r') escaped=$escaped'\r' ;;
-      $'\t') escaped=$escaped'\t' ;;
-      *)
-        printf -v code '%d' "'$character"
-        if [ "$code" -ge 0 ] && [ "$code" -lt 32 ]; then
-          printf -v character '\\u%04x' "$code"
-        fi
-        escaped=$escaped$character
-        ;;
-    esac
-    index=$((index + 1))
-  done
-  RIG_VALUE=$escaped
-}
-
 rig_publication_base_url() {
   local base_url authority host port remainder
 

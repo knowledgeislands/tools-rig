@@ -279,3 +279,19 @@ _Conformance:_ conforming
 _Verify:_ Isolated Bats fakes cover remote, KI, local, runtime/plugin, missing, drifted, unavailable, malformed, collision, and unmanaged cases without reading real user roots.
 
 _Evidence:_ `rig_observe_skill`, `rig_skills_cli_load_inventory`, `rig_print_unmanaged_skills`, and `tests/rig-skills.bats` implement and verify the contract.
+
+### RIG-STATE-028 — Machine-readable observation projection
+
+`rig status` and `rig doctor` MUST accept `--format text|json`, defaulting to `text`, and MUST reject any other value with status 2 before observing anything. The `json` rendering MUST project the answer the text rendering reports, from the same observation, so the two cannot disagree about a state, a count, or a verdict.
+
+The payload MUST be a single JSON object on one line on stdout, emitted only after observation has completed, carrying `schema` as an integer, `rig` as the running version, `command`, the resolved `profile` and `platform`, an `observed_at` timestamp, a `healthy` boolean, and a `summary` of the counts the text rendering prints. `rig status` MUST carry `tools`, `skills`, `resources`, and `ports` arrays, each entry naming its identity, its owning provider or authority, its kind where it has one, its state from the vocabulary above, and its detail; `unmanaged` and `unmanaged_problems` MUST be `null` unless `--unmanaged` was requested. `rig doctor` MUST carry its findings grouped by origin and its information. A change that removes or repurposes a field MUST increment `schema`.
+
+No structured field other than a `detail` string, a `findings` entry, or an `information` entry may carry a local path; those three are human-facing text, so a consumer that must not disclose paths can discard exactly those.
+
+Progress and native diagnostics MUST remain on stderr. The exit status MUST NOT vary with the rendering: drift returns 1 in both, and the payload carries `healthy` and the counts so a consumer never has to read the exit status to get the verdict.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats parses the payload with a JSON parser and covers the envelope, both commands, a healthy and a drifted machine, agreement with the text summary and exit status, `--unmanaged`, a rejected format value, quote and backslash escaping, and stdout carrying nothing but the payload.
+
+_Evidence:_ `rig_status_totals`, `rig_json_envelope`, `rig_status_json`, `rig_json_lines`, and `rig_command_doctor` implement the projection; `tests/rig-projection.bats` verifies it.
