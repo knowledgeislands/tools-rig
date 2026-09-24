@@ -106,6 +106,8 @@ RIG_PROGRESS_BAR=
 RIG_PROGRESS_BAR_WIDTH=16
 RIG_PROGRESS_RENDERED=0
 RIG_PROGRESS_COLUMNS=
+RIG_OUTCOME_RESULT=
+RIG_OUTCOME_DETAIL=
 RIG_PROFILE_SELECTION_MODE=
 RIG_RESOLVED_PROFILE_KIND=
 RIG_RECONCILIATION_LOCK=
@@ -195,6 +197,65 @@ rig_fail() {
   rig_progress_fail
   printf 'rig: error: %s\n' "$1" >&2
   return 2
+}
+
+rig_outcome_enabled() {
+  case "${RIG_OUTCOME:-auto}" in
+    always) return 0 ;;
+    never) return 1 ;;
+    auto|'') [ -t 2 ] ;;
+    *) [ -t 2 ] ;;
+  esac
+}
+
+rig_outcome_note() {
+  RIG_OUTCOME_RESULT=$1
+  RIG_OUTCOME_DETAIL=${2:-}
+}
+
+rig_outcome_report() {
+  local command_name status result
+
+  command_name=$1
+  status=$2
+  # A status-2 rejection already named its cause through rig: error:, and a
+  # second line after it would say less than the first.
+  [ "$status" -ne 2 ] || return 0
+  rig_outcome_enabled || return 0
+  result=$RIG_OUTCOME_RESULT
+  if [ -z "$result" ]; then
+    case "$command_name" in
+      status|doctor|diag)
+        if [ "$status" -eq 0 ]; then
+          result=healthy
+        else
+          result=unhealthy
+        fi
+        ;;
+      apply|bootstrap|update|maintain|capture|export|publish|clean)
+        if [ "$status" -eq 0 ]; then
+          result=succeeded
+        elif [ "$status" -eq 1 ]; then
+          result=incomplete
+        else
+          result=failed
+        fi
+        ;;
+      *)
+        if [ "$status" -eq 0 ]; then
+          result=succeeded
+        else
+          result=failed
+        fi
+        ;;
+    esac
+  fi
+  if [ -n "$RIG_OUTCOME_DETAIL" ]; then
+    printf 'rig: %s %s: status %s (%s)\n' \
+      "$command_name" "$result" "$status" "$RIG_OUTCOME_DETAIL" >&2
+  else
+    printf 'rig: %s %s: status %s\n' "$command_name" "$result" "$status" >&2
+  fi
 }
 
 rig_progress_enabled() {

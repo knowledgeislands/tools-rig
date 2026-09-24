@@ -4795,3 +4795,158 @@ artifacts = ["$HOME/bin/home-tool", "~/bin/tilde-tool", "/opt/rig/absolute-tool"
   [[ "$output" == *'/bin/other'* ]] || false
   [[ "$output" == *'Unmanaged: 2'* ]] || false
 }
+
+@test "outcome line names the result and the status that reports it" {
+  local outcome_file
+
+  write_orchestration_config
+  outcome_file=$BATS_TEST_TMPDIR/outcome-$BATS_TEST_NUMBER
+
+  run bash -c 'outcome_file=$1; shift; "$@" 2>"$outcome_file"' _ "$outcome_file" \
+    env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_OUTCOME=always RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
+
+  printf 'STDERR<%s>\n' "$(cat "$outcome_file")"
+  [ "$status" -eq 0 ]
+  [[ "$(tail -n 1 "$outcome_file")" == 'rig: status healthy: status 0 (present='* ]] || false
+  [[ "$output" != *'rig: status healthy'* ]] || false
+}
+
+@test "outcome line stays silent under never and away from a terminal" {
+  local outcome_file
+
+  write_orchestration_config
+  outcome_file=$BATS_TEST_TMPDIR/outcome-$BATS_TEST_NUMBER
+
+  run bash -c 'outcome_file=$1; shift; "$@" 2>"$outcome_file"' _ "$outcome_file" \
+    env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_OUTCOME=never RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
+
+  [ "$status" -eq 0 ]
+  [ ! -s "$outcome_file" ]
+
+  run bash -c 'outcome_file=$1; shift; "$@" 2>"$outcome_file"' _ "$outcome_file" \
+    env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
+
+  [ "$status" -eq 0 ]
+  [ ! -s "$outcome_file" ]
+}
+
+@test "a rejection is named once and never restated as an outcome" {
+  local outcome_file
+
+  write_orchestration_config
+  outcome_file=$BATS_TEST_TMPDIR/outcome-$BATS_TEST_NUMBER
+
+  run bash -c 'outcome_file=$1; shift; "$@" 2>"$outcome_file"' _ "$outcome_file" \
+    env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_OUTCOME=always RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status --profile absent
+
+  printf 'STDERR<%s>\n' "$(cat "$outcome_file")"
+  [ "$status" -eq 2 ]
+  grep -F 'rig: error:' "$outcome_file" >/dev/null
+  ! grep -F 'status 2' "$outcome_file" >/dev/null
+}
+
+@test "outcome line leaves the JSON payload alone" {
+  local outcome_file
+
+  write_orchestration_config
+  outcome_file=$BATS_TEST_TMPDIR/outcome-$BATS_TEST_NUMBER
+
+  run bash -c 'outcome_file=$1; shift; "$@" 2>"$outcome_file"' _ "$outcome_file" \
+    env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_OUTCOME=always RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status --format json
+
+  [ "$status" -eq 0 ]
+  [ "${#lines[@]}" -eq 1 ]
+  [[ "${lines[0]}" == '{'* ]] || false
+  [[ "$(tail -n 1 "$outcome_file")" == 'rig: status healthy: status 0 ('* ]] || false
+}
+
+@test "outcome line reports an unhealthy observation with its count" {
+  local outcome_file
+
+  write_orchestration_config
+  sed '/\[tool.base\]/,/\[tool.independent\]/ s/install.locator = "present"/install.locator = "empty"/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/unhealthy.toml"
+  mv "$CONFIG_HOME/unhealthy.toml" "$CONFIG_HOME/rig.toml"
+  outcome_file=$BATS_TEST_TMPDIR/outcome-$BATS_TEST_NUMBER
+
+  run bash -c 'outcome_file=$1; shift; "$@" 2>"$outcome_file"' _ "$outcome_file" \
+    env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_OUTCOME=always RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
+
+  printf 'STDERR<%s>\n' "$(cat "$outcome_file")"
+  [ "$status" -eq 1 ]
+  [[ "$(tail -n 1 "$outcome_file")" == 'rig: status unhealthy: status 1 (unhealthy='* ]] || false
+}
+
+@test "outcome line separates a complete apply from an incomplete one" {
+  local outcome_file
+
+  write_orchestration_config
+  outcome_file=$BATS_TEST_TMPDIR/outcome-$BATS_TEST_NUMBER
+
+  run bash -c 'outcome_file=$1; shift; "$@" 2>"$outcome_file"' _ "$outcome_file" \
+    env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_OUTCOME=always RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply
+
+  printf 'STDERR<%s>\n' "$(cat "$outcome_file")"
+  [ "$status" -eq 0 ]
+  [[ "$(tail -n 1 "$outcome_file")" == 'rig: apply succeeded: status 0 (planned='* ]] || false
+
+  sed '/\[tool.base\]/,/\[tool.independent\]/ s/install.locator = "present"/install.locator = "fail"/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/failure.toml"
+  mv "$CONFIG_HOME/failure.toml" "$CONFIG_HOME/rig.toml"
+
+  run bash -c 'outcome_file=$1; shift; "$@" 2>"$outcome_file"' _ "$outcome_file" \
+    env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_OUTCOME=always RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply
+
+  printf 'STDERR<%s>\n' "$(cat "$outcome_file")"
+  [ "$status" -eq 1 ]
+  [[ "$(tail -n 1 "$outcome_file")" == \
+    'rig: apply incomplete: status 1 (planned=3 completed=1 failed=1 skipped=2)' ]] || false
+}
+
+@test "outcome line reports a provider-native failure status" {
+  local outcome_file
+
+  write_operation_config
+  outcome_file=$BATS_TEST_TMPDIR/outcome-$BATS_TEST_NUMBER
+
+  run bash -c 'outcome_file=$1; shift; "$@" 2>"$outcome_file"' _ "$outcome_file" \
+    env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_OPERATION_LOG="$OPERATION_LOG" RIG_OPERATION_EXIT=7 \
+    RIG_OUTCOME=always "$RIG" run runner audit
+
+  printf 'STDERR<%s>\n' "$(cat "$outcome_file")"
+  [ "$status" -eq 7 ]
+  [[ "$(tail -n 1 "$outcome_file")" == 'rig: run failed: status 7' ]] || false
+}
+
+@test "help completion and version carry no outcome line" {
+  local outcome_file
+
+  outcome_file=$BATS_TEST_TMPDIR/outcome-$BATS_TEST_NUMBER
+
+  run bash -c 'outcome_file=$1; shift; "$@" 2>"$outcome_file"' _ "$outcome_file" \
+    env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_OUTCOME=always "$RIG" --version
+
+  [ "$status" -eq 0 ]
+  [ ! -s "$outcome_file" ]
+
+  run bash -c 'outcome_file=$1; shift; "$@" 2>"$outcome_file"' _ "$outcome_file" \
+    env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_OUTCOME=always "$RIG" completion zsh
+
+  [ "$status" -eq 0 ]
+  [ ! -s "$outcome_file" ]
+
+  run bash -c 'outcome_file=$1; shift; "$@" 2>"$outcome_file"' _ "$outcome_file" \
+    env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_OUTCOME=always "$RIG" help
+
+  [ "$status" -eq 0 ]
+  [ ! -s "$outcome_file" ]
+}

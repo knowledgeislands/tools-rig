@@ -295,3 +295,17 @@ _Conformance:_ conforming
 _Verify:_ Bats parses the payload with a JSON parser and covers the envelope, both commands, a healthy and a drifted machine, agreement with the text summary and exit status, `--unmanaged`, a rejected format value, quote and backslash escaping, and stdout carrying nothing but the payload.
 
 _Evidence:_ `rig_status_totals`, `rig_json_envelope`, `rig_status_json`, `rig_json_lines`, and `rig_command_doctor` implement the projection; `tests/rig-projection.bats` verifies it.
+
+### RIG-STATE-029 — Exit status and stated outcome
+
+Rig MUST own exactly three statuses of its own. `0` MUST mean a healthy observation or successful operation, `1` MUST mean a valid result carrying findings or an operation that completed independent safe work with failures, and `2` MUST mean a rejection before valid work could start. A release MAY add a status; it MUST NOT repurpose one. `rig run` and `rig capture` MUST return the dispatched provider's native status, `rig publish` MUST return the publisher's native non-zero status, and publication interrupted by HUP, INT, or TERM MUST return 129, 130, or 143.
+
+A command MUST state its own outcome as the last line it writes to stderr, so a person need not read the status out of the shell. The line MUST have the shape `rig: <command> <result>: status <n>`, optionally followed by a parenthesised detail clause naming the counts or the finding that decided the status. `result` MUST come from the closed vocabulary `succeeded`, `healthy`, `unhealthy`, `incomplete`, `failed`; a release MAY add a value but MUST NOT repurpose one.
+
+The line MUST NOT be written for a status-2 rejection, which `rig: error:` has already named, nor for `help`, `completion`, or `--version`, which report on Rig rather than on a machine. It MUST NOT reach stdout, MUST NOT change an exit status, and MUST NOT carry a path, locator, argument, credential, or native output. `RIG_OUTCOME` MUST control it with `auto`, `always`, and `never`, where `auto` states the outcome when stderr is a terminal; it MUST be independent of `RIG_PROGRESS`, so silencing one does not silence the other.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats asserts the line under `always`, its absence under `never` and after a status-2 rejection, that stdout is unchanged including `--format json`, that it is the last line on stderr, and that each result value appears.
+
+_Evidence:_ `rig_outcome_enabled`, `rig_outcome_note`, `rig_outcome_report`, and `main` implement it; `tests/rig.bats` verifies it.

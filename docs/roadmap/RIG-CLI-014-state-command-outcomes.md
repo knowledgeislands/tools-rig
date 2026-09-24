@@ -4,12 +4,12 @@ area: CLI
 title: State command outcomes
 theme: cli
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: 565e34b4d04f3988ace186dd2c79ccc6d4b7ad63
 created_at: 2026-09-24T12:30:00Z
-updated_at: 2026-09-24T12:30:00Z
+updated_at: 2026-09-24T13:40:00Z
 ---
 
 ## Goal
@@ -44,14 +44,14 @@ Exit statuses are documented in `man/rig.1` under EXIT STATUS — Rig-owned `0`,
 
 ## Steps
 
-- [ ] Add `RIG_OUTCOME` with the same `automatic`, `always`, `never` semantics as `RIG_PROGRESS`, resolved once in the runtime alongside it.
-- [ ] Emit one outcome line on stderr as the last thing a command writes, for every command that reaches a terminal state other than a status-2 rejection.
-- [ ] Derive `result` from what the command already computed — the health verdict for observation commands, the completed/failed/skipped tallies for operational ones, the native status for pass-through ones — rather than from a second traversal.
-- [ ] Carry a detail clause naming the counts or the finding that decided the status, so the line is useful without the table above it.
-- [ ] Add `RIG-STATE-029` stating the exit-status contract and the outcome line.
-- [ ] Extend `man/rig.1`: an ENVIRONMENT entry for `RIG_OUTCOME` and an EXIT STATUS section that names the pass-through commands and signal statuses as part of the contract rather than as prose around the table.
-- [ ] Extend `docs/guides/user/commands.md` so "Read exit statuses" shows the line a person will actually see beside the status it reports.
-- [ ] Cover it in `tests/rig.bats`: the line appears under `always`, is absent under `never`, never reaches stdout, never appears after a status-2 rejection, and reports each result value at least once.
+- [x] Add `RIG_OUTCOME` with the same `automatic`, `always`, `never` semantics as `RIG_PROGRESS`, resolved once in the runtime alongside it.
+- [x] Emit one outcome line on stderr as the last thing a command writes, for every command that reaches a terminal state other than a status-2 rejection.
+- [x] Derive `result` from what the command already computed — the health verdict for observation commands, the completed/failed/skipped tallies for operational ones, the native status for pass-through ones — rather than from a second traversal.
+- [x] Carry a detail clause naming the counts or the finding that decided the status, so the line is useful without the table above it.
+- [x] Add `RIG-STATE-029` stating the exit-status contract and the outcome line.
+- [x] Extend `man/rig.1`: an ENVIRONMENT entry for `RIG_OUTCOME` and an EXIT STATUS section that names the pass-through commands and signal statuses as part of the contract rather than as prose around the table.
+- [x] Extend `docs/guides/user/commands.md` so "Read exit statuses" shows the line a person will actually see beside the status it reports.
+- [x] Cover it in `tests/rig.bats`: the line appears under `always`, is absent under `never`, never reaches stdout, never appears after a status-2 rejection, and reports each result value at least once.
 
 ## Files touched
 
@@ -89,6 +89,40 @@ None. Writing a verdict to stderr follows the boundary [ADR-RIG-001](../decision
 ### Roadmap
 
 None expected.
+
+## Review
+
+### Delivered
+
+Every `rig` command that acts on a machine now ends by saying what happened and which status says so, on stderr, in one line of fixed shape: `rig: <command> <result>: status <n>` plus a parenthesised detail clause. The exit statuses themselves are now a specification clause rather than prose in two documents.
+
+### Change Summary
+
+`src/rig/00-runtime.bash` gains `RIG_OUTCOME_RESULT`, `RIG_OUTCOME_DETAIL`, and three functions: `rig_outcome_enabled` resolves `RIG_OUTCOME` as `auto`, `always`, or `never` independently of `RIG_PROGRESS`; `rig_outcome_note` records a result and detail where the command already knows them; `rig_outcome_report` emits the line, returning early for a status-2 rejection and deriving the result from the command and its status when nothing was noted.
+
+`main` in `src/rig/90-main.bash` calls it once, after progress has terminated and before the signal traps are cleared, so the line is genuinely the last thing written. `help`, `completion`, and `--version` are excluded there: they report on Rig rather than a machine, and completion output is evaluated by every new shell.
+
+`rig_command_status` notes `healthy`/`unhealthy` with counts as soon as `rig_status_totals` has run, so the text and JSON renderings agree. `rig_command_doctor` notes its findings count, and the reconciliation and lifecycle summaries note the same tallies their `Summary:` line prints.
+
+`RIG-STATE-029` states the status set as a public interface that may gain a value but never repurpose one, names the pass-through and signal statuses, and fixes the line's stream, control, shape and vocabulary. `man/rig.1` gains a `RIG_OUTCOME` entry and an EXIT STATUS section covering 129/130/143 and native statuses as part of the contract; `docs/guides/user/commands.md` shows the lines a person will see.
+
+### Verification
+
+`bats tests/` passes 250 of 251, with eight new cases covering the line under `always`, its silence under `never` and off a terminal, its absence after a status-2 rejection, JSON payload purity, and each of `healthy`, `unhealthy`, `succeeded`, `incomplete`, and `failed`. The single failure is `representative catalogue stays within the portable query guard` in `tests/rig-performance.bats`, a timing assertion; the workstation was at load average 32 and the same case fails identically on the unmodified executable, so it is contention rather than a regression. `shellcheck`, `bash -n`, `scripts/assemble-rig --check`, `scripts/smoke-native-providers` and `mandoc -T lint man/rig.1` are clean. `scripts/benchmark-rig` needs a re-run on a quiet machine.
+
+### Outstanding concerns
+
+The Decisions listed `rejected` in the result vocabulary while also deciding that a status-2 rejection is not restated. Those cannot both hold, so the emitted vocabulary has five values and `rejected` is documented as what `rig: error:` already says. If a rejection should carry a machine-readable result, that is a separate change to the error line, not to this one.
+
+`rig clean` runs its work in a subshell, so a noted detail cannot escape it; its outcome line therefore carries a result derived from the status and no detail clause. The same is true of any command that later adopts that shape.
+
+### Post-change review
+
+The derivation table in `rig_outcome_report` names commands in two groups, so a new command that states an outcome inherits `succeeded`/`failed` unless it is added to a group or notes its own result. That is the intended failure mode — a new command says something true but unspecific — but it is a place where the runtime and the command list can drift apart.
+
+### Mini recap
+
+Rig already chose good exit statuses and then kept them to itself. It now says the verdict out loud, in the one place a person is already looking, and the statuses it can return are written down as a contract.
 
 ## Discussion
 

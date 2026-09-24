@@ -1091,6 +1091,12 @@ rig_run_lifecycle_tasks() {
   rig_progress_finish
   printf 'Summary: planned=%s completed=%s failed=%s unavailable=%s skipped=%s\n' \
     "$planned" "$completed" "$failed" "$unavailable" "$skipped"
+  if [ "$exit_code" -eq 0 ]; then
+    rig_outcome_note succeeded "planned=$planned completed=$completed skipped=$skipped"
+  else
+    rig_outcome_note incomplete \
+      "planned=$planned completed=$completed failed=$failed unavailable=$unavailable"
+  fi
   return "$exit_code"
 }
 

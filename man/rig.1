@@ -565,6 +565,36 @@ redraws it. Rig progress omits private paths, locators, arguments, environment
 values, titles, observed details, credentials, and native output. Progress
 never changes the deterministic report on stdout.
 .TP
+.B RIG_OUTCOME
+Control the outcome line Rig writes to stderr as the last thing a command
+emits. The default is
+.BR auto ,
+which states the outcome when stderr is a terminal. Set to
+.B always
+to state it whenever stderr is redirected as well, or to
+.B never
+to suppress it. The line has the fixed shape
+.BI "rig: " "command result" ": status " n
+followed by an optional parenthesised detail clause naming the counts or the
+finding that decided the status.
+.I result
+is one of
+.BR succeeded ,
+.BR healthy ,
+.BR unhealthy ,
+.BR incomplete ,
+or
+.BR failed .
+A status 2 rejection is not restated, because
+.B rig: error:
+has already named its cause; neither are
+.BR help ,
+.BR completion ,
+nor
+.BR \-\-version ,
+which report on Rig rather than on a machine. The line never reaches stdout and
+never changes an exit status.
+.TP
 .B XDG_CONFIG_HOME
 Set the base configuration directory when
 .B RIG_CONFIG_HOME
@@ -1451,6 +1481,11 @@ directly or
 to inspect the checked-out artifacts without changing installed paths.
 .SH EXIT STATUS
 \&
+.PP
+Rig owns the statuses 0, 1, and 2 below. They are a public interface: a caller
+may branch on them. A future release may add a status, but never repurposes
+one. Commands that dispatch to a provider return that provider's native status
+instead, and interrupted publication returns a signal status.
 .B rig run
 returns the selected action provider's native status, including values
 outside the Rig-owned statuses below.
@@ -1481,6 +1516,18 @@ this means configuration is missing or invalid.
 Invalid command syntax, unknown query identity, invalid configuration,
 resolution failure, or shared apply, bootstrap, or capture preflight safety
 failure.
+.TP
+.B 129, 130, 143
+Publication interrupted by HUP, INT, or TERM.
+.TP
+.B other
+The native status of the provider a pass-through command dispatched to.
+.PP
+Unless
+.B RIG_OUTCOME
+suppresses it, a command states its own outcome and the status that says so on
+the last line it writes to stderr, so the status need not be read out of the
+shell.
 .SH SEE ALSO
 \&
 .BR bash (1),

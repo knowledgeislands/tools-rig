@@ -125,7 +125,19 @@ Use `man rig` for the exhaustive command synopsis, options, configuration schema
 - Status 1 means an operational command completed with findings or provider work failed.
 - Status 2 means Rig rejected command syntax, configuration, or profile resolution before valid work could proceed.
 
-Some direct dispatch commands preserve a provider-native non-zero status. Profile-wide operations aggregate independent provider failures and return status 1.
+Some direct dispatch commands preserve a provider-native non-zero status. Profile-wide operations aggregate independent provider failures and return status 1. Interrupted publication returns 129, 130, or 143 for HUP, INT, or TERM.
+
+You do not have to read the status out of the shell. Unless it is suppressed, a command states its own outcome on the last line it writes to stderr:
+
+```text
+rig: status unhealthy: status 1 (unhealthy=2 present=13)
+rig: apply succeeded: status 0 (planned=6 completed=6 skipped=0)
+rig: update incomplete: status 1 (planned=4 completed=3 failed=1 unavailable=0)
+```
+
+The result is one of `succeeded`, `healthy`, `unhealthy`, `incomplete`, or `failed`. A rejection is not restated: a command that exits 2 has already printed `rig: error:` naming the cause, which tells you more than a second line would.
+
+The default `RIG_OUTCOME=auto` states the outcome when stderr is a terminal. Use `RIG_OUTCOME=always` to state it when stderr is redirected too, or `RIG_OUTCOME=never` to suppress it. The line is always on stderr, so it never enters a table or a JSON payload a script is parsing, and `help`, `completion`, and `--version` never carry one.
 
 ## Follow progress
 

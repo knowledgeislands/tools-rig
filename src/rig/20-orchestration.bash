@@ -3306,6 +3306,11 @@ rig_command_status() {
     rig_collect_unmanaged || return
   fi
   rig_status_totals
+  if [ "$RIG_STATUS_UNHEALTHY" -eq 0 ]; then
+    rig_outcome_note healthy "present=$RIG_STATUS_PRESENT"
+  else
+    rig_outcome_note unhealthy "unhealthy=$RIG_STATUS_UNHEALTHY present=$RIG_STATUS_PRESENT"
+  fi
   if [ "$format" = json ]; then
     rig_status_json "$unmanaged_requested"
     return
@@ -3695,6 +3700,11 @@ rig_command_doctor() {
   fi
   printf 'Summary: findings=%s present=%s catalogue-only=%s incompatible-platform=%s\n' \
     "$findings" "$RIG_DOCTOR_PRESENT" "$RIG_DOCTOR_CATALOGUE_ONLY" "$incompatible"
+  if [ "$findings" -eq 0 ]; then
+    rig_outcome_note healthy "findings=0 present=$RIG_DOCTOR_PRESENT"
+  else
+    rig_outcome_note unhealthy "findings=$findings"
+  fi
   [ "$findings" -eq 0 ]
 }
 
@@ -4347,6 +4357,11 @@ rig_command_apply() {
     "$planned" "$completed" "$failed" "$skipped"
   exit_code=0
   [ "$operational_failure" -eq 0 ] || exit_code=1
+  if [ "$exit_code" -eq 0 ]; then
+    rig_outcome_note succeeded "planned=$planned completed=$completed skipped=$skipped"
+  else
+    rig_outcome_note incomplete "planned=$planned completed=$completed failed=$failed skipped=$skipped"
+  fi
   if [ "$lock_acquired" -eq 1 ]; then
     rig_release_reconciliation_lock || return
     trap - EXIT HUP INT TERM

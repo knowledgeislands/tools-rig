@@ -117,6 +117,13 @@ main() {
   elif [ "$RIG_PROGRESS_ACTIVE" -eq 1 ]; then
     rig_progress_finish
   fi
+  case "$command_name" in
+    # Help, version, and completion answer about Rig itself rather than
+    # reaching a state of the machine, and completion output is evaluated by
+    # every new shell.
+    -h|--help|help|-V|--version|completion) ;;
+    *) rig_outcome_report "$command_name" "$exit_code" ;;
+  esac
   trap - HUP INT TERM
   return "$exit_code"
 }
