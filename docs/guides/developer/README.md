@@ -54,6 +54,8 @@ mandoc -T utf8 man/rig.1 | col -b
 
 If a required checker is absent, install it through the workstation's existing package-management policy. Do not add it as a Rig runtime dependency.
 
+Continuous verification runs a narrower gate on two runners. [Read the continuous verification gate](continuous-verification.md) explains what each job proves, what a stated skip means, and how to reproduce either runner locally.
+
 ## Release
 
 Follow [Release Rig](releasing.md) for the pre-release review, explicit publication authority, and downstream distribution handoff.

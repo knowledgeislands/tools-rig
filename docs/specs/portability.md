@@ -119,3 +119,13 @@ _Conformance:_ conforming
 _Verify:_ Run `scripts/smoke-native-providers` with available and unavailable native-manager commands and inspect its outcome classifications.
 
 _Evidence:_ `scripts/smoke-native-providers` bounds Homebrew, uv, mise, npm, chezmoi, and mas probes to disposable-environment version calls; the complete Bats suite retains fake-based command and state assertions.
+
+### RIG-PORT-012 — Continuous verification contract
+
+Automated verification MUST run the Bats suite on both a current GNU/Linux environment and macOS under `PATH=/usr/bin:/bin:/usr/sbin:/sbin` with the system Bash, and both runners MUST install the same pinned `bats-core`. The Linux run asserts that Rig's portable core behaves the same away from macOS; the macOS run asserts that Rig requires nothing beyond the tools macOS ships, so nothing MAY be added to that PATH to satisfy a test. Every suite assertion written as a compound command MUST fail the test when it is false, because Bash 3.2 does not apply `set -e` to one. A case that cannot be asserted on a platform MUST skip with a stated reason rather than fail or be removed, and test infrastructure MAY name its own interpreter through `RIG_TEST_PYTHON` without relaxing the restricted PATH. Release verification MUST depend on lint, test and manual verification so that a tag cannot pass over a red gate. Timing MUST NOT be asserted on a shared runner.
+
+_Conformance:_ conforming
+
+_Verify:_ Run `bats --print-output-on-failure tests/`, then the same suite under `PATH=/usr/bin:/bin:/usr/sbin:/sbin` with `/bin/bash`, and inspect a complete run of `.github/workflows/ci.yml` for a stated reason on every skip.
+
+_Evidence:_ `.github/workflows/ci.yml` pins the harness, aligns the lint job with the local gate and gates `release-tag` behind it; `tests/helpers/toml-parser.bash` supplies the interpreter probe and its stated skip.
