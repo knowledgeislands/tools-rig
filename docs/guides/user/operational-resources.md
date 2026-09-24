@@ -82,6 +82,8 @@ profiles = ["workstation"]
 
 Use `schedule.interval = "3600"` instead of `schedule.calendar` for a positive interval in seconds. Calendar entries accept comma-separated decimal pairs for `minute`, `hour`, `day`, `weekday`, and `month`. Declare exactly one schedule form.
 
+A job whose program is `rig update --unattended` keeps every declared manager current on one schedule; [Update without watching](unattended-updates.md) carries that recipe and what the run records.
+
 ## Declare a typed macOS setting
 
 ```toml

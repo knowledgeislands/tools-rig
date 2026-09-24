@@ -309,3 +309,17 @@ _Conformance:_ conforming
 _Verify:_ Bats asserts the line under `always`, its absence under `never` and after a status-2 rejection, that stdout is unchanged including `--format json`, that it is the last line on stderr, and that each result value appears.
 
 _Evidence:_ `rig_outcome_enabled`, `rig_outcome_note`, `rig_outcome_report`, and `main` implement it; `tests/rig.bats` verifies it.
+
+### RIG-STATE-030 — Unattended last-run report
+
+An unattended `rig update` or `rig maintain` that dispatches work MUST record its outcome beneath the effective state home as `last-update`, honouring `RIG_STATE_HOME` and then `${XDG_STATE_HOME:-$HOME/.local/state}/rig`. One file MUST hold the most recent unattended run and MUST be replaced atomically, so a reader never observes a partial report. A dry run MUST NOT write it, because no run happened.
+
+The report MUST be UTF-8 tab-separated text. It MUST open with `rig-last-run` and the integer report version, then one `KEY<TAB>VALUE` line each for `action`, `profile`, `platform`, `finished`, `status`, `result`, `detail`, and `summary`, then the `TARGET PROVIDER RESULT DETAIL` header and the same rows the run printed on stdout. `result` and `status` MUST agree with the stated outcome under [RIG-STATE-029](#rig-state-029--exit-status-and-stated-outcome). Rig MAY add a later report version but MUST NOT silently change the meaning of version 1.
+
+The report is a public contract a wrapper reads to notify or report, so it MUST NOT carry a path, locator, argument, credential, or native output, and Rig MUST NOT itself notify. Rig MUST refuse to replace a target that is a symbolic link or a non-regular file, and a report that cannot be written MUST NOT change the run's exit status.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats runs an unattended update, parses the report's keys and rows, compares them with the run's stdout and stated outcome, asserts no file after a dry run, and asserts an unsafe target is left unaltered.
+
+_Evidence:_ `rig_write_last_run_report` and `rig_run_lifecycle_tasks` implement it; `tests/rig-lifecycle.bats` verifies it.

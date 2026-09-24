@@ -38,10 +38,12 @@ rig \- describe and manage a personal working setup
 .B rig update
 .RI [ \-\-profile " NAME" ]
 .RI [ \-\-dry-run ]
+.RI [ \-\-unattended ]
 .br
 .B rig maintain
 .RI [ \-\-profile " NAME" ]
 .RI [ \-\-dry-run ]
+.RI [ \-\-unattended ]
 .br
 .BI "rig capture " PROVIDER
 .RI [ \-\-dry-run ]
@@ -273,7 +275,11 @@ answer. Doctor checks effective XDG path accessibility, native-manager and
 external-provider availability, and selected tool, skill, and resource
 observations.
 Catalogue-only and
-incompatible-platform tools are informational.
+incompatible-platform tools are informational. An observed competing
+auto-update agent Rig did not declare, such as Homebrew's
+.BR "brew autoupdate" ,
+is reported as information alone: it adds no finding, changes no exit status,
+and Rig never installs, modifies, or removes it.
 .TP
 .BI "rig doctor \-\-profile " NAME
 Check a named resolved profile without changing the configured default.
@@ -364,6 +370,7 @@ option has the same values and meaning as for
 .B rig update
 .RI [ \-\-profile " NAME" ]
 .RI [ \-\-dry-run ]
+.RI [ \-\-unattended ]
 Advance tools and user-level skills selected by the resolved default or named
 profile through fixed Homebrew, uv, mise, npm, and Skills CLI native
 operations. A Homebrew provider with a
@@ -378,10 +385,27 @@ installed Skills CLI directly; runtime, plugin, KI, and local authorities are
 not advanced. No lifecycle command removes a skill. Dry run performs the same
 resolution
 and preflight without provider mutation.
+.RS
+.PP
+.B \-\-unattended
+states that nobody is watching the run. Every provider invocation takes its
+standard input from
+.IR /dev/null ,
+.B NONINTERACTIVE=1
+is exported for the Homebrew adapter, and a task that cannot proceed without a
+person is reported unavailable with the reason before its provider is invoked,
+leaving the remaining independent work to complete and the run to return 1. The
+flag changes no selection, order, dispatch, outcome vocabulary, or exit status.
+Unless the run is a dry run it also writes the report described under
+.IR ${XDG_STATE_HOME:-$HOME/.local/state}/rig/last-update
+in
+.BR FILES .
+.RE
 .TP
 .B rig maintain
 .RI [ \-\-profile " NAME" ]
 .RI [ \-\-dry-run ]
+.RI [ \-\-unattended ]
 Run one bounded native maintenance work item for each supported provider
 selected by the resolved profile. Homebrew performs cleanup, optional
 manifest cleanup, and doctor; uv prunes its cache; mise rebuilds shims; npm
@@ -389,6 +413,12 @@ verifies its cache. Unsupported selected providers are reported as skipped and
 a provider whose executable is unavailable is reported as unavailable without
 blocking the others.
 Dry run performs the same resolution and preflight without provider mutation.
+.B \-\-unattended
+has the same meaning as for
+.BR "rig update" ,
+though a scheduled run is normally
+.BR "rig update" :
+maintenance is the operation most likely to want a person.
 .TP
 .BI "rig capture " PROVIDER
 .RI [ \-\-dry-run ]
@@ -1053,6 +1083,29 @@ table omits
 .TP
 .I ${XDG_STATE_HOME:-$HOME/.local/state}/rig
 Default state directory.
+.TP
+.I ${XDG_STATE_HOME:-$HOME/.local/state}/rig/last-update
+Report of the most recent unattended
+.B rig update
+or
+.B rig maintain
+that dispatched work, replaced atomically and never written by a dry run. The
+UTF-8 tab-separated text opens with
+.B rig-last-run
+and the integer report version, then one key and value line each for
+.BR action ,
+.BR profile ,
+.BR platform ,
+.BR finished ,
+.BR status ,
+.BR result ,
+.BR detail ,
+and
+.BR summary ,
+then the target, provider, result, and detail header and the same rows the run
+printed. It is a stable contract for a wrapper that notifies or reports, and
+carries no path, locator, argument, credential, or native output. Rig does not
+itself notify.
 .TP
 .I ${XDG_STATE_HOME:-$HOME/.local/state}/rig/resources/PLATFORM.tsv
 Atomic reconciliation receipt for resources last successfully managed on one

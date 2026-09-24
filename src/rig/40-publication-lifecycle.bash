@@ -532,10 +532,12 @@ rig_preflight_lifecycle_task() {
       [ -f "$manifest" ] && [ -r "$manifest" ] ||
         rig_fail "provider '$provider' manifest is not readable regular file: $manifest" || return
     fi
-    RIG_VALUE=$executable
   elif [ "$action" = capture ]; then
     rig_fail "provider '$provider' does not declare a native manifest" || return
   fi
+  # Probing for a manifest overwrites RIG_VALUE, so restate the resolved
+  # executable as this function's answer whichever branch ran.
+  RIG_VALUE=$executable
 }
 
 rig_lifecycle_homebrew_exclusions() {
@@ -562,6 +564,10 @@ rig_execute_lifecycle_task() {
   esac
   rig_provider_adapter "$provider" || return 2
   adapter=$RIG_VALUE
+  # Homebrew's own documented way to say that nobody is watching.
+  if [ "$RIG_UNATTENDED" -eq 1 ] && [ "$adapter" = homebrew ]; then
+    export NONINTERACTIVE=1
+  fi
   kind=
   locator=
   if [ -n "$binding" ]; then
@@ -623,9 +629,65 @@ rig_execute_lifecycle_task() {
   esac
 }
 
+rig_lifecycle_requires_person() {
+  local provider binding kind
+
+  provider=$1
+  binding=$2
+  case "$binding" in
+    ''|skill.*) return 1 ;;
+  esac
+  # A manifest task carries one representative binding for many declarations,
+  # so its kind says nothing about the work the provider will actually do.
+  ! rig_lifecycle_manifest "$provider" || return 1
+  rig_get_value "$binding" kind || return 1
+  kind=$RIG_VALUE
+  # A Mac App Store upgrade needs a person signed in to the App Store, which a
+  # run with nobody watching cannot supply.
+  [ "$kind" = mas ]
+}
+
+rig_write_last_run_report() {
+  local action status result detail summary rows state_home target staging observed
+
+  action=$1
+  status=$2
+  result=$3
+  detail=$4
+  summary=$5
+  rows=$6
+  rig_effective_state_home || return 0
+  state_home=$RIG_VALUE
+  target=$state_home/last-update
+  mkdir -p "$state_home" 2>/dev/null || return 0
+  [ -d "$state_home" ] || return 0
+  if [ -L "$target" ] || { [ -e "$target" ] && [ ! -f "$target" ]; }; then
+    printf 'rig: warning: last-run report target is not a regular file\n' >&2
+    return 0
+  fi
+  observed=$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null) || observed=
+  staging=$state_home/.last-update.$$
+  {
+    printf 'rig-last-run\t1\n'
+    printf 'action\t%s\n' "$action"
+    printf 'profile\t%s\n' "$RIG_RESOLVED_PROFILE"
+    printf 'platform\t%s\n' "$RIG_RESOLVED_PLATFORM"
+    printf 'finished\t%s\n' "$observed"
+    printf 'status\t%s\n' "$status"
+    printf 'result\t%s\n' "$result"
+    printf 'detail\t%s\n' "$detail"
+    printf 'summary\t%s\n' "$summary"
+    printf 'TARGET\tPROVIDER\tRESULT\tDETAIL\n'
+    [ -z "$rows" ] || printf '%s\n' "$rows"
+  } >"$staging" 2>/dev/null || { rm -f "$staging"; return 0; }
+  mv -f "$staging" "$target" 2>/dev/null || rm -f "$staging"
+  return 0
+}
+
 rig_run_lifecycle_tasks() {
   local action dry_run index label provider binding supported executable native_status progress_scope
   local planned completed failed unavailable skipped supported_total exit_code preflight_status
+  local rows row outcome_result outcome_detail summary preflight_executable
 
   action=$1
   dry_run=$2
@@ -651,9 +713,18 @@ rig_run_lifecycle_tasks() {
       RIG_LIFECYCLE_PREFLIGHT_SOFT=0
       case "$preflight_status" in
         0)
-          RIG_LIFECYCLE_EXECUTABLES[$index]=$RIG_VALUE
-          supported_total=$((supported_total + 1))
-          rig_progress_result succeeded "$label via $provider"
+          # The predicate reads configuration, so keep the resolved executable
+          # before anything else can overwrite RIG_VALUE.
+          preflight_executable=$RIG_VALUE
+          if [ "$RIG_UNATTENDED" -eq 1 ] && rig_lifecycle_requires_person "$provider" "$binding"; then
+            RIG_LIFECYCLE_EXECUTABLES[$index]=-
+            RIG_LIFECYCLE_DETAILS[$index]=interactive-required
+            rig_progress_result skipped "$label via $provider"
+          else
+            RIG_LIFECYCLE_EXECUTABLES[$index]=$preflight_executable
+            supported_total=$((supported_total + 1))
+            rig_progress_result succeeded "$label via $provider"
+          fi
           ;;
         1)
           RIG_LIFECYCLE_EXECUTABLES[$index]=-
@@ -676,6 +747,7 @@ rig_run_lifecycle_tasks() {
     maintain) printf 'Operation scope: provider-wide\n' ;;
   esac
   printf 'TARGET\tPROVIDER\tRESULT\tDETAIL\n'
+  rows=
   [ "$dry_run" -eq 1 ] || rig_progress_start "$action" "$supported_total"
   index=0
   while [ "$index" -lt "${#RIG_LIFECYCLE_KEYS[@]}" ]; do
@@ -684,15 +756,19 @@ rig_run_lifecycle_tasks() {
     binding=${RIG_LIFECYCLE_BINDINGS[$index]}
     supported=${RIG_LIFECYCLE_SUPPORTED[$index]}
     executable=${RIG_LIFECYCLE_EXECUTABLES[$index]}
+    row=
     if [ "$supported" -ne 1 ]; then
-      printf '%s\t%s\tskipped\tunsupported-%s\n' "$label" "$provider" "$action"
+      row=$(printf '%s\t%s\tskipped\tunsupported-%s' "$label" "$provider" "$action")
+      printf '%s\n' "$row"
       skipped=$((skipped + 1))
     elif [ -n "${RIG_LIFECYCLE_DETAILS[$index]-}" ]; then
-      printf '%s\t%s\tunavailable\t%s\n' "$label" "$provider" "${RIG_LIFECYCLE_DETAILS[$index]}"
+      row=$(printf '%s\t%s\tunavailable\t%s' "$label" "$provider" "${RIG_LIFECYCLE_DETAILS[$index]}")
+      printf '%s\n' "$row"
       unavailable=$((unavailable + 1))
       exit_code=1
     elif [ "$dry_run" -eq 1 ]; then
-      printf '%s\t%s\tplanned\t%s\n' "$label" "$provider" "$action"
+      row=$(printf '%s\t%s\tplanned\t%s' "$label" "$provider" "$action")
+      printf '%s\n' "$row"
       planned=$((planned + 1))
     else
       if [ "$action" = maintain ]; then
@@ -703,35 +779,52 @@ rig_run_lifecycle_tasks() {
         progress_scope=declaration
       fi
       rig_progress_begin "$label via $provider" "$progress_scope"
-      rig_execute_lifecycle_task "$action" "$provider" "$binding" "$executable"
+      # An unattended run must never block on a question, so a provider that
+      # asks one reads end-of-file and fails instead of hanging the job.
+      if [ "$RIG_UNATTENDED" -eq 1 ]; then
+        rig_execute_lifecycle_task "$action" "$provider" "$binding" "$executable" </dev/null
+      else
+        rig_execute_lifecycle_task "$action" "$provider" "$binding" "$executable"
+      fi
       native_status=$?
       if [ "$native_status" -eq 0 ]; then
-        printf '%s\t%s\tcompleted\t%s\n' "$label" "$provider" "$action"
+        row=$(printf '%s\t%s\tcompleted\t%s' "$label" "$provider" "$action")
+        printf '%s\n' "$row"
         completed=$((completed + 1))
         rig_progress_result succeeded "$label via $provider" "$progress_scope"
       else
-        printf '%s\t%s\tfailed\texit:%s\n' "$label" "$provider" "$native_status"
+        row=$(printf '%s\t%s\tfailed\texit:%s' "$label" "$provider" "$native_status")
+        printf '%s\n' "$row"
         failed=$((failed + 1))
         exit_code=1
         rig_progress_result failed "$label via $provider" "$progress_scope"
       fi
     fi
+    if [ "$RIG_UNATTENDED" -eq 1 ] && [ -n "$row" ]; then
+      rows="${rows}${row}"$'\n'
+    fi
     index=$((index + 1))
   done
   rig_progress_finish
-  printf 'Summary: planned=%s completed=%s failed=%s unavailable=%s skipped=%s\n' \
-    "$planned" "$completed" "$failed" "$unavailable" "$skipped"
+  summary="planned=$planned completed=$completed failed=$failed unavailable=$unavailable skipped=$skipped"
+  printf 'Summary: %s\n' "$summary"
   if [ "$exit_code" -eq 0 ]; then
-    rig_outcome_note succeeded "planned=$planned completed=$completed skipped=$skipped"
+    outcome_result=succeeded
+    outcome_detail="planned=$planned completed=$completed skipped=$skipped"
   else
-    rig_outcome_note incomplete \
-      "planned=$planned completed=$completed failed=$failed unavailable=$unavailable"
+    outcome_result=incomplete
+    outcome_detail="planned=$planned completed=$completed failed=$failed unavailable=$unavailable"
+  fi
+  rig_outcome_note "$outcome_result" "$outcome_detail"
+  if [ "$RIG_UNATTENDED" -eq 1 ] && [ "$dry_run" -ne 1 ]; then
+    rig_write_last_run_report "$action" "$exit_code" "$outcome_result" \
+      "$outcome_detail" "$summary" "${rows%$'\n'}"
   fi
   return "$exit_code"
 }
 
 rig_command_lifecycle() {
-  local action profile dry_run profile_seen dry_run_seen
+  local action profile dry_run profile_seen dry_run_seen unattended_seen usage
 
   action=$1
   shift
@@ -739,16 +832,19 @@ rig_command_lifecycle() {
   dry_run=0
   profile_seen=0
   dry_run_seen=0
+  unattended_seen=0
+  RIG_UNATTENDED=0
+  usage="usage: rig $action [--profile NAME] [--dry-run] [--unattended]"
   while [ "$#" -gt 0 ]; do
     case "$1" in
       -h|--help)
-        [ "$#" -eq 1 ] || { syntax_error "usage: rig $action [--profile NAME] [--dry-run]"; return; }
-        printf 'Usage: rig %s [--profile NAME] [--dry-run]\n' "$action"
+        [ "$#" -eq 1 ] || { syntax_error "$usage"; return; }
+        printf 'Usage: rig %s [--profile NAME] [--dry-run] [--unattended]\n' "$action"
         return
         ;;
       --profile)
         if [ "$profile_seen" -ne 0 ] || [ "$#" -lt 2 ] || [ -z "$2" ]; then
-          syntax_error "usage: rig $action [--profile NAME] [--dry-run]"
+          syntax_error "$usage"
           return
         fi
         profile=$2
@@ -757,14 +853,23 @@ rig_command_lifecycle() {
         ;;
       --dry-run)
         if [ "$dry_run_seen" -ne 0 ]; then
-          syntax_error "usage: rig $action [--profile NAME] [--dry-run]"
+          syntax_error "$usage"
           return
         fi
         dry_run=1
         dry_run_seen=1
         shift
         ;;
-      *) syntax_error "usage: rig $action [--profile NAME] [--dry-run]"; return ;;
+      --unattended)
+        if [ "$unattended_seen" -ne 0 ]; then
+          syntax_error "$usage"
+          return
+        fi
+        RIG_UNATTENDED=1
+        unattended_seen=1
+        shift
+        ;;
+      *) syntax_error "$usage"; return ;;
     esac
   done
   rig_resolve_operational_plan "$profile" || return

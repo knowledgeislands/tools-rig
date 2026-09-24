@@ -398,8 +398,8 @@ write_query_config() {
     'doctor [--profile NAME] [--format text|json]' \
     'apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]' \
     'bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]' \
-    'update [--profile NAME] [--dry-run]' \
-    'maintain [--profile NAME] [--dry-run]' \
+    'update [--profile NAME] [--dry-run] [--unattended]' \
+    'maintain [--profile NAME] [--dry-run] [--unattended]' \
     'capture PROVIDER [--dry-run]' \
     'run PROVIDER ACTION [-- ARGUMENT...]' \
     'export --profile NAME --output DIRECTORY [--title TEXT] [--base-url URL]' \
@@ -515,7 +515,7 @@ write_query_config() {
   [[ "$output" == *'doctor) COMPREPLY=($(compgen -W "-h --help --profile --format"'* ]] || false
   [[ "$output" == *'apply) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all"'* ]] || false
   [[ "$output" == *'bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all"'* ]] || false
-  [[ "$output" == *'update|maintain) COMPREPLY=($(compgen -W "-h --help --profile --dry-run"'* ]] || false
+  [[ "$output" == *'update|maintain) COMPREPLY=($(compgen -W "-h --help --profile --dry-run --unattended"'* ]] || false
   [[ "$output" == *'capture) COMPREPLY=($(compgen -W "-h --help --dry-run homebrew"'* ]] || false
   [[ "$output" == *'run) COMPREPLY=($(compgen -W "-h --help --"'* ]] || false
   [[ "$output" == *'export) COMPREPLY=($(compgen -W "-h --help --profile --output --title --base-url"'* ]] || false
@@ -535,7 +535,7 @@ write_query_config() {
   [[ "$output" == *"update:update selected provider-managed tools"* ]] || false
   [[ "$output" == *"maintain:run explicit selected-provider maintenance"* ]] || false
   [[ "$output" == *"capture:refresh one provider-native manifest"* ]] || false
-  [[ "$output" == *"update|maintain) _arguments"*"--profile[select profile]"*"--dry-run[print plan without invoking providers]"* ]] || false
+  [[ "$output" == *"update|maintain) _arguments"*"--profile[select profile]"*"--dry-run[print plan without invoking providers]"*"--unattended[run with nobody watching and record the outcome]"* ]] || false
   [[ "$output" == *"capture) _arguments"*"1:provider:(homebrew)"*"--dry-run[print plan without invoking provider]"* ]] || false
   [[ "$output" == *"export:generate public rig data"* ]] || false
   [[ "$output" == *"run:invoke a declared provider action"* ]] || false
@@ -617,8 +617,8 @@ write_query_config() {
   [[ "$output" == *"doctor:--help --profile"* ]] || false
   [[ "$output" == *"apply:--help --profile --scope --dry-run"* ]] || false
   [[ "$output" == *"bootstrap:--help --profile --scope --dry-run"* ]] || false
-  [[ "$output" == *"update:--help --profile --dry-run"* ]] || false
-  [[ "$output" == *"maintain:--help --profile --dry-run"* ]] || false
+  [[ "$output" == *"update:--help --profile --dry-run --unattended"* ]] || false
+  [[ "$output" == *"maintain:--help --profile --dry-run --unattended"* ]] || false
   [[ "$output" == *"capture:--help --dry-run"* ]] || false
  [[ "$output" == *"run:--help --"* ]] || false
   [[ "$output" == *"export:--help --profile --output --title --base-url"* ]] || false

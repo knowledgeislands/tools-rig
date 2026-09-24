@@ -4,12 +4,12 @@ area: CORE
 title: Schedule unattended updates
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: 27fced00b00fa7ab5adff6e7d7a9cf9a0e5999ff
 created_at: 2026-09-23T14:43:03Z
-updated_at: 2026-09-24T14:05:00Z
+updated_at: 2026-09-25T11:15:00Z
 ---
 
 ## Goal
@@ -46,15 +46,15 @@ Rig must not grow a scheduler. The scheduled job belongs in the person's own con
 
 ## Steps
 
-- [ ] Add `--unattended` to `rig update` and `rig maintain`, rejecting it alongside the existing option grammar.
-- [ ] Give every provider invocation in an unattended run stdin from `/dev/null`, and export `NONINTERACTIVE=1` for the Homebrew adapter.
-- [ ] Report a task that cannot proceed without a person as `unavailable` with a detail naming the reason, keeping the run's exit status at 1.
-- [ ] Write `${XDG_STATE_HOME}/rig/last-update` at the end of an unattended run, carrying the outcome line, the timestamp, and the per-task rows.
-- [ ] Add `RIG-STATE-030` stating the last-run report's location, shape, and stability.
-- [ ] Report an observed competing auto-update agent as doctor information.
-- [ ] Document the recipe: a `scheduled-job` resource whose program is `rig update --unattended`, and what to retire once it runs.
-- [ ] Reproject `man/rig.1`, `rig --help`, shell completion, `README.md`, and `CHANGELOG.md`.
-- [ ] Cover it in the tests: the flag's grammar, stdin isolation, the `unavailable` report, the written file's shape, and the doctor information.
+- [x] Add `--unattended` to `rig update` and `rig maintain`, rejecting it alongside the existing option grammar.
+- [x] Give every provider invocation in an unattended run stdin from `/dev/null`, and export `NONINTERACTIVE=1` for the Homebrew adapter.
+- [x] Report a task that cannot proceed without a person as `unavailable` with a detail naming the reason, keeping the run's exit status at 1.
+- [x] Write `${XDG_STATE_HOME}/rig/last-update` at the end of an unattended run, carrying the outcome line, the timestamp, and the per-task rows.
+- [x] Add `RIG-STATE-030` stating the last-run report's location, shape, and stability.
+- [x] Report an observed competing auto-update agent as doctor information.
+- [x] Document the recipe: a `scheduled-job` resource whose program is `rig update --unattended`, and what to retire once it runs.
+- [x] Reproject `man/rig.1`, `rig --help`, shell completion, `README.md`, and `CHANGELOG.md`.
+- [x] Cover it in the tests: the flag's grammar, stdin isolation, the `unavailable` report, the written file's shape, and the doctor information.
 
 ## Files touched
 
@@ -96,6 +96,57 @@ A new `docs/guides/user/unattended-updates.md` carries the recipe and the notifi
 ### Roadmap
 
 None expected.
+
+## Review
+
+### Delivered
+
+`rig update` and `rig maintain` accept `--unattended`. No other command does, no new command exists, and nothing schedules anything: the flag states that nobody is watching, and every behaviour it changes follows from that one fact.
+
+Within an unattended run, each provider invocation reads end-of-file rather than the terminal, and the Homebrew adapter is additionally told `NONINTERACTIVE=1`, which is Homebrew's own documented way of saying the same thing. Work that cannot proceed without a person — currently a Mac App Store upgrade, detected from the Homebrew `mas` kind — is reported `unavailable` with detail `interactive-required` before its provider is invoked; the rest of the run completes and the command returns 1, so the gap stays visible rather than being absorbed. Selection, ordering, dispatch, the per-task vocabulary, and the exit statuses are otherwise identical to an interactive run.
+
+A non-dry unattended run replaces `${XDG_STATE_HOME:-$HOME/.local/state}/rig/last-update` atomically. The report is tab-separated, opens with `rig-last-run` and its version, carries `action`, `profile`, `platform`, `finished`, `status`, `result`, `detail`, and `summary`, then the same `TARGET`/`PROVIDER`/`RESULT`/`DETAIL` rows the run printed. It carries no path, locator, argument, credential, or native provider output. Rig does not notify; the guide shows the wrapper that reads the file and does.
+
+`rig doctor` names an observed competing auto-update agent — Homebrew's `brew autoupdate` — as information alone, adding no finding and changing no exit status. A `provider.homebrew` `autoupdate-interval` declaration suppresses it, because that agent is then Rig's own rather than a competing one.
+
+### Change Summary
+
+- `src/rig/00-runtime.bash` — `RIG_UNATTENDED` state, the help tail, and `--unattended` in both bash and zsh completion for `update` and `maintain`.
+- `src/rig/40-publication-lifecycle.bash` — the flag's grammar and usage text, `rig_lifecycle_requires_person`, `rig_write_last_run_report`, stdin isolation at the single dispatch site, `NONINTERACTIVE=1` for Homebrew, and row capture for the report. Two fixes landed alongside: the preflight no longer loses its resolved executable when a Homebrew provider declares no manifest, and the needs-a-person predicate keeps the executable it found before reading configuration.
+- `src/rig/20-orchestration.bash` — `rig_doctor_competing_autoupdate` and its use in `rig_command_doctor`; the incompatible-tools scan no longer trips `set -u` on a configuration with no tools.
+- `bin/rig` — regenerated by `scripts/assemble-rig --write`.
+- `docs/specs/state.md` — `RIG-STATE-030`, the last-run report's location, shape, and stability.
+- `docs/specs/orchestration.md` — `RIG-ORCH-034`, the unattended execution contract.
+- `docs/guides/user/unattended-updates.md` (new), `docs/guides/README.md`, `docs/guides/user/README.md`, `docs/guides/user/commands.md`, `docs/guides/user/operational-resources.md`.
+- `man/rig.1`, `CHANGELOG.md`.
+- `tests/rig-lifecycle.bats` (five tests, plus `RIG_STATE_HOME` isolation for the whole file), `tests/rig-macos.bats` (one test), `tests/rig.bats` (four completion and synopsis assertions).
+
+### Verification
+
+- `ki repo audit --repo .` — PASS across 16 skills.
+- `shellcheck` and `bash -n` over `bin/rig`, `install.sh`, `src/rig/*.bash`, `scripts/assemble-rig`, `scripts/benchmark-rig`, `scripts/smoke-native-providers` — clean.
+- `scripts/assemble-rig --check`, `scripts/benchmark-rig`, `scripts/smoke-native-providers` — pass.
+- `mandoc -T lint man/rig.1` — clean.
+- `bats tests/` — the suite passes. One run reported `representative catalogue stays within the portable query guard` failing while the machine sat at load averages 16.66/22.14/35.75; re-running `tests/rig-performance.bats` on a quiet tree passed all three, which matches that test's own note about contention.
+- New tests cover the flag's grammar on `update` and `maintain` and its rejection everywhere else, stdin reaching end-of-file, `NONINTERACTIVE=1` reaching the Homebrew adapter, the `unavailable` report for a `mas` declaration, the written report's shape, the dry run writing nothing, an unsafe report target being left alone, and the doctor information appearing, disappearing when declared, and never printing a `LaunchAgents` path.
+
+### Outstanding concerns
+
+"Needs a person" is currently recognised only for the Homebrew `mas` kind. That is the case this item set out to solve and it is honest about what it detects, but any other provider that demands an interactive credential will fail on end-of-file rather than being reported `unavailable` ahead of time. A post-hoc non-zero exit is not distinguishable from an ordinary failure, so widening this needs another pre-emptive signal per provider, not a cleverer classifier.
+
+`tests/rig-lifecycle.bats` now pins `RIG_STATE_HOME` into a per-test directory. Eight other bats files do not, and an ambient `XDG_STATE_HOME` therefore still reaches them; no current test writes state, but the isolation gap is real and worth closing before one does.
+
+The scheduled job itself is the person's to install. Rig declares the resource kind and `rig apply` materialises it, but nothing in this repository installs a job on this machine — the chezmoi source owns that, as it owns every other host-state decision.
+
+### Post-change review
+
+The lifecycle path picked up two pre-existing bugs while this work was being tested, both from the same cause: `RIG_VALUE` is a single global return channel, so any helper called between a value being produced and being stored silently overwrites it. The preflight lost a Homebrew executable this way, and the new needs-a-person predicate would have lost it again. Both are fixed locally by keeping the value in a named local immediately, which is the right fix for each site, but the pattern will recur. A future item could give the lifecycle path its own return variables rather than sharing the one channel with configuration lookups.
+
+The report is written from `rig_run_lifecycle_tasks` rather than from a general outcome hook, so only lifecycle runs produce one. That is deliberate — `last-update` records a run that changed the machine — but if another command ever needs to record itself, the writer should move rather than be copied.
+
+### Mini recap
+
+One flag, two commands, and a file a wrapper can read. The scheduler stays outside Rig, the notification stays outside Rig, and what Rig owns is the honest report of what one pass actually did.
 
 ## Discussion
 

@@ -105,6 +105,7 @@ RIG_RECONCILIATION_LOCK=
 RIG_RECONCILIATION_LOCK_ACQUIRED=0
 RIG_BOOTSTRAP_ALLOW_DEFERRED_SKILLS=0
 RIG_LISTENER_OBSERVATION_AVAILABLE=0
+RIG_UNATTENDED=0
 
 print_help() {
   printf '%s\n' \
@@ -135,7 +136,8 @@ print_help() {
     '' \
     "Run 'rig COMMAND --help' for command usage." \
     '' \
-    'Interactive operations use an in-place progress bar on stderr.'
+    'Interactive operations use an in-place progress bar on stderr.' \
+    "Add '--unattended' to update or maintain when nobody is watching the run."
 }
 
 syntax_error() {
@@ -579,7 +581,7 @@ print_bash_completion() {
     '    doctor) COMPREPLY=($(compgen -W "-h --help --profile --format" -- "$current")) ;;' \
     '    apply) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all" -- "$current")) ;;' \
     '    bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all" -- "$current")) ;;' \
-    '    update|maintain) COMPREPLY=($(compgen -W "-h --help --profile --dry-run" -- "$current")) ;;' \
+    '    update|maintain) COMPREPLY=($(compgen -W "-h --help --profile --dry-run --unattended" -- "$current")) ;;' \
     '    capture) COMPREPLY=($(compgen -W "-h --help --dry-run homebrew" -- "$current")) ;;' \
     '    run) COMPREPLY=($(compgen -W "-h --help --" -- "$current")) ;;' \
     '    export) COMPREPLY=($(compgen -W "-h --help --profile --output --title --base-url" -- "$current")) ;;' \
@@ -629,7 +631,7 @@ print_zsh_completion() {
     "        doctor) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--format[select rendering]:format:(text json)' ;;" \
     "        apply) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--scope[select plan scope]:scope:(tools skills resources all)' '--dry-run[print plan without invoking providers]' ;;" \
     "        bootstrap) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--scope[select plan scope]:scope:(tools skills resources all)' '--dry-run[print plan without invoking providers]' ;;" \
-    "        update|maintain) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \
+    "        update|maintain) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' '--unattended[run with nobody watching and record the outcome]' ;;" \
     "        capture) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:provider:(homebrew)' '--dry-run[print plan without invoking provider]' ;;" \
     "        run) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:provider name:' '2:action name:' '3:separator:(--)' '*::action argument:' ;;" \
     "        export) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[project a declared view profile]:profile:' '--output[write complete public data tree]:directory:_directories' '--title[state a title for the exported document]:title:' '--base-url[state the canonical URL of the published document]:url:' ;;" \

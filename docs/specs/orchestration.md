@@ -354,3 +354,17 @@ _Conformance:_ conforming
 _Verify:_ Bats supplies two uv tools whose exact native observation command is identical, proves one invocation, and verifies independent exact-identity results for both tools.
 
 _Evidence:_ `rig_capture_observation_invocation` keys the command-local snapshot by executable and length-delimited literal arguments; `tests/rig-performance.bats` covers reuse and per-tool interpretation.
+
+### RIG-ORCH-034 — Unattended lifecycle execution
+
+`rig update` and `rig maintain` MUST accept `--unattended`, and no other command may. The flag MUST NOT change target selection, dependency order, dispatch, the per-task outcome vocabulary, or the exit statuses an interactive run returns.
+
+An unattended run MUST NOT be able to block on a question. Every provider invocation MUST take its standard input from `/dev/null`, and Rig MUST export `NONINTERACTIVE=1` for the Homebrew adapter, which is Homebrew's own way of stating the same fact. A task that cannot proceed without a person MUST be reported `unavailable` with a detail naming the reason, before its provider is invoked; Rig MUST NOT invent a further outcome for it, and the run MUST return 1 so the remaining independent work is still attempted and still reported.
+
+Rig MUST NOT schedule the run, notify anyone about it, or acquire a runtime dependency in order to do either. A person schedules it by declaring a `scheduled-job` resource whose program is `rig update --unattended`, and a wrapper reads the report under [RIG-STATE-030](state.md#rig-state-030--unattended-last-run-report). Rig MUST report an observed competing auto-update agent it did not declare as doctor information only, and MUST NOT install, modify, or remove it.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats asserts the flag's grammar on both commands and its rejection elsewhere, proves a provider reading standard input reports `unavailable` or fails rather than blocking, covers a task needing a person, and asserts the doctor information line leaves the exit status unchanged.
+
+_Evidence:_ `rig_command_lifecycle`, `rig_lifecycle_requires_person`, `rig_run_lifecycle_tasks`, `rig_execute_lifecycle_task`, and `rig_doctor_competing_autoupdate` implement it; `tests/rig-lifecycle.bats` and `tests/rig.bats` verify it.

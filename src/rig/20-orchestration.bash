@@ -3402,6 +3402,22 @@ rig_doctor_path_finding() {
   return 1
 }
 
+rig_doctor_competing_autoupdate() {
+  local platform declared
+
+  platform=$1
+  RIG_VALUE=
+  [ "$platform" = macos ] || return 0
+  [ -n "${HOME:-}" ] || return 0
+  [ -f "$HOME/Library/LaunchAgents/com.github.domt4.homebrew-autoupdate.plist" ] || return 0
+  declared=0
+  ! rig_get_value provider.homebrew autoupdate-interval || declared=1
+  # A declared interval is Rig's own agent; an undeclared one advances Homebrew
+  # alone on a private timer, which is the person's call to keep or retire.
+  [ "$declared" -eq 0 ] || { RIG_VALUE=; return 0; }
+  RIG_VALUE='  homebrew: autoupdate-agent; owner=homebrew; action=none'
+}
+
 rig_doctor_incompatible_tools() {
   local profile platform index tool count information
   local -a tools
@@ -3411,7 +3427,7 @@ rig_doctor_incompatible_tools() {
   count=0
   information=
   rig_collect_section_ids tool
-  tools=("${RIG_QUERY_ITEMS[@]}")
+  tools=("${RIG_QUERY_ITEMS[@]+"${RIG_QUERY_ITEMS[@]}"}")
   index=0
   while [ "$index" -lt "${#tools[@]}" ]; do
     tool=${tools[$index]}
@@ -3655,6 +3671,14 @@ rig_command_doctor() {
   rig_doctor_incompatible_tools "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   incompatible=$RIG_COUNT
   information=$RIG_VALUE
+  rig_doctor_competing_autoupdate "$RIG_RESOLVED_PLATFORM"
+  if [ -n "$RIG_VALUE" ]; then
+    if [ -n "$information" ]; then
+      information="${information}"$'\n'"$RIG_VALUE"
+    else
+      information=$RIG_VALUE
+    fi
+  fi
   if [ "$format" = json ]; then
     rig_json_envelope doctor
     [ "$findings" -eq 0 ] && state=true || state=false

@@ -186,3 +186,28 @@ run_rig() {
   [[ "$output" == *'/Native.app'*'macos-applications'*'unmanaged'*'native'* ]] || false
   [[ "$output" != *'Mobile.app'* ]] || false
 }
+
+@test "doctor names a competing Homebrew auto-update agent as information alone" {
+  run_rig doctor
+
+  [ "$status" -eq 1 ] || { printf '%s\n' "$output" >&3; false; }
+  [[ "$output" != *'autoupdate-agent'* ]] || false
+  [[ "$output" == *'Summary: findings=2'* ]] || false
+
+  mkdir -p "$TEST_HOME/Library/LaunchAgents"
+  : >"$TEST_HOME/Library/LaunchAgents/com.github.domt4.homebrew-autoupdate.plist"
+
+  run_rig doctor
+
+  [ "$status" -eq 1 ] || { printf '%s\n' "$output" >&3; false; }
+  [[ "$output" == *'homebrew: autoupdate-agent; owner=homebrew; action=none'* ]] || false
+  [[ "$output" == *'Summary: findings=2'* ]] || false
+  [[ "$output" != *'LaunchAgents'* ]] || false
+
+  printf '%s\n' '' '[provider.homebrew]' 'autoupdate-interval = 86400' >>"$CONFIG_HOME/rig.toml"
+
+  run_rig doctor
+
+  [ "$status" -eq 1 ] || { printf '%s\n' "$output" >&3; false; }
+  [[ "$output" != *'autoupdate-agent'* ]] || false
+}

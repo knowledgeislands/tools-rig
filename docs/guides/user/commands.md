@@ -11,8 +11,8 @@ Rig's commands follow a deliberate progression from understanding declared inten
 - `rig doctor [--profile NAME] [--format text|json]`
 - `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]`
 - `rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]`
-- `rig update [--profile NAME] [--dry-run]`
-- `rig maintain [--profile NAME] [--dry-run]`
+- `rig update [--profile NAME] [--dry-run] [--unattended]`
+- `rig maintain [--profile NAME] [--dry-run] [--unattended]`
 - `rig capture PROVIDER [--dry-run]`
 - `rig run PROVIDER ACTION [-- ARGUMENT...]`
 - `rig export --profile NAME --output DIRECTORY [--title TEXT] [--base-url URL]`
@@ -81,13 +81,15 @@ Both commands preflight the selected plan before the first mutation. A shared sa
 
 Reconciliation makes declared intent present. It does not silently upgrade every tool, run package-manager maintenance, or rewrite a native manifest. Those changes are explicit:
 
-- `rig update [--profile NAME] [--dry-run]` advances selected tools through supported native managers.
-- `rig maintain [--profile NAME] [--dry-run]` runs one bounded maintenance operation for each supported selected provider.
+- `rig update [--profile NAME] [--dry-run] [--unattended]` advances selected tools through supported native managers.
+- `rig maintain [--profile NAME] [--dry-run] [--unattended]` runs one bounded maintenance operation for each supported selected provider.
 - `rig capture PROVIDER [--dry-run]` deliberately refreshes a supported provider-native manifest.
 
 Use dry run first. These commands have broader provider effects than applying one declaration, and Rig reports whether each operation has declaration, manifest, or provider-wide scope.
 
 Update and maintenance work is independent per target, so one target Rig cannot advance does not stop the others. A target whose native manager is not installed is reported as `unavailable` with the reason, is never invoked, and leaves the rest of the run to complete; the command then returns 1 so the gap stays visible. Install the missing manager — usually with `rig apply` — and run the command again.
+
+`--unattended` states that nobody is watching. No provider can ask a question, work that needs a person is reported `unavailable` before it is invoked, and the run records what happened where a wrapper can read it. See [Update without watching](unattended-updates.md).
 
 ## Run a bounded provider action
 

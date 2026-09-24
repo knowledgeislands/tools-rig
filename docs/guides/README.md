@@ -12,7 +12,8 @@ Start with the [user-guide journey](user/README.md). It begins with a small cata
 4. [Manage operational resources and private ports](user/operational-resources.md) — add services, scheduled jobs, typed settings, Dock layouts, and listener intent.
 5. [Manage user-level skills](user/skills.md) — declare agent capabilities and their native authorities without copying instruction content into Rig.
 6. [Run external provider actions](user/provider-actions.md) — add a bounded host-specific extension only when the native Rig model does not fit.
-7. [Export a public rig](user/exporting.md) — project a deliberately public view as data a site can consume.
+7. [Update without watching](user/unattended-updates.md) — schedule one pass that advances every declared manager and records what happened.
+8. [Export a public rig](user/exporting.md) — project a deliberately public view as data a site can consume.
 
 For exhaustive syntax and provider matrices, use `man rig`. The guides focus on completing user outcomes rather than restating the reference contract.
 

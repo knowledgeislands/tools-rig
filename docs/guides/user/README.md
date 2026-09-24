@@ -14,7 +14,7 @@ The normal progression is:
 4. **Observe** expected versus actual machine state with `rig doctor` and `rig status`.
 5. **Preview** the complete plan with `rig apply --dry-run`.
 6. **Materialise** an operable complete profile with `rig apply` or the native `rig bootstrap` lifecycle.
-7. **Advance** provider-managed state deliberately with dry-run-first `rig update`, `rig maintain`, or `rig capture`.
+7. **Advance** provider-managed state deliberately with dry-run-first `rig update`, `rig maintain`, or `rig capture`, scheduling `rig update --unattended` once that loop is familiar.
 8. **Export** only a deliberately selected public view, offline, with `rig export`, and deploy it from the consuming side.
 
 Inspection precedes mutation. Declaration queries do not invoke providers, and dry-run commands do not apply provider changes.
@@ -29,7 +29,8 @@ Follow these guides in order until you have what you need:
 4. [Manage operational resources and private ports](operational-resources.md) adds machine-level desired state after the tool catalogue is clear.
 5. [Manage user-level skills](skills.md) adds agent capabilities while preserving their native ownership and trust boundary.
 6. [Run external provider actions](provider-actions.md) covers the exceptional host-specific work that cannot be expressed declaratively.
-7. [Export a public rig](exporting.md) creates a private-by-default data projection for a site such as `rig.midnight.ninja`.
+7. [Update without watching](unattended-updates.md) replaces each manager's private timer with one scheduled pass that reports one outcome.
+8. [Export a public rig](exporting.md) creates a private-by-default data projection for a site such as `rig.midnight.ninja`.
 
 Use `man rig` when you need the complete schema, provider support matrix, environment variables, exit statuses, or extension protocol.
 

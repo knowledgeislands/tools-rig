@@ -7,6 +7,7 @@ setup() {
   FAKE_BIN=$BATS_TEST_TMPDIR/bin-$BATS_TEST_NUMBER
   CALL_LOG=$BATS_TEST_TMPDIR/calls-$BATS_TEST_NUMBER
   MANIFEST=$BATS_TEST_TMPDIR/Brewfile-$BATS_TEST_NUMBER
+  STATE_HOME=$BATS_TEST_TMPDIR/state-$BATS_TEST_NUMBER
   mkdir -p "$CONFIG_HOME" "$TEST_HOME" "$FAKE_BIN"
   : >"$MANIFEST"
   write_fake_provider brew
@@ -116,8 +117,8 @@ EOF
 }
 
 run_rig() {
-  env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=fixture \
-    RIG_TEST_LOG="$CALL_LOG" PATH="$FAKE_BIN:$PATH" "$RIG" "$@"
+  env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$STATE_HOME" \
+    RIG_PLATFORM=fixture RIG_TEST_LOG="$CALL_LOG" PATH="$FAKE_BIN:$PATH" "$RIG" "$@"
 }
 
 @test "mise and npm are implicit built-in installation providers" {
@@ -222,4 +223,144 @@ run_rig() {
   grep -Fqx $'mise\tupgrade node' "$CALL_LOG"
   grep -Fqx $'npm\tinstall --global typescript' "$CALL_LOG"
   [ "$(grep -Fc uv "$CALL_LOG")" -eq 0 ]
+}
+
+@test "an unattended update never blocks on a question and states the manager it isolated" {
+  cat >"$FAKE_BIN/uv" <<'SCRIPT'
+#!/usr/bin/env bash
+printf 'uv\t%s\n' "$*" >>"$RIG_TEST_LOG"
+if [ "$1" = tool ] && [ "$2" = upgrade ]; then
+  if IFS= read -r answer; then
+    printf 'uv-stdin\t%s\n' "$answer" >>"$RIG_TEST_LOG"
+  else
+    printf 'uv-stdin\tend-of-file\n' >>"$RIG_TEST_LOG"
+    exit 3
+  fi
+fi
+SCRIPT
+  chmod +x "$FAKE_BIN/uv"
+  cat >"$FAKE_BIN/brew" <<'SCRIPT'
+#!/usr/bin/env bash
+printf 'brew\t%s\n' "$*" >>"$RIG_TEST_LOG"
+printf 'brew-noninteractive\t%s\n' "${NONINTERACTIVE:-unset}" >>"$RIG_TEST_LOG"
+SCRIPT
+  chmod +x "$FAKE_BIN/brew"
+
+  run run_rig update --unattended </dev/null
+
+  [ "$status" -eq 1 ] || { printf '%s\n' "$output" >&3; false; }
+  grep -Fqx $'uv-stdin\tend-of-file' "$CALL_LOG"
+  grep -Fqx $'brew-noninteractive\t1' "$CALL_LOG"
+  [[ "$output" == *$'ruff\tuv\tfailed\texit:3'* ]] || false
+  [[ "$output" == *$'node\tmise\tcompleted\tupdate'* ]] || false
+}
+
+@test "an unattended run records its outcome where a wrapper can read it" {
+  run run_rig update --unattended </dev/null
+
+  [ "$status" -eq 0 ] || { printf '%s\n' "$output" >&3; false; }
+  report=$STATE_HOME/last-update
+  [ -f "$report" ] || false
+  grep -Fqx $'rig-last-run\t1' "$report"
+  grep -Fqx $'action\tupdate' "$report"
+  grep -Fqx $'profile\tdefault' "$report"
+  grep -Fqx $'platform\tfixture' "$report"
+  grep -Fqx $'status\t0' "$report"
+  grep -Fqx $'result\tsucceeded' "$report"
+  grep -Fqx $'summary\tplanned=0 completed=4 failed=0 unavailable=0 skipped=1' "$report"
+  grep -Fqx $'TARGET\tPROVIDER\tRESULT\tDETAIL' "$report"
+  grep -Fqx $'ruff\tuv\tcompleted\tupdate' "$report"
+  grep -Fqx $'dotfiles\tchezmoi\tskipped\tunsupported-update' "$report"
+  grep -Eq '^finished\t[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$' "$report"
+  [ "$(grep -Fc $'rig-last-run' "$report")" -eq 1 ]
+  ! grep -Fq "$MANIFEST" "$report" || false
+}
+
+@test "an unattended dry run records nothing and an unsafe report target is left alone" {
+  run run_rig update --unattended --dry-run </dev/null
+
+  [ "$status" -eq 0 ]
+  [ ! -e "$STATE_HOME/last-update" ] || false
+
+  mkdir -p "$STATE_HOME/last-update"
+
+  run run_rig update --unattended </dev/null
+
+  [ "$status" -eq 0 ]
+  [ -d "$STATE_HOME/last-update" ] || false
+  [[ "$output" == *'last-run report target is not a regular file'* ]] || false
+}
+
+@test "an unattended update reports work needing a person as unavailable" {
+  cat >"$CONFIG_HOME/rig.toml" <<EOF
+[rig]
+schema = 1
+default-profile = "default"
+
+[category.core]
+name = "Core"
+purpose = "Exercise provider lifecycle"
+
+[tool.store-app]
+name = "Store App"
+category = "core"
+purpose = "Exercise a Mac App Store lifecycle"
+rationale = "An App Store upgrade needs a person signed in"
+platforms = ["any"]
+install.provider = "homebrew"
+install.kind = "mas"
+install.locator = "497799835"
+install.platforms = ["any"]
+
+[tool.ruff]
+name = "Ruff"
+category = "core"
+purpose = "Exercise uv lifecycle"
+rationale = "The fixture proves independent work still advances"
+platforms = ["any"]
+install.provider = "uv"
+install.kind = "tool"
+install.locator = "ruff"
+install.platforms = ["any"]
+
+[profile.default]
+tools = ["store-app", "ruff"]
+EOF
+
+  write_fake_provider mas
+
+  run run_rig update --unattended </dev/null
+
+  [ "$status" -eq 1 ] || { printf '%s\n' "$output" >&3; false; }
+  [[ "$output" == *$'store-app\thomebrew\tunavailable\tinteractive-required'* ]] || false
+  [[ "$output" == *$'ruff\tuv\tcompleted\tupdate'* ]] || false
+  [ "$(grep -Fc mas "$CALL_LOG")" -eq 0 ]
+  grep -Fqx $'store-app\thomebrew\tunavailable\tinteractive-required' \
+    "$STATE_HOME/last-update"
+
+  run run_rig update </dev/null
+
+  [ "$status" -eq 0 ] || { printf '%s\n' "$output" >&3; false; }
+  [[ "$output" == *$'store-app\thomebrew\tcompleted\tupdate'* ]] || false
+  grep -Fqx $'mas\tupgrade 497799835' "$CALL_LOG"
+}
+
+@test "unattended belongs to update and maintain alone" {
+  run run_rig maintain --unattended --dry-run </dev/null
+
+  [ "$status" -eq 0 ]
+
+  run run_rig update --unattended --unattended </dev/null
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'usage: rig update [--profile NAME] [--dry-run] [--unattended]'* ]] || false
+
+  run run_rig apply --unattended </dev/null
+
+  [ "$status" -eq 2 ]
+
+  run run_rig update --help </dev/null
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == 'Usage: rig update [--profile NAME] [--dry-run] [--unattended]' ]] || false
 }
