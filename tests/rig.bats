@@ -369,16 +369,16 @@ write_query_config() {
   run "$RIG" --help
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Usage: rig [options] [command]"* ]]
-  [[ "$output" == *"Print the Rig release or development version."* ]]
-  [[ "$output" == *"Describe and manage a person's working setup."* ]]
+  [[ "$output" == *"Usage: rig [options] [command]"* ]] || false
+  [[ "$output" == *"Print the Rig release or development version."* ]] || false
+  [[ "$output" == *"Describe and manage a person's working setup."* ]] || false
   for command in show list explain status doctor apply bootstrap update maintain capture run export publish clean diag completion help; do
     [[ "$output" == *"  $command"* ]] || false
   done
-  [[ "$output" != *"paths"* ]]
-  [[ "$output" == *$'  show        Describe a resolved profile.'* ]]
-  [[ "$output" == *$'  completion  Print shell completion source.'* ]]
-  [[ "$output" == *"Run 'rig COMMAND --help' for command usage."* ]]
+  [[ "$output" != *"paths"* ]] || false
+  [[ "$output" == *$'  show        Describe a resolved profile with tools and skills.'* ]] || false
+  [[ "$output" == *$'  completion  Print shell completion source.'* ]] || false
+  [[ "$output" == *"Run 'rig COMMAND --help' for command usage."* ]] || false
 }
 
 @test "public command inventory stays aligned across documentation" {
@@ -437,7 +437,7 @@ write_query_config() {
     run "$RIG" help "$flag"
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Usage: rig [options] [command]"* ]]
+    [[ "$output" == *"Usage: rig [options] [command]"* ]] || false
   done
 }
 
@@ -487,11 +487,11 @@ write_query_config() {
     "$RIG" diag
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"  Config home: /tmp/rig-config/rig"* ]]
-  [[ "$output" == *"  Data home: /tmp/rig-data/rig"* ]]
-  [[ "$output" == *"  State home: /tmp/rig-state/rig"* ]]
-  [[ "$output" == *"  Cache home: /tmp/rig-cache/rig"* ]]
-  [[ "$output" == *"  Root config: /tmp/rig-config/rig/rig.toml"* ]]
+  [[ "$output" == *"  Config home: /tmp/rig-config/rig"* ]] || false
+  [[ "$output" == *"  Data home: /tmp/rig-data/rig"* ]] || false
+  [[ "$output" == *"  State home: /tmp/rig-state/rig"* ]] || false
+  [[ "$output" == *"  Cache home: /tmp/rig-cache/rig"* ]] || false
+  [[ "$output" == *"  Root config: /tmp/rig-config/rig/rig.toml"* ]] || false
 }
 
 @test "Rig diagnostic path overrides take precedence" {
@@ -504,20 +504,20 @@ write_query_config() {
     "$RIG" diag
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"  Config home: /tmp/custom-config"* ]]
-  [[ "$output" == *"  Data home: /tmp/custom-data"* ]]
-  [[ "$output" == *"  State home: /tmp/custom-state"* ]]
-  [[ "$output" == *"  Cache home: /tmp/custom-cache"* ]]
-  [[ "$output" == *"  Root config: /tmp/custom-config/rig.toml"* ]]
+  [[ "$output" == *"  Config home: /tmp/custom-config"* ]] || false
+  [[ "$output" == *"  Data home: /tmp/custom-data"* ]] || false
+  [[ "$output" == *"  State home: /tmp/custom-state"* ]] || false
+  [[ "$output" == *"  Cache home: /tmp/custom-cache"* ]] || false
+  [[ "$output" == *"  Root config: /tmp/custom-config/rig.toml"* ]] || false
 }
 
 @test "completion emits shell registration" {
   run "$RIG" completion bash
   [ "$status" -eq 0 ]
-  [[ "$output" == *"complete -F _rig rig"* ]]
+  [[ "$output" == *"complete -F _rig rig"* ]] || false
   [[ "$output" == *"-h --help -V --version show list explain status doctor apply bootstrap update maintain capture run export publish clean diag completion help"* ]] || false
-  [[ "$output" == *'show) COMPREPLY=($(compgen -W "-h --help --profile"'* ]]
-  [[ "$output" == *'explain) COMPREPLY=($(compgen -W "-h --help"'* ]]
+  [[ "$output" == *'show) COMPREPLY=($(compgen -W "-h --help --profile"'* ]] || false
+  [[ "$output" == *'explain) COMPREPLY=($(compgen -W "-h --help"'* ]] || false
   [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile --unmanaged --format"'* ]] || false
   [[ "$output" == *'doctor) COMPREPLY=($(compgen -W "-h --help --profile --format"'* ]] || false
   [[ "$output" == *'apply) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all"'* ]] || false
@@ -531,15 +531,15 @@ write_query_config() {
   [[ "$output" == *'completion) COMPREPLY=($(compgen -W "-h --help bash zsh"'* ]] || false
   [[ "$output" == *'help) COMPREPLY=($(compgen -W "-h --help"'* ]] || false
   [[ "$output" == *"show list explain status doctor apply bootstrap update maintain capture run export publish clean diag completion help"* ]] || false
-  [[ "$output" != *" paths "* ]]
+  [[ "$output" != *" paths "* ]] || false
 
   run "$RIG" completion zsh
   [ "$status" -eq 0 ]
-  [[ "$output" == *"#compdef rig"* ]]
-  [[ "$output" == *"compdef _rig rig"* ]]
-  [[ "$output" == *"show:describe a resolved profile"* ]]
-  [[ "$output" == *"diag:print runtime and configuration diagnostics"* ]]
-  [[ "$output" == *"doctor:check whether Rig can operate"* ]]
+  [[ "$output" == *"#compdef rig"* ]] || false
+  [[ "$output" == *"compdef _rig rig"* ]] || false
+  [[ "$output" == *"show:describe a resolved profile"* ]] || false
+  [[ "$output" == *"diag:print runtime and configuration diagnostics"* ]] || false
+  [[ "$output" == *"doctor:check whether Rig can operate"* ]] || false
   [[ "$output" == *"bootstrap:materialise the bootstrap profile"* ]] || false
   [[ "$output" == *"update:update selected provider-managed tools"* ]] || false
   [[ "$output" == *"maintain:run explicit selected-provider maintenance"* ]] || false
@@ -550,12 +550,12 @@ write_query_config() {
   [[ "$output" == *"publish:publish public rig data"* ]] || false
   [[ "$output" == *"run:invoke a declared provider action"* ]] || false
   [[ "$output" == *"run) _arguments"*"'3:separator:(--)'"* ]] || false
-  [[ "$output" == *"'(-V --version)'{-V,--version}"* ]]
+  [[ "$output" == *"'(-V --version)'{-V,--version}"* ]] || false
 
-  [[ "$output" == *"[print the Rig release or development version]"* ]]
-  [[ "$output" == *"explain) _arguments '(-h --help)'"* ]]
-  [[ "$output" == *"completion) _arguments '(-h --help)'"* ]]
-  [[ "$output" == *"help) _arguments '(-h --help)'"* ]]
+  [[ "$output" == *"[print the Rig release or development version]"* ]] || false
+  [[ "$output" == *"explain) _arguments '(-h --help)'"* ]] || false
+  [[ "$output" == *"completion) _arguments '(-h --help)'"* ]] || false
+  [[ "$output" == *"help) _arguments '(-h --help)'"* ]] || false
 }
 
 @test "completion definitions evaluate and expose accepted options" {
@@ -624,9 +624,9 @@ write_query_config() {
  ' bash "$RIG"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"root:--help --version"* ]]
-  [[ "$output" == *"show:--help --profile"* ]]
-  [[ "$output" == *"explain:--help"* ]]
+  [[ "$output" == *"root:--help --version"* ]] || false
+  [[ "$output" == *"show:--help --profile"* ]] || false
+  [[ "$output" == *"explain:--help"* ]] || false
   [[ "$output" == *"status:--help --profile"* ]] || false
   [[ "$output" == *"doctor:--help --profile"* ]] || false
   [[ "$output" == *"apply:--help --profile --scope --dry-run"* ]] || false
@@ -643,7 +643,7 @@ write_query_config() {
   run zsh -f -c '
     autoload -Uz compinit && compinit -C
     eval "$("$1" completion zsh)"
-    [[ ${_comps[rig]} == _rig ]]
+    [[ ${_comps[rig]} == _rig ]] || false
   ' zsh "$RIG"
 
   [ "$status" -eq 0 ]
@@ -680,10 +680,10 @@ write_query_config() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=fixture "$RIG" diag
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"  Status: invalid"* ]]
-  [[ "$output" != *"  Schema:"* ]]
-  [[ "$output" != *"  Default profile:"* ]]
-  [[ "$output" != *"rig: error:"* ]]
+  [[ "$output" == *"  Status: invalid"* ]] || false
+  [[ "$output" != *"  Schema:"* ]] || false
+  [[ "$output" != *"  Default profile:"* ]] || false
+  [[ "$output" != *"rig: error:"* ]] || false
 }
 
 @test "diag validates configuration without invoking providers" {
@@ -692,7 +692,7 @@ write_query_config() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" diag
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"  Status: valid"* ]]
+  [[ "$output" == *"  Status: valid"* ]] || false
   [ ! -e "$QUERY_MARKER" ]
 }
 
@@ -705,7 +705,7 @@ write_query_config() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=fixture "$link_dir/rig" diag
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"  Executable: $link_dir/rig"* ]]
+  [[ "$output" == *"  Executable: $link_dir/rig"* ]] || false
 }
 
 @test "diag help succeeds without configuration and paths is removed" {
@@ -719,12 +719,12 @@ write_query_config() {
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" diag extra
   [ "$status" -eq 2 ]
-  [[ "$output" == *"rig: error: usage: rig diag"* ]]
-  [[ "$output" != *"cannot read configuration file"* ]]
+  [[ "$output" == *"rig: error: usage: rig diag"* ]] || false
+  [[ "$output" != *"cannot read configuration file"* ]] || false
 
   run "$RIG" paths
   [ "$status" -eq 2 ]
-  [[ "$output" == *"rig: error: unknown command: paths"* ]]
+  [[ "$output" == *"rig: error: unknown command: paths"* ]] || false
 }
 
 @test "show describes default and named resolved profiles deterministically" {
@@ -753,7 +753,7 @@ write_query_config() {
 
   [ "$status" -eq 0 ]
   [ "${#lines[5]}" -eq 120 ]
-  [[ "${lines[5]}" == *... ]]
+  [[ "${lines[5]}" == *... ]] || false
 }
 
 @test "queries reject an unknown detected platform unless explicitly overridden" {
@@ -763,7 +763,7 @@ write_query_config() {
     "$RIG" show
 
   [ "$status" -eq 2 ]
-  [[ "$output" == *"rig: error: unsupported platform 'unrecognised'"* ]]
+  [[ "$output" == *"rig: error: unsupported platform 'unrecognised'"* ]] || false
 }
 
 @test "list narrows stable catalogue output by category and resolved profile" {
@@ -811,7 +811,7 @@ write_query_config() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" explain git
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Profiles: default (inherited), focused (required), knowledge-islands (inherited), minimal (direct)"* ]]
+  [[ "$output" == *"Profiles: default (inherited), focused (required), knowledge-islands (inherited), minimal (direct)"* ]] || false
 }
 
 @test "source configuration rejects former binding tables before writing stdout" {
@@ -832,7 +832,7 @@ write_query_config() {
   [ "$status" -eq 2 ]
   [ "$output" = "" ]
   error_output=$(<"$error_file")
-  [[ "$error_output" == *"invalid section identity [binding.mgit.second]"* ]]
+  [[ "$error_output" == *"invalid section identity [binding.mgit.second]"* ]] || false
 }
 
 @test "catalogue queries never invoke a configured provider" {
@@ -852,15 +852,15 @@ write_query_config() {
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" list --category absent
   [ "$status" -eq 2 ]
-  [[ "$output" == *"rig: error: unknown category 'absent'"* ]]
+  [[ "$output" == *"rig: error: unknown category 'absent'"* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" show --profile absent
   [ "$status" -eq 2 ]
-  [[ "$output" == *"rig: error: unknown profile 'absent'"* ]]
+  [[ "$output" == *"rig: error: unknown profile 'absent'"* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" explain absent
   [ "$status" -eq 2 ]
-  [[ "$output" == *"rig: error: unknown tool 'absent'"* ]]
+  [[ "$output" == *"rig: error: unknown tool 'absent'"* ]] || false
   [ ! -e "$QUERY_MARKER" ]
 }
 
@@ -869,31 +869,31 @@ write_query_config() {
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" "$RIG" show --profile
   [ "$status" -eq 2 ]
-  [[ "$output" == *"rig: error: usage: rig show [--profile NAME]"* ]]
+  [[ "$output" == *"rig: error: usage: rig show [--profile NAME]"* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" "$RIG" list --category navigation --category foundation
   [ "$status" -eq 2 ]
-  [[ "$output" == *"rig: error: usage: rig list [--category ID] [--profile NAME]"* ]]
+  [[ "$output" == *"rig: error: usage: rig list [--category ID] [--profile NAME]"* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" "$RIG" explain mgit extra
   [ "$status" -eq 2 ]
-  [[ "$output" == *"rig: error: usage: rig explain TOOL"* ]]
+  [[ "$output" == *"rig: error: usage: rig explain TOOL"* ]] || false
 
   missing_config=$BATS_TEST_TMPDIR/missing-config-$BATS_TEST_NUMBER
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" show --profile ""
   [ "$status" -eq 2 ]
-  [[ "$output" == *"rig: error: usage: rig show [--profile NAME]"* ]]
-  [[ "$output" != *"cannot read configuration file"* ]]
+  [[ "$output" == *"rig: error: usage: rig show [--profile NAME]"* ]] || false
+  [[ "$output" != *"cannot read configuration file"* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" list --category ""
   [ "$status" -eq 2 ]
-  [[ "$output" == *"rig: error: usage: rig list [--category ID] [--profile NAME]"* ]]
-  [[ "$output" != *"cannot read configuration file"* ]]
+  [[ "$output" == *"rig: error: usage: rig list [--category ID] [--profile NAME]"* ]] || false
+  [[ "$output" != *"cannot read configuration file"* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" list --profile ""
   [ "$status" -eq 2 ]
-  [[ "$output" == *"rig: error: usage: rig list [--category ID] [--profile NAME]"* ]]
-  [[ "$output" != *"cannot read configuration file"* ]]
+  [[ "$output" == *"rig: error: usage: rig list [--category ID] [--profile NAME]"* ]] || false
+  [[ "$output" != *"cannot read configuration file"* ]] || false
 }
 
 @test "catalogue commands provide local help without loading configuration" {
@@ -966,7 +966,7 @@ write_query_config() {
     "$BATS_TEST_DIRNAME/../install.sh"
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"download failed: "*"/man/rig.1"* ]]
+  [[ "$output" == *"download failed: "*"/man/rig.1"* ]] || false
   [ "$(cat "$install_bin/rig")" = old-rig ]
   [ "$(cat "$install_man/rig.1")" = old-man ]
 
@@ -981,7 +981,7 @@ write_query_config() {
     "$BATS_TEST_DIRNAME/../install.sh"
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"downloaded file is not the Rig manual"* ]]
+  [[ "$output" == *"downloaded file is not the Rig manual"* ]] || false
   [ "$(cat "$install_bin/rig")" = old-rig ]
   [ "$(cat "$install_man/rig.1")" = old-man ]
 
@@ -1083,13 +1083,13 @@ write_query_config() {
     RIG_MAN_INSTALL_DIR=$install_man RIG_TEST_CURL_MARKER=$curl_marker \
     "$BATS_TEST_DIRNAME/../install.sh" 1.2.3
   [ "$status" -eq 2 ]
-  [[ "$output" == *"version must match vX.Y.Z: 1.2.3"* ]]
+  [[ "$output" == *"version must match vX.Y.Z: 1.2.3"* ]] || false
 
   run env PATH="$fake_bin:$PATH" RIG_VERSION=main RIG_INSTALL_DIR=$install_bin \
     RIG_MAN_INSTALL_DIR=$install_man RIG_TEST_CURL_MARKER=$curl_marker \
     "$BATS_TEST_DIRNAME/../install.sh"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"RIG_VERSION must match vX.Y.Z: main"* ]]
+  [[ "$output" == *"RIG_VERSION must match vX.Y.Z: main"* ]] || false
 
   run env PATH="$fake_bin:$PATH" RIG_INSTALL_DIR=$install_bin \
     RIG_MAN_INSTALL_DIR=$install_man RIG_TEST_CURL_MARKER=$curl_marker \
@@ -1113,7 +1113,7 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
   run "$RIG" unknown --help
 
   [ "$status" -eq 2 ]
-  [[ "$output" == *"rig: error: unknown command: unknown"* ]]
+  [[ "$output" == *"rig: error: unknown command: unknown"* ]] || false
 }
 
 @test "the executable is sourceable without dispatching the public CLI" {
@@ -1129,7 +1129,7 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
     >"$TEST_HOME/.config/rig/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"no configuration sources under: $CONFIG_HOME"* ]]
+  [[ "$output" == *"no configuration sources under: $CONFIG_HOME"* ]] || false
 
   write_minimal_config
   mv "$CONFIG_HOME/rig.toml" "$CONFIG_HOME/conf.d/20-complete.toml"
@@ -1151,14 +1151,14 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
     bash -c '. "$1"; rig_load_config' _ "$RIG"
 
   [ "$status" -eq 2 ]
-  [[ "$output" == *"a.toml:1: duplicate section [category.shared]"* ]]
+  [[ "$output" == *"a.toml:1: duplicate section [category.shared]"* ]] || false
 
   rm "$CONFIG_HOME/conf.d/a.toml"
   printf '%s\n' '[rig]' 'schema = 1' 'default-profile = "default"' \
     >"$CONFIG_HOME/conf.d/root-again.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"root-again.toml:1: duplicate section [rig]"* ]]
+  [[ "$output" == *"root-again.toml:1: duplicate section [rig]"* ]] || false
 }
 
 @test "literal values are inert and only declared path fields expand leading tilde" {
@@ -1211,15 +1211,15 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
 
   [ "$status" -eq 0 ]
   [ ! -e "$marker" ]
-  [[ "$output" == *"rationale=\$(touch $marker) # stays literal"* ]]
-  [[ "$output" == *"platform-1=mac os"* ]]
-  [[ "$output" == *"platform-2=linux,bsd"* ]]
-  [[ "$output" == *"executable=$TEST_HOME/bin/provider"* ]]
-  [[ "$output" == *"manifest=$TEST_HOME/manifests/tools = private"* ]]
-  [[ "$output" == *"argument-1=two words"* ]]
-  [[ "$output" == *"argument-2=comma,kept"* ]]
-  [[ "$output" == *"locator=~/literal # locator = value"* ]]
-  [[ "$output" == *"base-url=~/literal-url"* ]]
+  [[ "$output" == *"rationale=\$(touch $marker) # stays literal"* ]] || false
+  [[ "$output" == *"platform-1=mac os"* ]] || false
+  [[ "$output" == *"platform-2=linux,bsd"* ]] || false
+  [[ "$output" == *"executable=$TEST_HOME/bin/provider"* ]] || false
+  [[ "$output" == *"manifest=$TEST_HOME/manifests/tools = private"* ]] || false
+  [[ "$output" == *"argument-1=two words"* ]] || false
+  [[ "$output" == *"argument-2=comma,kept"* ]] || false
+  [[ "$output" == *"locator=~/literal # locator = value"* ]] || false
+  [[ "$output" == *"base-url=~/literal-url"* ]] || false
 }
 
 @test "schema list fields preserve each declared item boundary" {
@@ -1288,16 +1288,16 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
   ' _ "$RIG"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"tool.alpha.requires.1=beta"* ]]
-  [[ "$output" == *"tool.alpha.related.1=gamma"* ]]
-  [[ "$output" == *"tool.alpha.alternative.1=beta"* ]]
-  [[ "$output" == *"profile.default.profile.1=base"* ]]
-  [[ "$output" == *"profile.default.profile.2=base"* ]]
-  [[ "$output" == *"profile.default.tool.1=alpha"* ]]
-  [[ "$output" == *"profile.default.tool.2=beta"* ]]
-  [[ "$output" == *"provider.native.capability.1=observe"* ]]
-  [[ "$output" == *"provider.native.capability.2=install,update"* ]]
-  [[ "$output" == *"binding.alpha.native.argument.1=--install value"* ]]
+  [[ "$output" == *"tool.alpha.requires.1=beta"* ]] || false
+  [[ "$output" == *"tool.alpha.related.1=gamma"* ]] || false
+  [[ "$output" == *"tool.alpha.alternative.1=beta"* ]] || false
+  [[ "$output" == *"profile.default.profile.1=base"* ]] || false
+  [[ "$output" == *"profile.default.profile.2=base"* ]] || false
+  [[ "$output" == *"profile.default.tool.1=alpha"* ]] || false
+  [[ "$output" == *"profile.default.tool.2=beta"* ]] || false
+  [[ "$output" == *"provider.native.capability.1=observe"* ]] || false
+  [[ "$output" == *"provider.native.capability.2=install,update"* ]] || false
+  [[ "$output" == *"binding.alpha.native.argument.1=--install value"* ]] || false
 }
 
 @test "configuration sources are interoperable TOML with inert inline comments" {
@@ -1382,14 +1382,14 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
   mv "$CONFIG_HOME/unsupported.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"unsupported schema version '2'"* ]]
+  [[ "$output" == *"unsupported schema version '2'"* ]] || false
 
   write_minimal_config
   sed '/schema = 1/d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/missing.toml"
   mv "$CONFIG_HOME/missing.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"[rig] requires field 'schema'"* ]]
+  [[ "$output" == *"[rig] requires field 'schema'"* ]] || false
 
   printf '%s\n' \
     '[rig]' \
@@ -1398,7 +1398,7 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
     'default-profile = "default"' >"$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"duplicate field 'schema'"* ]]
+  [[ "$output" == *"duplicate field 'schema'"* ]] || false
 }
 
 @test "unknown grammar and malformed records fail closed" {
@@ -1406,23 +1406,23 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
   printf '%s\n' '[mystery.nope]' 'name = "No"' >>"$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"invalid section identity [mystery.nope]"* ]]
+  [[ "$output" == *"invalid section identity [mystery.nope]"* ]] || false
 
   write_minimal_config
   printf '%s\n' 'unknown = field' >>"$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"unknown field 'unknown'"* ]]
+  [[ "$output" == *"unknown field 'unknown'"* ]] || false
 
   printf '%s\n' 'schema = 1' >"$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"field appears before a section"* ]]
+  [[ "$output" == *"field appears before a section"* ]] || false
 
   printf '%s\n' '[rig]' 'not a record' >"$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"malformed record"* ]]
+  [[ "$output" == *"malformed record"* ]] || false
 }
 
 @test "section identities are strict and unique" {
@@ -1441,14 +1441,14 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
     printf '[%s]\n' "$section" >>"$CONFIG_HOME/rig.toml"
     run_loader
     [ "$status" -eq 2 ]
-    [[ "$output" == *"invalid section identity [$section]"* ]]
+    [[ "$output" == *"invalid section identity [$section]"* ]] || false
   done
 
   write_minimal_config
   printf '%s\n' '[category.core]' 'name = "Again"' 'purpose = "Duplicate"' >>"$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"duplicate section [category.core]"* ]]
+  [[ "$output" == *"duplicate section [category.core]"* ]] || false
 }
 
 @test "required catalogue and provider adapter fields are validated" {
@@ -1457,20 +1457,20 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
   mv "$CONFIG_HOME/missing.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"[tool.alpha] requires field 'rationale'"* ]]
+  [[ "$output" == *"[tool.alpha] requires field 'rationale'"* ]] || false
 
   write_minimal_config
   sed '/platforms =/d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/missing.toml"
   mv "$CONFIG_HOME/missing.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"[tool.alpha] requires field 'platform'"* ]]
+  [[ "$output" == *"[tool.alpha] requires field 'platform'"* ]] || false
 
   write_minimal_config
   printf '%s\n' '[provider.runner]' >>"$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"[provider.runner] requires field 'adapter'"* ]]
+  [[ "$output" == *"[provider.runner] requires field 'adapter'"* ]] || false
 }
 
 @test "canonical built-in providers are implicit and infer their capabilities" {
@@ -1538,7 +1538,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
 
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"[provider.alias] external provider adapter must be 'custom'"* ]]
+  [[ "$output" == *"[provider.alias] external provider adapter must be 'custom'"* ]] || false
 }
 
 @test "catalogue, profile, installation, and publication references are validated" {
@@ -1547,7 +1547,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"references unknown category 'absent'"* ]]
+  [[ "$output" == *"references unknown category 'absent'"* ]] || false
 
   write_minimal_config
   awk '{ print; if ($0 ~ /^rationale =/) print "requires = [\"absent\"]" }' \
@@ -1555,14 +1555,14 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"references unknown tool 'absent'"* ]]
+  [[ "$output" == *"references unknown tool 'absent'"* ]] || false
 
   write_minimal_config
   sed 's/tools = \["alpha"\]/tools = ["absent"]/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bad.toml"
   mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"references unknown tool 'absent'"* ]]
+  [[ "$output" == *"references unknown tool 'absent'"* ]] || false
 
   write_minimal_config
   printf '%s\n' \
@@ -1573,7 +1573,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
     'publisher = "native"' >>"$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"references unknown profile 'absent'"* ]]
+  [[ "$output" == *"references unknown profile 'absent'"* ]] || false
 
   write_minimal_config
   printf '%s\n' \
@@ -1584,21 +1584,21 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
     'publisher = "absent"' >>"$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"references unknown provider 'absent'"* ]]
+  [[ "$output" == *'publisher must reference an explicit provider'* ]] || false
 
   write_minimal_config
   sed 's/install.provider = "homebrew"/install.provider = "absent"/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bad.toml"
   mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"references unknown provider 'absent'"* ]]
+  [[ "$output" == *"references unknown provider 'absent'"* ]] || false
 
   write_minimal_config
   sed '/install.provider =/d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bad.toml"
   mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"install metadata requires install.provider"* ]]
+  [[ "$output" == *"install metadata requires install.provider"* ]] || false
 }
 
 @test "profile and required-tool cycles fail before resolution" {
@@ -1608,7 +1608,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   mv "$CONFIG_HOME/cycle.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"profile cycle includes 'default'"* ]]
+  [[ "$output" == *"profile cycle includes 'default'"* ]] || false
 
   write_minimal_config
   awk '{ print; if ($0 ~ /^rationale =/) print "requires = [\"alpha\"]" }' \
@@ -1616,7 +1616,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   mv "$CONFIG_HOME/cycle.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"required-tool cycle includes 'alpha'"* ]]
+  [[ "$output" == *"required-tool cycle includes 'alpha'"* ]] || false
 }
 
 @test "profiles compose and requirements resolve to a sorted platform-specific set" {
@@ -1745,7 +1745,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
     . "$1"; rig_load_config && rig_resolve_profile default macos && rig_resolve_bindings
   ' _ "$RIG"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"no compatible installation"* ]]
+  [[ "$output" == *"no compatible installation"* ]] || false
 }
 
 @test "descriptive tools resolve without installation metadata" {
@@ -1800,7 +1800,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   ' _ "$RIG"
 
   [ "$status" -eq 2 ]
-  [[ "$output" == *"requires 'linux-only', which does not support platform 'macos'"* ]]
+  [[ "$output" == *"requires 'linux-only', which does not support platform 'macos'"* ]] || false
 }
 
 @test "failed profile resolution clears prior resolved state" {
@@ -1815,7 +1815,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   ' _ "$RIG"
 
   [ "$status" -eq 2 ]
-  [[ "$output" == *"a profile must be resolved before installations"* ]]
+  [[ "$output" == *"a profile must be resolved before installations"* ]] || false
 }
 
 @test "installation platform any is universally compatible" {
@@ -1850,19 +1850,19 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
     RIG_PROGRESS=always RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
 
   [ "$status" -eq 0 ]
-  [[ "$output" == Profile:* ]]
-  [[ "$output" != *'rig: observing'* ]]
+  [[ "$output" == Profile:* ]] || false
+  [[ "$output" != *'rig: observing'* ]] || false
   progress_output=$(<"$progress_file")
-  [[ "$progress_output" == *'rig: progress: configuration discovery 0/1: sources running'* ]]
-  [[ "$progress_output" == *'rig: progress: configuration discovery 1/1: sources succeeded'* ]]
-  [[ "$progress_output" == *'rig: progress: configuration parsing finished completed=1/1'* ]]
-  [[ "$progress_output" == *'rig: progress: resolution finished completed=2/2'* ]]
-  [[ "$progress_output" == *'rig: progress: planning finished completed=2/2'* ]]
-  [[ "$progress_output" == *'rig: progress: tool observation 0/4: base via runner running'* ]]
-  [[ "$progress_output" == *'rig: progress: tool observation 1/4: base via runner succeeded'* ]]
-  [[ "$progress_output" == *'rig: progress: tool observation 4/4: notes skipped'* ]]
-  [[ "$progress_output" == *'rig: progress: tool observation finished completed=4/4 succeeded=3 skipped=1 failed=0'* ]]
-  [[ "$progress_output" != *'failed completed='* ]]
+  [[ "$progress_output" == *'rig: progress: configuration discovery 0/1: sources running'* ]] || false
+  [[ "$progress_output" == *'rig: progress: configuration discovery 1/1: sources succeeded'* ]] || false
+  [[ "$progress_output" == *'rig: progress: configuration parsing finished completed=1/1'* ]] || false
+  [[ "$progress_output" == *'rig: progress: resolution finished completed=2/2'* ]] || false
+  [[ "$progress_output" == *'rig: progress: planning finished completed=2/2'* ]] || false
+  [[ "$progress_output" == *'rig: progress: tool observation 0/4: base via runner running'* ]] || false
+  [[ "$progress_output" == *'rig: progress: tool observation 1/4: base via runner succeeded'* ]] || false
+  [[ "$progress_output" == *'rig: progress: tool observation 4/4: notes via - skipped'* ]] || false
+  [[ "$progress_output" == *'rig: progress: tool observation finished completed=4/4 succeeded=3 skipped=1 failed=0'* ]] || false
+  [[ "$progress_output" != *'failed completed='* ]] || false
 
   : >"$progress_file"
   run bash -c 'progress_file=$1; shift; "$@" 2>"$progress_file"' _ "$progress_file" \
@@ -1878,6 +1878,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
 
   progress_file=$BATS_TEST_TMPDIR/progress-events-$BATS_TEST_NUMBER
   run bash -c '
+    exec 2>"$2"
     . "$1"
     RIG_PROGRESS=always
     RIG_PROGRESS_CONTEXT=operational
@@ -1888,18 +1889,19 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
     rig_progress_begin beta declaration
     rig_progress_result skipped beta declaration
     rig_progress_finish
-  ' _ "$RIG" 2>"$progress_file"
+  ' _ "$RIG" "$progress_file"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *'before=0'* ]]
+  [[ "$output" == *'before=0'* ]] || false
   progress_output=$(<"$progress_file")
-  [[ "$progress_output" == *'applying 0/2: alpha [declaration] running'* ]]
-  [[ "$progress_output" == *'applying 1/2: alpha [declaration] failed'* ]]
-  [[ "$progress_output" == *'applying 2/2: beta [declaration] skipped'* ]]
-  [[ "$progress_output" == *'finished completed=2/2 succeeded=0 skipped=1 failed=1'* ]]
+  [[ "$progress_output" == *'applying 0/2: alpha [declaration] running'* ]] || false
+  [[ "$progress_output" == *'applying 1/2: alpha [declaration] failed'* ]] || false
+  [[ "$progress_output" == *'applying 2/2: beta [declaration] skipped'* ]] || false
+  [[ "$progress_output" == *'finished completed=2/2 succeeded=0 skipped=1 failed=1'* ]] || false
 
   : >"$progress_file"
   run bash -c '
+    exec 2>"$2"
     . "$1"
     RIG_PROGRESS=always
     RIG_PROGRESS_CONTEXT=operational
@@ -1908,12 +1910,12 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
     rig_progress_result succeeded alpha
     rig_progress_begin beta
     rig_progress_interrupted
-  ' _ "$RIG" 2>"$progress_file"
+  ' _ "$RIG" "$progress_file"
 
   [ "$status" -eq 0 ]
   progress_output=$(<"$progress_file")
-  [[ "$progress_output" == *'interrupted completed=1/2 succeeded=1 skipped=0 failed=0'* ]]
-  [[ "$progress_output" != *'observing finished'* ]]
+  [[ "$progress_output" == *'interrupted completed=1/2 succeeded=1 skipped=0 failed=0'* ]] || false
+  [[ "$progress_output" != *'observing finished'* ]] || false
 }
 
 @test "interactive progress rewrites an ASCII bar and lines mode stays durable" {
@@ -1940,11 +1942,11 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   fi
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *'[----------------] 0/2'* ]]
-  [[ "$output" == *'[########--------] 1/2'* ]]
-  [[ "$output" == *'[################] 2/2'* ]]
-  [[ "$output" == *'1 succeeded, 1 skipped, 0 failed'* ]]
-  [[ "$output" != *'rig: progress:'* ]]
+  [[ "$output" == *'[----------------] 0/2'* ]] || false
+  [[ "$output" == *'[########--------] 1/2'* ]] || false
+  [[ "$output" == *'[################] 2/2'* ]] || false
+  [[ "$output" == *'1 succeeded, 1 skipped, 0 failed'* ]] || false
+  [[ "$output" != *'rig: progress:'* ]] || false
 
   run bash -c '
     . "$1"
@@ -1957,8 +1959,8 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   ' _ "$RIG"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *'rig: progress: applying 0/1: alpha [declaration] running'* ]]
-  [[ "$output" == *'rig: progress: applying finished completed=1/1 succeeded=1 skipped=0 failed=0'* ]]
+  [[ "$output" == *'rig: progress: applying 0/1: alpha [declaration] running'* ]] || false
+  [[ "$output" == *'rig: progress: applying finished completed=1/1 succeeded=1 skipped=0 failed=0'* ]] || false
 }
 
 @test "interactive progress fits the terminal and erases the whole previous line" {
@@ -1987,11 +1989,11 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   fi
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *'residue-beh... succeeded'* ]]
-  [[ "$output" != *"$long [declaration] succeeded"* ]]
+  [[ "$output" == *'residue-beh... succeeded'* ]] || false
+  [[ "$output" != *"$long [declaration] succeeded"* ]] || false
 
   erased=$(printf '%63s' '')
-  [[ "$output" == *"[########--------] 1/2  beta$erased"* ]]
+  [[ "$output" == *"[########--------] 1/2  beta$erased"* ]] || false
 }
 
 @test "automatic progress keeps query commands quiet and never exposes authored payloads" {
@@ -2018,9 +2020,9 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
 
   [ "$status" -eq 0 ]
   progress_output=$(<"$progress_file")
-  [[ "$progress_output" != *'provider value'* ]]
-  [[ "$progress_output" != *'touch '* ]]
-  [[ "$progress_output" != *"$CONFIG_HOME"* ]]
+  [[ "$progress_output" != *'provider value'* ]] || false
+  [[ "$progress_output" != *'touch '* ]] || false
+  [[ "$progress_output" != *"$CONFIG_HOME"* ]] || false
 }
 
 @test "application progress discloses scope before provider output and terminates failed work" {
@@ -2037,11 +2039,11 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
 
   [ "$status" -eq 1 ]
   progress_output=$(<"$progress_file")
-  [[ "$progress_output" == *'base via runner [declaration] running'* ]]
-  [[ "$progress_output" == *'provider-marker'* ]]
-  [[ "$progress_output" == *'base via runner [declaration] failed'* ]]
-  [[ "$progress_output" == *'applying finished completed=3/3 succeeded=1 skipped=1 failed=1'* ]]
-  [[ "$progress_output" != *'exit-126'* ]]
+  [[ "$progress_output" == *'base via runner [declaration] running'* ]] || false
+  [[ "$progress_output" == *'provider-marker'* ]] || false
+  [[ "$progress_output" == *'base via runner [declaration] failed'* ]] || false
+  [[ "$progress_output" == *'applying finished completed=3/3 succeeded=1 skipped=1 failed=1'* ]] || false
+  [[ "$progress_output" != *'exit-126'* ]] || false
   running_line=$(grep -n 'base via runner \[declaration\] running' "$progress_file" | cut -d: -f1)
   provider_line=$(grep -n '^provider-marker$' "$progress_file" | cut -d: -f1)
   failed_line=$(grep -n 'base via runner \[declaration\] failed' "$progress_file" | cut -d: -f1)
@@ -2060,11 +2062,11 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
 
   [ "$status" -eq 0 ]
   progress_output=$(<"$progress_file")
-  [[ "$progress_output" == *'bootstrap preflight 0/2: selected plan running'* ]]
-  [[ "$progress_output" == *'bootstrap preflight 1/2: selected plan succeeded'* ]]
-  [[ "$progress_output" == *'bootstrap preflight 2/2: homebrew policy succeeded'* ]]
-  [[ "$progress_output" == *'bootstrap preflight finished completed=2/2 succeeded=2 skipped=0 failed=0'* ]]
-  [[ "$progress_output" == *'preflight 0/1: selected plan running'* ]]
+  [[ "$progress_output" == *'bootstrap preflight 0/2: selected plan running'* ]] || false
+  [[ "$progress_output" == *'bootstrap preflight 1/2: selected plan succeeded'* ]] || false
+  [[ "$progress_output" == *'bootstrap preflight 2/2: homebrew policy succeeded'* ]] || false
+  [[ "$progress_output" == *'bootstrap preflight finished completed=2/2 succeeded=2 skipped=0 failed=0'* ]] || false
+  [[ "$progress_output" == *'preflight 0/1: selected plan running'* ]] || false
   bootstrap_line=$(grep -n 'bootstrap preflight finished' "$progress_file" | cut -d: -f1)
   apply_preflight_line=$(grep -n 'progress: preflight 0/1: selected plan running' "$progress_file" | cut -d: -f1)
   [ "$bootstrap_line" -lt "$apply_preflight_line" ]
@@ -2564,7 +2566,7 @@ bootstrap-profile = "absent"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.t
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply
 
   [ "$status" -eq 2 ]
-  [[ "$output" == *"provider 'bad' executable is unavailable"* ]]
+  [[ "$output" == *"provider 'bad' executable is unavailable"* ]] || false
   [ ! -e "$ORCHESTRATION_LOG" ]
 }
 
@@ -2578,7 +2580,7 @@ bootstrap-profile = "absent"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.t
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply
 
   [ "$status" -eq 2 ]
-  [[ "$output" == *"does not declare capability 'apply'"* ]]
+  [[ "$output" == *"does not declare capability 'apply'"* ]] || false
   [ ! -e "$ORCHESTRATION_LOG" ]
 }
 
@@ -2822,7 +2824,7 @@ bootstrap-profile = "absent"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.t
     'ARG=--fail' 'ARG=--location' 'ARG=--proto' 'ARG==https' \
     'ARG=--proto-redir' 'ARG==https' 'ARG=--silent' 'ARG=--show-error')" ]
   [ "$(sed -n '9p' "$native_log")" = 'ARG=--output' ]
-  [[ "$(sed -n '10p' "$native_log")" == ARG="$destination.rig-tmp."* ]]
+  [[ "$(sed -n '10p' "$native_log")" == ARG="$destination.rig-tmp."* ]] || false
   [ "$(sed -n '11p' "$native_log")" = 'ARG=https://example.invalid/downloaded-tool' ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
@@ -2862,7 +2864,7 @@ bootstrap-profile = "absent"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.t
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" status
 
   [ "$status" -eq 2 ]
-  [[ "$output" == *'Homebrew mas locator must be a numeric application identity'* ]]
+  [[ "$output" == *'Homebrew mas locator must be a numeric application identity'* ]] || false
 }
 
 @test "direct-download rejects unsafe or incomplete declarations before mutation" {
@@ -3268,8 +3270,8 @@ write_publish_config() {
     "$RIG" publish site
 
   [ "$status" -eq 143 ]
-  [[ "$output" == *'rig: progress: publishing interrupted completed=0/1 succeeded=0 skipped=0 failed=0'* ]]
-  [[ "$output" != *'rig: progress: publishing finished'* ]]
+  [[ "$output" == *'rig: progress: publishing interrupted completed=0/1 succeeded=0 skipped=0 failed=0'* ]] || false
+  [[ "$output" != *'rig: progress: publishing finished'* ]] || false
   stage=$(printf '%s\n' "$output" | sed -n 's/^rig: publish interrupted; retained export: //p')
   case "$stage" in
     */publish/retained/site.rig-publish.*) ;;
@@ -4072,7 +4074,7 @@ write_launchd_fixture() {
 }
 
 @test "built-in launchd observes applies and retires declared resources" {
-  local daemon_plist morning_plist
+  local daemon_plist morning_plist daemon_contents morning_contents
 
   write_launchd_fixture
   daemon_plist=$TEST_HOME/Library/LaunchAgents/example.test.daemon.plist
@@ -4084,8 +4086,8 @@ write_launchd_fixture() {
     RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
     "$RIG" apply --scope resources --dry-run
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'daemon\tservice\tlaunchd\tplanned\treconcile:example.test.daemon'* ]]
-  [[ "$output" == *'program=~/bin/example'* ]]
+  [[ "$output" == *$'daemon\tservice\tlaunchd\tplanned\treconcile:example.test.daemon'* ]] || false
+  [[ "$output" == *'program=~/bin/example'* ]] || false
   [ ! -e "$daemon_plist" ]
   [ ! -s "$LAUNCHD_LOG" ]
 
@@ -4105,14 +4107,20 @@ write_launchd_fixture() {
   [ "$status" -eq 0 ]
   [ -f "$daemon_plist" ]
   [ -f "$morning_plist" ]
-  grep -F '<string>Keep A &amp; B running.</string>' "$daemon_plist"
-  grep -F "<string>$TEST_HOME/bin/example</string>" "$daemon_plist"
-  grep -F '<string>--literal &lt;value&gt;</string>' "$daemon_plist"
-  grep -F '<string>$(not-executed)</string>' "$daemon_plist"
-  grep -F "<string>$TEST_HOME/bin:/usr/bin</string>" "$daemon_plist"
-  grep -F '<key>KeepAlive</key>' "$daemon_plist"
-  grep -F '<key>StartCalendarInterval</key>' "$morning_plist"
-  grep -F '<key>Weekday</key>' "$morning_plist"
+  daemon_contents=$(<"$daemon_plist")
+  morning_contents=$(<"$morning_plist")
+  # Bats shows a failing test's own output, so an unexpected plist is legible
+  # from the runner that produced it rather than only from the machine it
+  # was written on.
+  printf '%s\n' "$daemon_contents" "$morning_contents"
+  [[ "$daemon_contents" == *'<string>Keep A &amp; B running.</string>'* ]] || false
+  [[ "$daemon_contents" == *"<string>$TEST_HOME/bin/example</string>"* ]] || false
+  [[ "$daemon_contents" == *'<string>--literal &lt;value&gt;</string>'* ]] || false
+  [[ "$daemon_contents" == *'<string>$(not-executed)</string>'* ]] || false
+  [[ "$daemon_contents" == *"<string>$TEST_HOME/bin:/usr/bin</string>"* ]] || false
+  [[ "$daemon_contents" == *'<key>KeepAlive</key>'* ]] || false
+  [[ "$morning_contents" == *'<key>StartCalendarInterval</key>'* ]] || false
+  [[ "$morning_contents" == *'<key>Weekday</key>'* ]] || false
   [ "$(grep -c '^bootstrap ' "$LAUNCHD_LOG")" -eq 2 ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
@@ -4129,7 +4137,7 @@ write_launchd_fixture() {
     RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
     "$RIG" run launchd status -- service:daemon
   [ "$status" -eq 0 ]
-  [[ "$output" == *'loaded = true'* ]]
+  [[ "$output" == *'loaded = true'* ]] || false
 
   mkdir -p "$TEST_HOME/Library/Logs"
   printf '%s\n' stdout-line >"$TEST_HOME/Library/Logs/example.out"
@@ -4139,8 +4147,8 @@ write_launchd_fixture() {
     RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
     "$RIG" run launchd logs -- service:daemon
   [ "$status" -eq 0 ]
-  [[ "$output" == *stdout-line* ]]
-  [[ "$output" == *stderr-line* ]]
+  [[ "$output" == *stdout-line* ]] || false
+  [[ "$output" == *stderr-line* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
@@ -4191,7 +4199,7 @@ write_launchd_fixture() {
     RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
     "$RIG" apply --scope resources
   [ "$status" -eq 2 ]
-  [[ "$output" == *"provider 'launchd' plist directory is unsafe"* ]]
+  [[ "$output" == *"provider 'launchd' plist directory is unsafe"* ]] || false
   [ ! -s "$LAUNCHD_LOG" ]
   [ ! -e "$BATS_TEST_TMPDIR/state/resources/macos.tsv" ]
 }
@@ -4240,18 +4248,18 @@ install.locator = "base"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" \
     RESOURCE_LOG="$RESOURCE_LOG" RIG_PLATFORM=macos "$RIG" show
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'Services: 1\nID\tNAME\tPROVIDER\tDESIRED'* ]]
-  [[ "$output" == *$'daemon\tTest daemon\trunner\trunning'* ]]
-  [[ "$output" == *'Scheduled jobs: 1'* ]]
-  [[ "$output" == *$'morning\tMorning\trunner\tenabled\tcalendar:hour=8,minute=0;weekday=1,hour=9'* ]]
+  [[ "$output" == *$'Services: 1\nID\tNAME\tPROVIDER\tDESIRED'* ]] || false
+  [[ "$output" == *$'daemon\tTest daemon\trunner\trunning'* ]] || false
+  [[ "$output" == *'Scheduled jobs: 1'* ]] || false
+  [[ "$output" == *$'morning\tMorning\trunner\tenabled\tcalendar:hour=8,minute=0;weekday=1,hour=9'* ]] || false
   [ ! -s "$RESOURCE_LOG" ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RESOURCE_LOG="$RESOURCE_LOG" \
     RIG_PLATFORM=macos "$RIG" explain service:daemon
   [ "$status" -eq 0 ]
-  [[ "$output" == *'Resource: service:daemon'* ]]
-  [[ "$output" == *'program=$(not-executed)'* ]]
-  [[ "$output" == *'Profiles: default'* ]]
+  [[ "$output" == *'Resource: service:daemon'* ]] || false
+  [[ "$output" == *'program=$(not-executed)'* ]] || false
+  [[ "$output" == *'Profiles: default'* ]] || false
   [ ! -s "$RESOURCE_LOG" ]
 }
 
@@ -4269,10 +4277,10 @@ install.locator = "base"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" \
     RESOURCE_LOG="$RESOURCE_LOG" RIG_PLATFORM=macos "$RIG" apply --dry-run
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'daemon\tservice\trunner\tplanned\treconcile:example.test.daemon'* ]]
-  [[ "$output" == *'program=--literal value'* ]]
-  [[ "$output" == *'program=$(not-executed)'* ]]
-  [[ "$output" == *'schedule-calendar=hour=8,minute=0'* ]]
+  [[ "$output" == *$'daemon\tservice\trunner\tplanned\treconcile:example.test.daemon'* ]] || false
+  [[ "$output" == *'program=--literal value'* ]] || false
+  [[ "$output" == *'program=$(not-executed)'* ]] || false
+  [[ "$output" == *'schedule-calendar=hour=8,minute=0'* ]] || false
   [ ! -s "$RESOURCE_LOG" ]
   [ ! -e "$BATS_TEST_TMPDIR/state/resources/macos.tsv" ]
 }
@@ -4285,8 +4293,8 @@ install.locator = "base"
   [ "$status" -eq 0 ]
   run grep -F 'rig-provider-v1 apply runner runner action restart resource-v1 service daemon example.test.daemon' "$RESOURCE_LOG"
   [ "$status" -eq 0 ]
-  [[ "$output" == *'program=/usr/bin/example'* ]]
-  [[ "$output" == *' -- --follow'* ]]
+  [[ "$output" == *'program=/usr/bin/example'* ]] || false
+  [[ "$output" == *' -- --follow'* ]] || false
 }
 
 @test "resource apply records managed identities and retires deselected entries" {
@@ -4321,7 +4329,7 @@ install.locator = "base"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RESOURCE_LOG="$RESOURCE_LOG" \
     RIG_PLATFORM=macos "$RIG" show
   [ "$status" -eq 2 ]
-  [[ "$output" == *"out-of-range schedule.calendar pair 'hour=24'"* ]]
+  [[ "$output" == *"out-of-range schedule.calendar pair 'hour=24'"* ]] || false
   [ ! -s "$RESOURCE_LOG" ]
 }
 
@@ -4340,7 +4348,7 @@ install.locator = "base"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" \
     RESOURCE_LOG="$RESOURCE_LOG" RIG_PLATFORM=macos "$RIG" apply
   [ "$status" -eq 2 ]
-  [[ "$output" == *"provider 'bad' does not declare capability 'resource-apply'"* ]]
+  [[ "$output" == *"provider 'bad' does not declare capability 'resource-apply'"* ]] || false
   [ ! -s "$RESOURCE_LOG" ]
   [ ! -e "$BATS_TEST_TMPDIR/state/resources/macos.tsv" ]
 }

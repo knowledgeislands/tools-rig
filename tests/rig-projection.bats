@@ -105,7 +105,7 @@ assert tools["beta"]["detail"] == "artifact-missing:~/quote\"and\\backslash", to
 
   run_rig status
   local text_status=$status
-  [[ "$output" == *'Summary: present=1 missing=1 drifted=0 unavailable=0 unknown=0 catalogue-only=0'* ]]
+  [[ "$output" == *'Summary: present=1 missing=1 drifted=0 unavailable=0 unknown=0 catalogue-only=0'* ]] || false
 
   run_rig status --format json
   [ "$status" -eq "$text_status" ]
@@ -189,12 +189,12 @@ assert isinstance(data["information"], list)
 
   run_rig status --format yaml
   [ "$status" -eq 2 ]
-  [[ "$output" == *'rig: error: usage: rig status'* ]]
-  [[ "$output" != *'{'* ]]
+  [[ "$output" == *'rig: error: usage: rig status'* ]] || false
+  [[ "$output" != *'{'* ]] || false
 
   run_rig doctor --format yaml
   [ "$status" -eq 2 ]
-  [[ "$output" == *'rig: error: usage: rig doctor'* ]]
+  [[ "$output" == *'rig: error: usage: rig doctor'* ]] || false
 
   run_rig status --format
   [ "$status" -eq 2 ]

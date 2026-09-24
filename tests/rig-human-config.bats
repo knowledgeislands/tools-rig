@@ -105,14 +105,14 @@ write_resource_graph_config() {
   mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *'TOML basic strings must not span lines'* ]]
+  [[ "$output" == *'TOML basic strings must not span lines'* ]] || false
 
   write_variant_config
   sed '/^]$/d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bad.toml"
   mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *'TOML arrays must contain basic strings'* ]]
+  [[ "$output" == *'TOML arrays must contain basic strings'* ]] || false
 }
 
 @test "one logical tool selects exactly one platform installation and artifact variant" {
@@ -130,10 +130,10 @@ write_resource_graph_config() {
     printf "inventory=declared\n"
   ' _ "$RIG"
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'binding=subject:homebrew'* ]]
-  [[ "$output" == *$'artifact=~/private-macos-artifact'* ]]
-  [[ "$output" == *$'inventory=declared'* ]]
-  [[ "$output" != *'private-linux-artifact'* ]]
+  [[ "$output" == *$'binding=subject:homebrew'* ]] || false
+  [[ "$output" == *$'artifact=~/private-macos-artifact'* ]] || false
+  [[ "$output" == *$'inventory=declared'* ]] || false
+  [[ "$output" != *'private-linux-artifact'* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" bash -c '
     . "$1"
@@ -143,14 +143,14 @@ write_resource_graph_config() {
     rig_dump_resolution
   ' _ "$RIG"
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'binding=subject:uv'* ]]
+  [[ "$output" == *$'binding=subject:uv'* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" explain subject
   [ "$status" -eq 0 ]
-  [[ "$output" == *'Installation: homebrew formula subject-macos'* ]]
-  [[ "$output" == *'Artifacts: ~/private-macos-artifact'* ]]
-  [[ "$output" != *'private-linux-artifact'* ]]
+  [[ "$output" == *'Installation: homebrew (formula: subject-macos)'* ]] || false
+  [[ "$output" == *'Artifacts: ~/private-macos-artifact'* ]] || false
+  [[ "$output" != *'private-linux-artifact'* ]] || false
 }
 
 @test "diagnostics summarise human model shape without provider work" {
@@ -159,11 +159,11 @@ write_resource_graph_config() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" diag
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'  Selection mode: item'* ]]
-  [[ "$output" == *$'  Profiles: 1'* ]]
-  [[ "$output" == *$'  Tools: 1'* ]]
-  [[ "$output" == *$'  Managed resources: 0'* ]]
-  [[ "$output" == *$'  Tool variants: 2'* ]]
+  [[ "$output" == *$'  Selection mode: item'* ]] || false
+  [[ "$output" == *$'  Profiles: 1'* ]] || false
+  [[ "$output" == *$'  Tools: 1'* ]] || false
+  [[ "$output" == *$'  Managed resources: 0'* ]] || false
+  [[ "$output" == *$'  Tool variants: 2'* ]] || false
 }
 
 @test "variant coverage rejects zero and multiple platform matches" {
@@ -172,7 +172,7 @@ write_resource_graph_config() {
   mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"no variant for declared platform 'linux'"* ]]
+  [[ "$output" == *"no variant for declared platform 'linux'"* ]] || false
 
   write_variant_config
   sed 's/variant.linux.platforms = \["linux"\]/variant.linux.platforms = ["macos", "linux"]/' \
@@ -180,7 +180,7 @@ write_resource_graph_config() {
   mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"ambiguous variants for declared platform 'macos'"* ]]
+  [[ "$output" == *"ambiguous variants for declared platform 'macos'"* ]] || false
 }
 
 @test "public projection never includes installation or artifact variant data" {
@@ -234,7 +234,7 @@ write_resource_graph_config() {
   mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"depends-on references unknown resource 'setting:missing'"* ]]
+  [[ "$output" == *"depends-on references unknown resource 'setting:missing'"* ]] || false
 
   write_resource_graph_config
   awk '{ print; if ($0 == "value = \"true\"") print "depends-on = [\"scheduled-job:report\"]" }' \
@@ -242,7 +242,7 @@ write_resource_graph_config() {
   mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *'resource dependency cycle includes'* ]]
+  [[ "$output" == *'resource dependency cycle includes'* ]] || false
 }
 
 @test "resource dependency failures block only transitive dependants" {

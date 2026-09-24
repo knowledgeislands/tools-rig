@@ -68,23 +68,23 @@ write_item_profile_fixture() {
 
   run_rig show
   [ "$status" -eq 0 ]
-  [[ "$output" == *'base'* ]]
-  [[ "$output" != *'developer'* ]]
-  [[ "$output" != *'public'* ]]
-  [[ "$output" != *'nowhere'* ]]
+  [[ "$output" == *'base'* ]] || false
+  [[ "$output" != *'developer'* ]] || false
+  [[ "$output" != *'public'* ]] || false
+  [[ "$output" != *'nowhere'* ]] || false
 
   run_rig show --profile developer
   [ "$status" -eq 0 ]
-  [[ "$output" == *'base'* ]]
-  [[ "$output" == *'developer'* ]]
-  [[ "$output" != *'public'* ]]
-  [[ "$output" != *'nowhere'* ]]
+  [[ "$output" == *'base'* ]] || false
+  [[ "$output" == *'developer'* ]] || false
+  [[ "$output" != *'public'* ]] || false
+  [[ "$output" != *'nowhere'* ]] || false
 
   run_rig show --profile public
   [ "$status" -eq 0 ]
-  [[ "$output" == *'public'* ]]
-  [[ "$output" != *'base'* ]]
-  [[ "$output" != *'nowhere'* ]]
+  [[ "$output" == *'public'* ]] || false
+  [[ "$output" != *'base'* ]] || false
+  [[ "$output" != *'nowhere'* ]] || false
 }
 
 @test "central and item membership cannot be mixed" {
@@ -93,7 +93,7 @@ write_item_profile_fixture() {
 
   run_rig show
   [ "$status" -eq 2 ]
-  [[ "$output" == *'cannot mix central profile members with item profiles'* ]]
+  [[ "$output" == *'cannot mix central profile members with item profiles'* ]] || false
 }
 
 @test "views reject mutation and require explicitly opted-in dependency closure" {
@@ -105,7 +105,7 @@ requires = ["base"]/' \
 
   run_rig show --profile public
   [ "$status" -eq 2 ]
-  [[ "$output" == *"view profile 'public' dependency 'base' is not explicitly opted in"* ]]
+  [[ "$output" == *"view profile 'public' dependency 'base' is not explicitly opted in"* ]] || false
 
   sed '/^\[tool.base\]$/,/^\[tool.developer\]$/s/^platforms = \["any"\]$/platforms = ["any"]\nprofiles = ["public"]/' \
     "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/explicit.toml"
@@ -118,26 +118,26 @@ requires = ["base"]/' \
 
   run_rig apply --profile public --dry-run
   [ "$status" -eq 2 ]
-  [[ "$output" == *"profile 'public' is a non-appliable view"* ]]
+  [[ "$output" == *"profile 'public' is a non-appliable view"* ]] || false
 
   run_rig bootstrap --profile public --dry-run
   [ "$status" -eq 2 ]
-  [[ "$output" == *"profile 'public' is a non-appliable view"* ]]
+  [[ "$output" == *"profile 'public' is a non-appliable view"* ]] || false
 
   run_rig update --profile public --dry-run
   [ "$status" -eq 2 ]
-  [[ "$output" == *"profile 'public' is a non-appliable view"* ]]
+  [[ "$output" == *"profile 'public' is a non-appliable view"* ]] || false
 
   run_rig maintain --profile public --dry-run
   [ "$status" -eq 2 ]
-  [[ "$output" == *"profile 'public' is a non-appliable view"* ]]
+  [[ "$output" == *"profile 'public' is a non-appliable view"* ]] || false
 
   sed 's/default-profile = "workstation"/default-profile = "public"/' \
     "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/public-default.toml"
   mv "$CONFIG_HOME/public-default.toml" "$CONFIG_HOME/rig.toml"
   run_rig run launchd restart -- service:daemon
   [ "$status" -eq 2 ]
-  [[ "$output" == *"profile 'public' is a non-appliable view"* ]]
+  [[ "$output" == *"profile 'public' is a non-appliable view"* ]] || false
 }
 
 @test "views cannot inherit complete profiles and bootstrap profiles must be appliable" {
@@ -148,7 +148,7 @@ inherits = ["workstation"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/invalid.toml"
 
   run_rig show --profile public
   [ "$status" -eq 2 ]
-  [[ "$output" == *"view cannot inherit appliable profile 'workstation'"* ]]
+  [[ "$output" == *"view cannot inherit appliable profile 'workstation'"* ]] || false
 
   write_item_profile_fixture
   sed '/^default-profile = "workstation"$/a\
@@ -157,7 +157,7 @@ bootstrap-profile = "public"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/invalid.tom
 
   run_rig show
   [ "$status" -eq 2 ]
-  [[ "$output" == *'bootstrap-profile must be appliable'* ]]
+  [[ "$output" == *'bootstrap-profile must be appliable'* ]] || false
 }
 
 @test "publications require a non-appliable view" {
@@ -169,7 +169,7 @@ bootstrap-profile = "public"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/invalid.tom
 
   run_rig show
   [ "$status" -eq 2 ]
-  [[ "$output" == *"profile 'workstation' must be a non-appliable view"* ]]
+  [[ "$output" == *"profile 'workstation' must be a non-appliable view"* ]] || false
 }
 
 @test "native target conflicts are checked only in the resolved selection" {
@@ -193,7 +193,7 @@ bootstrap-profile = "public"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/invalid.tom
   [ "$status" -eq 0 ]
   run_rig show --profile combined
   [ "$status" -eq 2 ]
-  [[ "$output" == *"conflicts with"*"native target 'launchd:locator:example.shared'"* ]]
+  [[ "$output" == *"conflicts with"*"native target 'launchd:locator:example.shared'"* ]] || false
 }
 
 @test "resolved settings and Dock layouts reject contradictory native targets" {
@@ -214,7 +214,7 @@ bootstrap-profile = "public"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/invalid.tom
   [ "$status" -eq 0 ]
   run_rig show --profile combined
   [ "$status" -eq 2 ]
-  [[ "$output" == *"native target 'macos-defaults:setting:example.shared:Shared'"* ]]
+  [[ "$output" == *"native target 'macos-defaults:setting:example.shared:Shared'"* ]] || false
 
   printf '%s\n' \
     '[rig]' 'schema = 1' 'default-profile = "alpha"' \
@@ -233,7 +233,7 @@ bootstrap-profile = "public"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/invalid.tom
   [ "$status" -eq 0 ]
   run_rig show --profile combined
   [ "$status" -eq 2 ]
-  [[ "$output" == *"native target 'macos-dock:dock'"* ]]
+  [[ "$output" == *"native target 'macos-dock:dock'"* ]] || false
 }
 
 write_lock_fixture() {
@@ -257,13 +257,13 @@ write_lock_fixture() {
 
   run_rig apply --scope resources
   [ "$status" -eq 2 ]
-  [[ "$output" == *"reconciliation target 'macos' is active; owner=pid=$$ profile=default command=apply"* ]]
+  [[ "$output" == *"reconciliation target 'macos' is active; owner=pid=$$ profile=default command=apply"* ]] || false
   [ -d "$STATE_HOME/reconciliation/macos.lock" ]
 
   printf '%s\n' 'pid=999999 profile=default command=apply' >"$STATE_HOME/reconciliation/macos.lock/owner"
   run_rig apply --scope resources
   [ "$status" -eq 2 ]
-  [[ "$output" == *"reconciliation target 'macos' is stale; owner=pid=999999"* ]]
+  [[ "$output" == *"reconciliation target 'macos' is stale; owner=pid=999999"* ]] || false
   [ -d "$STATE_HOME/reconciliation/macos.lock" ]
 }
 
@@ -272,8 +272,8 @@ write_lock_fixture() {
 
   run_rig apply --scope resources
   [ "$status" -eq 0 ]
-  [[ "$output" == *'Operation scope: declaration'* ]]
-  [[ "$output" == *$'daemon\tservice\trunner\tcompleted\treconciled:example.daemon\tdeclaration'* ]]
+  [[ "$output" == *'Operation scope: declaration'* ]] || false
+  [[ "$output" == *$'daemon\tservice\trunner\tcompleted\treconciled:example.daemon\tdeclaration'* ]] || false
   [ ! -e "$STATE_HOME/reconciliation/macos.lock" ]
   [ -f "$STATE_HOME/resources/macos.tsv" ]
 }

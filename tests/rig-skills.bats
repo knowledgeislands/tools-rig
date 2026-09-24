@@ -17,6 +17,11 @@ setup() {
     'if [ "${1:-}" = list ]; then cat "$RIG_TEST_SKILLS_JSON"; exit "${RIG_TEST_SKILLS_EXIT:-0}"; fi' \
     'exit "${RIG_TEST_SKILLS_EXIT:-0}"' >"$BIN/skills"
   chmod +x "$BIN/skills"
+  # The ordering assertions below are portable; launchd is not. A stub keeps the
+  # preflight satisfied away from macOS without pretending a resource was applied.
+  printf '%s\n' '#!/usr/bin/env bash' 'exit 0' >"$BIN/launchctl"
+  chmod +x "$BIN/launchctl"
+  export RIG_LAUNCHCTL="$BIN/launchctl"
   export HOME="$TEST_HOME"
   export RIG_CONFIG_HOME="$CONFIG_HOME"
   export RIG_STATE_HOME="$TEST_HOME/state"
@@ -78,20 +83,20 @@ write_skill_config() {
   write_skill_config
   run "$RIG" show
   [ "$status" -eq 0 ]
-  [[ "$output" == *'Skills: 1'* ]]
-  [[ "$output" == *$'caveman\tCaveman\tskills-cli\tclaude-code, codex'* ]]
+  [[ "$output" == *'Skills: 1'* ]] || false
+  [[ "$output" == *$'caveman\tCaveman\tskills-cli\tclaude-code, codex'* ]] || false
   [ ! -e "$SKILLS_LOG" ]
 
   run "$RIG" explain skill:caveman
   [ "$status" -eq 0 ]
-  [[ "$output" == *'Authority: skills-cli'* ]]
-  [[ "$output" == *'Profiles: default, public'* ]]
-  [[ "$output" == *'Public source: https://github.com/JuliusBrussee/caveman'* ]]
+  [[ "$output" == *'Authority: skills-cli'* ]] || false
+  [[ "$output" == *'Profiles: default, public'* ]] || false
+  [[ "$output" == *'Public source: https://github.com/JuliusBrussee/caveman'* ]] || false
   [ ! -e "$SKILLS_LOG" ]
 
   run "$RIG" diag
   [ "$status" -eq 0 ]
-  [[ "$output" == *'Skills: 1'* ]]
+  [[ "$output" == *'Skills: 1'* ]] || false
 }
 
 @test "skill schema rejects unsafe authority trust and mixed profile models" {
@@ -100,13 +105,13 @@ write_skill_config() {
   mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
   run "$RIG" show
   [ "$status" -eq 2 ]
-  [[ "$output" == *"requires trust 'reviewed'"* ]]
+  [[ "$output" == *"requires trust 'reviewed'"* ]] || false
 
   write_skill_config
   printf '%s\n' 'skills = ["caveman"]' >>"$CONFIG_HOME/rig.toml"
   run "$RIG" show
   [ "$status" -eq 2 ]
-  [[ "$output" == *'cannot mix central profile members with item profiles'* ]]
+  [[ "$output" == *'cannot mix central profile members with item profiles'* ]] || false
 }
 
 @test "Skills CLI observation verifies source and runtimes and handles unavailable inventory" {
@@ -214,7 +219,7 @@ write_skill_config() {
 
   run "$RIG" apply --dry-run
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'TOOL\tPROVIDER\tRESULT\tDETAIL\tSCOPE'*$'SKILL\tAUTHORITY\tRESULT\tDETAIL\tSCOPE'*$'RESOURCE\tKIND\tPROVIDER\tRESULT\tDETAIL\tSCOPE'* ]]
+  [[ "$output" == *$'TOOL\tPROVIDER\tRESULT\tDETAIL\tSCOPE'*$'SKILL\tAUTHORITY\tRESULT\tDETAIL\tSCOPE'*$'RESOURCE\tKIND\tPROVIDER\tRESULT\tDETAIL\tSCOPE'* ]] || false
 
   : >"$SKILLS_LOG"
   run "$RIG" apply --profile minimal --dry-run
@@ -320,7 +325,7 @@ assert data["profile"]["skills"] == []
   run "$RIG" update
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *$'skill:caveman\tskills-cli\tunavailable\texecutable-unavailable'* ]]
-  [[ "$output" == *'unavailable=1'* ]]
+  [[ "$output" == *$'skill:caveman\tskills-cli\tunavailable\texecutable-unavailable'* ]] || false
+  [[ "$output" == *'unavailable=1'* ]] || false
   [ ! -s "$SKILLS_LOG" ]
 }

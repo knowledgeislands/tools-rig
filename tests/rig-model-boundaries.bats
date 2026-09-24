@@ -20,19 +20,19 @@ run_diag() {
   printf '%s\n' '[provider.homebrew]' 'adapter = "homebrew"' >>"$CONFIG_HOME/rig.toml"
   run_diag
   [ "$status" -eq 2 ]
-  [[ "$output" == *'reserved built-in provider cannot declare adapter'* ]]
+  [[ "$output" == *'reserved built-in provider cannot declare adapter'* ]] || false
 
   write_empty_model
   printf '%s\n' '[provider.homebrew]' 'capabilities = ["observe"]' >>"$CONFIG_HOME/rig.toml"
   run_diag
   [ "$status" -eq 2 ]
-  [[ "$output" == *'reserved built-in provider cannot declare capabilities'* ]]
+  [[ "$output" == *'reserved built-in provider cannot declare capabilities'* ]] || false
 
   write_empty_model
   printf '%s\n' '[provider.homebrew]' 'command = "brew"' >>"$CONFIG_HOME/rig.toml"
   run_diag
   [ "$status" -eq 2 ]
-  [[ "$output" == *"field 'command' is not supported"* ]]
+  [[ "$output" == *"field 'command' is not supported"* ]] || false
 }
 
 @test "external providers require the custom adapter" {
@@ -40,26 +40,26 @@ run_diag() {
   printf '%s\n' '[provider.alias]' 'adapter = "homebrew"' >>"$CONFIG_HOME/rig.toml"
   run_diag
   [ "$status" -eq 2 ]
-  [[ "$output" == *"external provider adapter must be 'custom'"* ]]
+  [[ "$output" == *"external provider adapter must be 'custom'"* ]] || false
 
   write_empty_model
   printf '%s\n' '[provider.alias]' >>"$CONFIG_HOME/rig.toml"
   run_diag
   [ "$status" -eq 2 ]
-  [[ "$output" == *"requires field 'adapter'"* ]]
+  [[ "$output" == *"requires field 'adapter'"* ]] || false
 
   write_empty_model
   printf '%s\n' '[provider.alias]' 'adapter = "custom"' >>"$CONFIG_HOME/rig.toml"
   run_diag
   [ "$status" -eq 2 ]
-  [[ "$output" == *"requires field 'capabilities'"* ]]
+  [[ "$output" == *"requires field 'capabilities'"* ]] || false
 
   write_empty_model
   printf '%s\n' '[provider.alias]' 'adapter = "custom"' 'capabilities = ["observe"]' \
     'manifest = "/tmp/manifest"' >>"$CONFIG_HOME/rig.toml"
   run_diag
   [ "$status" -eq 2 ]
-  [[ "$output" == *'external provider cannot declare manifest'* ]]
+  [[ "$output" == *'external provider cannot declare manifest'* ]] || false
 }
 
 @test "resource-only built-ins reject tool installation bindings" {
@@ -75,7 +75,7 @@ run_diag() {
       '[profile.default]' 'tools = ["subject"]' >"$CONFIG_HOME/rig.toml"
     run_diag
     [ "$status" -eq 2 ]
-    [[ "$output" == *"adapter '$provider' cannot install tools"* ]]
+    [[ "$output" == *"adapter '$provider' cannot install tools"* ]] || false
   done
 }
 
@@ -86,7 +86,7 @@ run_diag() {
     'base-url = "https://example.test/"' 'publisher = "homebrew"' >>"$CONFIG_HOME/rig.toml"
   run_diag
   [ "$status" -eq 2 ]
-  [[ "$output" == *'publisher must reference an explicit provider'* ]]
+  [[ "$output" == *'publisher must reference an explicit provider'* ]] || false
 
   write_empty_model
   printf '%s\n' '[provider.homebrew]' \
@@ -94,7 +94,7 @@ run_diag() {
     'base-url = "https://example.test/"' 'publisher = "homebrew"' >>"$CONFIG_HOME/rig.toml"
   run_diag
   [ "$status" -eq 2 ]
-  [[ "$output" == *'publisher must reference a custom provider'* ]]
+  [[ "$output" == *'publisher must reference a custom provider'* ]] || false
 
   write_empty_model
   printf '%s\n' '[provider.publisher]' 'adapter = "custom"' 'capabilities = ["observe"]' \
@@ -102,7 +102,7 @@ run_diag() {
     'base-url = "https://example.test/"' 'publisher = "publisher"' >>"$CONFIG_HOME/rig.toml"
   run_diag
   [ "$status" -eq 2 ]
-  [[ "$output" == *"publisher 'publisher' requires capability 'publish'"* ]]
+  [[ "$output" == *"publisher 'publisher' requires capability 'publish'"* ]] || false
 }
 
 @test "action tables reject built-in providers including launchd" {
@@ -113,7 +113,7 @@ run_diag() {
     printf '%s\n' "[action.$provider.status]" 'mode = "observe"' 'description = "Status"' >>"$CONFIG_HOME/rig.toml"
     run_diag
     [ "$status" -eq 2 ]
-    [[ "$output" == *'actions require a custom provider'* ]]
+    [[ "$output" == *'actions require a custom provider'* ]] || false
   done
 }
 
@@ -129,6 +129,6 @@ run_diag() {
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" explain dock:main
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'dock-item.1.id=alpha\ndock-item.1.kind=application\ndock-item.1.path=/Applications/Alpha.app'* ]]
-  [[ "$output" == *$'dock-item.2.id=documents\ndock-item.2.kind=folder\ndock-item.2.path=~/Documents\ndock-item.2.view=grid\ndock-item.2.display=folder'* ]]
+  [[ "$output" == *$'dock-item.1.id=alpha\ndock-item.1.kind=application\ndock-item.1.path=/Applications/Alpha.app'* ]] || false
+  [[ "$output" == *$'dock-item.2.id=documents\ndock-item.2.kind=folder\ndock-item.2.path=~/Documents\ndock-item.2.view=grid\ndock-item.2.display=folder'* ]] || false
 }

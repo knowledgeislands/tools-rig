@@ -56,15 +56,15 @@ run_rig() {
 @test "typed macOS resources query and dry-run deterministically" {
   run_rig show
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'Settings: 1\nID\tNAME\tPROVIDER\tVALUE\ndark-mode\tDark mode\tmacos-defaults\ttrue'* ]]
-  [[ "$output" == *$'Dock layouts: 1\nID\tNAME\tPROVIDER\tITEMS\nmain\tMain Dock\tmacos-dock\t2'* ]]
+  [[ "$output" == *$'Settings: 1\nID\tNAME\tPROVIDER\tVALUE\ndark-mode\tDark mode\tmacos-defaults\ttrue'* ]] || false
+  [[ "$output" == *$'Dock layouts: 1\nID\tNAME\tPROVIDER\tITEMS\nmain\tMain Dock\tmacos-dock\t2'* ]] || false
   run_rig explain setting:dark-mode
   [ "$status" -eq 0 ]
-  [[ "$output" == *'provider=macos-defaults'* ]]
+  [[ "$output" == *'provider=macos-defaults'* ]] || false
   run_rig apply --scope resources --dry-run
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'main\tdock\tmacos-dock\tplanned'* ]]
-  [[ "$output" == *$'dark-mode\tsetting\tmacos-defaults\tplanned'* ]]
+  [[ "$output" == *$'main\tdock\tmacos-dock\tplanned'* ]] || false
+  [[ "$output" == *$'dark-mode\tsetting\tmacos-defaults\tplanned'* ]] || false
   [ ! -e "$MACOS_LOG" ]
 }
 
@@ -90,7 +90,7 @@ run_rig() {
   mv "$CONFIG_HOME/invalid.toml" "$CONFIG_HOME/rig.toml"
   run_rig status
   [ "$status" -ne 0 ]
-  [[ "$output" == *"unsupported value-type 'number'"* ]]
+  [[ "$output" == *"unsupported value-type 'number'"* ]] || false
   [ ! -e "$MACOS_LOG" ]
 }
 
@@ -137,7 +137,7 @@ run_rig() {
     RIG_DOCKUTIL="$DOCKUTIL_FAKE" RIG_KILLALL="$KILLALL_FAKE" \
     MACOS_LOG="$MACOS_LOG" "$RIG" apply --scope resources --dry-run
   [ "$status" -eq 2 ]
-  [[ "$output" == *'HOME is required'* ]]
+  [[ "$output" == *'HOME is required'* ]] || false
   [ ! -s "$MACOS_LOG" ]
 }
 
@@ -157,14 +157,14 @@ run_rig() {
 
   run_rig apply --scope resources --dry-run
   [ "$status" -eq 1 ]
-  [[ "$output" == *$'main\tdock\tmacos-dock\tfailed\tpreflight:dock-item-path-missing:'"$TEST_HOME/Missing"* ]]
-  [[ "$output" == *$'dark-mode\tsetting\tmacos-defaults\tplanned'* ]]
+  [[ "$output" == *$'main\tdock\tmacos-dock\tfailed\tpreflight:dock-item-path-missing:'"$TEST_HOME/Missing"* ]] || false
+  [[ "$output" == *$'dark-mode\tsetting\tmacos-defaults\tplanned'* ]] || false
   [ ! -e "$MACOS_LOG" ]
 
   run_rig apply --scope resources
   [ "$status" -eq 1 ]
-  [[ "$output" == *$'main\tdock\tmacos-dock\tfailed\tpreflight:dock-item-path-missing:'"$TEST_HOME/Missing"* ]]
-  [[ "$output" == *$'dark-mode\tsetting\tmacos-defaults\tcompleted'* ]]
+  [[ "$output" == *$'main\tdock\tmacos-dock\tfailed\tpreflight:dock-item-path-missing:'"$TEST_HOME/Missing"* ]] || false
+  [[ "$output" == *$'dark-mode\tsetting\tmacos-defaults\tcompleted'* ]] || false
   grep -F 'defaults <write> <NSGlobalDomain> <AppleInterfaceStyleSwitchesAutomatically> <-bool> <true>' "$MACOS_LOG"
   ! grep -F 'dockutil <--remove>' "$MACOS_LOG"
   ! grep -F 'killall <Dock>' "$MACOS_LOG"
@@ -183,6 +183,6 @@ run_rig() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_APPLICATION_ROOTS="$APP_ROOT" RIG_PLUTIL="$PLUTIL_FAKE" "$RIG" status --unmanaged
   [ "$status" -eq 0 ]
-  [[ "$output" == *'/Native.app'*'macos-applications'*'unmanaged'*'native'* ]]
-  [[ "$output" != *'Mobile.app'* ]]
+  [[ "$output" == *'/Native.app'*'macos-applications'*'unmanaged'*'native'* ]] || false
+  [[ "$output" != *'Mobile.app'* ]] || false
 }

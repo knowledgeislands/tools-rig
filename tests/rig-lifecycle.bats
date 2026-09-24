@@ -124,8 +124,8 @@ run_rig() {
   run run_rig apply --dry-run
 
   [ "$status" -eq 0 ] || { printf '%s\n' "$output" >&3; false; }
-  [[ "$output" == *$'node\tmise\tplanned\t-'* ]]
-  [[ "$output" == *$'typescript\tnpm\tplanned\t-'* ]]
+  [[ "$output" == *$'node\tmise\tplanned\t-'* ]] || false
+  [[ "$output" == *$'typescript\tnpm\tplanned\t-'* ]] || false
 
   run run_rig apply
 
@@ -138,12 +138,12 @@ run_rig() {
   run run_rig update --dry-run
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'manifest\thomebrew\tplanned\tupdate'* ]]
+  [[ "$output" == *$'manifest\thomebrew\tplanned\tupdate'* ]] || false
   [ "$(printf '%s\n' "$output" | grep -Fc $'manifest\thomebrew\tplanned')" -eq 1 ]
-  [[ "$output" == *$'ruff\tuv\tplanned\tupdate'* ]]
-  [[ "$output" == *$'node\tmise\tplanned\tupdate'* ]]
-  [[ "$output" == *$'typescript\tnpm\tplanned\tupdate'* ]]
-  [[ "$output" == *$'dotfiles\tchezmoi\tskipped\tunsupported-update'* ]]
+  [[ "$output" == *$'ruff\tuv\tplanned\tupdate'* ]] || false
+  [[ "$output" == *$'node\tmise\tplanned\tupdate'* ]] || false
+  [[ "$output" == *$'typescript\tnpm\tplanned\tupdate'* ]] || false
+  [[ "$output" == *$'dotfiles\tchezmoi\tskipped\tunsupported-update'* ]] || false
   [ ! -e "$CALL_LOG" ]
 }
 
@@ -168,14 +168,14 @@ run_rig() {
   grep -Fqx $'uv\tcache prune' "$CALL_LOG"
   grep -Fqx $'mise\treshim' "$CALL_LOG"
   grep -Fqx $'npm\tcache verify' "$CALL_LOG"
-  [[ "$output" == *$'chezmoi\tchezmoi\tskipped\tunsupported-maintain'* ]]
+  [[ "$output" == *$'chezmoi\tchezmoi\tskipped\tunsupported-maintain'* ]] || false
 }
 
 @test "capture previews and refreshes only explicit Homebrew manifest" {
   run run_rig capture homebrew --dry-run
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'homebrew\tplanned\tcapture'* ]]
+  [[ "$output" == *$'homebrew\tplanned\tcapture'* ]] || false
   [ ! -e "$CALL_LOG" ]
 
   run run_rig capture homebrew
@@ -186,7 +186,7 @@ run_rig() {
   run run_rig capture uv --dry-run
 
   [ "$status" -eq 2 ]
-  [[ "$output" == *"provider 'uv' does not support capture"* ]]
+  [[ "$output" == *"provider 'uv' does not support capture"* ]] || false
 }
 
 @test "capture rejects unsafe manifest before provider invocation" {
@@ -198,7 +198,7 @@ run_rig() {
   run run_rig capture homebrew
 
   [ "$status" -eq 2 ]
-  [[ "$output" == *"manifest is not a safe regular-file target"* ]]
+  [[ "$output" == *"manifest is not a safe regular-file target"* ]] || false
   [ ! -e "$CALL_LOG" ]
 }
 
@@ -208,16 +208,16 @@ run_rig() {
   run run_rig update --dry-run
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *$'ruff\tuv\tunavailable\texecutable-unavailable'* ]]
-  [[ "$output" == *$'manifest\thomebrew\tplanned\tupdate'* ]]
-  [[ "$output" == *'Summary: planned=3 completed=0 failed=0 unavailable=1 skipped=1'* ]]
+  [[ "$output" == *$'ruff\tuv\tunavailable\texecutable-unavailable'* ]] || false
+  [[ "$output" == *$'manifest\thomebrew\tplanned\tupdate'* ]] || false
+  [[ "$output" == *'Summary: planned=3 completed=0 failed=0 unavailable=1 skipped=1'* ]] || false
   [ ! -e "$CALL_LOG" ]
 
   run run_rig update
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *$'ruff\tuv\tunavailable\texecutable-unavailable'* ]]
-  [[ "$output" == *'Summary: planned=0 completed=3 failed=0 unavailable=1 skipped=1'* ]]
+  [[ "$output" == *$'ruff\tuv\tunavailable\texecutable-unavailable'* ]] || false
+  [[ "$output" == *'Summary: planned=0 completed=3 failed=0 unavailable=1 skipped=1'* ]] || false
   grep -Fqx $'brew\tbundle install --upgrade --file='"$MANIFEST" "$CALL_LOG"
   grep -Fqx $'mise\tupgrade node' "$CALL_LOG"
   grep -Fqx $'npm\tinstall --global typescript' "$CALL_LOG"

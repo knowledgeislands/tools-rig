@@ -133,7 +133,7 @@ run_status() {
   run_status
   [ "$status" -ne 0 ]
   output_has_table_row $'subject\tfixture\tunavailable\tartifact-unresolved-link:~/alpha'
-  [[ "$output" != *'artifact-unsafe'* ]]
+  [[ "$output" != *'artifact-unsafe'* ]] || false
 }
 
 @test "resolution never turns an unsupported target into a present artifact" {
@@ -162,7 +162,7 @@ run_status() {
   run_status
   [ "$status" -eq 0 ]
   output_has_table_row $'subject\t-\tunavailable\tcatalogue-only'
-  [[ "$output" != *'artifact-missing'* ]]
+  [[ "$output" != *'artifact-missing'* ]] || false
 }
 
 @test "macOS app artifact requires its declared nested executable" {
