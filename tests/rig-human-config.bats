@@ -194,19 +194,10 @@ write_resource_graph_config() {
     '[profile.public]' \
     'name = "Public"' \
     'purpose = "Publication view"' \
-    'kind = "view"' \
-    '[provider.publisher]' \
-    'adapter = "custom"' \
-    'executable = "/usr/bin/false"' \
-    'capabilities = ["publish"]' \
-    '[publication.site]' \
-    'profile = "public"' \
-    'title = "Public rig"' \
-    'base-url = "https://rig.example.test"' \
-    'publisher = "publisher"' >>"$CONFIG_HOME/rig.toml"
+    'kind = "view"' >>"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" export site --output "$BATS_TEST_TMPDIR/export"
+    "$RIG" export --profile public --output "$BATS_TEST_TMPDIR/export"
 
   [ "$status" -eq 0 ]
   [ -f "$BATS_TEST_TMPDIR/export/rig.json" ]

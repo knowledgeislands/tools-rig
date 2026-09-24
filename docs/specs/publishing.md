@@ -1,12 +1,12 @@
 # Personal-site publication — RIG-PUB
 
-This area of the [Rig Specifications](index.md) defines the public projection established by [ADR-RIG-004](../decisions/ADR-RIG-004-static-publication-projection.md) and constrained by [XDR-RIG-001](../decisions/XDR-RIG-001-executable-provider-boundary.md).
+This area of the [Rig Specifications](index.md) defines the public projection established by [ADR-RIG-004](../decisions/ADR-RIG-004-static-publication-projection.md).
 
 ## Projection
 
 ### RIG-PUB-001 — Explicit public profile
 
-Rig MUST export only the non-appliable view explicitly named by a publication declaration. Publication resolution MUST include every tool that opts into that view regardless of the active host platform, while retaining each tool's declared platform values.
+Rig MUST export only the non-appliable view named by the `--profile` argument of `rig export`. Export resolution MUST include every tool that opts into that view regardless of the active host platform, while retaining each tool's declared platform values.
 
 _Conformance:_ conforming
 
@@ -16,7 +16,7 @@ _Evidence:_ `tests/rig.bats` proves private tools are absent and output is byte-
 
 ### RIG-PUB-002 — Disclosure allow-list
 
-Rig MUST limit the projection to publication identity, title, canonical URL, public profile identity, and selected category and tool catalogue fields: identity, name, purpose, rationale, declared platforms, and relationships. It MUST exclude providers, installation metadata, services, scheduled jobs, settings, Dock layouts, executables, arguments, manifests, credentials, local paths, other profiles, observed state, health findings, unmanaged inventory, and host publication state.
+Rig MUST limit the projection to the exported view identity, title, canonical URL, public profile identity, and selected category and tool catalogue fields: identity, name, purpose, rationale, declared platforms, and relationships. It MUST exclude providers, installation metadata, services, scheduled jobs, settings, Dock layouts, executables, arguments, manifests, credentials, local paths, other profiles, observed state, health findings, unmanaged inventory, and host publication state.
 
 _Conformance:_ conforming
 
@@ -43,7 +43,7 @@ _Evidence:_ `tests/rig.bats` observes the public relationship while the private 
   "format": "rig-publication",
   "version": 2,
   "publication": {
-    "id": "site",
+    "id": "public",
     "title": "A public rig",
     "canonical_url": "https://rig.example/"
   },
@@ -86,45 +86,43 @@ _Evidence:_ `tests/rig.bats` parses and compares complete exports.
 
 ### RIG-PUB-005 — Canonical URL metadata
 
-`base-url` MUST be an absolute HTTP or HTTPS URL without user information, query, or fragment. Rig MUST normalise an omitted trailing slash and project the value as `publication.canonical_url`. The value is metadata for a consumer and MUST NOT become configuration authority or generated navigation.
+`--base-url` MUST be an absolute HTTP or HTTPS URL without user information, query, or fragment. Rig MUST normalise an omitted trailing slash and project the value as `publication.canonical_url`. Omitting the argument MUST project `null`. The value is metadata for a consumer and MUST NOT become configuration authority or generated navigation.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests cover valid root, subdomain, and subpath values plus malformed authorities.
+_Verify:_ Bats tests cover valid root, subdomain, and subpath values, an omitted argument, and malformed authorities.
 
-_Evidence:_ `tests/rig.bats` observes normalised canonical metadata and fail-closed validation.
+_Evidence:_ `tests/rig.bats` observes normalised canonical metadata, the null default, and fail-closed validation.
 
 ### RIG-PUB-006 — Offline export
 
-`rig export` MUST NOT invoke a provider, publisher, or network command.
+`rig export` MUST NOT invoke a provider or network command.
 
 _Conformance:_ conforming
 
-_Verify:_ Place recording publisher and network-command fakes on `PATH`, export a fixture, and assert none was invoked.
+_Verify:_ Place recording provider and network-command fakes on `PATH`, export a fixture, and assert none was invoked.
 
 _Evidence:_ `tests/rig.bats` covers offline export.
 
-## Deployment
+## Parameters
 
-### RIG-PUB-007 — Explicit trusted publisher
+### RIG-PUB-007 — Export parameters
 
-Publication staging MUST use the effective Rig cache's `publish/staging` namespace. After publisher failure or post-export interruption, Rig MUST atomically move the complete export into `publish/retained` before reporting its retained path. Explicit retained-artifact cleanup is governed by [RIG-CACHE](cache.md).
+`rig export` MUST take its complete instruction from the command line. `--profile NAME` and `--output DIRECTORY` MUST both be present; `--title TEXT` and `--base-url URL` are optional. Each MUST be rejected with status 2 when its value is missing, and an unexpected positional argument MUST be rejected with status 2 before the configuration is loaded.
 
-A selected publisher MUST be explicitly declared with `adapter = "custom"` and the exact `publish` operation allowed. An omitted executable MUST resolve exactly `${RIG_DATA_HOME}/providers/PROVIDER-ID`; an explicit executable MUST take precedence. Resolution MUST use the same no-search trust boundary as external observation, application, inventory, and declared actions.
+`--profile` MUST name a declared profile whose `kind` is `view`; an unknown profile and an appliable profile MUST each be rejected with status 2 without creating the output. An omitted `--title` MUST default to the view profile's declared `name`, and to the profile identifier when the view declares none. `publication.id` MUST be the exported profile's identifier.
 
-`rig publish PUBLICATION` MUST validate and render one complete isolated export beneath the effective Rig cache before invoking only the publication's configured publisher. Rig MUST invoke it once as `EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 publish PROVIDER PUBLICATION directory ABS_EXPORT_DIR`, preserving literal argument boundaries and the publisher's native deployment result. Validation, staging, or render failure MUST invoke no publisher.
-
-A successful publisher result MUST remove only the validated Rig-owned staged tree without reporting a retained export. Once export is complete, publisher failure or interruption MUST retain and report its path. Successful cleanup MUST revalidate the canonical staging parent, operate relative to a pinned directory, unlink only `rig.json`, and remove the now-empty staging directory. A substituted parent, symlink, unexpected file, or unsafe shape MUST fail closed without recursive traversal.
+Rig MUST NOT accept any of these values from configuration. A `[publication.ID]` table MUST fail to load, naming `rig export --profile` as its replacement.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests configure recording external publishers; assert one selected invocation and exact handoff; exercise unavailable operations, staging failure, interruption phases, native failure, retained artifacts, success cleanup, and adversarial cache-parent substitution.
+_Verify:_ Bats tests export with each argument present and absent, and assert status 2 for a missing value, an unexpected positional, an unknown profile, an appliable profile, and a configuration carrying `[publication.ID]`.
 
-_Evidence:_ `rig_command_publish`, `rig_prepare_publish_stage`, `rig_cleanup_publish_stage`, `rig_prepare_custom_invocation`, and `tests/rig.bats` implement and cover the boundary.
+_Evidence:_ `rig_command_export` parses the arguments and validates the view before rendering; `rig_add_section` rejects the retired table; `export help and syntax are local and explicit`, `export refuses a profile that is not a view`, `export titles a view from its declared name`, and the loader rejection case in `tests/rig.bats` cover each boundary.
 
 ### RIG-PUB-008 — Safe complete-tree replacement
 
-`rig export PUBLICATION --output DIRECTORY` MUST replace the complete output tree so stale files cannot survive. It MUST reject `/`, `.`, `..`, symlink targets, and non-directory targets without altering them.
+`rig export --profile NAME --output DIRECTORY` MUST replace the complete output tree so stale files cannot survive. It MUST reject `/`, `.`, `..`, symlink targets, and non-directory targets without altering them.
 
 _Conformance:_ conforming
 
@@ -134,27 +132,27 @@ _Evidence:_ `tests/rig.bats` verifies the one-file tree, stale-file removal, and
 
 ### RIG-PUB-009 — Non-appliable disclosure view
 
-A publication MUST reference a non-appliable view. Every declaration and relationship dependency in its resolved projection MUST opt into that view or an inherited view explicitly. The view MUST NOT inherit a complete profile, acquire reconciliation ownership, or expose declarations assigned implicitly to the configured default profile.
+An export MUST reference a non-appliable view. Every declaration and relationship dependency in its resolved projection MUST opt into that view or an inherited view explicitly. The view MUST NOT inherit a complete profile, acquire reconciliation ownership, or expose declarations assigned implicitly to the configured default profile.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats exports an explicit public view and rejects complete-profile publication, complete inheritance, implicit default disclosure, and an unlisted dependency.
+_Verify:_ Bats exports an explicit public view and rejects a complete profile, complete inheritance, implicit default disclosure, and an unlisted dependency.
 
-_Evidence:_ publication validation, `rig_validate_view_closure`, and item-owned profile resolution enforce the boundary; publication and profile-authority Bats cover safe selection and rejection.
+_Evidence:_ `rig_command_export`, `rig_validate_view_closure`, and item-owned profile resolution enforce the boundary; export and profile-authority Bats cover safe selection and rejection.
 
 ### RIG-PUB-010 — Absolute private-port exclusion
 
-Every public projection MUST exclude port declarations, numbers, scopes, modes, owners, listener observations, process details, and unmanaged listener inventory regardless of publication-view membership.
+Every public projection MUST exclude port declarations, numbers, scopes, modes, owners, listener observations, process details, and unmanaged listener inventory regardless of view membership.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats assigns a declaration containing unique private markers to a publication view, exports it, and scans the complete output tree for every marker.
+_Verify:_ Bats assigns a declaration containing unique private markers to an exported view, exports it, and scans the complete output tree for every marker.
 
 _Evidence:_ `rig_render_publication_json` has a fixed tool-and-category allow-list; the private-port publication test proves no port field or marker enters `rig.json`.
 
 ### RIG-PUB-011 — Explicit user-level skill projection
 
-Publication format 2 MUST always emit deterministic `profile.skills`, including an empty array. A skill MUST enter a publication only through explicit view membership and MUST expose only `id`, `name`, `purpose`, `rationale`, and optional reviewed `public-source` as `source`. Rig MUST exclude skill authority, native installation source, runtime projections, local paths and roots, locks, arguments, observed state, and unmanaged inventory. JSON string encoding MUST preserve valid UTF-8 and escape quotes, backslashes, and control characters without changing the existing category or tool semantics.
+Publication format 2 MUST always emit deterministic `profile.skills`, including an empty array. A skill MUST enter an export only through explicit view membership and MUST expose only `id`, `name`, `purpose`, `rationale`, and optional reviewed `public-source` as `source`. Rig MUST exclude skill authority, native installation source, runtime projections, local paths and roots, locks, arguments, observed state, and unmanaged inventory. JSON string encoding MUST preserve valid UTF-8 and escape quotes, backslashes, and control characters without changing the existing category or tool semantics.
 
 _Conformance:_ conforming
 

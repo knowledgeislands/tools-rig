@@ -15,9 +15,7 @@ Rig's commands follow a deliberate progression from understanding declared inten
 - `rig maintain [--profile NAME] [--dry-run]`
 - `rig capture PROVIDER [--dry-run]`
 - `rig run PROVIDER ACTION [-- ARGUMENT...]`
-- `rig export PUBLICATION --output DIRECTORY`
-- `rig publish PUBLICATION`
-- `rig clean [--dry-run]`
+- `rig export --profile NAME --output DIRECTORY [--title TEXT] [--base-url URL]`
 - `rig diag`
 - `rig completion bash|zsh`
 - `rig help [-h|--help]`
@@ -61,7 +59,7 @@ rig doctor --format json | jq -r '.findings.tools[]'
 
 The payload opens with `schema`, the running `rig` version, the `command`, the resolved `profile` and `platform`, and an `observed_at` timestamp. `rig status` then carries `tools`, `skills`, `resources`, and `ports` arrays naming each item's identity, owner, state, and detail, plus `unmanaged` and `unmanaged_problems`, which stay `null` unless you asked for `--unmanaged`. `rig doctor` carries its `findings` grouped by origin and its `information`. Pin `schema`: a change that removes or repurposes a field increments it.
 
-One caution about disclosure. `detail`, `findings`, and `information` are human-facing text and are the only fields that may carry a local path; no other field does. A consumer that must not publish paths can discard exactly those three and keep everything else. Progress and native provider diagnostics stay on stderr, so redirecting stdout gives you the payload alone.
+One caution about disclosure. `detail`, `findings`, and `information` are human-facing text and are the only fields that may carry a local path; no other field does. A consumer that must not disclose paths can discard exactly those three and keep everything else. Progress and native provider diagnostics stay on stderr, so redirecting stdout gives you the payload alone.
 
 ## Preview and reconcile
 
@@ -97,18 +95,13 @@ Update and maintenance work is independent per target, so one target Rig cannot 
 
 This is not a general shell runner. Read [Run external provider actions](provider-actions.md) before adding a custom action.
 
-## Export or publish a public view
+## Export a public view
 
-- `rig export PUBLICATION --output DIRECTORY` generates deterministic public data locally without invoking a publisher.
-- `rig publish PUBLICATION` generates the same isolated data and hands it to the explicitly selected trusted publisher.
+`rig export --profile NAME --output DIRECTORY` generates deterministic public data locally, invoking no provider and no network command. `--profile` must name a non-appliable view.
 
-Export is the review boundary; publish is the network-capable transition. Follow [Publish a public rig](publishing.md) before configuring either command.
+`--title TEXT` and `--base-url URL` describe the document the data becomes; both are optional, and both belong to the consuming site rather than to your configuration. Follow [Export a public rig](exporting.md) before wiring it into a site.
 
-## Clean Rig-owned cache data
-
-`rig clean [--dry-run]` removes only retained cache artifacts that Rig can prove it owns. Use `rig clean --dry-run` first to inspect exact targets and reasons.
-
-Clean is maintenance, not part of the everyday reconciliation lifecycle. It never removes provider-native caches, configuration, data, or state.
+Rig does not deploy. Take the exported tree wherever it belongs, using the credentials and transport that system already has.
 
 ## Get help and completion
 
@@ -125,7 +118,7 @@ Use `man rig` for the exhaustive command synopsis, options, configuration schema
 - Status 1 means an operational command completed with findings or provider work failed.
 - Status 2 means Rig rejected command syntax, configuration, or profile resolution before valid work could proceed.
 
-Some direct dispatch commands preserve a provider-native non-zero status. Profile-wide operations aggregate independent provider failures and return status 1. Interrupted publication returns 129, 130, or 143 for HUP, INT, or TERM.
+Some direct dispatch commands preserve a provider-native non-zero status. Profile-wide operations aggregate independent provider failures and return status 1. An interrupted command returns 129, 130, or 143 for HUP, INT, or TERM.
 
 You do not have to read the status out of the shell. Unless it is suppressed, a command states its own outcome on the last line it writes to stderr:
 
@@ -145,4 +138,4 @@ Operational commands report phases, completed counts, safe current identities, m
 
 The default `RIG_PROGRESS=auto` shows the bar for operational work on an interactive terminal and keeps fast declaration queries quiet. `RIG_PROGRESS=always` forces progress: it uses the bar on a terminal and stable line-oriented events when stderr is redirected. Use `RIG_PROGRESS=lines` to request those durable events even on a terminal, or `RIG_PROGRESS=never` to suppress Rig-authored progress.
 
-The bar advances only after a real succeeded, skipped, or failed outcome; it is not a duration estimate. Progress labels omit private values such as paths, locators, arguments, environment entries, publication titles, observed details, and credentials. Native provider diagnostics may still use stderr in their own format and can temporarily interrupt the bar; the next Rig event redraws it.
+The bar advances only after a real succeeded, skipped, or failed outcome; it is not a duration estimate. Progress labels omit private values such as paths, locators, arguments, environment entries, export titles, observed details, and credentials. Native provider diagnostics may still use stderr in their own format and can temporarily interrupt the bar; the next Rig event redraws it.

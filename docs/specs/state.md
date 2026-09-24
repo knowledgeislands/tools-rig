@@ -78,7 +78,7 @@ _Evidence:_ `rig_command_doctor` consumes the operational plan and provider obse
 
 ### RIG-STATE-014 — Read-only doctor
 
-`rig doctor` MUST invoke only built-in observation operations or exact external operations explicitly allowed for providers selected by the resolved profile and MUST NOT invoke apply, repair, publication, or unselected-provider operations.
+`rig doctor` MUST invoke only built-in observation operations or exact external operations explicitly allowed for providers selected by the resolved profile and MUST NOT invoke apply, repair, or unselected-provider operations.
 
 _Conformance:_ conforming
 
@@ -298,7 +298,7 @@ _Evidence:_ `rig_status_totals`, `rig_json_envelope`, `rig_status_json`, `rig_js
 
 ### RIG-STATE-029 — Exit status and stated outcome
 
-Rig MUST own exactly three statuses of its own. `0` MUST mean a healthy observation or successful operation, `1` MUST mean a valid result carrying findings or an operation that completed independent safe work with failures, and `2` MUST mean a rejection before valid work could start. A release MAY add a status; it MUST NOT repurpose one. `rig run` and `rig capture` MUST return the dispatched provider's native status, `rig publish` MUST return the publisher's native non-zero status, and publication interrupted by HUP, INT, or TERM MUST return 129, 130, or 143.
+Rig MUST own exactly three statuses of its own. `0` MUST mean a healthy observation or successful operation, `1` MUST mean a valid result carrying findings or an operation that completed independent safe work with failures, and `2` MUST mean a rejection before valid work could start. A release MAY add a status; it MUST NOT repurpose one. `rig run` and `rig capture` MUST return the dispatched provider's native status, and a command interrupted by HUP, INT, or TERM MUST return 129, 130, or 143.
 
 A command MUST state its own outcome as the last line it writes to stderr, so a person need not read the status out of the shell. The line MUST have the shape `rig: <command> <result>: status <n>`, optionally followed by a parenthesised detail clause naming the counts or the finding that decided the status. `result` MUST come from the closed vocabulary `succeeded`, `healthy`, `unhealthy`, `incomplete`, `failed`; a release MAY add a value but MUST NOT repurpose one.
 

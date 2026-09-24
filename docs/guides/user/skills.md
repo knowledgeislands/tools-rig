@@ -30,7 +30,7 @@ profiles = ["default", "public"]
 public-source = "https://github.com/JuliusBrussee/caveman"
 ```
 
-`source-skill` is optional when the native skill name matches the Rig ID. `public-source` is an optional reviewed HTTP or HTTPS URL for publication; it is not a materialisation source.
+`source-skill` is optional when the native skill name matches the Rig ID. `public-source` is an optional reviewed HTTP or HTTPS URL for public export; it is not a materialisation source.
 
 The Skills CLI may itself be a normal tool in the catalogue when bootstrap needs to make it present first. Use `requires = ["skills-cli"]` on the skill when that ordering should be explicit.
 
@@ -76,6 +76,6 @@ Full application orders tools → skills → resources. `rig update --dry-run` p
 
 ## Publish only deliberate metadata
 
-A publication view must select a skill explicitly. Public output emits only its identity, explanatory metadata, and optional reviewed public source. It never emits authority details, install source, runtime mappings, local paths, locks, arguments, observed state, or unmanaged inventory.
+An exported view must select a skill explicitly. Public output emits only its identity, explanatory metadata, and optional reviewed public source. It never emits authority details, install source, runtime mappings, local paths, locks, arguments, observed state, or unmanaged inventory.
 
-Inspect `rig export` output before handing it to a publisher. Being installed or selected by a complete profile never makes a skill public.
+Inspect `rig export` output before handing it to a site. Being installed or selected by a complete profile never makes a skill public.

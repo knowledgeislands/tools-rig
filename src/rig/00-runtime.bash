@@ -50,8 +50,6 @@ RIG_VISIT_NAMES=()
 RIG_VISIT_STATES=()
 RIG_QUERY_ITEMS=()
 RIG_DECLARED_FIELD_KEYS=()
-RIG_CLEAN_PATHS=()
-RIG_CLEAN_STATES=()
 RIG_PORT_STATES=()
 RIG_PORT_DETAILS=()
 RIG_SKILL_STATES=()
@@ -82,14 +80,7 @@ RIG_COUNT=0
 RIG_RESOLVED_PROFILE=
 RIG_RESOLVED_PLATFORM=
 RIG_INVOKED_PATH=
-RIG_PUBLISH_STAGE=
-RIG_PUBLISH_ROOT=
-RIG_PUBLISH_STAGING_ROOT=
 RIG_RESOURCE_PREFLIGHT_DETAIL=
-RIG_PUBLISH_RETAINED_ROOT=
-RIG_PUBLISH_COMPLETE=0
-RIG_CLEAN_CLAIM=
-RIG_CLEAN_ROOT=
 RIG_PUBLICATION_PLATFORM_NEUTRAL=0
 RIG_PROGRESS_ACTIVE=0
 RIG_PROGRESS_CURRENT=0
@@ -138,8 +129,6 @@ print_help() {
     '  capture     Refresh one provider-native manifest.' \
     '  run         Invoke a declared provider action.' \
     '  export      Generate public Rig data.' \
-    '  publish     Publish public Rig data.' \
-    '  clean       Remove eligible Rig-owned cache data.' \
     '  diag        Print runtime and configuration diagnostics.' \
     '  completion  Print shell completion source.' \
     '  help        Show this help.' \
@@ -232,7 +221,7 @@ rig_outcome_report() {
           result=unhealthy
         fi
         ;;
-      apply|bootstrap|update|maintain|capture|export|publish|clean)
+      apply|bootstrap|update|maintain|capture|export)
         if [ "$status" -eq 0 ]; then
           result=succeeded
         elif [ "$status" -eq 1 ]; then
@@ -579,7 +568,7 @@ print_bash_completion() {
     '  current=${COMP_WORDS[COMP_CWORD]}' \
     '  command=${COMP_WORDS[1]:-}' \
     '  if [ "$COMP_CWORD" -eq 1 ]; then' \
-    '    COMPREPLY=($(compgen -W "-h --help -V --version show list explain status doctor apply bootstrap update maintain capture run export publish clean diag completion help" -- "$current"))' \
+    '    COMPREPLY=($(compgen -W "-h --help -V --version show list explain status doctor apply bootstrap update maintain capture run export diag completion help" -- "$current"))' \
     '    return' \
     '  fi' \
     '  case "$command" in' \
@@ -593,9 +582,7 @@ print_bash_completion() {
     '    update|maintain) COMPREPLY=($(compgen -W "-h --help --profile --dry-run" -- "$current")) ;;' \
     '    capture) COMPREPLY=($(compgen -W "-h --help --dry-run homebrew" -- "$current")) ;;' \
     '    run) COMPREPLY=($(compgen -W "-h --help --" -- "$current")) ;;' \
-    '    export) COMPREPLY=($(compgen -W "-h --help --output" -- "$current")) ;;' \
-    '    publish) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
-    '    clean) COMPREPLY=($(compgen -W "-h --help --dry-run" -- "$current")) ;;' \
+    '    export) COMPREPLY=($(compgen -W "-h --help --profile --output --title --base-url" -- "$current")) ;;' \
     '    diag) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
     '    completion) COMPREPLY=($(compgen -W "-h --help bash zsh" -- "$current")) ;;' \
     '    help) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
@@ -626,8 +613,6 @@ print_zsh_completion() {
     "    'capture:refresh one provider-native manifest'" \
     "    'run:invoke a declared provider action'" \
     "    'export:generate public rig data'" \
-    "    'publish:publish public rig data'" \
-    "    'clean:remove eligible Rig-owned cache data'" \
     "    'diag:print runtime and configuration diagnostics'" \
     "    'completion:print shell completion source'" \
     "    'help:show help'" \
@@ -647,9 +632,7 @@ print_zsh_completion() {
     "        update|maintain) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--dry-run[print plan without invoking providers]' ;;" \
     "        capture) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:provider:(homebrew)' '--dry-run[print plan without invoking provider]' ;;" \
     "        run) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:provider name:' '2:action name:' '3:separator:(--)' '*::action argument:' ;;" \
-    "        export) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' '--output[write complete public data tree]:directory:_directories' ;;" \
-    "        publish) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:publication name:' ;;" \
-    "        clean) _arguments '(-h --help)'{-h,--help}'[show command help]' '--dry-run[report eligible cache data without removing it]' ;;" \
+    "        export) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[project a declared view profile]:profile:' '--output[write complete public data tree]:directory:_directories' '--title[state a title for the exported document]:title:' '--base-url[state the canonical URL of the published document]:url:' ;;" \
     "        diag) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
     "        completion) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:shell:(bash zsh)' ;;" \
     "        help) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \

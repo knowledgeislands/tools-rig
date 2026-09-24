@@ -160,16 +160,13 @@ bootstrap-profile = "public"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/invalid.tom
   [[ "$output" == *'bootstrap-profile must be appliable'* ]] || false
 }
 
-@test "publications require a non-appliable view" {
+@test "export requires a non-appliable view" {
   write_item_profile_fixture
-  printf '%s\n' \
-    '[provider.publisher]' 'adapter = "custom"' 'capabilities = ["publish"]' \
-    '[publication.site]' 'profile = "workstation"' 'title = "Site"' \
-    'base-url = "https://example.test/"' 'publisher = "publisher"' >>"$CONFIG_HOME/rig.toml"
 
-  run_rig show
+  run_rig export --profile workstation --output "$BATS_TEST_TMPDIR/export-$BATS_TEST_NUMBER"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"profile 'workstation' must be a non-appliable view"* ]] || false
+  [[ "$output" == *"profile 'workstation' must be a non-appliable view to export"* ]] || false
+  [ ! -e "$BATS_TEST_TMPDIR/export-$BATS_TEST_NUMBER" ]
 }
 
 @test "native target conflicts are checked only in the resolved selection" {

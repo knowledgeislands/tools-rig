@@ -79,32 +79,6 @@ run_diag() {
   done
 }
 
-@test "publication publishers must be explicit custom providers with publish capability" {
-  write_empty_model
-  printf '%s\n' \
-    '[publication.site]' 'profile = "default"' 'title = "Site"' \
-    'base-url = "https://example.test/"' 'publisher = "homebrew"' >>"$CONFIG_HOME/rig.toml"
-  run_diag
-  [ "$status" -eq 2 ]
-  [[ "$output" == *'publisher must reference an explicit provider'* ]] || false
-
-  write_empty_model
-  printf '%s\n' '[provider.homebrew]' \
-    '[publication.site]' 'profile = "default"' 'title = "Site"' \
-    'base-url = "https://example.test/"' 'publisher = "homebrew"' >>"$CONFIG_HOME/rig.toml"
-  run_diag
-  [ "$status" -eq 2 ]
-  [[ "$output" == *'publisher must reference a custom provider'* ]] || false
-
-  write_empty_model
-  printf '%s\n' '[provider.publisher]' 'adapter = "custom"' 'capabilities = ["observe"]' \
-    '[publication.site]' 'profile = "default"' 'title = "Site"' \
-    'base-url = "https://example.test/"' 'publisher = "publisher"' >>"$CONFIG_HOME/rig.toml"
-  run_diag
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"publisher 'publisher' requires capability 'publish'"* ]] || false
-}
-
 @test "action tables reject built-in providers including launchd" {
   local provider
 

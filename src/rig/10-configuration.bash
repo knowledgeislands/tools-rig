@@ -152,7 +152,7 @@ rig_parse_section_identity() {
   fi
 
   case "$name" in
-    category.*|tool.*|skill.*|profile.*|provider.*|publication.*|service.*|scheduled-job.*|setting.*|dock.*|dock-item.*|port.*)
+    category.*|tool.*|skill.*|profile.*|provider.*|service.*|scheduled-job.*|setting.*|dock.*|dock-item.*|port.*)
       RIG_SECTION_TYPE=${name%%.*}
       rest=${name#*.}
       rig_valid_id "$rest" || return 1
@@ -180,6 +180,13 @@ rig_add_section() {
   name=$1
   file=$2
   line=$3
+  case "$name" in
+    publication.*)
+      rig_fail \
+        "$file:$line: [$name] is retired; export a view profile with rig export --profile" ||
+        return
+      ;;
+  esac
   rig_parse_section_identity "$name" ||
     rig_fail "$file:$line: invalid section identity [$name]" || return
   if rig_section_index "$name"; then
@@ -246,7 +253,6 @@ rig_field_kind() {
     tool:variant:*:install-provider|tool:variant:*:install-kind|\
     tool:variant:*:install-locator|tool:variant:*:install-destination|\
     tool:variant:*:install-checksum|\
-    publication:profile|publication:title|publication:base-url|publication:publisher|\
     service:name|service:purpose|service:rationale|service:provider|service:locator|\
     service:desired-state|service:working-directory|service:standard-output|\
     service:standard-error|service:restart-policy|service:start-policy|\
@@ -332,7 +338,6 @@ rig_toml_field() {
     skill:source-skill|skill:trust|skill:public-source|\
     provider:adapter|provider:command|provider:executable|provider:manifest|\
     binding:kind|binding:locator|binding:destination|binding:checksum|\
-    publication:profile|publication:title|publication:base-url|publication:publisher|\
     service:name|service:purpose|service:rationale|service:provider|service:locator|\
     service:desired-state|service:working-directory|service:standard-output|\
     service:standard-error|service:restart-policy|service:start-policy|\
@@ -1973,26 +1978,6 @@ rig_validate_model() {
         rig_require_field "$section_name" kind || return
         rig_require_field "$section_name" locator || return
         rig_validate_binding_adapter "$section_name" "$secondary_id" || return
-        ;;
-      publication)
-        rig_require_field "$section_name" profile || return
-        profile=$RIG_VALUE
-        rig_valid_id "$RIG_VALUE" && rig_reference_exists profile "$RIG_VALUE" ||
-          rig_fail "[$section_name] references unknown profile '$RIG_VALUE'" || return
-        rig_require_field "$section_name" title || return
-        rig_require_field "$section_name" base-url || return
-        rig_require_field "$section_name" publisher || return
-        provider=$RIG_VALUE
-        rig_valid_id "$provider" && rig_reference_exists provider "$provider" ||
-          rig_fail "[$section_name] publisher must reference an explicit provider" || return
-        rig_provider_adapter "$provider" || return 2
-        [ "$RIG_VALUE" = custom ] ||
-          rig_fail "[$section_name] publisher must reference a custom provider" || return
-        rig_provider_has_capability "$provider" publish ||
-          rig_fail "[$section_name] publisher '$provider' requires capability 'publish'" || return
-        rig_profile_kind "$profile" || return
-        [ "$RIG_VALUE" = view ] ||
-          rig_fail "[$section_name] profile '$profile' must be a non-appliable view" || return
         ;;
     action)
       rig_validate_action "$section_name" "$section_id" || return

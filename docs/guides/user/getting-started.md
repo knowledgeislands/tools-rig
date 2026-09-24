@@ -127,9 +127,9 @@ Persist the generated source through the shell configuration manager that alread
 
 Add concepts only when they represent real intent:
 
-- Use [complete profiles and safe views](profiles.md) when another machine, role, or publication needs a materially different selection.
+- Use [complete profiles and safe views](profiles.md) when another machine, role, or public view needs a materially different selection.
 - Use [operational resources and private ports](operational-resources.md) when services, schedules, settings, layouts, or listener allocations belong in desired machine state.
 - Use [user-level skills](skills.md) when agent capabilities should be declared alongside tools without copying their instructions into Rig.
-- Use [publication](publishing.md) when you are ready to construct and inspect a deliberately public data view.
+- Use [public export](exporting.md) when you are ready to construct and inspect a deliberately public data view.
 
 Keep `man rig` nearby for exhaustive field definitions. The guides show a safe path through the model; the manual is the reference.

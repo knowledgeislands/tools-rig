@@ -4,7 +4,7 @@ These guides help people adopt, operate, develop, and release Rig. They explain 
 
 ## Use Rig
 
-Start with the [user-guide journey](user/README.md). It begins with a small catalogue and moves gradually into profiles, machine resources, skills, extensions, and publication.
+Start with the [user-guide journey](user/README.md). It begins with a small catalogue and moves gradually into profiles, machine resources, skills, extensions, and public export.
 
 1. [Get started](user/getting-started.md) — install Rig, create a small configuration, inspect it, check the machine, and preview an application.
 2. [Choose a command](user/commands.md) — understand which commands only read, which observe native state, and which can make changes.
@@ -12,7 +12,7 @@ Start with the [user-guide journey](user/README.md). It begins with a small cata
 4. [Manage operational resources and private ports](user/operational-resources.md) — add services, scheduled jobs, typed settings, Dock layouts, and listener intent.
 5. [Manage user-level skills](user/skills.md) — declare agent capabilities and their native authorities without copying instruction content into Rig.
 6. [Run external provider actions](user/provider-actions.md) — add a bounded host-specific extension only when the native Rig model does not fit.
-7. [Publish a public rig](user/publishing.md) — export a deliberately public view as data and hand it to a trusted publisher.
+7. [Export a public rig](user/exporting.md) — project a deliberately public view as data a site can consume.
 
 For exhaustive syntax and provider matrices, use `man rig`. The guides focus on completing user outcomes rather than restating the reference contract.
 

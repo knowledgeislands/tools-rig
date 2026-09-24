@@ -4,12 +4,12 @@ area: CLI
 title: Export from parameters
 theme: cli
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: 27fced00b00fa7ab5adff6e7d7a9cf9a0e5999ff
 created_at: 2026-09-24T08:01:10Z
-updated_at: 2026-09-24T14:00:00Z
+updated_at: 2026-09-25T09:30:00Z
 ---
 
 ## Goal
@@ -51,15 +51,15 @@ It does not change `rig export`'s output format or its version, so a consumer re
 
 ## Steps
 
-- [ ] Replace `rig export`'s positional publication with `--profile`, `--output`, and the optional `--title` and `--base-url`, rejecting a non-view profile with status 2.
-- [ ] Render `publication.id` from the profile, `title` from `--title` or the profile's name, and `canonical_url` as `null` when no `--base-url` is given, leaving the format at version 2.
-- [ ] Remove `[publication.*]` from the configuration grammar and validation, and reject a configuration that still declares one with a message naming `rig export --profile`.
-- [ ] Remove `rig publish`, its staging, retention, interrupted-publisher handoff, and the `publish` provider capability.
-- [ ] Remove `rig clean` and the `${XDG_CACHE_HOME}/rig/publish` cache root it swept.
-- [ ] Retire `docs/specs/cache.md` and its `RIG-CACHE` clauses, and update `docs/specs/publishing.md` so the projection contract stands on `rig export` alone.
-- [ ] Supersede [ADR-RIG-004](../decisions/ADR-RIG-004-static-publication-projection.md) with a decision record stating why the projection stays static while the handoff goes.
-- [ ] Reproject `man/rig.1`, `rig --help`, shell completion, `README.md`, the user guides, and `CHANGELOG.md` as a breaking change.
-- [ ] Update every test that declares a publication, publisher, or publish capability, and cover the new flags, the view refusal, and the rejection of a stale `[publication.*]`.
+- [x] Replace `rig export`'s positional publication with `--profile`, `--output`, and the optional `--title` and `--base-url`, rejecting a non-view profile with status 2.
+- [x] Render `publication.id` from the profile, `title` from `--title` or the profile's name, and `canonical_url` as `null` when no `--base-url` is given, leaving the format at version 2.
+- [x] Remove `[publication.*]` from the configuration grammar and validation, and reject a configuration that still declares one with a message naming `rig export --profile`.
+- [x] Remove `rig publish`, its staging, retention, interrupted-publisher handoff, and the `publish` provider capability.
+- [x] Remove `rig clean` and the `${XDG_CACHE_HOME}/rig/publish` cache root it swept.
+- [x] Retire `docs/specs/cache.md` and its `RIG-CACHE` clauses, and update `docs/specs/publishing.md` so the projection contract stands on `rig export` alone.
+- [x] Supersede [ADR-RIG-004](../decisions/ADR-RIG-004-static-publication-projection.md) with a decision record stating why the projection stays static while the handoff goes.
+- [x] Reproject `man/rig.1`, `rig --help`, shell completion, `README.md`, the user guides, and `CHANGELOG.md` as a breaking change.
+- [x] Update every test that declares a publication, publisher, or publish capability, and cover the new flags, the view refusal, and the rejection of a stale `[publication.*]`.
 
 ## Files touched
 
@@ -104,6 +104,42 @@ Nothing blocks it. It lands after [RIG-CLI-014](RIG-CLI-014-state-command-outcom
 ### Roadmap
 
 None expected. The migration question raised in Triage is answered by the breaking-change decision rather than by a `MIG` record.
+
+## Review
+
+### Delivered
+
+`rig export` now takes its whole instruction from the command line — `--profile NAME --output DIRECTORY [--title TEXT] [--base-url URL]` — and `rig publish`, `rig clean`, the `[publication.ID]` table, the `publish` capability, and the cache root they shared are gone. A person who wants a public rig declares a view and exports it; the system that receives the tree already owns transport, credentials, and rollback.
+
+### Change Summary
+
+`rig_command_export` parses the four flags, rejects a missing value or an unexpected positional with status 2 before loading configuration, and requires `--profile` to name a `kind = "view"` profile. `--title` falls back to the view's declared `name` and then to the profile identifier; an omitted `--base-url` renders `canonical_url` as `null`. `rig_render_publication_json` lost its publication parameter, which was always equal to the profile it was passed beside.
+
+`src/rig/40-publication-lifecycle.bash` fell from 1343 to about 820 lines with the staging, retention, interrupted-publisher handoff, and sweep removed. `rig_add_section` now rejects `[publication.*]` naming `rig export --profile` as the replacement, `src/rig/90-main.bash` lost both dispatch arms and the operational-context entries, and `src/rig/00-runtime.bash` lost nine `RIG_PUBLISH_*`/`RIG_CLEAN_*` variables along with the help, progress, and completion entries.
+
+`docs/specs/cache.md` is deleted: `rig export` stages beside its own output and never touched `${XDG_CACHE_HOME}/rig/publish`, so `RIG-CACHE` only ever governed the tree `rig publish` created. `RIG-PUB-007` is now "Export parameters", stating the flag contract, the view requirement, the title default, and that `[publication.ID]` must fail to load. `RIG-CONF-014` is a deprecated tombstone keeping its serial claimed. ADR-RIG-004 was edited in place, as the decision-record standard requires of a living record, rather than superseded.
+
+`docs/guides/user/publishing.md` became `exporting.md`; nine other guides, `man/rig.1` — which lost its PUBLICATION and CACHE MAINTENANCE sections — and `CHANGELOG.md` carry the same contract.
+
+### Verification
+
+`bats tests/` is 237 of 237 green, with two new cases covering the view refusal and the title default, and the loader case asserting the retired-table message. `ki repo audit --repo .` passes all 16 skills, `shellcheck`, `bash -n`, `scripts/assemble-rig --check`, `scripts/benchmark-rig`, `scripts/smoke-native-providers`, and `mandoc -T lint man/rig.1` are clean. One earlier run showed `update reports an unavailable lifecycle executable and still advances the rest` failing; two subsequent runs passed it, so it was contention rather than a regression.
+
+### Outstanding concerns
+
+The step list said to supersede ADR-RIG-004 with a new record. `ki-decision-records` states that a DR is a living record edited in place with no supersession chain, so the record was rewritten instead and the step is ticked against that reading.
+
+`kit-midnight.ninja` calls `rig export midnight-ninja` in `apps/site-rig/pipeline/pull.ts` and will break on the next Rig it installs. This record decided the consuming repository migrates itself; that change is not made here and needs to land before a release ships.
+
+The `RIG-CACHE` prefix left the corpus with its area file, so its serials are no longer claimed anywhere the audit can see. Nothing should reintroduce that prefix.
+
+### Post-change review
+
+`publication` survives in the payload — `format: rig-publication`, the `publication` object, `rig_render_publication_json`, and the module filename — while the concept it named is retired. That is deliberate: the format is a version-2 contract a consumer already parses, and renaming it would be a second breaking change for no gain. The cost is that the word now means the exported document rather than a configured thing, which the specification says but the identifiers do not.
+
+### Mini recap
+
+Rig used to need a configured publication to describe a document it does not own, and a publisher to deliver it. It now takes the description as arguments, writes the tree, and stops.
 
 ## Discussion
 

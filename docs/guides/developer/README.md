@@ -4,7 +4,7 @@ Keep Rig's installed core compatible with macOS Bash 3.2 and free of required ru
 
 ## Respect the repository boundary
 
-This repository owns Rig's portable executable, native lifecycle, declarative schema, built-in provider registry and adapters, extension protocol, public documentation, tests, and releases. A Rig owner's private configuration owns catalogue entries, profiles, resource values, publication choices, trusted external executables, provider-native manifests, and credentials.
+This repository owns Rig's portable executable, native lifecycle, declarative schema, built-in provider registry and adapters, extension protocol, public documentation, tests, and releases. A Rig owner's private configuration owns catalogue entries, profiles, resource values, trusted external executables, provider-native manifests, and credentials.
 
 When a change crosses that boundary, define and verify the portable contract here first. A generally useful provider adapter, bootstrap stage, setting type, inventory source, or resource lifecycle belongs in Rig rather than a personal workstation script. Do not copy personal declarations into this repository or reimplement portable Rig behaviour in dotfiles.
 

@@ -10,7 +10,7 @@ main() {
   RIG_INVOKED_PATH=$0
   command_name=${1:-help}
   case "$command_name" in
-    status|doctor|apply|bootstrap|update|maintain|capture|run|export|publish|clean)
+    status|doctor|apply|bootstrap|update|maintain|capture|run|export)
       RIG_PROGRESS_CONTEXT=operational
       ;;
     *) RIG_PROGRESS_CONTEXT=query ;;
@@ -87,14 +87,6 @@ main() {
     export)
       shift
       rig_command_export "$@"
-      ;;
-    publish)
-      shift
-      rig_command_publish "$@"
-      ;;
-    clean)
-      shift
-      rig_command_clean "$@"
       ;;
     diag)
       shift

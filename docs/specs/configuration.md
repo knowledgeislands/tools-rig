@@ -78,7 +78,7 @@ _Evidence:_ `rig_add_field`, `rig_normalize_artifact_identity`, and `rig_expand_
 
 ### RIG-CONF-008 — Canonical table identities
 
-Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[profile.ID]`, `[provider.ID]`, `[publication.ID]`, `[service.ID]`, `[scheduled-job.ID]`, `[setting.ID]`, `[dock.ID]`, `[dock-item.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`. Any other table shape MUST be rejected. Installation metadata MUST remain in its owning tool table.
+Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[profile.ID]`, `[provider.ID]`, `[service.ID]`, `[scheduled-job.ID]`, `[setting.ID]`, `[dock.ID]`, `[dock-item.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`. Any other table shape MUST be rejected. Installation metadata MUST remain in its owning tool table.
 
 _Conformance:_ conforming
 
@@ -138,15 +138,9 @@ _Verify:_ Bats tests resolve every built-in kind without provider boilerplate an
 
 _Evidence:_ `rig_validate_model` owns the exact tool-installation kind matrix and rejects resource-only built-ins; `tests/rig.bats`, `tests/rig-lifecycle.bats`, and `tests/rig-model-boundaries.bats` cover the accepted and rejected classes.
 
-### RIG-CONF-014 — Publication fields
+### RIG-CONF-014 — ~~Publication fields~~ (deprecated)
 
-Schema 1 publication tables MUST require string `profile`, `title`, `base-url`, and `publisher`. The profile MUST name a declared profile and the publisher MUST name an explicitly declared external provider allowed to publish.
-
-_Conformance:_ conforming
-
-_Verify:_ Bats tests resolve one publication and reject missing or unknown profile and publisher references, built-in provider identities, and external publishers without the exact publication operation.
-
-_Evidence:_ `rig_validate_model` requires an explicit custom publisher with the `publish` capability before export or handoff; `publication publishers must be explicit custom providers with publish capability` covers each rejection.
+Retired with `rig publish`. A `[publication.ID]` table is no longer an accepted identity and fails to load; `rig export --profile NAME --output DIRECTORY [--title TEXT] [--base-url URL]` carries the same values as arguments under [RIG-PUB-007](publishing.md#rig-pub-007--export-parameters). The serial stays claimed and is never reused.
 
 ### RIG-CONF-015 — Extension action fields
 

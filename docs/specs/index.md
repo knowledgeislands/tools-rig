@@ -20,11 +20,10 @@ An unnumbered `## Gaps` entry is candidate behaviour, not an accepted requiremen
 
 | File | Prefix | Covers |
 | --- | --- | --- |
-| [cache.md](cache.md) | `RIG-CACHE` | Rig-owned cache classification, retention, cleanup safety, reporting |
 | [catalogue.md](catalogue.md) | `RIG-CAT` | Categories, tools, rationale, platforms, relationships, installations |
 | [configuration.md](configuration.md) | `RIG-CONF` | Inert TOML schema, built-ins, extensions, managed-resource declarations |
 | [orchestration.md](orchestration.md) | `RIG-ORCH` | Profiles, native bootstrap, work ordering, built-ins, extension protocol |
 | [portability.md](portability.md) | `RIG-PORT` | Runtime dependencies and XDG persistence |
-| [publishing.md](publishing.md) | `RIG-PUB` | Public profiles, versioned data, canonical URLs, trusted deployment |
+| [publishing.md](publishing.md) | `RIG-PUB` | Public view profiles, versioned public data, canonical URLs |
 | [queries.md](queries.md) | `RIG-QUERY` | Show, list, filtering, tool and managed-resource explanation, non-execution |
 | [state.md](state.md) | `RIG-STATE` | Observations, bootstrap/apply plans, machine-resource state, receipts, outcomes |

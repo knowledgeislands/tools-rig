@@ -226,15 +226,10 @@ write_port_fixture() {
     'mode = "allocated"' \
     'owner = "tool:alpha"' \
     'profiles = ["default"]' \
-    '[publication.site]' \
-    'profile = "public"' \
-    'title = "Public Rig"' \
-    'base-url = "https://rig.example"' \
-    'publisher = "publisher"' \
-    '[provider.publisher]' \
+    '[provider.inspector]' \
     'adapter = "custom"' \
     "executable = \"$PORT_LSOF\"" \
-    'capabilities = ["publish"]' >"$CONFIG_HOME/rig.toml"
+    'capabilities = ["observe"]' >"$CONFIG_HOME/rig.toml"
 }
 
 run_loader() {
@@ -372,7 +367,7 @@ write_query_config() {
   [[ "$output" == *"Usage: rig [options] [command]"* ]] || false
   [[ "$output" == *"Print the Rig release or development version."* ]] || false
   [[ "$output" == *"Describe and manage a person's working setup."* ]] || false
-  for command in show list explain status doctor apply bootstrap update maintain capture run export publish clean diag completion help; do
+  for command in show list explain status doctor apply bootstrap update maintain capture run export diag completion help; do
     [[ "$output" == *"  $command"* ]] || false
   done
   [[ "$output" != *"paths"* ]] || false
@@ -387,7 +382,7 @@ write_query_config() {
   zsh_completion=$("$RIG" completion zsh)
   man_synopsis=$(sed -n '/^.SH SYNOPSIS/,/^.SH DESCRIPTION/p' "$repo_root/man/rig.1")
 
-  for command in show list explain status doctor apply bootstrap update maintain capture run export publish clean diag completion help; do
+  for command in show list explain status doctor apply bootstrap update maintain capture run export diag completion help; do
     grep -Fq "\`rig $command" "$repo_root/CHANGELOG.md"
     grep -Fq "\`rig $command" "$repo_root/docs/guides/user/commands.md"
     grep -Fq "rig $command" "$repo_root/man/rig.1"
@@ -407,9 +402,7 @@ write_query_config() {
     'maintain [--profile NAME] [--dry-run]' \
     'capture PROVIDER [--dry-run]' \
     'run PROVIDER ACTION [-- ARGUMENT...]' \
-    'export PUBLICATION --output DIRECTORY' \
-    'publish PUBLICATION' \
-    'clean [--dry-run]' \
+    'export --profile NAME --output DIRECTORY [--title TEXT] [--base-url URL]' \
     'diag' \
     'completion bash|zsh' \
     'help [-h|--help]'; do
@@ -515,7 +508,7 @@ write_query_config() {
   run "$RIG" completion bash
   [ "$status" -eq 0 ]
   [[ "$output" == *"complete -F _rig rig"* ]] || false
-  [[ "$output" == *"-h --help -V --version show list explain status doctor apply bootstrap update maintain capture run export publish clean diag completion help"* ]] || false
+  [[ "$output" == *"-h --help -V --version show list explain status doctor apply bootstrap update maintain capture run export diag completion help"* ]] || false
   [[ "$output" == *'show) COMPREPLY=($(compgen -W "-h --help --profile"'* ]] || false
   [[ "$output" == *'explain) COMPREPLY=($(compgen -W "-h --help"'* ]] || false
   [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile --unmanaged --format"'* ]] || false
@@ -525,12 +518,10 @@ write_query_config() {
   [[ "$output" == *'update|maintain) COMPREPLY=($(compgen -W "-h --help --profile --dry-run"'* ]] || false
   [[ "$output" == *'capture) COMPREPLY=($(compgen -W "-h --help --dry-run homebrew"'* ]] || false
   [[ "$output" == *'run) COMPREPLY=($(compgen -W "-h --help --"'* ]] || false
-  [[ "$output" == *'export) COMPREPLY=($(compgen -W "-h --help --output"'* ]] || false
-  [[ "$output" == *'publish) COMPREPLY=($(compgen -W "-h --help"'* ]] || false
-  [[ "$output" == *'clean) COMPREPLY=($(compgen -W "-h --help --dry-run"'* ]] || false
+  [[ "$output" == *'export) COMPREPLY=($(compgen -W "-h --help --profile --output --title --base-url"'* ]] || false
   [[ "$output" == *'completion) COMPREPLY=($(compgen -W "-h --help bash zsh"'* ]] || false
   [[ "$output" == *'help) COMPREPLY=($(compgen -W "-h --help"'* ]] || false
-  [[ "$output" == *"show list explain status doctor apply bootstrap update maintain capture run export publish clean diag completion help"* ]] || false
+  [[ "$output" == *"show list explain status doctor apply bootstrap update maintain capture run export diag completion help"* ]] || false
   [[ "$output" != *" paths "* ]] || false
 
   run "$RIG" completion zsh
@@ -547,7 +538,6 @@ write_query_config() {
   [[ "$output" == *"update|maintain) _arguments"*"--profile[select profile]"*"--dry-run[print plan without invoking providers]"* ]] || false
   [[ "$output" == *"capture) _arguments"*"1:provider:(homebrew)"*"--dry-run[print plan without invoking provider]"* ]] || false
   [[ "$output" == *"export:generate public rig data"* ]] || false
-  [[ "$output" == *"publish:publish public rig data"* ]] || false
   [[ "$output" == *"run:invoke a declared provider action"* ]] || false
   [[ "$output" == *"run) _arguments"*"'3:separator:(--)'"* ]] || false
   [[ "$output" == *"'(-V --version)'{-V,--version}"* ]] || false
@@ -605,14 +595,10 @@ write_query_config() {
       COMP_CWORD=2
       _rig
       printf "run:%s\n" "${COMPREPLY[*]}"
-    COMP_WORDS=(rig publish --)
+    COMP_WORDS=(rig export --)
     COMP_CWORD=2
     _rig
-    printf "publish:%s\n" "${COMPREPLY[*]}"
-    COMP_WORDS=(rig clean --)
-    COMP_CWORD=2
-    _rig
-    printf "clean:%s\n" "${COMPREPLY[*]}"
+    printf "export:%s\n" "${COMPREPLY[*]}"
  COMP_WORDS=(rig completion --)
  COMP_CWORD=2
  _rig
@@ -635,8 +621,7 @@ write_query_config() {
   [[ "$output" == *"maintain:--help --profile --dry-run"* ]] || false
   [[ "$output" == *"capture:--help --dry-run"* ]] || false
  [[ "$output" == *"run:--help --"* ]] || false
- [[ "$output" == *"publish:--help"* ]] || false
- [[ "$output" == *"clean:--help --dry-run"* ]] || false
+  [[ "$output" == *"export:--help --profile --output --title --base-url"* ]] || false
  [[ "$output" == *"completion:--help"* ]] || false
  [[ "$output" == *"help:--help"* ]] || false
 
@@ -1185,15 +1170,10 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
     '[provider.custom]' \
     'adapter = "custom"' \
     'executable = "~/bin/provider"' \
-    'capabilities = ["observe", "apply", "publish"]' \
+    'capabilities = ["observe", "apply"]' \
     'arguments = ["two words", "comma,kept"]' \
     '[provider.homebrew]' \
-    'manifest = "~/manifests/tools = private"' \
-    '[publication.site]' \
-    'profile = "default"' \
-    'title = "My # Rig"' \
-    'base-url = "~/literal-url"' \
-    'publisher = "custom"' >"$CONFIG_HOME/rig.toml"
+    'manifest = "~/manifests/tools = private"' >"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" bash -c '
     . "$1"
@@ -1206,7 +1186,6 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
     rig_get_value provider.custom argument 1; printf "argument-1=%s\n" "$RIG_VALUE"
     rig_get_value provider.custom argument 2; printf "argument-2=%s\n" "$RIG_VALUE"
     rig_get_value binding.alpha.custom locator; printf "locator=%s\n" "$RIG_VALUE"
-    rig_get_value publication.site base-url; printf "base-url=%s\n" "$RIG_VALUE"
   ' _ "$RIG"
 
   [ "$status" -eq 0 ]
@@ -1219,7 +1198,6 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
   [[ "$output" == *"argument-1=two words"* ]] || false
   [[ "$output" == *"argument-2=comma,kept"* ]] || false
   [[ "$output" == *"locator=~/literal # locator = value"* ]] || false
-  [[ "$output" == *"base-url=~/literal-url"* ]] || false
 }
 
 @test "schema list fields preserve each declared item boundary" {
@@ -1541,7 +1519,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [[ "$output" == *"[provider.alias] external provider adapter must be 'custom'"* ]] || false
 }
 
-@test "catalogue, profile, installation, and publication references are validated" {
+@test "catalogue, profile, installation, and retired references are validated" {
   write_minimal_config
   sed 's/category = "core"/category = "absent"/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bad.toml"
   mv "$CONFIG_HOME/bad.toml" "$CONFIG_HOME/rig.toml"
@@ -1567,24 +1545,13 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   write_minimal_config
   printf '%s\n' \
     '[publication.site]' \
-    'profile = "absent"' \
+    'profile = "default"' \
     'title = "Site"' \
     'base-url = "https://example.test/"' \
     'publisher = "native"' >>"$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"references unknown profile 'absent'"* ]] || false
-
-  write_minimal_config
-  printf '%s\n' \
-    '[publication.site]' \
-    'profile = "default"' \
-    'title = "Site"' \
-    'base-url = "https://example.test/"' \
-    'publisher = "absent"' >>"$CONFIG_HOME/rig.toml"
-  run_loader
-  [ "$status" -eq 2 ]
-  [[ "$output" == *'publisher must reference an explicit provider'* ]] || false
+  [[ "$output" == *'[publication.site] is retired; export a view profile with rig export --profile'* ]] || false
 
   write_minimal_config
   sed 's/install.provider = "homebrew"/install.provider = "absent"/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bad.toml"
@@ -2935,13 +2902,13 @@ write_publication_config() {
     'category = "navigation"' \
     'purpose = "Find & select"' \
     'rationale = "Safer \"choice\" for public work"' \
- 'platforms = ["any"]' \
- 'related = ["beta"]' \
- 'alternatives = ["secret"]' \
- 'install.provider = "publisher"' \
- 'install.kind = "executable"' \
- 'install.locator = "private-locator-token"' \
- 'install.arguments = ["install-argument-token"]' \
+    'platforms = ["any"]' \
+    'related = ["beta"]' \
+    'alternatives = ["secret"]' \
+    'install.provider = "external"' \
+    'install.kind = "executable"' \
+    'install.locator = "private-locator-token"' \
+    'install.arguments = ["install-argument-token"]' \
     '[tool.beta]' \
     'name = "Beta"' \
     'category = "navigation"' \
@@ -2956,20 +2923,16 @@ write_publication_config() {
     'platforms = ["any"]' \
     '[profile.public]' \
     'kind = "view"' \
+    'name = "Kris & Rig"' \
     'tools = ["alpha", "beta"]' \
     '[profile.private]' \
     'profiles = ["public"]' \
     'tools = ["secret"]' \
-    '[provider.publisher]' \
+    '[provider.external]' \
     'adapter = "custom"' \
     "executable = \"$PUBLICATION_PROVIDER\"" \
-    'capabilities = ["publish"]' \
-    'arguments = ["provider-argument-token"]' \
- '[publication.site]' \
-    'profile = "public"' \
-    'title = "Kris & Rig"' \
-    'base-url = "https://example.test/rig/"' \
-    'publisher = "publisher"' >"$CONFIG_HOME/rig.toml"
+    'capabilities = ["observe", "apply"]' \
+    'arguments = ["provider-argument-token"]' >"$CONFIG_HOME/rig.toml"
 }
 
 @test "export writes valid allow-listed versioned public data as complete tree" {
@@ -2980,10 +2943,10 @@ write_publication_config() {
   printf '%s\n' stale >"$destination/obsolete/stale.txt"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_PUBLICATION_MARKER="$PUBLICATION_MARKER" "$RIG" export site --output "$destination"
+    RIG_PUBLICATION_MARKER="$PUBLICATION_MARKER" "$RIG" export --profile public --output "$destination"
 
   [ "$status" -eq 0 ]
-  [ "$output" = "Exported site to $destination" ]
+  [ "$output" = "Exported profile public to $destination" ]
   [ -f "$destination/rig.json" ]
   [ ! -L "$destination/rig.json" ]
   [ ! -e "$destination/obsolete/stale.txt" ]
@@ -2997,9 +2960,9 @@ assert data["format"] == "rig-publication"
 assert data["version"] == 2
 assert data["profile"]["skills"] == []
 assert data["publication"] == {
-    "id": "site",
+    "id": "public",
     "title": "Kris & Rig",
-    "canonical_url": "https://example.test/rig/",
+    "canonical_url": None,
 }
 assert data["profile"]["id"] == "public"
 assert data["profile"]["categories"] == [{
@@ -3023,7 +2986,7 @@ assert data["profile"]["tools"][1]["platforms"] == ["linux"]
   write_publication_config
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" export site --output "$destination"
+    "$RIG" export --profile public --output "$destination"
 
   [ "$status" -eq 0 ]
   run python3 -c '
@@ -3053,10 +3016,10 @@ assert tools["beta"]["relationships"] == {
     "$CONFIG_HOME/rig.toml" >"$second_config/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" export site --output "$first_output"
+    "$RIG" export --profile public --output "$first_output"
   [ "$status" -eq 0 ]
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$second_config" RIG_PLATFORM=linux \
-    "$RIG" export site --output "$second_output"
+    "$RIG" export --profile public --output "$second_output"
   [ "$status" -eq 0 ]
   diff -r "$first_output" "$second_output"
 }
@@ -3065,18 +3028,17 @@ assert tools["beta"]["relationships"] == {
   local destination
   destination=$BATS_TEST_TMPDIR/url-site-$BATS_TEST_NUMBER
   write_publication_config
-  sed 's#https://example.test/rig/#https://rig.example.test#' \
-    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/root.toml"
-  mv "$CONFIG_HOME/root.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" export site --output "$destination"
+    "$RIG" export --profile public --output "$destination" \
+    --title 'Stated & titled' --base-url https://rig.example.test
 
   [ "$status" -eq 0 ]
   grep -F '"canonical_url": "https://rig.example.test/"' "$destination/rig.json"
+  grep -F '"title": "Stated & titled"' "$destination/rig.json"
 }
 
-@test "export invokes neither publisher provider nor network command" {
+@test "export invokes neither external provider nor network command" {
   local destination fake_bin network_marker network_command
   destination=$BATS_TEST_TMPDIR/offline-site-$BATS_TEST_NUMBER
   fake_bin=$BATS_TEST_TMPDIR/offline-bin-$BATS_TEST_NUMBER
@@ -3090,7 +3052,7 @@ assert tools["beta"]["relationships"] == {
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_PUBLICATION_MARKER="$PUBLICATION_MARKER" RIG_NETWORK_MARKER="$network_marker" \
-    PATH="$fake_bin:$PATH" "$RIG" export site --output "$destination"
+    PATH="$fake_bin:$PATH" "$RIG" export --profile public --output "$destination"
 
   [ "$status" -eq 0 ]
   [ ! -e "$PUBLICATION_MARKER" ]
@@ -3101,14 +3063,10 @@ assert tools["beta"]["relationships"] == {
   local destination invalid_url
 
   destination=$BATS_TEST_TMPDIR/invalid-url-site-$BATS_TEST_NUMBER
+  write_publication_config
   for invalid_url in 'https://:/' 'https://:bad/' 'https://user@example.test/' 'https://example.test:bad/'; do
-    write_publication_config
-    sed "s#https://example.test/rig/#$invalid_url#" \
-      "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/invalid.toml"
-    mv "$CONFIG_HOME/invalid.toml" "$CONFIG_HOME/rig.toml"
-
     run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-      "$RIG" export site --output "$destination"
+      "$RIG" export --profile public --output "$destination" --base-url "$invalid_url"
 
     [ "$status" -eq 2 ]
     [ ! -e "$destination" ]
@@ -3127,21 +3085,21 @@ assert tools["beta"]["relationships"] == {
   ln -s "$target" "$symlink"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" export site --output /
+    "$RIG" export --profile public --output /
   [ "$status" -eq 2 ]
   [[ "$output" == *'unsafe export output directory'* ]] || false
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" export site --output .
+    "$RIG" export --profile public --output .
   [ "$status" -eq 2 ]
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" export site --output ..
+    "$RIG" export --profile public --output ..
   [ "$status" -eq 2 ]
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" export site --output "$regular"
+    "$RIG" export --profile public --output "$regular"
   [ "$status" -eq 2 ]
   [ "$(cat "$regular")" = keep ]
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" export site --output "$symlink"
+    "$RIG" export --profile public --output "$symlink"
   [ "$status" -eq 2 ]
   [ "$(cat "$target/keep.txt")" = keep ]
 }
@@ -3149,442 +3107,50 @@ assert tools["beta"]["relationships"] == {
 @test "export help and syntax are local and explicit" {
   run "$RIG" export --help
   [ "$status" -eq 0 ]
-  [ "$output" = 'Usage: rig export PUBLICATION --output DIRECTORY' ]
+  [ "$output" = 'Usage: rig export --profile NAME --output DIRECTORY [--title TEXT] [--base-url URL]' ]
+
+  run "$RIG" export --profile public
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'usage: rig export --profile NAME --output DIRECTORY [--title TEXT] [--base-url URL]'* ]] || false
 
   run "$RIG" export site
   [ "$status" -eq 2 ]
-  [[ "$output" == *'usage: rig export PUBLICATION --output DIRECTORY'* ]] || false
+  [[ "$output" == *'unexpected site'* ]] || false
+
+  run "$RIG" export --profile
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'--profile requires a value'* ]] || false
 }
 
-write_publish_config() {
+@test "export refuses a profile that is not a view" {
+  local destination
+  destination=$BATS_TEST_TMPDIR/appliable-site-$BATS_TEST_NUMBER
   write_publication_config
-  PUBLISH_LOG=$BATS_TEST_TMPDIR/publish-log-$BATS_TEST_NUMBER
-  OTHER_PUBLISH_LOG=$BATS_TEST_TMPDIR/other-publish-log-$BATS_TEST_NUMBER
-  OTHER_PUBLISHER=$BATS_TEST_TMPDIR/other-publisher-$BATS_TEST_NUMBER
 
-  printf '%s\n' \
-    '#!/usr/bin/env bash' \
-    'printf "BEGIN\n" >>"$RIG_PUBLISH_LOG"' \
-    'for argument in "$@"; do printf "ARG=<%s>\n" "$argument" >>"$RIG_PUBLISH_LOG"; done' \
-    'if [ -n "${RIG_PUBLISH_SWAP_TARGET:-}" ]; then' \
-    '  for argument in "$@"; do stage=$argument; done' \
-    '  root=${stage%/*}' \
-    '  stage_name=${stage##*/}' \
-    '  mv -- "$root" "$RIG_PUBLISH_SWAP_MOVED"' \
-    '  ln -s -- "$RIG_PUBLISH_SWAP_TARGET" "$root"' \
-    '  mkdir -p -- "$RIG_PUBLISH_SWAP_TARGET/$stage_name"' \
-    '  printf victim >"$RIG_PUBLISH_SWAP_TARGET/$stage_name/rig.json"' \
-    'fi' \
-    'if [ "${RIG_PUBLISH_SIGNAL:-}" = term ]; then kill -TERM "$PPID"; exit 0; fi' \
-    '[ -z "${RIG_PUBLISH_STDOUT:-}" ] || printf "%s\n" "$RIG_PUBLISH_STDOUT"' \
-    '[ -z "${RIG_PUBLISH_STDERR:-}" ] || printf "%s\n" "$RIG_PUBLISH_STDERR" >&2' \
-    'exit "${RIG_PUBLISH_EXIT:-0}"' >"$PUBLICATION_PROVIDER"
-  chmod +x "$PUBLICATION_PROVIDER"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" export --profile private --output "$destination"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"profile 'private' must be a non-appliable view to export"* ]] || false
+  [ ! -e "$destination" ]
 
-  printf '%s\n' \
-    '#!/usr/bin/env bash' \
-    'printf invoked >"$RIG_OTHER_PUBLISH_LOG"' >"$OTHER_PUBLISHER"
-  chmod +x "$OTHER_PUBLISHER"
-  printf '%s\n' \
-    '[provider.other-publisher]' \
-    'adapter = "custom"' \
-    "executable = \"$OTHER_PUBLISHER\"" \
-    'capabilities = ["publish"]' >>"$CONFIG_HOME/rig.toml"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" export --profile absent --output "$destination"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"unknown profile 'absent'"* ]] || false
+  [ ! -e "$destination" ]
 }
 
-@test "publish renders one isolated export and invokes only the selected publisher" {
-  local cache cache_real stage expected
-  cache=$BATS_TEST_TMPDIR/publish-cache-$BATS_TEST_NUMBER
-  write_publish_config
+@test "export titles a view from its declared name" {
+  local destination
+  destination=$BATS_TEST_TMPDIR/default-title-$BATS_TEST_NUMBER
+  write_publication_config
+  sed '/^name = "Kris & Rig"$/d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/untitled.toml"
+  mv "$CONFIG_HOME/untitled.toml" "$CONFIG_HOME/rig.toml"
 
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
-    RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" \
-    RIG_OTHER_PUBLISH_LOG="$OTHER_PUBLISH_LOG" RIG_PUBLISH_STDOUT='publisher stdout' \
-    "$RIG" publish site
-
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" export --profile public --output "$destination"
   [ "$status" -eq 0 ]
-  [[ "$output" == *'publisher stdout'* ]] || false
-  [[ "$output" == *'Published site via publisher'* ]] || false
-  stage=$(sed -n '8p' "$PUBLISH_LOG")
-  stage=${stage#ARG=<}
-  stage=${stage%>}
-  cache_real=$(cd "$cache/publish/staging" && pwd -P)
-  case "$stage" in
-    "$cache_real"/site.rig-publish.*) ;;
-    *) false ;;
-  esac
-  [ "${stage#/}" != "$stage" ]
-  [ ! -e "$stage" ]
-  [ ! -e "$OTHER_PUBLISH_LOG" ]
-  expected=$(printf '%s\n' \
-    'BEGIN' \
-    'ARG=<provider-argument-token>' \
-    'ARG=<rig-provider-v1>' \
-    'ARG=<publish>' \
-    'ARG=<publisher>' \
-    'ARG=<site>' \
-    'ARG=<directory>' \
-    "ARG=<$stage>")
-  [ "$(cat "$PUBLISH_LOG")" = "$expected" ]
-  [ -z "$(find "$cache/publish/staging" -mindepth 1 -maxdepth 1 -print -quit)" ]
-  [ -z "$(find "$cache/publish/retained" -mindepth 1 -maxdepth 1 -print -quit)" ]
-}
-
-@test "publish preserves native failure and complete staging tree for diagnosis" {
-  local cache native_exit stage file_count
-  cache=$BATS_TEST_TMPDIR/publish-failure-cache-$BATS_TEST_NUMBER
-  write_publish_config
-
-  for native_exit in 7 126; do
-    rm -f "$PUBLISH_LOG"
-    run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
-      RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" \
-      RIG_OTHER_PUBLISH_LOG="$OTHER_PUBLISH_LOG" RIG_PUBLISH_EXIT="$native_exit" \
-      RIG_PUBLISH_STDERR='publisher stderr' \
-      "$RIG" publish site
-
-    [ "$status" -eq "$native_exit" ]
-    [[ "$output" == *'publisher stderr'* ]] || false
-    stage=$(printf '%s\n' "$output" | sed -n 's/^rig: publish failed; retained export: //p')
-    case "$stage" in
-      */publish/retained/site.rig-publish.*) ;;
-      *) false ;;
-    esac
-    [ -d "$stage" ]
-    [ -f "$stage/rig.json" ]
-    file_count=$(find "$stage" -type f | wc -l | tr -d ' ')
-    [ "$file_count" -eq 1 ]
-    [ ! -e "$OTHER_PUBLISH_LOG" ]
-    rm -rf -- "$stage"
-  done
-}
-
-@test "publish interruption retains complete staging tree and returns signal status" {
-  local cache stage
-  cache=$BATS_TEST_TMPDIR/publish-interrupt-cache-$BATS_TEST_NUMBER
-  write_publish_config
-
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
-    RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" \
-    RIG_OTHER_PUBLISH_LOG="$OTHER_PUBLISH_LOG" RIG_PUBLISH_SIGNAL=term RIG_PROGRESS=always \
-    "$RIG" publish site
-
-  [ "$status" -eq 143 ]
-  [[ "$output" == *'rig: progress: publishing interrupted completed=0/1 succeeded=0 skipped=0 failed=0'* ]] || false
-  [[ "$output" != *'rig: progress: publishing finished'* ]] || false
-  stage=$(printf '%s\n' "$output" | sed -n 's/^rig: publish interrupted; retained export: //p')
-  case "$stage" in
-    */publish/retained/site.rig-publish.*) ;;
-    *) false ;;
-  esac
-  [ -f "$stage/rig.json" ]
-  [ ! -e "$OTHER_PUBLISH_LOG" ]
-  rm -rf -- "$stage"
-}
-
-@test "publish interruption before handoff removes incomplete staging" {
-  local cache root stage
-
-  cache=$BATS_TEST_TMPDIR/publish-pre-dispatch-interrupt-$BATS_TEST_NUMBER
-  mkdir -p "$cache/publish/staging" "$cache/publish/retained"
-  root=$(cd "$cache/publish" && pwd -P)
-  stage=$root/staging/site.rig-publish.partial
-  mkdir -p "$stage"
-  printf partial >"$stage/rig.json"
-
-  run env RIG_TEST_ROOT="$root" RIG_TEST_STAGE="$stage" /bin/bash -c '
-    . "$1"
-    RIG_PUBLISH_ROOT=$RIG_TEST_ROOT
-    RIG_PUBLISH_STAGING_ROOT=$RIG_TEST_ROOT/staging
-    RIG_PUBLISH_RETAINED_ROOT=$RIG_TEST_ROOT/retained
-    RIG_PUBLISH_STAGE=$RIG_TEST_STAGE
-    RIG_PUBLISH_COMPLETE=0
-    rig_publish_interrupted 143
-  ' bash "$RIG"
-
-  [ "$status" -eq 143 ]
-  [[ "$output" == *'publish interrupted before publisher handoff'* ]] || false
-  [[ "$output" != *'retained export'* ]] || false
-  [ ! -e "$stage" ]
-}
-
-@test "publish staging failure invokes no publisher" {
-  local cache
-
-  cache=$BATS_TEST_TMPDIR/publish-staging-failure-$BATS_TEST_NUMBER
-  write_publish_config
-  mkdir -p "$cache"
-  printf blocked >"$cache/publish"
-
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
-    RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" \
-    "$RIG" publish site
-
-  [ "$status" -eq 2 ]
-  [[ "$output" == *'publication cache path must be a directory'* ]] || false
-  [ ! -e "$PUBLISH_LOG" ]
-  [ "$(cat "$cache/publish")" = blocked ]
-}
-
-@test "publish cleanup refuses a swapped cache parent without traversing it" {
-  local cache cache_real moved stage stage_name victim
-
-  cache=$BATS_TEST_TMPDIR/publish-parent-swap-$BATS_TEST_NUMBER
-  victim=$cache/victim
-  mkdir -p "$cache" "$victim"
-  cache_real=$(cd "$cache" && pwd -P)
-  moved=$cache_real/publish-moved
-  victim=$cache_real/victim
-  write_publish_config
-
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache_real" \
-    RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" \
-    RIG_PUBLISH_SWAP_TARGET="$victim" RIG_PUBLISH_SWAP_MOVED="$moved" \
-    "$RIG" publish site
-
-  [ "$status" -eq 2 ]
-  [[ "$output" == *'cannot safely remove publication staging directory'* ]] || false
-  [[ "$output" == *'publisher succeeded but publication staging cleanup failed'* ]] || false
-  stage=$(sed -n '8p' "$PUBLISH_LOG")
-  stage=${stage#ARG=<}
-  stage=${stage%>}
-  stage_name=${stage##*/}
-  [ -L "$cache_real/publish/staging" ]
-  [ "$(cat "$victim/$stage_name/rig.json")" = victim ]
-  [ -f "$moved/$stage_name/rig.json" ]
-
-  rm -- "$cache_real/publish/staging"
-  rm -rf -- "$moved" "$victim"
-}
-
-@test "publish rejects invalid selection and capability boundaries before export or invocation" {
-  local cache original
-  cache=$BATS_TEST_TMPDIR/publish-reject-cache-$BATS_TEST_NUMBER
-  write_publish_config
-  original=$BATS_TEST_TMPDIR/publish-original-$BATS_TEST_NUMBER
-  cp "$CONFIG_HOME/rig.toml" "$original"
-
-  sed 's/capabilities = \["publish"\]/capabilities = ["observe"]/' "$original" >"$CONFIG_HOME/rig.toml"
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
-    RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" "$RIG" publish site
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"publisher 'publisher' requires capability 'publish'"* ]] || false
-  [ ! -e "$PUBLISH_LOG" ]
-  [ ! -e "$cache/publish" ]
-
-  sed -e 's/adapter = "custom"/adapter = "homebrew"/' \
-    -e 's/kind = "executable"/kind = "formula"/' \
-    "$original" >"$CONFIG_HOME/rig.toml"
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
-    RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" "$RIG" publish site
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"external provider adapter must be 'custom'"* ]] || false
-  [ ! -e "$PUBLISH_LOG" ]
-
-  sed "s#executable = \"$PUBLICATION_PROVIDER\"#executable = \"$BATS_TEST_TMPDIR/missing-publisher\"#" \
-    "$original" >"$CONFIG_HOME/rig.toml"
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
-    RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" "$RIG" publish site
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"publisher 'publisher' executable unavailable"* ]] || false
-  [ ! -e "$PUBLISH_LOG" ]
-
-  sed 's#base-url = "https://example.test/rig/"#base-url = "https://user@example.test/"#' \
-    "$original" >"$CONFIG_HOME/rig.toml"
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
-    RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" "$RIG" publish site
-  [ "$status" -eq 2 ]
-  [[ "$output" == *'must not contain user information'* ]] || false
-  [ ! -e "$PUBLISH_LOG" ]
-
-  cp "$original" "$CONFIG_HOME/rig.toml"
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
-    RIG_PLATFORM=macos RIG_PUBLISH_LOG="$PUBLISH_LOG" "$RIG" publish absent
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"unknown publication 'absent'"* ]] || false
-  [ ! -e "$PUBLISH_LOG" ]
-}
-
-@test "clean no-op help and syntax do not require configuration" {
-  local cache
-  cache=$BATS_TEST_TMPDIR/clean-empty-$BATS_TEST_NUMBER
-
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_CACHE_HOME="$cache" \
-    "$RIG" clean --dry-run
-  [ "$status" -eq 0 ]
-  [[ "$output" == *$'CLASS\tSTATE\tACTION\tPATH'* ]] || false
-  [[ "$output" == *'Summary: eligible=0 removed=0 skipped=0'* ]] || false
-  [ ! -e "$cache" ]
-
-  run "$RIG" clean --help
-  [ "$status" -eq 0 ]
-  [ "$output" = 'Usage: rig clean [--dry-run]' ]
-
-  run "$RIG" clean --unknown
-  [ "$status" -eq 2 ]
-  [[ "$output" == *'usage: rig clean [--dry-run]'* ]] || false
-}
-
-@test "clean previews then removes retained exports and resumes cleanup claims" {
-  local cache retained claim
-  cache=$BATS_TEST_TMPDIR/clean-cache-$BATS_TEST_NUMBER
-  retained=$cache/publish/retained
-  claim=$cache/publish/cleanup
-  mkdir -p "$retained/site.rig-publish.101" \
-    "$retained/docs.rig-publish.102" "$claim/site.rig-publish.99"
-  printf '{}\n' >"$retained/site.rig-publish.101/rig.json"
-  printf '{}\n' >"$retained/docs.rig-publish.102/rig.json"
-  printf '{}\n' >"$claim/site.rig-publish.99/rig.json"
-
-  run env HOME="$TEST_HOME" RIG_CACHE_HOME="$cache" "$RIG" clean --dry-run
-  [ "$status" -eq 0 ]
-  [[ "$output" == *$'publication\tcleanup-claim\twould-remove'* ]] || false
-  [[ "$output" == *$'publication\tretained\twould-remove'* ]] || false
-  [[ "$output" == *'Summary: eligible=3 removed=0 skipped=0'* ]] || false
-  [ -f "$retained/site.rig-publish.101/rig.json" ]
-  [ -f "$claim/site.rig-publish.99/rig.json" ]
-
-  run env HOME="$TEST_HOME" RIG_CACHE_HOME="$cache" RIG_PROGRESS=always "$RIG" clean
-  [ "$status" -eq 0 ]
-  [[ "$output" == *'rig: progress: cleaning 0/3 started'* ]] || false
-  [[ "$output" == *'Summary: eligible=3 removed=3 skipped=0'* ]] || false
-  [ -z "$(find "$retained" "$claim" -mindepth 1 -print -quit)" ]
-}
-
-@test "clean skips legacy and unsafe cache entries while removing independent candidates" {
-  local cache retained legacy target
-  cache=$BATS_TEST_TMPDIR/clean-unsafe-$BATS_TEST_NUMBER
-  retained=$cache/publish/retained
-  legacy=$cache/publish/site.rig-publish.7
-  target=$cache/target
-  mkdir -p "$retained/good.rig-publish.1" "$retained/extra.rig-publish.2" \
-    "$legacy" "$target"
-  printf '{}\n' >"$retained/good.rig-publish.1/rig.json"
-  printf '{}\n' >"$retained/extra.rig-publish.2/rig.json"
-  printf keep >"$retained/extra.rig-publish.2/unexpected"
-  printf '{}\n' >"$legacy/rig.json"
-  ln -s "$target" "$retained/link.rig-publish.3"
-
-  run env HOME="$TEST_HOME" RIG_CACHE_HOME="$cache" "$RIG" clean
-  [ "$status" -eq 1 ]
-  [[ "$output" == *$'publication\tlegacy-unclassified\tskipped'* ]] || false
-  [[ "$output" == *$'publication\tunsafe\tskipped'* ]] || false
-  [[ "$output" == *'Summary: eligible=1 removed=1 skipped=3'* ]] || false
-  [ ! -e "$retained/good.rig-publish.1" ]
-  [ -f "$retained/extra.rig-publish.2/unexpected" ]
-  [ -L "$retained/link.rig-publish.3" ]
-  [ -f "$legacy/rig.json" ]
-  [ -d "$target" ]
-}
-
-@test "clean rejects a symlinked publication cache boundary" {
-  local cache outside
-  cache=$BATS_TEST_TMPDIR/clean-boundary-$BATS_TEST_NUMBER
-  outside=$BATS_TEST_TMPDIR/clean-outside-$BATS_TEST_NUMBER
-  mkdir -p "$cache" "$outside"
-  printf keep >"$outside/keep"
-  ln -s "$outside" "$cache/publish"
-
-  run env HOME="$TEST_HOME" RIG_CACHE_HOME="$cache" "$RIG" clean
-  [ "$status" -eq 2 ]
-  [[ "$output" == *'publication cache path must be a directory, not a symlink'* ]] || false
-  [ "$(cat "$outside/keep")" = keep ]
-}
-
-@test "clean claim refuses a substituted retained parent" {
-  local cache root retained moved victim candidate
-  cache=$BATS_TEST_TMPDIR/clean-parent-swap-$BATS_TEST_NUMBER
-  mkdir -p "$cache/publish/retained/site.rig-publish.8" "$cache/victim/site.rig-publish.8"
-  printf original >"$cache/publish/retained/site.rig-publish.8/rig.json"
-  printf victim >"$cache/victim/site.rig-publish.8/rig.json"
-  root=$(cd "$cache/publish" && pwd -P)
-  retained=$root/retained
-  candidate=$retained/site.rig-publish.8
-  moved=$root/retained-moved
-  victim=$(cd "$cache/victim" && pwd -P)
-
-  run env HOME="$TEST_HOME" RIG_CACHE_HOME="$cache" "$RIG" clean --dry-run
-  [ "$status" -eq 0 ]
-  [ ! -e "$root/cleanup" ]
-
-  mv -- "$retained" "$moved"
-  ln -s -- "$victim" "$retained"
-  run env RIG_TEST_ROOT="$root" RIG_TEST_CANDIDATE="$candidate" /bin/bash -c '
-    . "$1"
-    RIG_CLEAN_ROOT=$RIG_TEST_ROOT
-    rig_clean_claim "$RIG_TEST_CANDIDATE"
-  ' bash "$RIG"
-
-  [ "$status" -eq 1 ]
-  [ "$(cat "$victim/site.rig-publish.8/rig.json")" = victim ]
-  [ "$(cat "$moved/site.rig-publish.8/rig.json")" = original ]
-}
-
-@test "clean interruption reports a resumable exact-shape claim" {
-  local cache claim
-  cache=$BATS_TEST_TMPDIR/clean-interrupt-$BATS_TEST_NUMBER
-  claim=$cache/publish/cleanup/site.rig-publish.55
-  mkdir -p "$claim"
-  printf '{}\n' >"$claim/rig.json"
-
-  run env RIG_TEST_CLAIM="$claim" /bin/bash -c '
-    . "$1"
-    RIG_CLEAN_CLAIM=$RIG_TEST_CLAIM
-    rig_clean_interrupted 143
-  ' bash "$RIG"
-
-  [ "$status" -eq 143 ]
-  [[ "$output" == *"resumable claim: $claim"* ]] || false
-  [ -f "$claim/rig.json" ]
-
-  run env HOME="$TEST_HOME" RIG_CACHE_HOME="$cache" "$RIG" clean
-  [ "$status" -eq 0 ]
-  [ ! -e "$claim" ]
-}
-
-@test "concurrent cleaners never traverse active staging and leave no eligible exports" {
-  local cache index statuses
-  cache=$BATS_TEST_TMPDIR/clean-concurrent-$BATS_TEST_NUMBER
-  mkdir -p "$cache/publish/staging/active.rig-publish.1" "$cache/publish/retained"
-  printf active >"$cache/publish/staging/active.rig-publish.1/rig.json"
-  index=1
-  while [ "$index" -le 20 ]; do
-    mkdir "$cache/publish/retained/site.rig-publish.$index"
-    printf '{}\n' >"$cache/publish/retained/site.rig-publish.$index/rig.json"
-    index=$((index + 1))
-  done
-
-  run env RIG_TEST_HOME="$TEST_HOME" RIG_TEST_CACHE="$cache" RIG_TEST_RIG="$RIG" \
-    /bin/bash -c '
-      HOME=$RIG_TEST_HOME RIG_CACHE_HOME=$RIG_TEST_CACHE "$RIG_TEST_RIG" clean >"$RIG_TEST_CACHE/one.log" 2>&1 &
-      first=$!
-      HOME=$RIG_TEST_HOME RIG_CACHE_HOME=$RIG_TEST_CACHE "$RIG_TEST_RIG" clean >"$RIG_TEST_CACHE/two.log" 2>&1 &
-      second=$!
-      first_status=0
-      second_status=0
-      wait "$first" || first_status=$?
-      wait "$second" || second_status=$?
-      printf "%s %s\n" "$first_status" "$second_status"
-    '
-
-  [ "$status" -eq 0 ]
-  statuses=${lines[0]}
-  case "$statuses" in
-    '0 0'|'0 1'|'1 0'|'1 1') ;;
-    *) false ;;
-  esac
-  [ -f "$cache/publish/staging/active.rig-publish.1/rig.json" ]
-  [ -z "$(find "$cache/publish/retained" "$cache/publish/cleanup" -mindepth 1 -print -quit)" ]
-}
-
-@test "publish help and syntax are local and explicit" {
-  run "$RIG" publish --help
-  [ "$status" -eq 0 ]
-  [ "$output" = 'Usage: rig publish PUBLICATION' ]
-
-  run "$RIG" publish
-  [ "$status" -eq 2 ]
-  [[ "$output" == *'usage: rig publish PUBLICATION'* ]] || false
+  grep -F '"title": "public"' "$destination/rig.json"
 }
 
 write_operation_config() {
@@ -3860,17 +3426,6 @@ write_inventory_config() {
   [ "$status" -eq 0 ]
   [[ "$output" == *'Unmanaged: 2'* ]] || false
 
-  write_publication_config
-  cp "$PUBLICATION_PROVIDER" "$data_home/providers/publisher"
-  chmod +x "$data_home/providers/publisher"
-  sed '/^executable = /d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/default-provider.toml"
-  mv "$CONFIG_HOME/default-provider.toml" "$CONFIG_HOME/rig.toml"
-  run env -u HOME RIG_CONFIG_HOME="$CONFIG_HOME" RIG_DATA_HOME="$data_home" \
-    RIG_CACHE_HOME="$BATS_TEST_TMPDIR/publish-cache-$BATS_TEST_NUMBER" \
-    RIG_STATE_HOME="$BATS_TEST_TMPDIR/publish-state-$BATS_TEST_NUMBER" \
-    RIG_PLATFORM=macos RIG_PUBLICATION_MARKER="$PUBLICATION_MARKER" "$RIG" publish site
-  [ "$status" -eq 0 ]
-  [ -e "$PUBLICATION_MARKER" ]
 }
 
 @test "custom provider default follows XDG data home and explicit executable wins" {
@@ -4752,7 +4307,7 @@ ports = ["required-api", "on-demand-api", "allocated-api", "free-allocation"]' \
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" \
-    "$RIG" export site --output "$output_dir"
+    "$RIG" export --profile public --output "$output_dir"
   [ "$status" -eq 0 ]
   grep -Fq '"id": "alpha"' "$output_dir/rig.json"
   ! grep -Eq 'required-api|4101|private API|tool:alpha|"port"' "$output_dir/rig.json"

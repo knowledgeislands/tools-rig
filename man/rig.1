@@ -49,13 +49,10 @@ rig \- describe and manage a personal working setup
 .BI "rig run " PROVIDER " " ACTION
 .RI [ \-\- " ARGUMENT..." ]
 .br
-.BI "rig export " PUBLICATION
+.BI "rig export \-\-profile " NAME
 .BI " \-\-output " DIRECTORY
-.br
-.BI "rig publish " PUBLICATION
-.br
-.B rig clean
-.RI [ \-\-dry-run ]
+.RI [ \-\-title " TEXT" ]
+.RI [ \-\-base-url " URL" ]
 .br
 .B rig diag
 .br
@@ -87,8 +84,8 @@ provider code. Status and doctor invoke observation capabilities.
 Apply, bootstrap, update, maintain, and capture cross the explicit mutation
 boundary only after complete preflight.
 Run crosses an explicit provider-action trust boundary after resolving either
-a built-in operation or a declared external-provider action. Publish
-crosses a network-capable trust boundary only after export validation.
+a built-in operation or a declared external-provider action. Export writes
+public data and crosses no network boundary at all.
 Package and configuration systems retain authority over their native
 manifests, resolution, configuration, and state.
 .SH USER WORKFLOW
@@ -123,12 +120,9 @@ for one part of reconciliation. Use
 and
 .B rig capture
 only as explicit, dry-run-first lifecycle transitions outside reconciliation.
-Public sharing follows the separate
-offline
+Public sharing follows the separate offline
 .B rig export
-and explicit
-.B rig publish
-boundary.
+boundary; Rig hands over data and never deploys it.
 .SH INSTALLATION
 \&
 .PP
@@ -285,7 +279,7 @@ incompatible-platform tools are informational.
 Check a named resolved profile without changing the configured default.
 Doctor invokes only fixed built-in observation operations or external
 observation operations explicitly allowed for selected providers. It never
-applies, repairs, publishes, or invokes unselected providers.
+applies, repairs, or invokes unselected providers.
 .TP
 .BI "rig doctor \-\-format " text|json
 Select the rendering. The default
@@ -411,28 +405,32 @@ provider action. External actions use their declared observation or mutation
 operation. Configured arguments precede accepted caller arguments. Rig passes
 provider output through and preserves its native exit status.
 .TP
-.BI "rig export " PUBLICATION " \-\-output " DIRECTORY
+.BI "rig export \-\-profile " NAME " \-\-output " DIRECTORY
 Generate a deterministic, versioned
 .I rig.json
-artifact from the publication's explicitly selected, platform-neutral profile.
-Export invokes no provider, publisher, or network command.
-.TP
-.BI "rig publish " PUBLICATION
-Render and validate one isolated public-data export beneath the effective Rig
-cache, then invoke the publication's selected trusted external publisher exactly
-once.
-The publisher and receiving website own presentation, credentials, destination,
-deployment, and rollback.
-.TP
-.B rig clean
-.RI [ \-\-dry-run ]
-Remove complete retained publication exports and resumable cleanup claims that
-Rig can prove it owns. With
-.BR \-\-dry-run ,
-perform the same discovery and validation but report
-.B would-remove
-without changing the filesystem. This command does not load configuration,
-invoke providers, or inspect provider-native caches.
+artifact from the named platform-neutral view profile. Export invokes no
+provider and no network command.
+.RS
+.PP
+.B \-\-profile
+must name a declared profile whose
+.B kind
+is
+.BR view ;
+an appliable profile is rejected before anything is written.
+.B \-\-title
+states the title the exported document carries, defaulting to the view's
+declared
+.B name
+and then to the profile identifier.
+.B \-\-base-url
+states the canonical URL of the published document; omitting it renders
+.B canonical_url
+as
+.BR null .
+Rig accepts none of these from configuration: they belong to the site that
+consumes the export.
+.RE
 .TP
 .B rig diag
 Print a non-mutating diagnostic snapshot containing Rig and Bash versions,
@@ -969,16 +967,9 @@ a public export.
 .SS PUBLICATION AND EXTENSIONS
 \&
 .B [publication.ID]
-requires
-.BR profile ,
-.BR title ,
-.BR base-url ,
-and
-.BR publisher .
-Offline export does not invoke the publisher. Explicit publication requires
-an explicitly declared external provider with the exact
-.B publish
-capability.
+is retired. Its values are now arguments of
+.BR "rig export" ,
+and a configuration that still declares one fails to load.
 .B [action.PROVIDER.NAME]
 requires
 .BR mode ,
@@ -1006,7 +997,9 @@ allowlist; value
 delegates validation to that external provider.
 .PP
 The
-.B base-url
+.B \-\-base-url
+argument of
+.B rig export
 must be an absolute HTTP or HTTPS URL without a query or fragment. Rig appends
 a trailing slash when omitted and projects it as
 .B publication.canonical_url
@@ -1086,7 +1079,7 @@ is
 .B rig-publication
 and its integer
 .B version
-is 2. It contains publication metadata, profile identity, selected categories,
+is 2. It contains export metadata, profile identity, selected categories,
 and selected tool identity, name, purpose, rationale, declared platforms, and
 closed relationships. It always includes a deterministic profile skills array,
 including when empty. A selected skill contributes only identity, name, purpose,
@@ -1096,7 +1089,7 @@ unmanaged inventory are never rendered. Category, tool, skill, platform, and
 relationship values use
 deterministic bytewise ordering.
 .PP
-The public profile must be a non-appliable view and is resolved independently
+The exported profile must be a non-appliable view and is resolved independently
 of the active host platform while each tool retains its declared platforms.
 Every selected declaration and dependency must opt into the view explicitly.
 Relationships are included only when both endpoints are selected. Provider
@@ -1115,53 +1108,8 @@ rejects output targets that are
 .BR . ,
 .BR .. ,
 symlinks, or non-directories. Review the generated tree before passing it to a
-separate hosting or publisher system.
-.SH PUBLICATION
-\&
-.B rig publish
-performs the same validated public projection in an isolated directory beneath
-.IR ${RIG_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/rig}/publish/staging ,
-then crosses one explicit network-capable trust boundary. It invokes no fallback
-publisher and passes the selected provider one absolute complete-tree path.
-.PP
-Successful publication removes the staged tree. A publisher failure preserves
-its native exit status and retains the complete tree, reporting its path on
-standard error. An interruption before the export is complete removes its
-incomplete known files, invokes no publisher, and returns the conventional
-signal status without reporting a retained export. Once complete, an
-interrupted publication instead retains and reports the tree. Validation,
-staging, and render failures invoke no publisher.
-.PP
-Cleanup revalidates the canonical cache parent and operates relative to that
-pinned directory. It unlinks only
-.I rig.json
-before removing the empty directory. A substituted parent, symlink,
-unexpected file, or other unsafe shape fails closed without recursive traversal.
-.SH CACHE MAINTENANCE
-\&
-.B rig clean
-maintains only cache data owned by Rig. Active publication work remains beneath
-.IR publish/staging .
-Complete exports preserved after publisher failure or interruption remain
-beneath
-.IR publish/retained
-until explicit cleanup. Cleanup claims an eligible tree beneath
-.IR publish/cleanup ,
-revalidates its exact one-file shape, unlinks only
-.IR rig.json ,
-and removes only the now-empty directory.
-.PP
-Retained artifacts have no automatic age or count expiry. A dry run prints the
-same tab-separated
-.BR CLASS ,
-.BR STATE ,
-.BR ACTION ,
-and
-.B PATH
-report without creating, moving, or removing paths. Legacy flat entries,
-symlinks, unexpected content, invalid names, and substituted parents are
-reported and skipped. Active staging, provider-native caches, configuration,
-data, state, and explicit export destinations are outside cleanup authority.
+separate hosting system. Rig does not deploy: take the tree where it belongs
+using the credentials and transport that system already has.
 .SH PROVIDER EXECUTION
 \&
 .PP
@@ -1281,7 +1229,7 @@ Private port|Observe only|No mutation
 .TE
 .PP
 Complete profiles may enter the mutating lifecycle. Views remain available for
-queries and publication but are rejected before mutation. Provider work is
+queries and export but are rejected before mutation. Provider work is
 classified before execution as declaration-scoped, manifest-scoped, or
 provider-wide. Declaration-scoped work affects one selected declaration;
 manifest-scoped work changes one declared native manifest; provider-wide work
@@ -1402,17 +1350,6 @@ is
 In that case the provider validates its native domain. Provider stdout and
 stderr pass through and the native exit status is preserved.
 .PP
-Publication uses the separate fixed protocol:
-.PP
-.nf
-EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 publish PROVIDER PUBLICATION
-    directory ABS_EXPORT_DIR
-.fi
-.PP
-An external publisher must declare the exact
-.B publish
-capability. Rig passes publisher output through and preserves its native result.
-.PP
 Reverse reconciliation uses a separate fixed protocol that names no tool,
 because it enumerates a provider's whole domain rather than observing one
 declaration:
@@ -1485,20 +1422,13 @@ to inspect the checked-out artifacts without changing installed paths.
 Rig owns the statuses 0, 1, and 2 below. They are a public interface: a caller
 may branch on them. A future release may add a status, but never repurposes
 one. Commands that dispatch to a provider return that provider's native status
-instead, and interrupted publication returns a signal status.
+instead, and an interrupted command returns a signal status.
 .B rig run
 returns the selected action provider's native status, including values
 outside the Rig-owned statuses below.
-.B rig publish
-likewise returns the publisher's native non-zero status. Interrupted publication
-returns 129, 130, or 143 for HUP, INT, or TERM. Rig-owned publication
-validation, export, and cleanup failures return 2.
 .B rig capture
 returns the selected built-in provider's native status after successful
 preflight.
-.B rig clean
-returns 1 after completing independent safe work when an artifact is skipped
-or cannot be removed; invalid syntax or an unsafe cache boundary returns 2.
 .TP
 .B 0
 Healthy status or doctor result, or successful apply, bootstrap, update,
@@ -1518,7 +1448,7 @@ resolution failure, or shared apply, bootstrap, or capture preflight safety
 failure.
 .TP
 .B 129, 130, 143
-Publication interrupted by HUP, INT, or TERM.
+A command interrupted by HUP, INT, or TERM.
 .TP
 .B other
 The native status of the provider a pass-through command dispatched to.

@@ -64,7 +64,7 @@ A complete profile is the whole desired Rig intent for one target. Switching com
 
 ## Create a non-appliable public view
 
-A publication profile is a view. Every disclosed declaration opts in explicitly, and a view may inherit only another view:
+An export profile is a view. Every disclosed declaration opts in explicitly, and a view may inherit only another view:
 
 ```toml
 [tool.mgit]
@@ -83,7 +83,7 @@ kind = "view"
 
 If a public tool requires another tool, that dependency must opt into `public` as well. Rig rejects an implicit dependency rather than disclosing it accidentally.
 
-A view can be shown, listed, explained, checked, and exported. Mutating commands reject it, and it never owns reconciliation receipts. Public exports contain only the allow-listed metadata described in the [publication guide](publishing.md), never native authority details or observed machine state.
+A view can be shown, listed, explained, checked, and exported. Mutating commands reject it, and it never owns reconciliation receipts. Public exports contain only the allow-listed metadata described in the [export guide](exporting.md), never native authority details or observed machine state.
 
 ## Read application scope
 

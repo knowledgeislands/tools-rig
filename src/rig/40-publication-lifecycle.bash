@@ -164,13 +164,12 @@ rig_render_public_skill() {
 }
 
 rig_render_publication_json() {
-  local publication title profile base_url tool category index
+  local title profile base_url tool category index
   local -a categories
 
-  publication=$1
-  title=$2
-  profile=$3
-  base_url=$4
+  title=$1
+  profile=$2
+  base_url=$3
 
   categories=()
   index=0
@@ -189,12 +188,16 @@ rig_render_publication_json() {
   categories=("${RIG_QUERY_ITEMS[@]+"${RIG_QUERY_ITEMS[@]}"}")
 
   printf '{\n  "format": "rig-publication",\n  "version": 2,\n  "publication": {\n'
-  rig_json_escape "$publication"
+  rig_json_escape "$profile"
   printf '    "id": "%s",\n' "$RIG_VALUE"
   rig_json_escape "$title"
   printf '    "title": "%s",\n' "$RIG_VALUE"
-  rig_json_escape "$base_url"
-  printf '    "canonical_url": "%s"\n  },\n  "profile": {\n' "$RIG_VALUE"
+  if [ -n "$base_url" ]; then
+    rig_json_escape "$base_url"
+    printf '    "canonical_url": "%s"\n  },\n  "profile": {\n' "$RIG_VALUE"
+  else
+    printf '    "canonical_url": null\n  },\n  "profile": {\n'
+  fi
   rig_json_escape "$profile"
   printf '    "id": "%s",\n    "categories": [\n' "$RIG_VALUE"
   index=0
@@ -280,7 +283,7 @@ rig_replace_export_tree() {
   trap 'rig_export_interrupted 130' INT
   trap 'rig_export_interrupted 143' TERM
   rig_render_publication_json \
-    "$RIG_EXPORT_PUBLICATION" "$RIG_EXPORT_TITLE" "$RIG_RESOLVED_PROFILE" "$RIG_PUBLICATION_BASE_URL" \
+    "$RIG_EXPORT_TITLE" "$RIG_RESOLVED_PROFILE" "$RIG_PUBLICATION_BASE_URL" \
     >"$temporary/rig.json" || return
 
   [ ! -L "$target" ] || rig_fail "export output became a symlink: $target" || return
@@ -304,451 +307,78 @@ rig_replace_export_tree() {
   fi
   trap - EXIT HUP INT TERM
   if [ "$report" = yes ]; then
-    printf 'Exported %s to %s\n' "$RIG_EXPORT_PUBLICATION" "$target"
+    printf 'Exported profile %s to %s\n' "$RIG_RESOLVED_PROFILE" "$target"
   fi
 }
 
 rig_command_export() {
-  local publication output profile platform title base_url native_status
+  local output profile platform title base_url native_status
 
-  if [ "$#" -eq 1 ]; then
+  profile=
+  output=
+  title=
+  base_url=
+  while [ "$#" -gt 0 ]; do
     case "$1" in
       -h|--help)
-        printf '%s\n' 'Usage: rig export PUBLICATION --output DIRECTORY'
+        printf '%s\n' \
+          'Usage: rig export --profile NAME --output DIRECTORY [--title TEXT] [--base-url URL]'
         return
         ;;
+      --profile|--output|--title|--base-url)
+        [ "$#" -ge 2 ] && [ -n "$2" ] ||
+          syntax_error "$1 requires a value" || return
+        case "$1" in
+          --profile) profile=$2 ;;
+          --output) output=$2 ;;
+          --title) title=$2 ;;
+          --base-url) base_url=$2 ;;
+        esac
+        shift 2
+        ;;
+      *) syntax_error "unexpected $1" || return ;;
     esac
-  fi
-  [ "$#" -eq 3 ] && [ "$2" = --output ] && [ -n "$1" ] && [ -n "$3" ] ||
-    syntax_error 'usage: rig export PUBLICATION --output DIRECTORY' || return
-  publication=$1
-  output=$3
+  done
+  [ -n "$profile" ] && [ -n "$output" ] ||
+    syntax_error 'usage: rig export --profile NAME --output DIRECTORY [--title TEXT] [--base-url URL]' ||
+    return
   rig_load_config || return
-  rig_valid_id "$publication" && rig_section_index "publication.$publication" ||
-    rig_fail "unknown publication '$publication'" || return
-  rig_get_value "publication.$publication" profile || return
-  profile=$RIG_VALUE
-  rig_get_value "publication.$publication" title || return
-  title=$RIG_VALUE
-  rig_get_value "publication.$publication" base-url || return
-  base_url=$RIG_VALUE
-  rig_publication_base_url "$base_url" || return
-  RIG_PUBLICATION_BASE_URL=$RIG_VALUE
+  rig_valid_id "$profile" && rig_reference_exists profile "$profile" ||
+    rig_fail "unknown profile '$profile'" || return
+  rig_profile_kind "$profile" || return
+  [ "$RIG_VALUE" = view ] ||
+    rig_fail "profile '$profile' must be a non-appliable view to export" || return
+  if [ -n "$base_url" ]; then
+    rig_publication_base_url "$base_url" || return
+    RIG_PUBLICATION_BASE_URL=$RIG_VALUE
+  else
+    RIG_PUBLICATION_BASE_URL=
+  fi
+  if [ -z "$title" ]; then
+    if rig_get_value "profile.$profile" name; then
+      title=$RIG_VALUE
+    else
+      title=$profile
+    fi
+  fi
   rig_current_platform || return
   platform=$RIG_VALUE
   rig_resolve_publication_profile "$profile" "$platform" || return
-  RIG_EXPORT_PUBLICATION=$publication
   RIG_EXPORT_TITLE=$title
   (
     umask 022
-    rig_progress_start 'publication export' 1
-    rig_progress_begin "$publication" declaration
+    rig_progress_start 'public data export' 1
+    rig_progress_begin "$profile" declaration
     if rig_replace_export_tree "$output"; then
-      rig_progress_result succeeded "$publication" declaration
+      rig_progress_result succeeded "$profile" declaration
       rig_progress_finish
     else
       native_status=$?
-      rig_progress_result failed "$publication" declaration
+      rig_progress_result failed "$profile" declaration
       rig_progress_finish
       return "$native_status"
     fi
   )
-}
-
-rig_cleanup_publish_stage() {
-  local stage_name entry
-
-  if [ -z "${RIG_PUBLISH_STAGE:-}" ]; then
-    return 0
-  fi
-  case "$RIG_PUBLISH_STAGE" in
-    "$RIG_PUBLISH_STAGING_ROOT"/*.rig-publish.*) ;;
-    *) rig_fail "refusing unsafe publication staging cleanup: $RIG_PUBLISH_STAGE" || return ;;
-  esac
-
-  stage_name=${RIG_PUBLISH_STAGE##*/}
-  if ! (
-    cd "$RIG_PUBLISH_STAGING_ROOT" || exit 2
-    [ "$(pwd -P)" = "$RIG_PUBLISH_STAGING_ROOT" ] || exit 2
-    [ ! -L "$stage_name" ] || exit 2
-    if [ ! -e "$stage_name" ]; then
-      exit 0
-    fi
-    [ -d "$stage_name" ] || exit 2
-    cd "$stage_name" || exit 2
-    [ "$(pwd -P)" = "$RIG_PUBLISH_STAGE" ] || exit 2
-    [ ! -L rig.json ] || exit 2
-    [ ! -e rig.json ] || [ -f rig.json ] || exit 2
-    for entry in ./* ./.[!.]* ./..?*; do
-      [ -e "$entry" ] || [ -L "$entry" ] || continue
-      case "$entry" in
-        ./rig.json) ;;
-        *) exit 2 ;;
-      esac
-    done
-    [ ! -e rig.json ] || rm -f -- rig.json || exit 2
-    cd .. || exit 2
-    rmdir -- "$stage_name" || exit 2
-  ); then
-    rig_fail "cannot safely remove publication staging directory: $RIG_PUBLISH_STAGE" || return
-  fi
-  RIG_PUBLISH_STAGE=
-  RIG_PUBLISH_COMPLETE=0
-}
-
-rig_retain_publish_stage() {
-  local stage_name retained
-
-  [ -n "${RIG_PUBLISH_STAGE:-}" ] || return 0
-  case "$RIG_PUBLISH_STAGE" in
-    "$RIG_PUBLISH_STAGING_ROOT"/*.rig-publish.*) ;;
-    "$RIG_PUBLISH_RETAINED_ROOT"/*.rig-publish.*) return 0 ;;
-    *) rig_fail "refusing unsafe publication retention: $RIG_PUBLISH_STAGE" || return ;;
-  esac
-  stage_name=${RIG_PUBLISH_STAGE##*/}
-  retained=$RIG_PUBLISH_RETAINED_ROOT/$stage_name
-  [ ! -e "$retained" ] && [ ! -L "$retained" ] ||
-    rig_fail "publication retention target already exists: $retained" || return
-  if ! (
-    cd "$RIG_PUBLISH_ROOT" || exit 2
-    [ "$(pwd -P)" = "$RIG_PUBLISH_ROOT" ] || exit 2
-    [ -d staging ] && [ ! -L staging ] || exit 2
-    [ -d retained ] && [ ! -L retained ] || exit 2
-    [ "$(cd staging && pwd -P)" = "$RIG_PUBLISH_STAGING_ROOT" ] || exit 2
-    [ "$(cd retained && pwd -P)" = "$RIG_PUBLISH_RETAINED_ROOT" ] || exit 2
-    [ -d "staging/$stage_name" ] && [ ! -L "staging/$stage_name" ] || exit 2
-    mv -- "staging/$stage_name" "retained/$stage_name" || exit 2
-  ); then
-    rig_fail "cannot safely retain publication staging directory: $RIG_PUBLISH_STAGE" || return
-  fi
-  RIG_PUBLISH_STAGE=$retained
-}
-
-rig_publish_interrupted() {
-  local exit_code
-
-  exit_code=$1
-  trap - HUP INT TERM
-  rig_progress_interrupted
-  if [ "${RIG_PUBLISH_COMPLETE:-0}" -eq 1 ]; then
-    rig_retain_publish_stage || true
-    printf 'rig: publish interrupted; retained export: %s\n' "$RIG_PUBLISH_STAGE" >&2
-  else
-    if rig_cleanup_publish_stage; then
-      printf 'rig: publish interrupted before publisher handoff\n' >&2
-    else
-      printf 'rig: publish interrupted before publisher handoff; staging cleanup failed\n' >&2
-    fi
-  fi
-  exit "$exit_code"
-}
-
-rig_prepare_publish_stage() {
-  local publication publish_root staging_root retained_root stage suffix absolute_stage
-
-  publication=$1
-  rig_effective_paths || return 2
-  publish_root=$RIG_DIAG_CACHE_HOME/publish
-  if [ -e "$publish_root" ] || [ -L "$publish_root" ]; then
-    [ -d "$publish_root" ] && [ ! -L "$publish_root" ] ||
-      rig_fail "publication cache path must be a directory, not a symlink: $publish_root" || return
-  else
-    mkdir -p -- "$publish_root" ||
-      rig_fail "cannot create publication cache directory: $publish_root" || return
-  fi
-  [ -d "$publish_root" ] && [ ! -L "$publish_root" ] ||
-    rig_fail "publication cache path must be a directory, not a symlink: $publish_root" || return
-  RIG_PUBLISH_ROOT=$(cd "$publish_root" && pwd -P) ||
-    rig_fail "cannot resolve publication cache directory: $publish_root" || return
-
-  staging_root=$RIG_PUBLISH_ROOT/staging
-  retained_root=$RIG_PUBLISH_ROOT/retained
-  if [ ! -e "$staging_root" ] && [ ! -L "$staging_root" ]; then
-    mkdir -- "$staging_root" ||
-      rig_fail "cannot create publication staging cache directory: $staging_root" || return
-  fi
-  if [ ! -e "$retained_root" ] && [ ! -L "$retained_root" ]; then
-    mkdir -- "$retained_root" ||
-      rig_fail "cannot create publication retained cache directory: $retained_root" || return
-  fi
-  [ -d "$staging_root" ] && [ ! -L "$staging_root" ] ||
-    rig_fail "publication staging cache path must be a directory, not a symlink: $staging_root" || return
-  [ -d "$retained_root" ] && [ ! -L "$retained_root" ] ||
-    rig_fail "publication retained cache path must be a directory, not a symlink: $retained_root" || return
-  RIG_PUBLISH_STAGING_ROOT=$(cd "$staging_root" && pwd -P) ||
-    rig_fail "cannot resolve publication staging cache directory: $staging_root" || return
-  RIG_PUBLISH_RETAINED_ROOT=$(cd "$retained_root" && pwd -P) ||
-    rig_fail "cannot resolve publication retained cache directory: $retained_root" || return
-
-  suffix=$$
-  stage=$RIG_PUBLISH_STAGING_ROOT/$publication.rig-publish.$suffix
-  while [ -e "$stage" ] || [ -L "$stage" ] ||
-    [ -e "$RIG_PUBLISH_RETAINED_ROOT/${stage##*/}" ] ||
-    [ -L "$RIG_PUBLISH_RETAINED_ROOT/${stage##*/}" ]; do
-    suffix=$((suffix + 1))
-    stage=$RIG_PUBLISH_STAGING_ROOT/$publication.rig-publish.$suffix
-  done
-  RIG_PUBLISH_STAGE=$stage
-  if ! mkdir -- "$stage"; then
-    rig_cleanup_publish_stage || true
-    rig_fail "cannot create publication staging directory: $stage" || return
-    return 2
-  fi
-  if ! rig_render_publication_json \
-    "$publication" "$RIG_EXPORT_TITLE" "$RIG_RESOLVED_PROFILE" "$RIG_PUBLICATION_BASE_URL" \
-    >"$stage/rig.json"; then
-    rig_cleanup_publish_stage || true
-    rig_fail "cannot render publication data: $stage/rig.json" || return
-    return 2
-  fi
-  if [ ! -f "$stage/rig.json" ] || [ -L "$stage/rig.json" ]; then
-    rig_cleanup_publish_stage || true
-    rig_fail "publication export is incomplete: $stage" || return
-  fi
-  [ ! -L "$stage" ] || {
-    rig_cleanup_publish_stage || true
-    rig_fail "publication staging directory became a symlink: $stage" || return
-  }
-  if ! absolute_stage=$(cd "$stage" && pwd -P); then
-    rig_cleanup_publish_stage || true
-    rig_fail "cannot resolve publication staging directory: $stage" || return
-  fi
-  case "$absolute_stage" in
-    "$RIG_PUBLISH_STAGING_ROOT"/*.rig-publish.*) ;;
-    *)
-      rig_cleanup_publish_stage || true
-      rig_fail "publication staging directory escaped the cache: $absolute_stage" || return
-      ;;
-  esac
-  RIG_PUBLISH_STAGE=$absolute_stage
-  RIG_PUBLISH_COMPLETE=1
-  RIG_VALUE=$absolute_stage
-}
-
-rig_command_publish() {
-  (
-    local publication section_name profile title base_url publisher adapter executable platform
-    local stage exit_code
-
-    RIG_PUBLISH_STAGE=
-    RIG_PUBLISH_ROOT=
-    RIG_PUBLISH_STAGING_ROOT=
-    RIG_PUBLISH_RETAINED_ROOT=
-    RIG_PUBLISH_COMPLETE=0
-    trap 'rig_publish_interrupted 129' HUP
-    trap 'rig_publish_interrupted 130' INT
-    trap 'rig_publish_interrupted 143' TERM
-
-    if [ "$#" -eq 1 ]; then
-      case "$1" in
-        -h|--help)
-          printf '%s\n' 'Usage: rig publish PUBLICATION'
-          return
-          ;;
-      esac
-    fi
-    [ "$#" -eq 1 ] && [ -n "$1" ] ||
-      syntax_error 'usage: rig publish PUBLICATION' || return
-    publication=$1
-
-    rig_load_config || return
-    rig_valid_id "$publication" && rig_section_index "publication.$publication" ||
-      rig_fail "unknown publication '$publication'" || return
-    section_name=publication.$publication
-    rig_get_value "$section_name" profile || return 2
-    profile=$RIG_VALUE
-    rig_get_value "$section_name" title || return 2
-    title=$RIG_VALUE
-    rig_get_value "$section_name" base-url || return 2
-    base_url=$RIG_VALUE
-    rig_publication_base_url "$base_url" || return
-    RIG_PUBLICATION_BASE_URL=$RIG_VALUE
-    rig_get_value "$section_name" publisher || return 2
-    publisher=$RIG_VALUE
-    rig_provider_adapter "$publisher" || return 2
-    adapter=$RIG_VALUE
-    [ "$adapter" = custom ] ||
-      rig_fail "publication '$publication' requires a custom publisher" || return
-    rig_provider_has_capability "$publisher" publish ||
-      rig_fail "publisher '$publisher' does not declare capability 'publish'" || return
-  rig_custom_provider_executable "$publisher" || return 2
-    executable=$RIG_VALUE
-    rig_executable_available "$executable" ||
-      rig_fail "publisher '$publisher' executable unavailable: $executable" || return
-
-    rig_current_platform || return
-    platform=$RIG_VALUE
-    rig_resolve_publication_profile "$profile" "$platform" || return
-    RIG_EXPORT_PUBLICATION=$publication
-    RIG_EXPORT_TITLE=$title
-    umask 077
-    rig_progress_start 'publication staging' 1
-    rig_progress_begin "$publication" declaration
-    rig_prepare_publish_stage "$publication" || return
-    stage=$RIG_VALUE
-    rig_progress_result succeeded "$publication" declaration
-    rig_progress_finish
-    if ! rig_prepare_custom_invocation publish "$publisher" "$publication" directory "$stage"; then
-      rig_cleanup_publish_stage || true
-      return 2
-  fi
-    executable=$RIG_VALUE
-
-    rig_progress_start publishing 1
-    rig_progress_begin "$publication via $publisher" declaration
-    if "$executable" "${RIG_INVOKE_ARGUMENTS[@]}"; then
-      exit_code=0
-      rig_progress_result succeeded "$publication via $publisher" declaration
-    else
-      exit_code=$?
-      rig_progress_result failed "$publication via $publisher" declaration
-    fi
-  rig_progress_finish
-
-    if [ "$exit_code" -ne 0 ]; then
-      rig_retain_publish_stage || true
-      printf 'rig: publish failed; retained export: %s\n' "$RIG_PUBLISH_STAGE" >&2
-      return "$exit_code"
-    fi
-    if ! rig_cleanup_publish_stage; then
-      printf 'rig: publisher succeeded but publication staging cleanup failed\n' >&2
-      return 2
-    fi
-    printf 'Published %s via %s\n' "$publication" "$publisher"
-  )
-}
-
-rig_clean_add() {
-  RIG_CLEAN_PATHS[${#RIG_CLEAN_PATHS[@]}]=$1
-  RIG_CLEAN_STATES[${#RIG_CLEAN_STATES[@]}]=$2
-}
-
-rig_clean_artifact_shape() {
-  local root path name basename publication suffix entry absolute
-
-  root=$1
-  path=$2
-  case "$path" in
-    "$root"/*.rig-publish.*) ;;
-    *) return 1 ;;
-  esac
-  basename=${path##*/}
-  publication=${basename%%.rig-publish.*}
-  suffix=${basename#*.rig-publish.}
-  rig_valid_id "$publication" || return 1
-  case "$suffix" in
-    ''|*[!0-9]*) return 1 ;;
-  esac
-  [ -d "$path" ] && [ ! -L "$path" ] || return 1
-  absolute=$(cd "$path" 2>/dev/null && pwd -P) || return 1
-  [ "$absolute" = "$path" ] || return 1
-  [ -f "$path/rig.json" ] && [ ! -L "$path/rig.json" ] || return 1
-  for entry in "$path"/* "$path"/.[!.]* "$path"/..?*; do
-    [ -e "$entry" ] || [ -L "$entry" ] || continue
-    name=${entry##*/}
-    [ "$name" = rig.json ] || return 1
-  done
-  return 0
-}
-
-rig_clean_collect_namespace() {
-  local root state path
-
-  root=$1
-  state=$2
-  [ -e "$root" ] || [ -L "$root" ] || return 0
-  [ -d "$root" ] && [ ! -L "$root" ] ||
-    rig_fail "cache namespace must be a directory, not a symlink: $root" || return 2
-  [ "$(cd "$root" && pwd -P)" = "$root" ] ||
-    rig_fail "cache namespace escaped its canonical parent: $root" || return 2
-  for path in "$root"/* "$root"/.[!.]* "$root"/..?*; do
-    [ -e "$path" ] || [ -L "$path" ] || continue
-    if rig_clean_artifact_shape "$root" "$path"; then
-      rig_clean_add "$path" "$state"
-    else
-      rig_clean_add "$path" unsafe
-    fi
-  done
-}
-
-rig_clean_collect_legacy() {
-  local path basename
-
-  for path in "$RIG_CLEAN_ROOT"/* "$RIG_CLEAN_ROOT"/.[!.]* "$RIG_CLEAN_ROOT"/..?*; do
-    [ -e "$path" ] || [ -L "$path" ] || continue
-    basename=${path##*/}
-    case "$basename" in
-      staging|retained|cleanup) continue ;;
-      *.rig-publish.*) rig_clean_add "$path" legacy-unclassified ;;
-      *) rig_clean_add "$path" unsafe ;;
-    esac
-  done
-}
-
-rig_clean_claim() {
-  local path basename target
-
-  path=$1
-  basename=${path##*/}
-  target=$RIG_CLEAN_ROOT/cleanup/$basename
-  [ -d "$RIG_CLEAN_ROOT/retained" ] && [ ! -L "$RIG_CLEAN_ROOT/retained" ] || return 1
-  if [ ! -e "$RIG_CLEAN_ROOT/cleanup" ] && [ ! -L "$RIG_CLEAN_ROOT/cleanup" ]; then
-    mkdir -- "$RIG_CLEAN_ROOT/cleanup" || return 1
-  fi
-  [ -d "$RIG_CLEAN_ROOT/cleanup" ] && [ ! -L "$RIG_CLEAN_ROOT/cleanup" ] || return 1
-  [ "$(cd "$RIG_CLEAN_ROOT/cleanup" && pwd -P)" = "$RIG_CLEAN_ROOT/cleanup" ] || return 1
-  [ ! -e "$target" ] && [ ! -L "$target" ] || return 1
-  if ! (
-    cd "$RIG_CLEAN_ROOT" || exit 1
-    [ "$(pwd -P)" = "$RIG_CLEAN_ROOT" ] || exit 1
-    mv -- "retained/$basename" "cleanup/$basename"
-  ); then
-    return 1
-  fi
-  RIG_CLEAN_CLAIM=$target
-  return 0
-}
-
-rig_clean_remove_claim() {
-  local path basename entry
-
-  path=$1
-  basename=${path##*/}
-  rig_clean_artifact_shape "$RIG_CLEAN_ROOT/cleanup" "$path" || return 1
-  RIG_CLEAN_CLAIM=$path
-  if ! (
-    cd "$RIG_CLEAN_ROOT/cleanup" || exit 1
-    [ "$(pwd -P)" = "$RIG_CLEAN_ROOT/cleanup" ] || exit 1
-    [ -d "$basename" ] && [ ! -L "$basename" ] || exit 1
-    cd "$basename" || exit 1
-    [ "$(pwd -P)" = "$path" ] || exit 1
-    [ -f rig.json ] && [ ! -L rig.json ] || exit 1
-    for entry in ./* ./.[!.]* ./..?*; do
-      [ -e "$entry" ] || [ -L "$entry" ] || continue
-      [ "$entry" = ./rig.json ] || exit 1
-    done
-    rm -f -- rig.json || exit 1
-    cd .. || exit 1
-    rmdir -- "$basename" || exit 1
-  ); then
-    return 1
-  fi
-  RIG_CLEAN_CLAIM=
-  return 0
-}
-
-rig_clean_interrupted() {
-  local exit_code
-
-  exit_code=$1
-  trap - HUP INT TERM
-  rig_progress_interrupted
-  if [ -n "${RIG_CLEAN_CLAIM:-}" ]; then
-    printf 'rig: clean interrupted; resumable claim: %s\n' "$RIG_CLEAN_CLAIM" >&2
-  else
-    printf 'rig: clean interrupted\n' >&2
-  fi
-  exit "$exit_code"
 }
 
 rig_lifecycle_supported() {
@@ -1214,130 +844,4 @@ rig_command_capture() {
     printf '%s\tfailed\texit:%s\n' "$provider" "$native_status"
   fi
   return "$native_status"
-}
-
-rig_command_clean() {
-  (
-    local dry_run cache_root publish_root path state action index eligible removed skipped
-    local exit_code
-    local LC_ALL=C
-
-    dry_run=no
-    if [ "$#" -eq 1 ]; then
-      case "$1" in
-        -h|--help)
-          printf '%s\n' 'Usage: rig clean [--dry-run]'
-          return
-          ;;
-        --dry-run) dry_run=yes ;;
-        *) syntax_error 'usage: rig clean [--dry-run]' || return ;;
-      esac
-    elif [ "$#" -ne 0 ]; then
-      syntax_error 'usage: rig clean [--dry-run]' || return
-    fi
-
-    rig_effective_paths || return 2
-    cache_root=$RIG_DIAG_CACHE_HOME
-    printf '%s\n' $'CLASS\tSTATE\tACTION\tPATH'
-    if [ ! -e "$cache_root" ] && [ ! -L "$cache_root" ]; then
-      printf 'Summary: eligible=0 removed=0 skipped=0\n'
-      return 0
-    fi
-    [ -d "$cache_root" ] && [ ! -L "$cache_root" ] ||
-      rig_fail "cache root must be a directory, not a symlink: $cache_root" || return 2
-    cache_root=$(cd "$cache_root" && pwd -P) ||
-      rig_fail "cannot resolve cache root: $cache_root" || return 2
-    publish_root=$cache_root/publish
-    if [ ! -e "$publish_root" ] && [ ! -L "$publish_root" ]; then
-      printf 'Summary: eligible=0 removed=0 skipped=0\n'
-      return 0
-    fi
-    [ -d "$publish_root" ] && [ ! -L "$publish_root" ] ||
-      rig_fail "publication cache path must be a directory, not a symlink: $publish_root" || return 2
-    RIG_CLEAN_ROOT=$(cd "$publish_root" && pwd -P) ||
-      rig_fail "cannot resolve publication cache directory: $publish_root" || return 2
-    [ "$RIG_CLEAN_ROOT" = "$publish_root" ] ||
-      rig_fail "publication cache escaped the effective Rig cache root: $publish_root" || return 2
-
-    RIG_CLEAN_PATHS=()
-    RIG_CLEAN_STATES=()
-    rig_clean_collect_namespace "$RIG_CLEAN_ROOT/cleanup" cleanup-claim || return 2
-    rig_clean_collect_namespace "$RIG_CLEAN_ROOT/retained" retained || return 2
-    rig_clean_collect_legacy
-
-    eligible=0
-    removed=0
-    skipped=0
-    index=0
-    while [ "$index" -lt "${#RIG_CLEAN_PATHS[@]}" ]; do
-      state=${RIG_CLEAN_STATES[$index]}
-      case "$state" in
-        retained|cleanup-claim) eligible=$((eligible + 1)) ;;
-        *) skipped=$((skipped + 1)) ;;
-      esac
-      index=$((index + 1))
-    done
-
-    if [ "$dry_run" = yes ]; then
-      index=0
-      while [ "$index" -lt "${#RIG_CLEAN_PATHS[@]}" ]; do
-        path=${RIG_CLEAN_PATHS[$index]}
-        state=${RIG_CLEAN_STATES[$index]}
-        case "$state" in
-          retained|cleanup-claim) action=would-remove ;;
-          *) action=skipped ;;
-        esac
-        printf 'publication\t%s\t%s\t%s\n' "$state" "$action" "$path"
-        index=$((index + 1))
-      done
-      printf 'Summary: eligible=%s removed=0 skipped=%s\n' "$eligible" "$skipped"
-      [ "$skipped" -eq 0 ] && return 0
-      return 1
-    fi
-
-    trap 'rig_clean_interrupted 129' HUP
-    trap 'rig_clean_interrupted 130' INT
-    trap 'rig_clean_interrupted 143' TERM
-    rig_progress_start cleaning "$eligible"
-    index=0
-    exit_code=0
-    while [ "$index" -lt "${#RIG_CLEAN_PATHS[@]}" ]; do
-      path=${RIG_CLEAN_PATHS[$index]}
-      state=${RIG_CLEAN_STATES[$index]}
-      action=skipped
-      case "$state" in
-        cleanup-claim)
-          rig_progress_begin 'publication artifact' declaration
-          if rig_clean_remove_claim "$path"; then
-            action=removed
-            removed=$((removed + 1))
-            rig_progress_result succeeded 'publication artifact' declaration
-          else
-            skipped=$((skipped + 1))
-            exit_code=1
-            rig_progress_result failed 'publication artifact' declaration
-          fi
-          ;;
-        retained)
-          rig_progress_begin 'publication artifact' declaration
-          if rig_clean_claim "$path" && rig_clean_remove_claim "$RIG_CLEAN_CLAIM"; then
-            action=removed
-            removed=$((removed + 1))
-            rig_progress_result succeeded 'publication artifact' declaration
-          else
-            skipped=$((skipped + 1))
-            exit_code=1
-            rig_progress_result failed 'publication artifact' declaration
-          fi
-          ;;
-        *) exit_code=1 ;;
-      esac
-      printf 'publication\t%s\t%s\t%s\n' "$state" "$action" "$path"
-      index=$((index + 1))
-    done
-    rig_progress_finish
-    trap - HUP INT TERM
-    printf 'Summary: eligible=%s removed=%s skipped=%s\n' "$eligible" "$removed" "$skipped"
-    return "$exit_code"
-  )
 }

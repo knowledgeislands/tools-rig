@@ -31,7 +31,7 @@ Choose a lifecycle mode that matches the owner:
 
 The owner must be a qualified `tool:ID`, `service:ID`, or `scheduled-job:ID`. Rig observes supported listeners but never opens, reserves, closes, or kills a socket. `rig status --unmanaged` can show listeners whose port has no declaration.
 
-Port declarations and observations are always private. They never enter published data, even if a port is accidentally assigned to a publication view.
+Port declarations and observations are always private. They never enter exported data, even if a port is accidentally assigned to a view.
 
 ## Declare a service
 

@@ -4,8 +4,13 @@ All notable changes to `rig` are documented here. Dated `0.x` entries record imm
 
 ## [Unreleased]
 
+### Removed
+
+- **Breaking.** `rig publish` and `rig clean` are retired, and with them the `[publication.ID]` table, the `publish` provider capability, the `${XDG_CACHE_HOME}/rig/publish` staging and retention tree, the interrupted-publisher handoff, and the 129/130/143 statuses that only publication returned. Rig hands over data; the system that receives it already owns credentials, transport, and rollback, and `rig clean` swept only the tree `rig publish` created. A configuration that still declares `[publication.ID]` fails to load, naming `rig export --profile` as its replacement.
+
 ### Changed
 
+- **Breaking.** `rig export --profile NAME --output DIRECTORY [--title TEXT] [--base-url URL]` replaces `rig export PUBLICATION --output DIRECTORY`. The whole instruction now travels with the command: which view to project, where to write it, and the optional title and canonical URL that describe the document it becomes. `--profile` must name a `kind = "view"` profile. `--title` defaults to the view's declared `name` and then to the profile identifier; an omitted `--base-url` renders `canonical_url` as `null`. The payload is unchanged — `format: rig-publication`, `version: 2` — and `publication.id` is now the exported profile's identifier. A consuming repository that used to call `rig export site` calls `rig export --profile public --output DIR --title '...' --base-url '...'` instead.
 - `rig status` now renders every expected, observed, and unmanaged section as an aligned human-readable table bounded to 120 characters, with deterministic visible ellipsis and useful path-tail context.
 
 ### Added

@@ -226,12 +226,10 @@ write_skill_config() {
   [ "$status" -eq 0 ]
   run "$RIG" maintain --profile minimal --dry-run
   [ "$status" -eq 0 ]
-  run "$RIG" clean --dry-run
-  [ "$status" -eq 0 ]
   ! grep -E 'remove|uninstall|delete' "$SKILLS_LOG"
 }
 
-@test "publication format two escapes JSON and excludes private skill metadata" {
+@test "export format two escapes JSON and excludes private skill metadata" {
   run bash -c '. "$1"; rig_json_escape "$2"; printf "\"%s\"\n" "$RIG_VALUE"' \
     _ "$RIG" $'Line one\nÉlan\tcontrol'
   [ "$status" -eq 0 ]
@@ -244,19 +242,8 @@ write_skill_config() {
     -e 's/rationale = "Reduces token use when requested"/rationale = "Élan with control"/' \
     "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/escaped.toml"
   mv "$CONFIG_HOME/escaped.toml" "$CONFIG_HOME/rig.toml"
-  printf '%s\n' \
-    '[publication.site]' \
-    'profile = "public"' \
-    'title = "Public"' \
-    'base-url = "https://rig.example"' \
-    'publisher = "publisher"' \
-    '[provider.publisher]' \
-    'adapter = "custom"' \
-    'executable = "/usr/bin/false"' \
-    'capabilities = ["publish"]' >>"$CONFIG_HOME/rig.toml"
-
   export_dir=$BATS_TEST_TMPDIR/escaped-export
-  run "$RIG" export site --output "$export_dir"
+  run "$RIG" export --profile public --output "$export_dir"
   [ "$status" -eq 0 ]
   run python3 -c '
 import json, sys
@@ -272,21 +259,10 @@ assert set(skill) == {"id", "name", "purpose", "rationale", "source"}
   ! grep -E 'skills-cli|claude-code|codex|\.agents|paths?|roots?|runtime|locks?|argv|state|unmanaged|1675' "$export_dir/rig.json"
 }
 
-@test "publication format two emits reviewed opt-in metadata and deterministic empty skills" {
+@test "export format two emits reviewed opt-in metadata and deterministic empty skills" {
   write_skill_config
-  printf '%s\n' \
-    '[publication.site]' \
-    'profile = "public"' \
-    'title = "Public Rig"' \
-    'base-url = "https://rig.example"' \
-    'publisher = "publisher"' \
-    '[provider.publisher]' \
-    'adapter = "custom"' \
-    'executable = "/usr/bin/false"' \
-    'capabilities = ["publish"]' >>"$CONFIG_HOME/rig.toml"
-
   export_dir=$BATS_TEST_TMPDIR/export
-  run "$RIG" export site --output "$export_dir"
+  run "$RIG" export --profile public --output "$export_dir"
   [ "$status" -eq 0 ]
   run python3 -c '
 import json, sys
@@ -307,7 +283,7 @@ assert data["profile"]["skills"] == [{
 
   sed '/profiles = \["default", "public"\]/d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/private.toml"
   mv "$CONFIG_HOME/private.toml" "$CONFIG_HOME/rig.toml"
-  run "$RIG" export site --output "$export_dir"
+  run "$RIG" export --profile public --output "$export_dir"
   [ "$status" -eq 0 ]
   run python3 -c '
 import json, sys

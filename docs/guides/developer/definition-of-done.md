@@ -6,7 +6,7 @@ Release publication has additional steps in [Release Rig](releasing.md).
 
 ## Confirm the contract
 
-- [ ] The change stays within the catalogue, profile, provider, state, managed-resource, extension, or publication boundary described by the repository.
+- [ ] The change stays within the catalogue, profile, provider, state, managed-resource, extension, or public-export boundary described by the repository.
 - [ ] Durable rationale is in a Decision Record, accepted behaviour is in a Specification, practical procedure is in a guide, and future work is in the canonical roadmap.
 - [ ] Ordinary configuration remains declarative: Rig infers built-in adapters, capabilities, lifecycle sequencing, and protocol markers.
 - [ ] Any generally useful bootstrap stage, provider adapter, inventory source, setting type, or resource lifecycle is implemented in Rig rather than delegated to a personal workstation provider.
