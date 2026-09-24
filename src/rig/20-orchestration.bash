@@ -296,9 +296,13 @@ rig_launchd_xml_escape() {
   local value
 
   value=$1
-  value=${value//&/&amp;}
-  value=${value//</&lt;}
-  value=${value//>/&gt;}
+  # The quotes around each replacement are load-bearing. Bash 5.2 expands an
+  # unquoted & in a substitution replacement to the text the pattern matched,
+  # the way sed does, so ${value//</&lt;} turns '<' into '<lt;' there while
+  # Bash 3.2 produces '&lt;'. Quoting keeps one meaning on every Bash.
+  value=${value//&/"&amp;"}
+  value=${value//</"&lt;"}
+  value=${value//>/"&gt;"}
   RIG_VALUE=$value
 }
 
