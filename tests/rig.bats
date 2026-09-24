@@ -11,6 +11,7 @@ setup() {
   chmod +x "$DEFAULT_LSOF"
   export RIG_LSOF_COMMAND=$DEFAULT_LSOF
   source "$BATS_TEST_DIRNAME/helpers/large-catalogue-fixture.bash"
+  source "$BATS_TEST_DIRNAME/helpers/toml-parser.bash"
 }
 
 output_has_table_row() {
@@ -1305,7 +1306,8 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
     "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/inline.toml"
   mv "$CONFIG_HOME/inline.toml" "$CONFIG_HOME/rig.toml"
 
-  run python3 -c \
+  require_toml_parser
+  run "$RIG_TOML_PARSER" -c \
     'import pathlib, sys, tomllib; tomllib.loads(pathlib.Path(sys.argv[1]).read_text())' \
     "$CONFIG_HOME/rig.toml"
   [ "$status" -eq 0 ]
@@ -1345,7 +1347,8 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
   sed 's/name = "Core"/name = "\\u0043ore"/' \
     "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/unsupported.toml"
   mv "$CONFIG_HOME/unsupported.toml" "$CONFIG_HOME/rig.toml"
-  run python3 -c \
+  require_toml_parser
+  run "$RIG_TOML_PARSER" -c \
     'import pathlib, sys, tomllib; tomllib.loads(pathlib.Path(sys.argv[1]).read_text())' \
     "$CONFIG_HOME/rig.toml"
   [ "$status" -eq 0 ]
@@ -1364,7 +1367,8 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
     }
   }' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/unsupported.toml"
   mv "$CONFIG_HOME/unsupported.toml" "$CONFIG_HOME/rig.toml"
-  run python3 -c \
+  require_toml_parser
+  run "$RIG_TOML_PARSER" -c \
     'import pathlib, sys, tomllib; tomllib.loads(pathlib.Path(sys.argv[1]).read_text())' \
     "$CONFIG_HOME/rig.toml"
   [ "$status" -eq 0 ]

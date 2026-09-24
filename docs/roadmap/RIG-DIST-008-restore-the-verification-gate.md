@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: bd8083cb8d7d2ffbab3157e17a5dc3e5aa965ea5
 created_at: 2026-09-23T18:55:00Z
-updated_at: 2026-09-24T09:40:00Z
+updated_at: 2026-09-24T10:20:00Z
 ---
 
 ## Goal
@@ -48,10 +48,10 @@ Bats reports a failing assertion but not the output that failed it, which is why
 
 ## Steps
 
-- [ ] Pin Bats on both runners, enable `--print-output-on-failure`, and add `workflow_dispatch` so the gate can be run without inventing a commit.
-- [ ] Align the `lint` job with the local gate: ShellCheck and `bash -n` over `bin/rig`, `install.sh`, `src/rig/*.bash` and the three scripts, plus `scripts/assemble-rig --check`.
-- [ ] Add `needs: [lint, test, manual]` to `release-tag`.
-- [ ] Give the two TOML interoperability tests a `RIG_TEST_PYTHON` interpreter with an explicit skip when none has `tomllib`, and supply one on the macOS runner without touching the restricted PATH.
+- [x] Pin Bats on both runners, enable `--print-output-on-failure`, and add `workflow_dispatch` so the gate can be run without inventing a commit.
+- [x] Align the `lint` job with the local gate: ShellCheck and `bash -n` over `bin/rig`, `install.sh`, `src/rig/*.bash` and the three scripts, plus `scripts/assemble-rig --check`.
+- [x] Add `needs: [lint, test, manual]` to `release-tag`.
+- [x] Give the two TOML interoperability tests a `RIG_TEST_PYTHON` interpreter with an explicit skip when none has `tomllib`, and supply one on the macOS runner without touching the restricted PATH.
 - [ ] Push the diagnostic gate, read the Linux output, and record what each of the eight failures actually is.
 - [ ] Introduce one test helper that skips a macOS-only case on another platform with a stated reason, and apply it to each failure that is genuinely macOS-bound.
 - [ ] For any failure that is a real portable-behaviour defect rather than a macOS assumption, fix it here when it is small, and capture it as its own record when it is not.
