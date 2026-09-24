@@ -4,13 +4,13 @@ area: CLI
 title: Project machine-readable status
 theme: cli
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: e8b4f99a425b3516042a9b0c4f25740c7bbaf244
 transferred_from: KI-OBS-BRG-001
 created_at: 2026-09-22T07:20:00Z
-updated_at: 2026-09-23T18:05:00Z
+updated_at: 2026-09-24T09:10:00Z
 ---
 
 ## Goal
@@ -136,6 +136,10 @@ The three open questions the Shaping step left are now answered in the record ra
 ### Mini recap
 
 A program can now ask Rig what it observed and get a versioned object, and the object cannot drift away from what the tables say, because both come from the same counts and the same arrays.
+
+## Done
+
+Accepted 2026-09-24 by Kris Brown on the review packet above.
 
 ## Discussion
 

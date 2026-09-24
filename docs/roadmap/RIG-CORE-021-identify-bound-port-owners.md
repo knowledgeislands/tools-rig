@@ -4,12 +4,12 @@ title: Identify bound port owners
 area: CORE
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 0603938d0c8041b3409193706aaac84d834ae9c1
 created_at: 2026-09-22T07:55:00Z
-updated_at: 2026-09-23T14:41:06Z
+updated_at: 2026-09-24T09:10:00Z
 ---
 
 ## Goal
@@ -126,6 +126,10 @@ The downstream repository-side check in `krisb/dotfiles` that compared listener 
 ### Mini recap
 
 A correctly bound interpreted listener now reads as healthy, a stranger on the port still reads as `conflicting`, and a process Rig cannot inspect says so instead of pretending to either.
+
+## Done
+
+Accepted 2026-09-24 by Kris Brown on the review packet above.
 
 ## Discussion
 

@@ -4,12 +4,12 @@ title: Observe symlinked artifact targets
 area: CORE
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 0603938d0c8041b3409193706aaac84d834ae9c1
 created_at: 2026-09-22T00:00:00Z
-updated_at: 2026-09-23T16:05:00Z
+updated_at: 2026-09-24T09:10:00Z
 ---
 
 # Observe Symlinked Artifact Targets
@@ -120,6 +120,10 @@ This retires the repository-side check in `krisb/dotfiles` that enumerated `/usr
 ### Mini recap
 
 A healthy `code` or `subl` now reads `present` instead of `unavailable`, a link left dangling by an upgrade says which target went missing, and nothing a link points at can report healthy without passing the same tests a direct path passes.
+
+## Done
+
+Accepted 2026-09-24 by Kris Brown on the review packet above.
 
 ## Discussion
 
