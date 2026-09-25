@@ -4,12 +4,12 @@ area: CLI
 title: State command outcomes
 theme: cli
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 565e34b4d04f3988ace186dd2c79ccc6d4b7ad63
 created_at: 2026-09-24T12:30:00Z
-updated_at: 2026-09-24T13:40:00Z
+updated_at: 2026-09-25T14:30:00Z
 ---
 
 ## Goal
@@ -123,6 +123,10 @@ The derivation table in `rig_outcome_report` names commands in two groups, so a 
 ### Mini recap
 
 Rig already chose good exit statuses and then kept them to itself. It now says the verdict out loud, in the one place a person is already looking, and the statuses it can return are written down as a contract.
+
+## Done
+
+Accepted 2026-09-25 by Kris Brown on the review packet above.
 
 ## Discussion
 

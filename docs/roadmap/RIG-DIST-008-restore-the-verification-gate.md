@@ -4,12 +4,12 @@ area: DIST
 title: Restore the verification gate
 theme: distribution
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: bd8083cb8d7d2ffbab3157e17a5dc3e5aa965ea5
 created_at: 2026-09-23T18:55:00Z
-updated_at: 2026-09-24T12:05:00Z
+updated_at: 2026-09-25T14:30:00Z
 ---
 
 ## Goal
@@ -146,6 +146,10 @@ Worth carrying forward: the diagnostic that solved this was printing the artefac
 ### Mini recap
 
 Nine Linux failures and two macOS ones came down to one cause and one bug: Bash 3.2 never enforced the suite's compound assertions, and Bash 5.2 changed what `&` means in a substitution replacement. The gate is green on both runners, a tag can no longer pass over a red one, and what each runner proves is written down.
+
+## Done
+
+Accepted 2026-09-25 by Kris Brown on the review packet above.
 
 ## Discussion
 

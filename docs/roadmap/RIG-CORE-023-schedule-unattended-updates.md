@@ -4,12 +4,12 @@ area: CORE
 title: Schedule unattended updates
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 27fced00b00fa7ab5adff6e7d7a9cf9a0e5999ff
 created_at: 2026-09-23T14:43:03Z
-updated_at: 2026-09-25T11:15:00Z
+updated_at: 2026-09-25T14:30:00Z
 ---
 
 ## Goal
@@ -147,6 +147,10 @@ The report is written from `rig_run_lifecycle_tasks` rather than from a general 
 ### Mini recap
 
 One flag, two commands, and a file a wrapper can read. The scheduler stays outside Rig, the notification stays outside Rig, and what Rig owns is the honest report of what one pass actually did.
+
+## Done
+
+Accepted 2026-09-25 by Kris Brown on the review packet above.
 
 ## Discussion
 

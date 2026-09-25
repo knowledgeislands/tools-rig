@@ -4,12 +4,12 @@ area: CLI
 title: Export from parameters
 theme: cli
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 27fced00b00fa7ab5adff6e7d7a9cf9a0e5999ff
 created_at: 2026-09-24T08:01:10Z
-updated_at: 2026-09-25T09:30:00Z
+updated_at: 2026-09-25T14:30:00Z
 ---
 
 ## Goal
@@ -140,6 +140,10 @@ The `RIG-CACHE` prefix left the corpus with its area file, so its serials are no
 ### Mini recap
 
 Rig used to need a configured publication to describe a document it does not own, and a publisher to deliver it. It now takes the description as arguments, writes the tree, and stops.
+
+## Done
+
+Accepted 2026-09-25 by Kris Brown on the review packet above.
 
 ## Discussion
 
