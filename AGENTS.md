@@ -25,6 +25,14 @@ XDG defines no executable directory. `install.sh` therefore defaults to `~/.loca
 - `tests/rig.bats` tests the public command contract.
 - Decisions explain why, Specifications state what, Guides explain how, and roadmap records state when.
 
+## Authoring notes
+
+`rig_get_value` returns through the single global `RIG_VALUE`, so any helper that calls it clobbers a value the caller has not yet read. Read `RIG_VALUE` into a local before calling anything else.
+
+Bash 3.2 does not apply `set -e` to a failing compound command, so a bats assertion that must fail the test ends `|| false`. Expanding a possibly-empty array under `set -u` needs `"${A[@]+"${A[@]}"}"`.
+
+Run `bats tests/` with stdin redirected from `/dev/null`; without it a test that reads a prompt hangs on the terminal.
+
 ## Verification
 
 Run the complete local gate before committing:

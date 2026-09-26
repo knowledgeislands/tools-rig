@@ -40,6 +40,8 @@ standard-error = "~/Library/Logs/example.rig-update.log"
 profiles = ["workstation"]
 ```
 
+The schedule is a calendar one deliberately. `launchd.plist(5)` drops a `StartInterval` firing the machine sleeps through, while it starts a missed `StartCalendarInterval` job on the next wake and coalesces several missed firings into one run — so a daily calendar recovers from a closed lid where an interval does not. Rig renders either form: `schedule.interval` with `run-policy = "also-at-load"` reproduces an interval agent, including that gap.
+
 Materialise it with `rig apply`. Add `--profile NAME` to `program` if the scheduled run should select a profile other than the default.
 
 ## Read the outcome
