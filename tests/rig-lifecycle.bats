@@ -271,7 +271,7 @@ SCRIPT
   grep -Fqx $'TARGET\tPROVIDER\tRESULT\tDETAIL' "$report"
   grep -Fqx $'ruff\tuv\tcompleted\tupdate' "$report"
   grep -Fqx $'dotfiles\tchezmoi\tskipped\tunsupported-update' "$report"
-  grep -Eq '^finished\t[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$' "$report"
+  grep -Eq $'^finished\t[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$' "$report"
   [ "$(grep -Fc $'rig-last-run' "$report")" -eq 1 ]
   ! grep -Fq "$MANIFEST" "$report" || false
 }
