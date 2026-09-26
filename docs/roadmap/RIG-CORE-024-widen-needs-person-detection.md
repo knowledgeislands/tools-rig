@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-25T15:00:00Z
-updated_at: 2026-09-25T15:00:00Z
+updated_at: 2026-09-26T10:05:00Z
 ---
 
 ## Goal
@@ -21,6 +21,8 @@ An unattended run says ahead of time that a piece of work needs a person, whatev
 `rig update --unattended` reports work that cannot proceed without a person as `unavailable` before invoking it. That pre-emptive check currently recognises exactly one case: a Homebrew store-app target. Any other provider that demands an interactive credential instead reads end-of-file and fails, and a post-hoc non-zero exit is indistinguishable from an ordinary failure.
 
 The narrowest instance of the gap is already observed. A `mas` entry inside a Homebrew manifest is invisible to the check, because a manifest dispatches as one task carrying one representative binding: `brew bundle` calls `mas upgrade`, `mas` calls `sudo` to replace a root-owned bundle, and the whole manifest task fails on one stale App Store app while every other Homebrew result is masked. This workstation's chezmoi source works around it in its own scheduled wrapper by setting `HOMEBREW_BUNDLE_MAS_SKIP` from `mas outdated`.
+
+That workaround now runs daily and holds: the scheduled run on 2026-09-26 completed sixteen targets with none failed and none unavailable, exit 0. The gap is therefore masked rather than closed, and masked on one machine only — any other machine following the same guide meets the original failure, where one stale App Store app fails the whole Homebrew manifest task and hides every other Homebrew result.
 
 ## Boundary
 
