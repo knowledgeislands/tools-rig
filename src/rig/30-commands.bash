@@ -171,7 +171,7 @@ rig_command_run_launchd_action() {
   rig_launchd_domain || return
   domain=$RIG_VALUE
 
-  rig_progress_start running 1
+  rig_progress_start running 1 passthrough
   rig_progress_begin "launchd $action" declaration
   case "$action" in
     status)
@@ -352,7 +352,7 @@ rig_command_run_action() {
   else
     progress_scope='provider-wide'
   fi
-  rig_progress_start running 1
+  rig_progress_start running 1 passthrough
   rig_progress_begin "$provider $action" "$progress_scope"
   "$executable" "${RIG_INVOKE_ARGUMENTS[@]}"
   native_status=$?

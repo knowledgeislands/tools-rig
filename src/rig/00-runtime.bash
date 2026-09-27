@@ -93,6 +93,7 @@ RIG_PROGRESS_SKIPPED=0
 RIG_PROGRESS_FAILED=0
 RIG_PROGRESS_CONTEXT=query
 RIG_PROGRESS_RENDER=off
+RIG_PROGRESS_PASSTHROUGH=0
 RIG_PROGRESS_BAR=
 RIG_PROGRESS_BAR_WIDTH=16
 RIG_PROGRESS_RENDERED=0
@@ -136,7 +137,8 @@ print_help() {
     '' \
     "Run 'rig COMMAND --help' for command usage." \
     '' \
-    'Interactive operations use an in-place progress bar on stderr.' \
+    'Interactive operations use an in-place progress bar on stderr, except' \
+    'where a provider writes its own output to the same terminal.' \
     "Add '--unattended' to update or maintain when nobody is watching the run."
 }
 
@@ -285,6 +287,15 @@ rig_progress_select_renderer() {
       fi
       ;;
   esac
+  # A phase that lets provider-native output reach the terminal cannot also
+  # redraw a bar on the line it shares with that output: neither writer yields,
+  # so the two overwrite each other. Such a phase reports its start and its
+  # summary and leaves the per-item narrative to the provider and to the
+  # command's own rows. An explicit lines request stays line-oriented, because
+  # whole lines interleave safely.
+  if [ "$RIG_PROGRESS_PASSTHROUGH" -eq 1 ] && [ "$RIG_PROGRESS_RENDER" = bar ]; then
+    RIG_PROGRESS_RENDER=phase
+  fi
 }
 
 rig_progress_make_bar() {
@@ -428,6 +439,8 @@ rig_progress_start() {
   RIG_PROGRESS_SUCCEEDED=0
   RIG_PROGRESS_SKIPPED=0
   RIG_PROGRESS_FAILED=0
+  RIG_PROGRESS_PASSTHROUGH=0
+  [ "${3:-}" != passthrough ] || RIG_PROGRESS_PASSTHROUGH=1
   [ "$RIG_PROGRESS_TOTAL" -gt 0 ] || return 0
   rig_progress_select_renderer
   rig_progress_enabled || return 0
@@ -448,6 +461,7 @@ rig_progress_begin() {
     rig_progress_bar_render running
     return 0
   fi
+  [ "$RIG_PROGRESS_RENDER" != phase ] || return 0
   if [ -n "$RIG_PROGRESS_SCOPE" ]; then
     printf 'rig: progress: %s %s/%s: %s [%s] running\n' \
       "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" \
@@ -477,6 +491,11 @@ rig_progress_result() {
     RIG_PROGRESS_ITEM=$item
     RIG_PROGRESS_SCOPE=$scope
     rig_progress_bar_render "$result"
+    RIG_PROGRESS_ITEM=
+    RIG_PROGRESS_SCOPE=
+    return 0
+  fi
+  if [ "$RIG_PROGRESS_RENDER" = phase ]; then
     RIG_PROGRESS_ITEM=
     RIG_PROGRESS_SCOPE=
     return 0

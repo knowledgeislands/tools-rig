@@ -4272,7 +4272,8 @@ rig_command_apply() {
   done
   resource_total=$((${#RIG_RESOURCE_PLAN_SECTIONS[@]} + ${#RIG_STALE_RESOURCE_IDS[@]}))
   if [ "$dry_run" -eq 0 ]; then
-    rig_progress_start applying "$((planned + ${#RIG_SELECTED_SKILLS[@]} + resource_total))"
+    rig_progress_start applying \
+      "$((planned + ${#RIG_SELECTED_SKILLS[@]} + resource_total))" passthrough
   fi
 
   index=0
@@ -4670,7 +4671,7 @@ rig_command_bootstrap() {
       [ -z "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL" ] || manager_total=$((manager_total + 1))
       [ "$RIG_BOOTSTRAP_DEFER_MISE" -eq 0 ] || manager_total=$((manager_total + 1))
       [ "$RIG_BOOTSTRAP_DEFER_NPM" -eq 0 ] || manager_total=$((manager_total + 1))
-      rig_progress_start bootstrapping "$manager_total"
+      rig_progress_start bootstrapping "$manager_total" passthrough
       if [ -n "$RIG_BOOTSTRAP_MANIFEST" ]; then
         rig_progress_begin 'homebrew manifest' manifest
         rig_bootstrap_apply_homebrew_manifest

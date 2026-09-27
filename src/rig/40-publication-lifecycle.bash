@@ -748,7 +748,7 @@ rig_run_lifecycle_tasks() {
   esac
   printf 'TARGET\tPROVIDER\tRESULT\tDETAIL\n'
   rows=
-  [ "$dry_run" -eq 1 ] || rig_progress_start "$action" "$supported_total"
+  [ "$dry_run" -eq 1 ] || rig_progress_start "$action" "$supported_total" passthrough
   index=0
   while [ "$index" -lt "${#RIG_LIFECYCLE_KEYS[@]}" ]; do
     label=${RIG_LIFECYCLE_LABELS[$index]}
@@ -933,7 +933,7 @@ rig_command_capture() {
     printf '%s\tplanned\tcapture\n' "$provider"
     return 0
   fi
-  rig_progress_start capturing 1
+  rig_progress_start capturing 1 passthrough
   rig_progress_begin "$provider" manifest
   rig_execute_lifecycle_task capture "$provider" '' "$executable"
   native_status=$?

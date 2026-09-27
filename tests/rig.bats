@@ -1963,6 +1963,54 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [[ "$output" == *"[########--------] 1/2  beta$erased"* ]] || false
 }
 
+@test "a pass-through phase reports its start and summary instead of a bar" {
+  local wrapper
+
+  wrapper=$BATS_TEST_TMPDIR/progress-passthrough-$BATS_TEST_NUMBER
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    '. "$1"' \
+    'RIG_PROGRESS=always' \
+    'RIG_PROGRESS_CONTEXT=operational' \
+    'rig_progress_start applying 2 passthrough' \
+    'rig_progress_begin alpha declaration' \
+    'printf "Warning: Already installed alpha\n" >&2' \
+    'rig_progress_result succeeded alpha declaration' \
+    'printf "alpha\trunner\tcompleted\t-\tdeclaration\n"' \
+    'rig_progress_begin beta declaration' \
+    'rig_progress_result skipped beta declaration' \
+    'rig_progress_finish' >"$wrapper"
+  chmod +x "$wrapper"
+
+  if [ "$(uname -s)" = Darwin ]; then
+    run script -q /dev/null /bin/bash "$wrapper" "$RIG"
+  else
+    run script -qec "/bin/bash '$wrapper' '$RIG'" /dev/null
+  fi
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'rig: progress: applying 0/2 started'* ]] || false
+  [[ "$output" == *'Warning: Already installed alpha'* ]] || false
+  [[ "$output" == *'alpha'$'\t''runner'$'\t''completed'* ]] || false
+  [[ "$output" == *'applying finished completed=2/2 succeeded=1 skipped=1 failed=0'* ]] || false
+  [[ "$output" != *'[----------------]'* ]] || false
+  [[ "$output" != *'alpha [declaration] running'* ]] || false
+
+  run bash -c '
+    . "$1"
+    RIG_PROGRESS=lines
+    RIG_PROGRESS_CONTEXT=operational
+    rig_progress_start applying 1 passthrough
+    rig_progress_begin alpha declaration
+    rig_progress_result succeeded alpha declaration
+    rig_progress_finish
+  ' _ "$RIG"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'rig: progress: applying 0/1: alpha [declaration] running'* ]] || false
+  [[ "$output" == *'rig: progress: applying 1/1: alpha [declaration] succeeded'* ]] || false
+}
+
 @test "automatic progress keeps query commands quiet and never exposes authored payloads" {
   local progress_file progress_output
 

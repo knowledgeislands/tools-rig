@@ -587,9 +587,15 @@ declaration-only queries remain quiet. The bar is not a duration estimate.
 Enumerable phases report a running item without advancing the completed count,
 then advance once on a succeeded, skipped, or failed outcome. Consequential
 work names declaration, manifest, or provider-wide scope before invocation.
-Failure and interruption terminate the active phase explicitly. Native
-provider diagnostics may temporarily interrupt the bar; the next Rig event
-redraws it. Rig progress omits private paths, locators, arguments, environment
+Failure and interruption terminate the active phase explicitly. A phase that
+lets provider-native output reach the terminal, such as applying,
+bootstrapping, updating, maintaining, capturing, or
+.BR "rig run" ,
+reports only its start and its summary, because a redrawn bar and a provider
+writing to the same line overwrite each other;
+.B lines
+still names every item there. Rig progress omits private paths, locators,
+arguments, environment
 values, titles, observed details, credentials, and native output. Progress
 never changes the deterministic report on stdout.
 .TP
