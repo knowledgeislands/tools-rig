@@ -4292,6 +4292,21 @@ ports = ["required-api", "on-demand-api", "allocated-api", "free-allocation"]' \
   [ "$(<"$PORT_PS_LOG")" = '-axo pid=,command=' ]
 }
 
+@test "one process on both stacks of a port is a single unmanaged listener" {
+  write_port_fixture
+  listener_output=$'p104\ncdynamic\nn127.0.0.1:4999 (LISTEN)\np104\ncdynamic\nn[::1]:4999 (LISTEN)\np105\ncsibling\nn*:5001 (LISTEN)\np105\ncsibling\nn[::]:5001 (LISTEN)\np105\ncsibling\nn*:5002 (LISTEN)\n'
+  ps_output=$'  104 /usr/bin/dynamic --port 4999\n  105 /usr/bin/sibling\n'
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" \
+    RIG_TEST_LSOF_OUTPUT="$listener_output" RIG_TEST_PS_OUTPUT="$ps_output" \
+    "$RIG" status --unmanaged
+  output_has_table_row $'4999\ttcp\tloopback\tunmanaged\towner:dynamic;pid:104'
+  output_has_table_row $'5001\ttcp\tall-interfaces\tunmanaged\towner:sibling;pid:105'
+  output_has_table_row $'5002\ttcp\tall-interfaces\tunmanaged\towner:sibling;pid:105'
+  [[ "$output" == *'Unmanaged listeners: 3'* ]] || false
+}
+
 @test "an unreadable listener command line reports unverified ownership rather than a conflict" {
   write_port_fixture
   listener_output=$'p201\ncmystery\nn127.0.0.1:4101 (LISTEN)\np203\ncghost\nn127.0.0.1:4103 (LISTEN)\n'

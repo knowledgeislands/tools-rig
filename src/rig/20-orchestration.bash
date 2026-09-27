@@ -2721,7 +2721,7 @@ rig_port_number_declared() {
 }
 
 rig_print_unmanaged_listeners() {
-  local index number row port scope command pid count
+  local index number row previous port scope command pid count
 
   rig_load_listeners || return
   printf '\n'
@@ -2749,7 +2749,13 @@ rig_print_unmanaged_listeners() {
   done
   rig_sort_query_items
   count=0
+  previous=
   for row in "${RIG_QUERY_ITEMS[@]+"${RIG_QUERY_ITEMS[@]}"}"; do
+    # One process listening on both the IPv4 and the IPv6 socket of a port
+    # renders an identical row, so reporting it twice would inflate the count
+    # rather than name a second listener.
+    [ "$row" != "$previous" ] || continue
+    previous=$row
     port=${row%%$'\t'*}
     row=${row#*$'\t'}
     scope=${row%%$'\t'*}
