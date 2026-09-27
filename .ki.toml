@@ -11,6 +11,8 @@
 harnesses = ["knowledgeislands/ki-agentic-harness"]
 
 [skills.ki-repo]
+repo_type = "project"
+primary_shape = "ki-repo-tools"
 repository = "https://github.com/knowledgeislands/tools-rig"
 title = "Rig"
 description = "Describe and manage a person's working setup through catalogues, profiles, providers, and machine state."
