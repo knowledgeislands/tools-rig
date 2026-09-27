@@ -347,7 +347,7 @@ rig_launchd_render_calendar_dict() {
 rig_launchd_render_plist() {
   local section_name section_index kind label purpose desired field_index field_end key value
   local restart_policy start_policy run_policy priority run_at_load keep_alive disabled
-  local calendar_count environment_count program_count env_key env_value
+  local calendar_count environment_count program_count bundle_count env_key env_value
 
   section_name=$1
   rig_section_index "$section_name" || return 2
@@ -382,6 +382,7 @@ rig_launchd_render_plist() {
 
   printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>'
   printf '%s\n' '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">'
+  printf '<!-- Managed by rig from %s. Generated file; rig apply replaces edits. -->\n' "$section_name"
   printf '%s\n' '<plist version="1.0">' '<dict>'
   printf '%s' '  <key>Label</key>'$'\n''  '
   rig_launchd_print_string "$label" || return
@@ -451,6 +452,22 @@ rig_launchd_render_plist() {
     printf '%s\n' '  </dict>'
   fi
 
+  rig_field_count "$section_index" associated-application
+  bundle_count=$RIG_COUNT
+  if [ "$bundle_count" -gt 0 ]; then
+    printf '%s\n' '  <key>AssociatedBundleIdentifiers</key>' '  <array>'
+    field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+    while [ "$field_index" -lt "$field_end" ]; do
+      if [ "${RIG_FIELD_KEYS[$field_index]}" = associated-application ]; then
+        printf '%s' '    '
+        rig_launchd_print_string "${RIG_FIELD_VALUES[$field_index]}" || return
+        printf '\n'
+      fi
+      field_index=$((field_index + 1))
+    done
+    printf '%s\n' '  </array>'
+  fi
+
   if [ "$kind" = scheduled-job ]; then
     rig_field_count "$section_index" schedule-calendar
     calendar_count=$RIG_COUNT
@@ -458,7 +475,7 @@ rig_launchd_render_plist() {
       printf '%s\n' '  <key>StartCalendarInterval</key>'
       if [ "$calendar_count" -eq 1 ]; then
         rig_get_value "$section_name" schedule-calendar || return 2
-        rig_launchd_render_calendar_dict "$RIG_VALUE" '' || return
+        rig_launchd_render_calendar_dict "$RIG_VALUE" '  ' || return
       else
         printf '%s\n' '  <array>'
         field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}

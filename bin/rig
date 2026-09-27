@@ -925,10 +925,10 @@ rig_field_kind() {
     provider:argument|provider:capability|provider:autoupdate-option|\
     binding:platform|binding:argument|\
     service:platform|service:requires|service:program|service:environment|service:member-profile|\
-    service:resource-dependency|\
+    service:resource-dependency|service:associated-application|\
     scheduled-job:platform|scheduled-job:requires|scheduled-job:program|\
     scheduled-job:environment|scheduled-job:schedule-calendar|scheduled-job:member-profile|\
-    scheduled-job:resource-dependency|\
+    scheduled-job:resource-dependency|scheduled-job:associated-application|\
     setting:platform|setting:requires|setting:member-profile|setting:resource-dependency|\
     dock:platform|dock:requires|dock:item|dock:member-profile|dock:resource-dependency|\
     port:member-profile|\
@@ -1048,6 +1048,10 @@ rig_toml_field() {
       ;;
     service:program|scheduled-job:program) RIG_TOML_FIELD_KEY=program ; RIG_TOML_FIELD_TYPE=array ;;
     service:environment|scheduled-job:environment) RIG_TOML_FIELD_KEY=environment ; RIG_TOML_FIELD_TYPE=array ;;
+    service:associated-applications|scheduled-job:associated-applications)
+      RIG_TOML_FIELD_KEY='associated-application'
+      RIG_TOML_FIELD_TYPE=array
+      ;;
     scheduled-job:schedule.calendar) RIG_TOML_FIELD_KEY='schedule-calendar' ; RIG_TOML_FIELD_TYPE=array ;;
     scheduled-job:schedule.interval) RIG_TOML_FIELD_KEY='schedule-interval' ; RIG_TOML_FIELD_TYPE=string ;;
     setting:platforms|dock:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
@@ -2021,6 +2025,11 @@ rig_validate_resource() {
         rig_validate_environment_entry "$section_name" "${RIG_FIELD_VALUES[$field_index]}" || return ;;
       schedule-calendar)
         rig_validate_calendar_entry "$section_name" "${RIG_FIELD_VALUES[$field_index]}" || return ;;
+      associated-application)
+        case "${RIG_FIELD_VALUES[$field_index]}" in
+          ''|*[!A-Za-z0-9.-]*)
+            rig_fail "[$section_name] associated-applications entries must be bundle identifiers" || return ;;
+        esac ;;
     esac
     field_index=$((field_index + 1))
   done
@@ -3784,7 +3793,7 @@ rig_launchd_render_calendar_dict() {
 rig_launchd_render_plist() {
   local section_name section_index kind label purpose desired field_index field_end key value
   local restart_policy start_policy run_policy priority run_at_load keep_alive disabled
-  local calendar_count environment_count program_count env_key env_value
+  local calendar_count environment_count program_count bundle_count env_key env_value
 
   section_name=$1
   rig_section_index "$section_name" || return 2
@@ -3819,6 +3828,7 @@ rig_launchd_render_plist() {
 
   printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>'
   printf '%s\n' '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">'
+  printf '<!-- Managed by rig from %s. Generated file; rig apply replaces edits. -->\n' "$section_name"
   printf '%s\n' '<plist version="1.0">' '<dict>'
   printf '%s' '  <key>Label</key>'$'\n''  '
   rig_launchd_print_string "$label" || return
@@ -3888,6 +3898,22 @@ rig_launchd_render_plist() {
     printf '%s\n' '  </dict>'
   fi
 
+  rig_field_count "$section_index" associated-application
+  bundle_count=$RIG_COUNT
+  if [ "$bundle_count" -gt 0 ]; then
+    printf '%s\n' '  <key>AssociatedBundleIdentifiers</key>' '  <array>'
+    field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+    while [ "$field_index" -lt "$field_end" ]; do
+      if [ "${RIG_FIELD_KEYS[$field_index]}" = associated-application ]; then
+        printf '%s' '    '
+        rig_launchd_print_string "${RIG_FIELD_VALUES[$field_index]}" || return
+        printf '\n'
+      fi
+      field_index=$((field_index + 1))
+    done
+    printf '%s\n' '  </array>'
+  fi
+
   if [ "$kind" = scheduled-job ]; then
     rig_field_count "$section_index" schedule-calendar
     calendar_count=$RIG_COUNT
@@ -3895,7 +3921,7 @@ rig_launchd_render_plist() {
       printf '%s\n' '  <key>StartCalendarInterval</key>'
       if [ "$calendar_count" -eq 1 ]; then
         rig_get_value "$section_name" schedule-calendar || return 2
-        rig_launchd_render_calendar_dict "$RIG_VALUE" '' || return
+        rig_launchd_render_calendar_dict "$RIG_VALUE" '  ' || return
       else
         printf '%s\n' '  <array>'
         field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}

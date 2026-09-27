@@ -750,8 +750,14 @@ arrays, and accept
 .BR environment ,
 .BR working-directory ,
 .BR standard-output ,
+.BR standard-error ,
 and
-.BR standard-error .
+.BR associated-applications .
+The last is a string array of application bundle identifiers; on macOS it
+renders
+.B AssociatedBundleIdentifiers
+so the resource is presented under that application's name and icon in
+System Settings, Login Items & Extensions, rather than under its bare label.
 Services accept
 .B restart-policy
 and

@@ -278,10 +278,10 @@ rig_field_kind() {
     provider:argument|provider:capability|provider:autoupdate-option|\
     binding:platform|binding:argument|\
     service:platform|service:requires|service:program|service:environment|service:member-profile|\
-    service:resource-dependency|\
+    service:resource-dependency|service:associated-application|\
     scheduled-job:platform|scheduled-job:requires|scheduled-job:program|\
     scheduled-job:environment|scheduled-job:schedule-calendar|scheduled-job:member-profile|\
-    scheduled-job:resource-dependency|\
+    scheduled-job:resource-dependency|scheduled-job:associated-application|\
     setting:platform|setting:requires|setting:member-profile|setting:resource-dependency|\
     dock:platform|dock:requires|dock:item|dock:member-profile|dock:resource-dependency|\
     port:member-profile|\
@@ -401,6 +401,10 @@ rig_toml_field() {
       ;;
     service:program|scheduled-job:program) RIG_TOML_FIELD_KEY=program ; RIG_TOML_FIELD_TYPE=array ;;
     service:environment|scheduled-job:environment) RIG_TOML_FIELD_KEY=environment ; RIG_TOML_FIELD_TYPE=array ;;
+    service:associated-applications|scheduled-job:associated-applications)
+      RIG_TOML_FIELD_KEY='associated-application'
+      RIG_TOML_FIELD_TYPE=array
+      ;;
     scheduled-job:schedule.calendar) RIG_TOML_FIELD_KEY='schedule-calendar' ; RIG_TOML_FIELD_TYPE=array ;;
     scheduled-job:schedule.interval) RIG_TOML_FIELD_KEY='schedule-interval' ; RIG_TOML_FIELD_TYPE=string ;;
     setting:platforms|dock:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
@@ -1374,6 +1378,11 @@ rig_validate_resource() {
         rig_validate_environment_entry "$section_name" "${RIG_FIELD_VALUES[$field_index]}" || return ;;
       schedule-calendar)
         rig_validate_calendar_entry "$section_name" "${RIG_FIELD_VALUES[$field_index]}" || return ;;
+      associated-application)
+        case "${RIG_FIELD_VALUES[$field_index]}" in
+          ''|*[!A-Za-z0-9.-]*)
+            rig_fail "[$section_name] associated-applications entries must be bundle identifiers" || return ;;
+        esac ;;
     esac
     field_index=$((field_index + 1))
   done

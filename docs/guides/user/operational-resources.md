@@ -84,6 +84,24 @@ Use `schedule.interval = "3600"` instead of `schedule.calendar` for a positive i
 
 A job whose program is `rig update --unattended` keeps every declared manager current on one schedule; [Update without watching](unattended-updates.md) carries that recipe and what the run records.
 
+## Name a resource so its owner is obvious
+
+A `locator` is the native label, and `~/Library/LaunchAgents` holds Rig's rendered agents beside every agent an installer put there itself. Give the labels you invent a reverse-DNS form carrying `rig` as their last element before the identifier — `uk.me.kris.rig.good-morning` for `[scheduled-job.good-morning]` — so the label, the file name, and the `rig status` row all read the same, and the managed agents sort together.
+
+Keep a label its own vendor defines. Adopting `sh.example.daemon` unchanged is what stops that tool installing a second agent of its own alongside Rig's, so the prefix is a convention for new labels rather than a rule applied to every resource.
+
+Ownership is therefore recorded in the file rather than in its name. Every rendered plist opens with a comment naming Rig and the declaration it came from, so `grep -l 'Managed by rig' ~/Library/LaunchAgents/*.plist` answers which agents Rig will replace or retire, including those keeping a vendor label.
+
+## Present a resource in Login Items
+
+macOS lists background agents in System Settings, under General, Login Items & Extensions. An agent running a script appears there under its bare label. Name one or more application bundle identifiers to have it presented under that application instead:
+
+```toml
+associated-applications = ["com.example.ExampleApp"]
+```
+
+Rig renders these as `AssociatedBundleIdentifiers`. macOS decides whether to honour the association — it shows the named application's name and icon when it accepts the pairing, and falls back to the label when it does not — so treat the field as a request about presentation, never as a claim about what the agent runs.
+
 ## Declare a typed macOS setting
 
 ```toml

@@ -3605,6 +3605,7 @@ write_launchd_fixture() {
     'desired-state = "running"' \
     'program = ["~/bin/example", "--literal <value>", "$(not-executed)"]' \
     'environment = ["HOME=~", "PATH=~/bin:/usr/bin"]' \
+    'associated-applications = ["com.example.Test"]' \
     'restart-policy = "always"' \
     'start-policy = "load"' \
     'standard-output = "~/Library/Logs/example.out"' \
@@ -3623,17 +3624,32 @@ write_launchd_fixture() {
     'run-policy = "scheduled-only"' \
     'priority = "background"' \
     '' \
+    '[scheduled-job.weekly]' \
+    'name = "Weekly"' \
+    'purpose = "Exercise a single native launchd calendar."' \
+    'rationale = "One entry renders a dict where several render an array."' \
+    'provider = "launchd"' \
+    'locator = "example.test.weekly"' \
+    'platforms = ["macos"]' \
+    'desired-state = "enabled"' \
+    'program = ["/usr/bin/true"]' \
+    'schedule.calendar = ["weekday=1,hour=9"]' \
+    'run-policy = "scheduled-only"' \
+    'priority = "background"' \
+    '' \
     '[profile.default]' \
     'services = ["daemon"]' \
-    'scheduled-jobs = ["morning"]' >"$CONFIG_HOME/rig.toml"
+    'scheduled-jobs = ["morning", "weekly"]' >"$CONFIG_HOME/rig.toml"
 }
 
 @test "built-in launchd observes applies and retires declared resources" {
-  local daemon_plist morning_plist daemon_contents morning_contents
+  local daemon_plist morning_plist weekly_plist
+  local daemon_contents morning_contents weekly_contents
 
   write_launchd_fixture
   daemon_plist=$TEST_HOME/Library/LaunchAgents/example.test.daemon.plist
   morning_plist=$TEST_HOME/Library/LaunchAgents/example.test.morning.plist
+  weekly_plist=$TEST_HOME/Library/LaunchAgents/example.test.weekly.plist
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
     RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RIG_PLATFORM=macos \
@@ -3662,12 +3678,14 @@ write_launchd_fixture() {
   [ "$status" -eq 0 ]
   [ -f "$daemon_plist" ]
   [ -f "$morning_plist" ]
+  [ -f "$weekly_plist" ]
   daemon_contents=$(<"$daemon_plist")
   morning_contents=$(<"$morning_plist")
+  weekly_contents=$(<"$weekly_plist")
   # Bats shows a failing test's own output, so an unexpected plist is legible
   # from the runner that produced it rather than only from the machine it
   # was written on.
-  printf '%s\n' "$daemon_contents" "$morning_contents"
+  printf '%s\n' "$daemon_contents" "$morning_contents" "$weekly_contents"
   [[ "$daemon_contents" == *'<string>Keep A &amp; B running.</string>'* ]] || false
   [[ "$daemon_contents" == *"<string>$TEST_HOME/bin/example</string>"* ]] || false
   [[ "$daemon_contents" == *'<string>--literal &lt;value&gt;</string>'* ]] || false
@@ -3676,7 +3694,14 @@ write_launchd_fixture() {
   [[ "$daemon_contents" == *'<key>KeepAlive</key>'* ]] || false
   [[ "$morning_contents" == *'<key>StartCalendarInterval</key>'* ]] || false
   [[ "$morning_contents" == *'<key>Weekday</key>'* ]] || false
-  [ "$(grep -c '^bootstrap ' "$LAUNCHD_LOG")" -eq 2 ]
+  # The generated marker states rig's ownership even where a resource keeps a
+  # label its own vendor defined, and the nested calendar dict of a single
+  # entry indents inside the resource dict as an array of entries does.
+  [[ "$daemon_contents" == *'<!-- Managed by rig from service.daemon. Generated file; rig apply replaces edits. -->'* ]] || false
+  [[ "$weekly_contents" == *'<!-- Managed by rig from scheduled-job.weekly. Generated file; rig apply replaces edits. -->'* ]] || false
+  [[ "$daemon_contents" == *$'  <key>AssociatedBundleIdentifiers</key>\n  <array>\n    <string>com.example.Test</string>\n  </array>'* ]] || false
+  [[ "$weekly_contents" == *$'  <key>StartCalendarInterval</key>\n  <dict>\n    <key>Weekday</key>'* ]] || false
+  [ "$(grep -c '^bootstrap ' "$LAUNCHD_LOG")" -eq 3 ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
     RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RIG_PLATFORM=macos \
@@ -3729,7 +3754,7 @@ write_launchd_fixture() {
   output_has_table_row $'daemon\tservice\tlaunchd\tdrifted\tplist'
 
   sed -e 's/services = \["daemon"\]/services = []/' \
-    -e 's/scheduled-jobs = \["morning"\]/scheduled-jobs = []/' \
+    -e 's/scheduled-jobs = \["morning", "weekly"\]/scheduled-jobs = []/' \
     "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/retire.toml"
   mv "$CONFIG_HOME/retire.toml" "$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
@@ -3740,6 +3765,7 @@ write_launchd_fixture() {
   [ "$status" -eq 0 ]
   [ ! -e "$daemon_plist" ]
   [ ! -e "$morning_plist" ]
+  [ ! -e "$weekly_plist" ]
   [ ! -s "$LAUNCHD_STATE" ]
 }
 
