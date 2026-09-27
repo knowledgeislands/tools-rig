@@ -7,7 +7,7 @@ Rig's commands follow a deliberate progression from understanding declared inten
 - `rig show [--profile NAME]`
 - `rig list [--category ID] [--profile NAME]`
 - `rig explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID`
-- `rig status [--profile NAME] [--unmanaged] [--format text|json]`
+- `rig status [--profile NAME] [--problems] [--unmanaged] [--format text|json]`
 - `rig doctor [--profile NAME] [--format text|json]`
 - `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]`
 - `rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]`
@@ -38,9 +38,9 @@ Use `show` for the whole selected setup, `list` to browse tools, `explain` for o
 These commands are read-only, but may invoke built-in observations or observations explicitly allowed for a trusted extension:
 
 - `rig doctor [--profile NAME] [--format text|json]` gives a compact health answer and actionable findings.
-- `rig status [--profile NAME] [--unmanaged] [--format text|json]` gives the detailed expected-versus-observed comparison. `--unmanaged` also asks supported inventory sources for undeclared tools, skills, or listeners.
+- `rig status [--profile NAME] [--problems] [--unmanaged] [--format text|json]` gives the detailed expected-versus-observed comparison. `--problems` reports only the entries that need attention. `--unmanaged` also asks supported inventory sources for undeclared tools, skills, or listeners.
 
-Status groups tools, skills, managed resources, private ports, and unmanaged observations into aligned tables. Columns grow to fit ordinary values but each table remains within 120 characters; unusually long values use a visible `...` marker, with paths retaining both their beginning and identifying tail where useful. The display is for people rather than scripts: use `rig explain ID` for the complete declaration, and do not parse spacing as a machine interface.
+Status opens with a verdict line naming how many entries need attention and which sections they fall in, so a healthy setup answers in its first line. It then groups tools, skills, managed resources, private ports, and unmanaged observations into aligned tables, each closing with its own summary counters. `--problems` drops the rows that are present and the sections that consequently hold nothing, leaving only what wants a decision; a catalogue-only tool needs nobody, so it is not such a row. The verdict, the summaries, the exit status, and the JSON payload stay the same either way. Columns grow to fit ordinary values but each table remains within 120 characters; unusually long values use a visible `...` marker, with paths retaining both their beginning and identifying tail where useful. The display is for people rather than scripts: use `rig explain ID` for the complete declaration, and do not parse spacing as a machine interface.
 
 The port table compares each declared owner against the process actually bound. A listener launched through an interpreter — `node` running a service's `program`, or a virtual environment's `python` running a tool — matches its declaration, because the comparison reads the whole command line rather than the executable name alone. `conflicting` therefore asserts something specific: the command line was read, and it identifies a different process. Where that command line cannot be read and the executable name does not match either, the port reports `unknown` with `owner-unavailable`, or stays informational for an `allocated` port. A stranger on the port and a process Rig could not inspect are different answers, and the table says which one it means.
 

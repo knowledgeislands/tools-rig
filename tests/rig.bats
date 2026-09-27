@@ -394,7 +394,7 @@ write_query_config() {
     'show [--profile NAME]' \
     'list [--category ID] [--profile NAME]' \
     'explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID' \
-    'status [--profile NAME] [--unmanaged] [--format text|json]' \
+    'status [--profile NAME] [--problems] [--unmanaged] [--format text|json]' \
     'doctor [--profile NAME] [--format text|json]' \
     'apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]' \
     'bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]' \
@@ -417,7 +417,7 @@ write_query_config() {
   grep -Fq 'rig --version' "$repo_root/CHANGELOG.md"
   grep -Fq 'rig --help' "$repo_root/docs/guides/user/commands.md"
   grep -Fq 'rig --version' "$repo_root/docs/guides/user/commands.md"
-  [[ "$man_synopsis" == *$'.B rig status\n.RI [ \\-\\-profile " NAME" ]\n.RI [ \\-\\-unmanaged ]'* ]] || false
+  [[ "$man_synopsis" == *$'.B rig status\n.RI [ \\-\\-profile " NAME" ]\n.RI [ \\-\\-problems ]\n.RI [ \\-\\-unmanaged ]'* ]] || false
 }
 
 @test "completion and help provide command-local help" {
@@ -511,7 +511,7 @@ write_query_config() {
   [[ "$output" == *"-h --help -V --version show list explain status doctor apply bootstrap update maintain capture run export diag completion help"* ]] || false
   [[ "$output" == *'show) COMPREPLY=($(compgen -W "-h --help --profile"'* ]] || false
   [[ "$output" == *'explain) COMPREPLY=($(compgen -W "-h --help"'* ]] || false
-  [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile --unmanaged --format"'* ]] || false
+  [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile --problems --unmanaged --format"'* ]] || false
   [[ "$output" == *'doctor) COMPREPLY=($(compgen -W "-h --help --profile --format"'* ]] || false
   [[ "$output" == *'apply) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all"'* ]] || false
   [[ "$output" == *'bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all"'* ]] || false
@@ -1803,7 +1803,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
 
   [ "$status" -eq 0 ]
-  [ "$output" = $'Profile: default\nPlatform: macos\nTOOL         PROVIDER  STATE        DETAIL\n-----------  --------  -----------  --------------\nbase         runner    present      -\napp          runner    present      -\nindependent  runner    present      -\nnotes        -         unavailable  catalogue-only\nSummary: present=3 missing=0 drifted=0 unavailable=1 unknown=0 catalogue-only=1' ]
+  [ "$output" = $'Needs attention: 0 of 4 entries\nProfile: default\nPlatform: macos\nTOOL         PROVIDER  STATE        DETAIL\n-----------  --------  -----------  --------------\nbase         runner    present      -\napp          runner    present      -\nindependent  runner    present      -\nnotes        -         unavailable  catalogue-only\nSummary: present=3 missing=0 drifted=0 unavailable=1 unknown=0 catalogue-only=1' ]
   [ "$(grep '^CALL=' "$ORCHESTRATION_LOG")" = $'CALL=observe:base:present\nCALL=observe:app:present\nCALL=observe:independent:present' ]
 }
 
@@ -1817,7 +1817,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
     RIG_PROGRESS=always RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
 
   [ "$status" -eq 0 ]
-  [[ "$output" == Profile:* ]] || false
+  [[ "$output" == 'Needs attention: '* ]] || false
   [[ "$output" != *'rig: observing'* ]] || false
   progress_output=$(<"$progress_file")
   [[ "$progress_output" == *'rig: progress: configuration discovery 0/1: sources running'* ]] || false
@@ -2273,7 +2273,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status --profile focused
   [ "$status" -eq 0 ]
-  [[ "$output" == $'Profile: focused\nPlatform: macos\nTOOL  PROVIDER  STATE    DETAIL\n----  --------  -------  ------\nbase  runner    present  -'* ]] || false
+  [[ "$output" == $'Needs attention: 0 of 1 entry\nProfile: focused\nPlatform: macos\nTOOL  PROVIDER  STATE    DETAIL\n----  --------  -------  ------\nbase  runner    present  -'* ]] || false
   [ "$(grep '^CALL=' "$ORCHESTRATION_LOG")" = 'CALL=observe:base:present' ]
 
   rm -f "$ORCHESTRATION_LOG"
@@ -2300,6 +2300,62 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   output_has_table_row $'app\trunner\tdrifted\t-'
   output_has_table_row $'independent\trunner\tunknown\t-'
   [[ "$output" == *'Summary: present=0 missing=1 drifted=1 unavailable=1 unknown=1 catalogue-only=1'* ]] || false
+}
+
+@test "status leads with a verdict naming how much needs attention and where" {
+  write_orchestration_config
+  sed '/\[tool.base\]/,/\[tool.independent\]/ s/install.locator = "present"/install.locator = "missing"/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/verdict.toml"
+  mv "$CONFIG_HOME/verdict.toml" "$CONFIG_HOME/rig.toml"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
+
+  [ "$status" -eq 1 ]
+  [ "$(printf '%s\n' "$output" | sed -n 1p)" = 'Needs attention: 1 of 4 entries (tools 1)' ]
+  [ "$(printf '%s\n' "$output" | sed -n 2p)" = 'Profile: default' ]
+  output_has_table_row $'base\trunner\tmissing\t-'
+  output_has_table_row $'notes\t-\tunavailable\tcatalogue-only'
+}
+
+@test "status problems reports the entries that need attention and nothing else" {
+  write_orchestration_config
+  sed '/\[tool.base\]/,/\[tool.independent\]/ s/install.locator = "present"/install.locator = "missing"/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/problems.toml"
+  mv "$CONFIG_HOME/problems.toml" "$CONFIG_HOME/rig.toml"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status --problems
+
+  [ "$status" -eq 1 ]
+  [ "$(printf '%s\n' "$output" | sed -n 1p)" = 'Needs attention: 1 of 4 entries (tools 1)' ]
+  output_has_table_row $'base\trunner\tmissing\t-'
+  [[ "$output" != *' present '* ]] || false
+  [[ "$output" != *notes* ]] || false
+  [[ "$output" == *'Summary: present=2 missing=1 drifted=0 unavailable=1 unknown=0 catalogue-only=1'* ]] || false
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status --problems --format json
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *'"healthy":false'* ]] || false
+  [[ "$output" == *'{"id":"base","provider":"runner","state":"missing"'* ]] || false
+  [[ "$output" == *'{"id":"app","provider":"runner","state":"present"'* ]] || false
+  [[ "$output" == *'{"id":"notes","provider":"-","state":"unavailable","detail":"catalogue-only"}'* ]] || false
+}
+
+@test "status problems keeps a healthy verdict and omits every section it empties" {
+  write_resource_fixture
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" \
+    RESOURCE_LOG="$RESOURCE_LOG" RIG_PLATFORM=macos "$RIG" status --problems
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == 'Needs attention: 0 of '* ]] || false
+  [[ "$output" != *TOOL* ]] || false
+  [[ "$output" != *RESOURCE* ]] || false
+  [[ "$output" != *Summary:* ]] || false
+  [[ "$output" != *'Resource summary:'* ]] || false
 }
 
 @test "status converts protocol failure to unknown suppresses dependants and continues independent work" {
@@ -2604,7 +2660,7 @@ bootstrap-profile = "absent"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.t
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" status --help
   [ "$status" -eq 0 ]
-  [ "$output" = 'Usage: rig status [--profile NAME] [--unmanaged] [--format text|json]' ]
+  [ "$output" = 'Usage: rig status [--profile NAME] [--problems] [--unmanaged] [--format text|json]' ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --help
   [ "$status" -eq 0 ]

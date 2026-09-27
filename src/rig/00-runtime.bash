@@ -596,7 +596,7 @@ print_bash_completion() {
     '    show) COMPREPLY=($(compgen -W "-h --help --profile" -- "$current")) ;;' \
     '    list) COMPREPLY=($(compgen -W "-h --help --category --profile" -- "$current")) ;;' \
     '    explain) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
-    '    status) COMPREPLY=($(compgen -W "-h --help --profile --unmanaged --format" -- "$current")) ;;' \
+    '    status) COMPREPLY=($(compgen -W "-h --help --profile --problems --unmanaged --format" -- "$current")) ;;' \
     '    doctor) COMPREPLY=($(compgen -W "-h --help --profile --format" -- "$current")) ;;' \
     '    apply) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all" -- "$current")) ;;' \
     '    bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all" -- "$current")) ;;' \
@@ -646,7 +646,7 @@ print_zsh_completion() {
     "        show) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select a profile]:profile name:' ;;" \
     "        list) _arguments '(-h --help)'{-h,--help}'[show command help]' '--category[select a category]:category id:' '--profile[select a profile]:profile name:' ;;" \
     "        explain) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:tool, qualified resource, or private port:' ;;" \
-    "        status) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--unmanaged[report observed items no tool installation declares]' '--format[select rendering]:format:(text json)' ;;" \
+    "        status) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--problems[report only entries that need attention]' '--unmanaged[report observed items no tool installation declares]' '--format[select rendering]:format:(text json)' ;;" \
     "        doctor) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--format[select rendering]:format:(text json)' ;;" \
     "        apply) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--scope[select plan scope]:scope:(tools skills resources all)' '--dry-run[print plan without invoking providers]' ;;" \
     "        bootstrap) _arguments '(-h --help)'{-h,--help}'[show command help]' '--profile[select profile]:profile name:' '--scope[select plan scope]:scope:(tools skills resources all)' '--dry-run[print plan without invoking providers]' ;;" \

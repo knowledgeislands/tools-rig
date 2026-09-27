@@ -2670,9 +2670,9 @@ rig_observe_ports() {
 }
 
 rig_print_port_status() {
-  local index port section_name number mode owner state detail unhealthy
+  local index port section_name number mode owner state detail unhealthy problems
 
-  printf '\n'
+  problems=${1:-0}
   rig_table_reset
   rig_table_add_column PORT 16
   rig_table_add_column NUMBER 6
@@ -2695,11 +2695,17 @@ rig_print_port_status() {
     state=${RIG_PORT_STATES[$index]}
     detail=${RIG_PORT_DETAILS[$index]}
     [ "$state" = present ] || unhealthy=$((unhealthy + 1))
-    rig_table_add_row "$port" "$number" tcp "$mode" "$owner" "$state" "$detail" || return 2
+    if [ "$problems" -eq 0 ] || [ "$state" != present ]; then
+      rig_table_add_row "$port" "$number" tcp "$mode" "$owner" "$state" "$detail" || return 2
+    fi
     index=$((index + 1))
   done
-  rig_table_print
-  printf 'Port summary: selected=%s unhealthy=%s\n' "${#RIG_SELECTED_PORTS[@]}" "$unhealthy"
+  if [ "$problems" -eq 0 ] || [ "$RIG_TABLE_ROW_COUNT" -gt 0 ]; then
+    printf '\n'
+    rig_table_print
+    printf 'Port summary: selected=%s unhealthy=%s\n' \
+      "${#RIG_SELECTED_PORTS[@]}" "$unhealthy"
+  fi
   RIG_COUNT=$unhealthy
 }
 
@@ -2772,9 +2778,10 @@ rig_print_unmanaged_listeners() {
 
 rig_print_resource_status() {
   local index section_name section_index kind id provider state detail unhealthy
+  local problems
 
+  problems=${1:-0}
   unhealthy=0
-  printf '\n'
   rig_table_reset
   rig_table_add_column RESOURCE 26
   rig_table_add_column KIND 14
@@ -2793,7 +2800,9 @@ rig_print_resource_status() {
     state=${RIG_RESOURCE_PLAN_STATES[$index]}
     detail=${RIG_RESOURCE_PLAN_DETAILS[$index]}
     [ "$state" = present ] || unhealthy=$((unhealthy + 1))
-    rig_table_add_row "$id" "$kind" "$provider" "$state" "$detail" || return 2
+    if [ "$problems" -eq 0 ] || [ "$state" != present ]; then
+      rig_table_add_row "$id" "$kind" "$provider" "$state" "$detail" || return 2
+    fi
     index=$((index + 1))
   done
   index=0
@@ -2807,9 +2816,12 @@ rig_print_resource_status() {
     unhealthy=$((unhealthy + 1))
     index=$((index + 1))
   done
-  rig_table_print
-  printf 'Resource summary: selected=%s retire-pending=%s unhealthy=%s\n' \
-    "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" "${#RIG_STALE_RESOURCE_IDS[@]}" "$unhealthy"
+  if [ "$problems" -eq 0 ] || [ "$RIG_TABLE_ROW_COUNT" -gt 0 ]; then
+    printf '\n'
+    rig_table_print
+    printf 'Resource summary: selected=%s retire-pending=%s unhealthy=%s\n' \
+      "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" "${#RIG_STALE_RESOURCE_IDS[@]}" "$unhealthy"
+  fi
   RIG_COUNT=$unhealthy
 }
 
@@ -3023,8 +3035,9 @@ rig_observe_skills() {
 }
 
 rig_print_skill_status() {
-  local index skill authority state detail unhealthy
-  printf '\n'
+  local index skill authority state detail unhealthy problems
+
+  problems=${1:-0}
   rig_table_reset
   rig_table_add_column SKILL 28
   rig_table_add_column AUTHORITY 20
@@ -3039,10 +3052,17 @@ rig_print_skill_status() {
     state=${RIG_SKILL_STATES[$index]}
     detail=${RIG_SKILL_DETAILS[$index]}
     [ "$state" = present ] || unhealthy=$((unhealthy + 1))
-    rig_table_add_row "$skill" "$authority" "$state" "$detail" || return 2
+    if [ "$problems" -eq 0 ] || [ "$state" != present ]; then
+      rig_table_add_row "$skill" "$authority" "$state" "$detail" || return 2
+    fi
     index=$((index + 1))
   done
-  rig_table_print
+  if [ "$problems" -eq 0 ] || [ "$RIG_TABLE_ROW_COUNT" -gt 0 ]; then
+    printf '\n'
+    rig_table_print
+    printf 'Skill summary: selected=%s unhealthy=%s\n' \
+      "${#RIG_SELECTED_SKILLS[@]}" "$unhealthy"
+  fi
   RIG_COUNT=$unhealthy
 }
 
@@ -3103,6 +3123,11 @@ rig_print_unmanaged_skills() {
 rig_status_totals() {
   local index state
 
+  RIG_STATUS_TOOL_UNHEALTHY=0
+  RIG_STATUS_SKILL_UNHEALTHY=0
+  RIG_STATUS_RESOURCE_UNHEALTHY=0
+  RIG_STATUS_PORT_UNHEALTHY=0
+  RIG_STATUS_SELECTED=0
   RIG_STATUS_PRESENT=0
   RIG_STATUS_MISSING=0
   RIG_STATUS_DRIFTED=0
@@ -3124,29 +3149,79 @@ rig_status_totals() {
         ;;
       unknown) RIG_STATUS_UNKNOWN=$((RIG_STATUS_UNKNOWN + 1)) ;;
     esac
-    [ "${RIG_PLAN_RESULTS[$index]}" = neutral ] || [ "$state" = present ] ||
-      RIG_STATUS_UNHEALTHY=$((RIG_STATUS_UNHEALTHY + 1))
+    rig_status_needs_attention "$index" &&
+      RIG_STATUS_TOOL_UNHEALTHY=$((RIG_STATUS_TOOL_UNHEALTHY + 1))
     index=$((index + 1))
   done
   index=0
   while [ "$index" -lt "${#RIG_SKILL_STATES[@]}" ]; do
     [ "${RIG_SKILL_STATES[$index]}" = present ] ||
-      RIG_STATUS_UNHEALTHY=$((RIG_STATUS_UNHEALTHY + 1))
+      RIG_STATUS_SKILL_UNHEALTHY=$((RIG_STATUS_SKILL_UNHEALTHY + 1))
     index=$((index + 1))
   done
   index=0
   while [ "$index" -lt "${#RIG_RESOURCE_PLAN_STATES[@]}" ]; do
     [ "${RIG_RESOURCE_PLAN_STATES[$index]}" = present ] ||
-      RIG_STATUS_UNHEALTHY=$((RIG_STATUS_UNHEALTHY + 1))
+      RIG_STATUS_RESOURCE_UNHEALTHY=$((RIG_STATUS_RESOURCE_UNHEALTHY + 1))
     index=$((index + 1))
   done
-  RIG_STATUS_UNHEALTHY=$((RIG_STATUS_UNHEALTHY + ${#RIG_STALE_RESOURCE_IDS[@]}))
+  RIG_STATUS_RESOURCE_UNHEALTHY=$((RIG_STATUS_RESOURCE_UNHEALTHY \
+    + ${#RIG_STALE_RESOURCE_IDS[@]}))
   index=0
   while [ "$index" -lt "${#RIG_PORT_STATES[@]}" ]; do
     [ "${RIG_PORT_STATES[$index]}" = present ] ||
-      RIG_STATUS_UNHEALTHY=$((RIG_STATUS_UNHEALTHY + 1))
+      RIG_STATUS_PORT_UNHEALTHY=$((RIG_STATUS_PORT_UNHEALTHY + 1))
     index=$((index + 1))
   done
+  RIG_STATUS_UNHEALTHY=$((RIG_STATUS_TOOL_UNHEALTHY + RIG_STATUS_SKILL_UNHEALTHY \
+    + RIG_STATUS_RESOURCE_UNHEALTHY + RIG_STATUS_PORT_UNHEALTHY))
+  RIG_STATUS_SELECTED=$((${#RIG_PLAN_TOOLS[@]} + ${#RIG_SKILL_STATES[@]} \
+    + ${#RIG_RESOURCE_PLAN_STATES[@]} + ${#RIG_STALE_RESOURCE_IDS[@]} \
+    + ${#RIG_PORT_STATES[@]}))
+}
+
+# A catalogue-only tool is observed by artefact and materialises through no
+# provider, so a state other than present is the truth about it rather than
+# work for a person. The apply result records that neutrality.
+rig_status_needs_attention() {
+  local index
+
+  index=$1
+  [ "${RIG_PLAN_RESULTS[$index]}" != neutral ] || return 1
+  [ "${RIG_PLAN_STATES[$index]}" != present ] || return 1
+}
+
+# The verdict a reader wants before any table: how much of the selection needs
+# them, and where. Sections with nothing outstanding are not named.
+rig_print_status_verdict() {
+  local breakdown noun
+
+  breakdown=
+  noun=entries
+  [ "$RIG_STATUS_SELECTED" -ne 1 ] || noun=entry
+  if [ "$RIG_STATUS_UNHEALTHY" -gt 0 ]; then
+    [ "$RIG_STATUS_TOOL_UNHEALTHY" -eq 0 ] ||
+      breakdown="tools $RIG_STATUS_TOOL_UNHEALTHY"
+    if [ "$RIG_STATUS_SKILL_UNHEALTHY" -gt 0 ]; then
+      [ -z "$breakdown" ] || breakdown="$breakdown, "
+      breakdown="${breakdown}skills $RIG_STATUS_SKILL_UNHEALTHY"
+    fi
+    if [ "$RIG_STATUS_RESOURCE_UNHEALTHY" -gt 0 ]; then
+      [ -z "$breakdown" ] || breakdown="$breakdown, "
+      breakdown="${breakdown}resources $RIG_STATUS_RESOURCE_UNHEALTHY"
+    fi
+    if [ "$RIG_STATUS_PORT_UNHEALTHY" -gt 0 ]; then
+      [ -z "$breakdown" ] || breakdown="$breakdown, "
+      breakdown="${breakdown}ports $RIG_STATUS_PORT_UNHEALTHY"
+    fi
+  fi
+  if [ -n "$breakdown" ]; then
+    printf 'Needs attention: %s of %s %s (%s)\n' \
+      "$RIG_STATUS_UNHEALTHY" "$RIG_STATUS_SELECTED" "$noun" "$breakdown"
+  else
+    printf 'Needs attention: %s of %s %s\n' \
+      "$RIG_STATUS_UNHEALTHY" "$RIG_STATUS_SELECTED" "$noun"
+  fi
 }
 
 rig_json_envelope() {
@@ -3290,23 +3365,29 @@ rig_status_json() {
 
 rig_command_status() {
   local profile index tool provider state detail unmanaged_requested format
+  local problems
 
   profile=
   unmanaged_requested=0
   format=text
+  problems=0
   while [ "$#" -gt 0 ]; do
     case "$1" in
       -h|--help)
-        printf '%s\n' 'Usage: rig status [--profile NAME] [--unmanaged] [--format text|json]'
+        printf '%s\n' 'Usage: rig status [--profile NAME] [--problems] [--unmanaged] [--format text|json]'
         return
         ;;
       --unmanaged)
         unmanaged_requested=1
         shift
         ;;
+      --problems)
+        problems=1
+        shift
+        ;;
       --profile)
         if [ "$#" -lt 2 ] || [ -z "$2" ]; then
-          syntax_error 'usage: rig status [--profile NAME] [--unmanaged] [--format text|json]'
+          syntax_error 'usage: rig status [--profile NAME] [--problems] [--unmanaged] [--format text|json]'
           return
         fi
         profile=$2
@@ -3316,14 +3397,14 @@ rig_command_status() {
         case "${2:-}" in
           text|json) format=$2 ;;
           *)
-            syntax_error 'usage: rig status [--profile NAME] [--unmanaged] [--format text|json]'
+            syntax_error 'usage: rig status [--profile NAME] [--problems] [--unmanaged] [--format text|json]'
             return
             ;;
         esac
         shift 2
         ;;
       *)
-        syntax_error 'usage: rig status [--profile NAME] [--unmanaged] [--format text|json]'
+        syntax_error 'usage: rig status [--profile NAME] [--problems] [--unmanaged] [--format text|json]'
         return
         ;;
     esac
@@ -3354,6 +3435,7 @@ rig_command_status() {
     rig_status_json "$unmanaged_requested"
     return
   fi
+  rig_print_status_verdict
   printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   rig_table_reset
   rig_table_add_column TOOL 28
@@ -3366,22 +3448,26 @@ rig_command_status() {
     provider=${RIG_PLAN_PROVIDERS[$index]}
     state=${RIG_PLAN_STATES[$index]}
     detail=${RIG_PLAN_DETAILS[$index]}
-    rig_table_add_row "$tool" "$provider" "$state" "$detail" || return 2
+    if [ "$problems" -eq 0 ] || rig_status_needs_attention "$index"; then
+      rig_table_add_row "$tool" "$provider" "$state" "$detail" || return 2
+    fi
     index=$((index + 1))
   done
-  rig_table_print
-  printf 'Summary: present=%s missing=%s drifted=%s unavailable=%s unknown=%s catalogue-only=%s\n' \
-    "$RIG_STATUS_PRESENT" "$RIG_STATUS_MISSING" "$RIG_STATUS_DRIFTED" \
-    "$RIG_STATUS_UNAVAILABLE" "$RIG_STATUS_UNKNOWN" "$RIG_STATUS_CATALOGUE_ONLY"
+  if [ "$problems" -eq 0 ] || [ "$RIG_TABLE_ROW_COUNT" -gt 0 ]; then
+    rig_table_print
+    printf 'Summary: present=%s missing=%s drifted=%s unavailable=%s unknown=%s catalogue-only=%s\n' \
+      "$RIG_STATUS_PRESENT" "$RIG_STATUS_MISSING" "$RIG_STATUS_DRIFTED" \
+      "$RIG_STATUS_UNAVAILABLE" "$RIG_STATUS_UNKNOWN" "$RIG_STATUS_CATALOGUE_ONLY"
+  fi
   if [ "${#RIG_SELECTED_SKILLS[@]}" -gt 0 ]; then
-    rig_print_skill_status || return
+    rig_print_skill_status "$problems" || return
   fi
   if [ "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" -gt 0 ] ||
     [ "${#RIG_STALE_RESOURCE_IDS[@]}" -gt 0 ]; then
-    rig_print_resource_status || return
+    rig_print_resource_status "$problems" || return
   fi
   if [ "${#RIG_SELECTED_PORTS[@]}" -gt 0 ]; then
-    rig_print_port_status || return
+    rig_print_port_status "$problems" || return
   fi
   if [ "$unmanaged_requested" -eq 1 ]; then
     printf '\n'

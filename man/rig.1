@@ -18,6 +18,7 @@ rig \- describe and manage a personal working setup
 .br
 .B rig status
 .RI [ \-\-profile " NAME" ]
+.RI [ \-\-problems ]
 .RI [ \-\-unmanaged ]
 .RI [ \-\-format " text|json" ]
 .br
@@ -198,6 +199,9 @@ Compare every tool, user-level skill, and operational resource in the
 resolved default profile
 with its selected native observation. Catalogue-only tools are reported as
 neutral unavailable rows; stale resource receipts are pending retirement.
+The report opens with a verdict line naming how many entries need attention
+and the sections holding them, and every section closes with its own summary
+counters.
 Human output uses aligned, ruled tables with two-space column gutters.
 Rows are bounded to 120 characters and visibly abbreviate unusually long
 values with
@@ -219,6 +223,14 @@ conflict.
 .TP
 .BI "rig status \-\-profile " NAME
 Compare a named resolved profile without changing the configured default.
+.TP
+.B rig status \-\-problems
+Report only the entries that need attention, omitting present rows and any
+section left empty by that filter. A catalogue-only tool needs nobody, so it
+is not an entry that needs attention. The verdict line, the per-section
+summary counters, and the exit status are unchanged, and
+.B \-\-format json
+still carries the complete payload.
 .TP
 .B rig status \-\-unmanaged
 Also ask a directly installed Skills CLI for global skill identities not

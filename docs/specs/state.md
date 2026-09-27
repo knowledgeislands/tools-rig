@@ -56,13 +56,25 @@ _Evidence:_ `tests/rig.bats` covers a neutral catalogue-only row in an otherwise
 
 ### RIG-STATE-009 — Deterministic status report
 
-`rig status` MUST print `TOOL`, `PROVIDER`, `STATE`, and `DETAIL` columns in stable dependency order followed by fixed-order summary counters. Every human status section MUST use aligned columns, a header rule, and two-space gutters; MUST remain at most 120 characters wide; and MUST mark bounded values with deterministic `...` ellipsis. Path-like unmanaged identities SHOULD preserve useful leading and trailing context when bounded. This human layout MUST NOT be treated as a machine-readable contract.
+`rig status` MUST print `TOOL`, `PROVIDER`, `STATE`, and `DETAIL` columns in stable dependency order followed by fixed-order summary counters. Every human section MUST close with its own fixed-order summary counters. Every human status section MUST use aligned columns, a header rule, and two-space gutters; MUST remain at most 120 characters wide; and MUST mark bounded values with deterministic `...` ellipsis. Path-like unmanaged identities SHOULD preserve useful leading and trailing context when bounded. This human layout MUST NOT be treated as a machine-readable contract.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats compares exact status output for a dependency graph whose lexical order differs from its execution order, exercises every status section, and bounds deliberately long rows to 120 characters with visible ellipsis.
 
 _Evidence:_ `rig_build_plan` provides stable dependency order and `rig_command_status` owns the exact table and summary.
+
+### RIG-STATE-031 — Status attention verdict and filter
+
+`rig status` MUST open its human report with a verdict line stating how many selected entries need attention out of how many entries were compared, naming only the non-empty sections that hold them. An entry needs attention when its state is other than `present` and its apply result is not neutral, so a catalogue-only tool MUST NOT need attention.
+
+`rig status --problems` MUST omit every row that does not need attention, and MUST omit a section left empty by that filter. It MUST NOT change the verdict line, the section summary counters, the exit status, or the `--format json` projection.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats asserts the verdict line's position and arithmetic on a mixed profile, asserts that `--problems` hides present and catalogue-only rows and empty sections while preserving exit status, and asserts that `--problems --format json` still carries the complete payload.
+
+_Evidence:_ `rig_status_totals` derives the per-section attention counts, `rig_status_needs_attention` owns the neutrality rule, and `rig_print_status_verdict` prints the verdict line.
 
 ### RIG-STATE-013 — Doctor health synthesis
 

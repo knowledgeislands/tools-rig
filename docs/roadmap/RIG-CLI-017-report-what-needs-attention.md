@@ -4,12 +4,12 @@ area: CLI
 title: Report what needs attention
 theme: cli
 horizon: next
-status: ready
+status: in-progress
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: abe812f2c48640bac54d710a990beb9bcf5c5238
 created_at: 2026-09-26T13:00:00Z
-updated_at: 2026-09-26T15:45:00Z
+updated_at: 2026-09-28T00:00:00Z
 ---
 
 ## Goal
@@ -44,13 +44,13 @@ Progress explains the silence. `rig_progress_select_renderer` in `src/rig/00-run
 
 ## Steps
 
-- [ ] Print one verdict line as the first line of `rig status` stdout, naming the count that needs a person from `RIG_STATUS_UNHEALTHY` and the count that does not, before `Profile:` and before any table.
-- [ ] Add a summary line to the skill table so all four sections summarise themselves consistently.
-- [ ] Add `--problems` to `rig status`, narrowing every text section to rows in a state other than `present`, and suppressing a section whose filtered row count is zero.
-- [ ] Leave `--problems` out of the JSON projection's effect: `--format json` keeps emitting every row and every summary, so the machine view stays complete and the two flags compose without argument.
-- [ ] Change `RIG_PROGRESS=auto` to select `lines` rather than `off` for an operational command whose stderr is not a terminal, so a fully redirected run reports as it goes instead of arriving at once.
-- [ ] Regenerate completions for the new flag and update `man/rig.1`, `docs/guides/user/commands.md`, and the README status summary.
-- [ ] Add Bats coverage for the verdict line's position and arithmetic, for `--problems` hiding present rows and empty sections while preserving exit status, for `--problems --format json` emitting the complete payload, and for `RIG_PROGRESS=auto` with a non-terminal stderr producing line progress.
+- [x] Print one verdict line as the first line of `rig status` stdout, naming the count that needs a person from `RIG_STATUS_UNHEALTHY` and the count that does not, before `Profile:` and before any table.
+- [x] Add a summary line to the skill table so all four sections summarise themselves consistently.
+- [x] Add `--problems` to `rig status`, narrowing every text section to the rows that need attention, and suppressing a section whose filtered row count is zero.
+- [x] Leave `--problems` out of the JSON projection's effect: `--format json` keeps emitting every row and every summary, so the machine view stays complete and the two flags compose without argument.
+- [ ] Held. Change `RIG_PROGRESS=auto` to select `lines` rather than `off` for an operational command whose stderr is not a terminal, so a fully redirected run reports as it goes instead of arriving at once.
+- [x] Regenerate completions for the new flag and update `man/rig.1` and `docs/guides/user/commands.md`. `README.md` carries no command summary to update.
+- [x] Add Bats coverage for the verdict line's position and arithmetic, for `--problems` hiding present rows and empty sections while preserving exit status, and for `--problems --format json` emitting the complete payload. Progress coverage waits on the held step.
 
 ## Files touched
 
@@ -98,6 +98,16 @@ None. Reordering a report and adding a filter decides nothing about what Rig obs
 
 No new follow-on work. If making attention-first the default rather than a flag is ever wanted, that is a separate item with a much larger consumer impact, and this item deliberately does not take it.
 
+## Review
+
+Delivered and verified locally on 2026-09-28, with one step deliberately held.
+
+`rig status` now opens with `Needs attention: N of M entries`, naming the sections that hold them, and every section closes with its own summary counters — including the skill table, which previously had none. `rig status --problems` narrows the text sections to the entries that need attention and drops a section the filter empties; the verdict line, the section summaries, the exit status, and the `--format json` payload are identical with the flag and without it. Completions, `man/rig.1`, `docs/guides/user/commands.md`, and RIG-STATE-031 in `docs/specs/state.md` describe the new surface.
+
+The complete local gate is green: `scripts/assemble-rig --check`, `shellcheck`, `bash -n`, `scripts/benchmark-rig` (status 5s against an 8s budget), `scripts/smoke-native-providers`, `mandoc -T lint man/rig.1`, and `bats tests/` with three new cases for the verdict's position and arithmetic, for the filter's row and section suppression under a preserved exit status, and for `--problems --format json` carrying every row.
+
+One thing remains for acceptance: the progress step is held, for the reasons under Discussion. This change was authored in a checkout that also carried another session's uncommitted RIG-CORE-031 retirement work in several of the same files, so it was committed as its own change and that work was left in the working tree untouched.
+
 ## Discussion
 
 ### A selector, a default, or both
@@ -117,3 +127,15 @@ Planning settled it in favour of line progress. Precision matters: `auto` alread
 ### The selector and the default, settled
 
 Planning took the selector and the reordering, and declined to change the default listing. The verdict line and the skill summary are the cheap half and answer the common question on their own; `--problems` is opt-in, so no existing invocation or script sees different rows. Making attention-first the default is the larger claim the record identifies, and it is not needed to fix what was observed.
+
+### What the filter actually hides
+
+The step above said rows "in a state other than `present`", and on this workstation that set includes sixteen catalogue-only tools — entries that are observed by artefact, materialise through no provider, and ask nobody for anything. A filter that showed them would answer the wrong question, so the implemented rule is narrower: an entry needs attention when its state is other than `present` _and_ its apply result is not neutral. That is the same rule `RIG_STATUS_UNHEALTHY` already applied to the exit status and the outcome line, so the verdict, the filter, the exit status, and the machine payload now all agree about what a problem is. It is recorded as `rig_status_needs_attention` and specified as RIG-STATE-031.
+
+[RIG-CORE-027](RIG-CORE-027-catalogue-only-is-not-unavailable.md) remains worth doing and is unaffected either way: it changes what a catalogue-only tool's _state_ is called, while this changes only whether a non-present entry is treated as work.
+
+### Why the progress step is held
+
+Changing `RIG_PROGRESS=auto` to choose `lines` for an operational command with a non-terminal stderr is a live behaviour change for runs nobody is watching, including this machine's `workstation-health` scheduled job, which would begin emitting per-item progress into its report. It is also orthogonal to readability: the verdict line and the filter fix what was observed without it. Bats merges stderr into `$output` and the suite's `setup()` sets no `RIG_PROGRESS=never`, so taking it would perturb many unrelated assertions in the same change.
+
+It is therefore left unchecked rather than quietly dropped. Acceptance can either take it as a follow-up commit here or spin it out as its own item; it should not be closed as delivered.
