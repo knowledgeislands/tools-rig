@@ -94,13 +94,13 @@ Ownership is therefore recorded in the file rather than in its name. Every rende
 
 ## Present a resource in Login Items
 
-macOS lists background agents in System Settings, under General, Login Items & Extensions. An agent running a script appears there under its bare label. Name one or more application bundle identifiers to have it presented under that application instead:
+macOS lists background agents in System Settings, under General, Login Items & Extensions. An agent appears there under the file name of the program it runs, never under its label, so `[scheduled-job.good-morning]` running `~/bin/report` is listed as `report`. Naming the program after the job is what makes that list legible. Name one or more application bundle identifiers to ask for the entry to be presented under an application instead:
 
 ```toml
 associated-applications = ["com.example.ExampleApp"]
 ```
 
-Rig renders these as `AssociatedBundleIdentifiers`. macOS decides whether to honour the association — it shows the named application's name and icon when it accepts the pairing, and falls back to the label when it does not — so treat the field as a request about presentation, never as a claim about what the agent runs.
+Rig renders these as `AssociatedBundleIdentifiers`. macOS decides whether to honour the association, and it honours one only for an agent whose own program carries a code signature: a shell script cannot carry one, so such an agent is recorded with no association and no developer name whatever bundle identifier it names, and keeps its program's file name and a generic icon. `sudo sfltool dumpbtm` shows which of the two happened. Treat the field as a request about presentation, never as a claim about what the agent runs.
 
 ## Declare a typed macOS setting
 
