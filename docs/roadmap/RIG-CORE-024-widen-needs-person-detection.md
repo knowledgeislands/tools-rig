@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-25T15:00:00Z
-updated_at: 2026-09-26T15:45:00Z
+updated_at: 2026-09-27T08:13:24Z
 ---
 
 ## Goal
@@ -22,7 +22,9 @@ An unattended run says ahead of time that a piece of work needs a person, whatev
 
 The narrowest instance of the gap is already observed. A `mas` entry inside a Homebrew manifest is invisible to the check, because a manifest dispatches as one task carrying one representative binding: `brew bundle` calls `mas upgrade`, `mas` calls `sudo` to replace a root-owned bundle, and the whole manifest task fails on one stale App Store app while every other Homebrew result is masked. This workstation's chezmoi source works around it in its own scheduled wrapper by setting `HOMEBREW_BUNDLE_MAS_SKIP` from `mas outdated`.
 
-That workaround now runs daily and holds: the scheduled run on 2026-09-26 completed sixteen targets with none failed and none unavailable, exit 0. The gap is therefore masked rather than closed, and masked on one machine only — any other machine following the same guide meets the original failure, where one stale App Store app fails the whole Homebrew manifest task and hides every other Homebrew result.
+That workaround runs daily but does not hold, and the evidence that suggested it did was misread. The scheduled run on 2026-09-26 completed sixteen targets with none failed and none unavailable, exit 0 — but that clean result came from the skip list being empty, not from it protecting anything. Both the wrapper and Homebrew Bundle derive their view of what is outdated from a single call to `mas outdated`, which on mas 7.0.0 defaults to `--inaccurate`, described in its own help as "inaccurate, faster logic avoids dialogs". It reported nothing while roughly twenty-five App Store updates were in fact pending, and those had to be applied by hand the following day.
+
+So the gap is neither closed nor masked: it is untested. No stale App Store app has yet reached `brew bundle` on this machine, because the detector that would have named one has never named anything. The original failure — one stale App Store app failing the whole Homebrew manifest task and hiding every other Homebrew result — remains reachable here as well as on any other machine following the same guide. `DOTFILES-UE-051` in the chezmoi source owns making that machine's detection trustworthy; this record's case for a provider-side protocol stands on its own either way, and no longer rests on a workaround that works.
 
 ## Boundary
 
@@ -74,6 +76,8 @@ mandoc -T lint man/rig.1
 
 Pass means the new Bats cases are green, `scripts/smoke-native-providers` still passes with no provider implementing the new action, and this workstation's scheduled `rig update --unattended` run still completes with none failed — the point of the work is that the same outcome no longer depends on the machine's own `HOMEBREW_BUNDLE_MAS_SKIP` wrapper, so a second machine following the same guide reaches it too.
 
+The workstation run is weak evidence on its own and must not be read as the proof. It has completed with none failed throughout the period in which the wrapper was in fact inert, so a clean run demonstrates only that nothing was dispatched that needed a person. The Bats cases carry the verification; the workstation run is a regression check against the observed baseline.
+
 ## Dependencies / blocks
 
 Nothing blocks this and it blocks nothing. It is independent of the output work and of [RIG-CLI-016](RIG-CLI-016-apply-one-resource.md), touching lifecycle preflight rather than apply. It has a cross-repository consequence rather than a dependency: once the signal is honest, this workstation's chezmoi source can retire its `HOMEBREW_BUNDLE_MAS_SKIP` wrapper, which that repository owns and which this item must not change.
@@ -110,4 +114,4 @@ Planning took the first, with the exclusion left on the provider's side of the b
 
 The second option was rejected on the evidence rather than on principle. One stale App Store app masking every other Homebrew result is the observed failure, and reporting one outcome for many entries preserves exactly that masking. It would be honest about the limitation and useless against the problem.
 
-This is also what the machine's own wrapper already proves works: `HOMEBREW_BUNDLE_MAS_SKIP` computed from `mas outdated` is the provider-side exclusion, written by hand on one machine. The work is to move that capability behind the protocol so every machine gets it, not to reinvent it.
+The machine's own wrapper shows the shape that provider-side exclusion should take — `HOMEBREW_BUNDLE_MAS_SKIP` is exactly that, written by hand on one machine — but it does not demonstrate that the shape works, because its input has never been correct. Take it as the design sketch it is. The work is to move that capability behind the protocol so every machine gets it, and a provider implementing the protocol will need a detector it can trust rather than the one the sketch happens to use.
