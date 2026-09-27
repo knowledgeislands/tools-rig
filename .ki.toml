@@ -82,9 +82,7 @@ MIG = "migration"
 [skills.ki-trades.routes."knowledgeislands/ki-agentic-harness"]
 export = ["work", "knowledge"]
 import = ["knowledge"]
-
-[skills.ki-trades.routes."knowledgeislands/ki-agentic-harness".standing.export]
-knowledge = ["shared-capability-maintenance"]
+standing.export.knowledge = ["shared-capability-maintenance"]
 
 [skills.ki-trades.routes."krisb/dotfiles"]
 import = ["work", "knowledge"]
