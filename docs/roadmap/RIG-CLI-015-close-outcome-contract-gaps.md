@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-25T15:00:00Z
-updated_at: 2026-09-26T15:45:00Z
+updated_at: 2026-09-27T22:44:49Z
 ---
 
 ## Goal
@@ -98,3 +98,9 @@ Whether any consumer wants rejection to be machine-readable at all. Nothing obse
 ### Why the record went stale
 
 Both halves were closed by work that had no reason to look here. The rejection half was settled by a decision recorded in the specification; the subshell half was closed by retiring `rig publish` and `rig clean`, where removing the command removed the gap as a side effect nobody logged. This is the pattern worth noticing rather than the item: a Triage record describing a defect in a named command survives the deletion of that command, because nothing links the two. Whether that is worth a general check — a record naming a command the CLI no longer dispatches — is a question for the roadmap tooling rather than for Rig.
+
+### Pickup checkpoint — 2026-09-27
+
+Verified at local `main` `98b6a611686adbebb7e1dec558cdfe369996f272`: `27fced00b00fa7ab5adff6e7d7a9cf9a0e5999ff` supplied the status-2 early return in `rig_outcome_report` (`src/rig/00-runtime.bash:207`), the closed vocabulary and rejection exception (`docs/specs/state.md:303`), and the existing rejection case (`tests/rig.bats:4486`). `49cdd36854d64a01026e067cb106e869d9e8ee4b` removed the `clean` dispatch (`src/rig/90-main.bash:1`); current `main` still has no `clean` dispatch. These historical deliveries close the two original behavior gaps. The checklist's rejection test and specification confirmation already have evidence, although their checkboxes remain unchanged pending owner review.
+
+Remaining: verify the closed outcome vocabulary across emitting commands and require detail where applicable; assess whether the existing rejection case is sufficient for the planned coverage. No new tests were run for this documentation audit. Before implementation, reconcile destination `main`, linked tasks and retained worktrees, including the clean `paperclip/aligned-20260926/KIS-13-rig-chezmoi-enhancements` worktree (18 commits behind `main`, no unique commits at inspection); its task ownership was not available. Missing ownership evidence does not release a claim or lift a hold. This checkpoint is guidance, not an execution block or resumption authority. Ready state is preserved by this audit; later lifecycle transitions follow their normal gates, and closure requires review plus explicit owner acceptance. Retain a Done record until separately selected for pruning.

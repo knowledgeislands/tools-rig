@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-26T13:00:00Z
-updated_at: 2026-09-26T15:45:00Z
+updated_at: 2026-09-27T22:44:49Z
 ---
 
 ## Goal
@@ -115,3 +115,9 @@ Planning chose the token over a separate listing. A separate section would short
 ### Ordering against the output work
 
 This is independent of [RIG-CLI-017](RIG-CLI-017-report-what-needs-attention.md) but compounds with it: thirteen rows that stop being faults are thirteen rows an attention-first view would no longer show.
+
+### Pickup checkpoint — 2026-09-27
+
+Verified at local `main` `98b6a611686adbebb7e1dec558cdfe369996f272`: `e52c3e7a6ef0cc09928124493238e16f8d92aae7` established a healthy exit for a profile containing a neutral catalogue-only row (`tests/rig.bats:1799`) and the corresponding current-state requirement (`docs/specs/state.md:49`). `3930488b1ac068b2033137815988636c6940ac50` introduced `rig_status_totals` (`src/rig/20-orchestration.bash:3103`); it still counts a neutral unavailable row in both `RIG_STATUS_UNAVAILABLE` and `RIG_STATUS_CATALOGUE_ONLY`, but excludes it from `RIG_STATUS_UNHEALTHY`. Thus the planned exit behavior is already delivered, while the displayed state and summary split are not.
+
+Remaining: add the separate `catalogue-only` state and non-overlapping text and JSON totals, widen the table column, update user documentation, and test one neutral row beside a genuinely unavailable row. No new tests were run for this documentation audit. Before implementation, reconcile destination `main`, linked tasks and retained worktrees, including the clean `paperclip/aligned-20260926/KIS-13-rig-chezmoi-enhancements` worktree (18 commits behind `main`, no unique commits at inspection); its task ownership was not available. Missing ownership evidence does not release a claim or lift a hold. This checkpoint is guidance, not an execution block or resumption authority. Ready state is preserved by this audit; later lifecycle transitions follow their normal gates, and closure requires review plus explicit owner acceptance. Retain a Done record until separately selected for pruning.
