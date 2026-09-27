@@ -550,7 +550,7 @@ rig_launchd_load_state() {
 }
 
 rig_launchd_unload() {
-  local label command domain
+  local label command domain waited timeout
 
   label=$1
   rig_launchd_load_state "$label" || return
@@ -559,7 +559,23 @@ rig_launchd_unload() {
   command=$RIG_VALUE
   rig_launchd_domain || return
   domain=$RIG_VALUE
-  "$command" bootout "$domain/$label"
+  "$command" bootout "$domain/$label" || return
+  # launchctl bootout returns once termination has been requested, not once the
+  # service has gone, so a program that takes a moment to exit is still in the
+  # domain when it returns and the bootstrap that follows fails with
+  # 'Bootstrap failed: 5: Input/output error' — leaving the service unloaded.
+  # An unload therefore is not complete until the domain says so.
+  waited=0
+  timeout=${RIG_LAUNCHD_UNLOAD_TIMEOUT:-30}
+  while :; do
+    rig_launchd_load_state "$label" || return
+    [ "$RIG_LAUNCHD_LOAD_STATE" != absent ] || return 0
+    [ "$waited" -lt "$timeout" ] || break
+    sleep 1
+    waited=$((waited + 1))
+  done
+  RIG_OBSERVATION_DETAIL=launchctl-unload-timeout:$timeout
+  return 1
 }
 
 rig_launchd_resource_expected_loaded() {

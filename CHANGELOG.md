@@ -26,6 +26,7 @@ All notable changes to `rig` are documented here. Dated `0.x` entries record imm
 
 ### Fixed
 
+- Replacing the property list of a loaded launchd service no longer leaves it unloaded. `launchctl bootout` returns once termination has been requested rather than once the service has gone, so a program that takes a moment to exit was still in the domain when the `bootstrap` that followed it failed with `5: Input/output error` — and the resource was reported failed with its agent booted out and never reloaded. Rig now waits for the domain to release the label before it loads the replacement, and reports a wait that exceeds its bound as a resource failure instead of bootstrapping over a service that is still terminating.
 - A scheduled job with exactly one `schedule.calendar` entry rendered its `StartCalendarInterval` dictionary flush against the left margin instead of nested inside the resource dictionary. The plist was always valid and launchd always read it; only its indentation was wrong.
 - A Homebrew provider that declares no manifest no longer loses its resolved executable during lifecycle preflight, so `rig update` invokes `mas` for a Mac App Store declaration instead of reporting `exit:127` against an empty command. Probing for a manifest overwrote the value the preflight had just resolved.
 - `rig doctor` no longer fails with an unbound-variable error on a configuration that declares no tools at all.

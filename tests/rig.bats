@@ -3572,17 +3572,28 @@ write_launchd_fixture() {
     'case "$verb" in' \
     '  print)' \
     '    grep -Fxq "$1" "$RIG_LAUNCHD_STATE" && { printf "loaded = true\n"; exit 0; }' \
+    '    if [ -n "${RIG_LAUNCHD_LINGER:-}" ] && [ -s "$RIG_LAUNCHD_LINGER" ] && grep -Fxq "$1" "$RIG_LAUNCHD_LINGER"; then' \
+    '      grep -Fxv "$1" "$RIG_LAUNCHD_LINGER" >"$RIG_LAUNCHD_LINGER.next" || :' \
+    '      mv "$RIG_LAUNCHD_LINGER.next" "$RIG_LAUNCHD_LINGER"' \
+    '      printf "loaded = true\n"' \
+    '      exit 0' \
+    '    fi' \
     '    printf "Could not find service\n" >&2' \
     '    exit 3' \
     '    ;;' \
     '  bootstrap)' \
     '    label=${2##*/}' \
     '    label=${label%.plist}' \
+    '    if [ -n "${RIG_LAUNCHD_LINGER:-}" ] && [ -s "$RIG_LAUNCHD_LINGER" ] && grep -Fxq "$1/$label" "$RIG_LAUNCHD_LINGER"; then' \
+    '      printf "Bootstrap failed: 5: Input/output error\n" >&2' \
+    '      exit 5' \
+    '    fi' \
     '    grep -Fxq "$1/$label" "$RIG_LAUNCHD_STATE" || printf "%s/%s\n" "$1" "$label" >>"$RIG_LAUNCHD_STATE"' \
     '    ;;' \
     '  bootout)' \
     '    grep -Fxv "$1" "$RIG_LAUNCHD_STATE" >"$RIG_LAUNCHD_STATE.next" || :' \
     '    mv "$RIG_LAUNCHD_STATE.next" "$RIG_LAUNCHD_STATE"' \
+    '    [ -z "${RIG_LAUNCHD_LINGER:-}" ] || printf "%s\n" "$1" >>"$RIG_LAUNCHD_LINGER"' \
     '    ;;' \
     '  kickstart) exit 0 ;;' \
     '  *) exit 64 ;;' \
@@ -3767,6 +3778,49 @@ write_launchd_fixture() {
   [ ! -e "$morning_plist" ]
   [ ! -e "$weekly_plist" ]
   [ ! -s "$LAUNCHD_STATE" ]
+}
+
+@test "built-in launchd bootstraps a replaced service only once launchd releases it" {
+  write_launchd_fixture
+  LAUNCHD_LINGER=$BATS_TEST_TMPDIR/launchd-linger-$BATS_TEST_NUMBER
+  : >"$LAUNCHD_LINGER"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
+    RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RIG_PLATFORM=macos \
+    RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
+    RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
+    "$RIG" apply --scope resources
+  [ "$status" -eq 0 ]
+
+  # launchctl bootout returns while a service that takes a moment to exit is
+  # still in the domain, and a bootstrap issued in that window fails with
+  # status 5. Replacing the plist of a loaded service must therefore leave it
+  # loaded, not booted out and abandoned.
+  : >"$LAUNCHD_LOG"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
+    RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RIG_PLATFORM=macos \
+    RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
+    RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
+    RIG_LAUNCHD_LINGER="$LAUNCHD_LINGER" RIG_LAUNCHD_UNLOAD_TIMEOUT=5 \
+    "$RIG" apply --scope resources
+  [ "$status" -eq 0 ]
+  output_has_table_row $'daemon\tservice\tlaunchd\tcompleted\treconciled:example.test.daemon\tdeclaration'
+  [ "$(grep -c '^bootstrap ' "$LAUNCHD_LOG")" -eq 3 ]
+  grep -Fxq gui/test/example.test.daemon "$LAUNCHD_STATE"
+
+  # The wait is bounded: a service that never leaves the domain is a failure
+  # naming itself, not an apply that hangs.
+  : >"$LAUNCHD_LOG"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
+    RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RIG_PLATFORM=macos \
+    RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
+    RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
+    RIG_LAUNCHD_LINGER="$LAUNCHD_LINGER" RIG_LAUNCHD_UNLOAD_TIMEOUT=0 \
+    "$RIG" apply --scope resources
+  [ "$status" -eq 1 ]
+  output_has_table_row $'daemon\tservice\tlaunchd\tfailed\texit:1\tdeclaration'
+  output_has_table_row $'morning\tscheduled-job\tlaunchd\tfailed\texit:1\tdeclaration'
+  [ "$(grep -c '^bootstrap ' "$LAUNCHD_LOG")" -eq 0 ]
 }
 
 @test "built-in launchd rejects unsafe plist targets before invocation" {
