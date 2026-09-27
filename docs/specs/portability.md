@@ -68,8 +68,6 @@ _Evidence:_ `install.sh` implements the exact-version contract and `tests/rig.ba
 
 ### RIG-PORT-007 — Public interface alignment
 
-*** End of File
-
 The shipped command inventory and each command synopsis MUST agree across top-level and command-local help, README, consumer command guide, `rig(1)`, Bash and Zsh completion output, and the current changelog baseline. User and developer guides, Specifications, and Decision Records MUST describe affected configuration, lifecycle, built-in-provider, extension, and trust-boundary behaviour consistently. The release procedure MUST include an explicit pre-release alignment check.
 
 _Conformance:_ conforming
