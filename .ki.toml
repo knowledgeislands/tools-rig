@@ -42,7 +42,7 @@ license = "MIT"
 [skills.ki-tokenomics]
 
 [skills.ki-housekeeping-claude]
-auto_memory = "transition"
+auto_memory = "disabled"
 
 [skills.ki-tokenomics-claude]
 
