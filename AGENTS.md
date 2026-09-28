@@ -33,6 +33,8 @@ Bash 3.2 does not apply `set -e` to a failing compound command, so a bats assert
 
 Run `bats tests/` with stdin redirected from `/dev/null`; without it a test that reads a prompt hangs on the terminal.
 
+Every `setup` calls `rig_test_isolate` from `tests/helpers/isolate.bash` as its first statement. A person's shell exports `XDG_CONFIG_HOME` and `XDG_STATE_HOME`, and the launchd adapter defaults to `/bin/launchctl` in `gui/<uid>`, so an invocation that names no override reconciles the runner's own machine and an apply retires the resources it finds there. The helper removes the inherited base directories, moves `HOME` into the test's tree, and points launchd at an inert stub in a domain no machine owns; an explicit override on a single invocation still wins.
+
 ## Verification
 
 Run the complete local gate before committing:

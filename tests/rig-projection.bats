@@ -1,7 +1,8 @@
 #!/usr/bin/env bats
 
 setup() {
-  unset XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CACHE_HOME
+  source "$BATS_TEST_DIRNAME/helpers/isolate.bash"
+  rig_test_isolate
   RIG=$BATS_TEST_DIRNAME/../bin/rig
   CONFIG_HOME=$BATS_TEST_TMPDIR/config-$BATS_TEST_NUMBER
   TEST_HOME=$BATS_TEST_TMPDIR/home-$BATS_TEST_NUMBER

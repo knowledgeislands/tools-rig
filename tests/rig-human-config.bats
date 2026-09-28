@@ -1,6 +1,8 @@
 #!/usr/bin/env bats
 
 setup() {
+  source "$BATS_TEST_DIRNAME/helpers/isolate.bash"
+  rig_test_isolate
   RIG=$BATS_TEST_DIRNAME/../bin/rig
   CONFIG_HOME=$BATS_TEST_TMPDIR/config-$BATS_TEST_NUMBER
   TEST_HOME=$BATS_TEST_TMPDIR/home-$BATS_TEST_NUMBER
