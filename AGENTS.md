@@ -50,4 +50,6 @@ bats tests/
 mandoc -T lint man/rig.1
 ```
 
+Never reproduce a destructive Rig defect by applying against the live workstation, even with every sandbox variable set. Rig manages the machine you are working on, and an apply that escapes its sandbox by one unset variable unloads that machine's running services. A defect that retires, unloads, or deletes is reproduced by a test under `tests/`, or by a throwaway catalogue whose declarations name nothing the machine owns — never by running the failing scenario against the real estate to watch it fail. One such experiment left a leak path that was never isolated, so the sandbox was not proof.
+
 Do not push or publish a release unless explicitly asked.
