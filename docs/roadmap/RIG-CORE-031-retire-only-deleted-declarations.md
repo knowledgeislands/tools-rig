@@ -4,12 +4,12 @@ area: CORE
 title: Retire only deleted declarations
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: abe812f2c48640bac54d710a990beb9bcf5c5238
 created_at: 2026-09-27T23:08:19Z
-updated_at: 2026-09-27T23:47:00Z
+updated_at: 2026-09-28T07:05:00Z
 ---
 
 ## Goal
@@ -122,9 +122,9 @@ The complete gate ran in the primary checkout: ShellCheck clean, `bash -n` clean
 
 ### Outstanding concerns
 
-The working tree mixes this change with unrelated in-flight `rig status --problems` work and with RIG-CORE-032, across `src/rig/20-orchestration.bash`, `bin/rig`, `man/rig.1`, and `tests/rig.bats`. Committing this item requires separating three changes, which is the reviewer's call.
+Both concerns raised before acceptance are discharged. The shared working tree was separated into `e9765fb` for this item and `2f271b8` for RIG-CORE-032, each verified against `HEAD` as carrying only its own hunks, so neither commit mixes the two changes or the concurrent `rig status --problems` work.
 
-This item does not make the suite safe to run on a machine Rig manages; RIG-CORE-032 does. A reviewer accepting this one alone should not infer that a narrow apply is now the only remaining way to lose a service.
+This item does not make the suite safe to run on a machine Rig manages; RIG-CORE-032 does, and is accepted alongside it. A reviewer reading this record alone should not infer that a narrow apply is the only remaining way to lose a service.
 
 ### Post-change review
 
@@ -139,6 +139,10 @@ Ready for acceptance on the isolated evidence, with the two concerns above as th
 Delivered catalogue-scoped retirement and a receipt that describes the whole managed estate, with the specification amended, the reversal recorded as ADR-RIG-008, and coverage for deletion, deselection, and the launchd path. Verified by the full local gate and a 250-of-250 suite. Concerns: this does not close the outage that exposed it, which is RIG-CORE-032, and a shared working tree that must be separated before commit.
 
 Learning routes to propose, not to promote: the incident's host-side recovery evidence belongs with the Paperclip guide in the dotfiles repository, which already directs an unloaded service to a reviewed Rig apply; the general lesson that a selection is not a statement about what is unwanted is the kind of rule RIG-CLI-016's selector will need; and the diagnostic lesson is that a mechanism matching the evidence is not yet the mechanism that ran.
+
+## Done
+
+Accepted 2026-09-28 by Kris Brown on the review packet above.
 
 ## Discussion
 

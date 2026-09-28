@@ -4,12 +4,12 @@ area: CORE
 title: Isolate tests from runner
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: abe812f2c48640bac54d710a990beb9bcf5c5238
 created_at: 2026-09-28T00:10:42Z
-updated_at: 2026-09-28T00:10:42Z
+updated_at: 2026-09-28T07:05:00Z
 ---
 
 ## Goal
@@ -83,7 +83,7 @@ None. No specified behaviour changes; `bin/rig` is untouched. The specifications
 
 ### Roadmap
 
-`scripts/benchmark-rig` inherits the runner's `XDG_STATE_HOME` and needs the same treatment. It is read-only today, so it is noted here rather than raised: the next change to that script should sandbox it.
+`scripts/benchmark-rig` inherits the runner's `XDG_STATE_HOME` and needs the same treatment. It is read-only today, so it was noted rather than raised at delivery; RIG-CORE-033 now owns it, together with the provider executables and the platform, which this item left reaching the runner.
 
 ## Review
 
@@ -109,9 +109,9 @@ The runner was checked across that run: the receipt is byte-identical to its pre
 
 ### Outstanding concerns
 
-`scripts/benchmark-rig` still inherits the runner's `XDG_STATE_HOME`. It runs only `diag`, `show`, `list`, and `status`, so today it reads the person's receipt without writing it; a future benchmark that applies anything would become the same hazard. Recorded under Documentation impact rather than raised as work.
+`scripts/benchmark-rig` still inherits the runner's `XDG_STATE_HOME`. It runs only `diag`, `show`, `list`, and `status`, so today it reads the person's receipt without writing it; a future benchmark that applies anything would become the same hazard. RIG-CORE-033 owns it, along with the provider executables this item did not sever.
 
-The working tree also holds unrelated in-flight `rig status --problems` work and the RIG-CORE-031 change, so committing this item requires separating three changes. That is the reviewer's call.
+The working tree concern is discharged: it was separated into `2f271b8` for this item and `e9765fb` for RIG-CORE-031, each verified against `HEAD` as carrying only its own hunks.
 
 ### Post-change review
 
@@ -126,6 +126,10 @@ Ready for acceptance.
 The recurring service outage was the test suite reconciling the live machine, not the retirement defect fixed under RIG-CORE-031. A shared `rig_test_isolate` helper, called from every `setup`, closes it: 250 of 250 passing with the runner's receipt, launchd domain, and services provably untouched.
 
 Learning routes to propose, not to promote: a test harness that relies on each invocation restating its own sandbox will leak at the first omission, so the harness should establish the sandbox and let invocations override it; and a runtime default that bypasses `PATH`, as `/bin/launchctl` does, cannot be contained by the usual test hygiene and needs an explicit override variable, which is the pattern Rig already provides and the tests simply had not used.
+
+## Done
+
+Accepted 2026-09-28 by Kris Brown on the review packet above.
 
 ## Discussion
 
