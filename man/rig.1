@@ -587,8 +587,9 @@ to
 .B RIG_PROGRESS
 Set to
 .B always
-to force operational progress. A terminal receives an in-place fixed-width
-ASCII bar; redirected stderr receives stable line-oriented events. Set to
+to force operational progress. A terminal receives an in-place ASCII bar whose
+fields hold fixed widths and whose bar takes the width the terminal has left;
+redirected stderr receives stable line-oriented events. Set to
 .B lines
 to request those durable events even on a terminal, or
 .B never

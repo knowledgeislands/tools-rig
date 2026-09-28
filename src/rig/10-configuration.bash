@@ -2043,7 +2043,7 @@ rig_load_config() {
 
   root_file=$config_home/rig.toml
   sources=()
-  rig_progress_start 'configuration discovery' 1
+  rig_progress_start 'config discovery' 1
   rig_progress_begin sources
   source_count=0
   if [ -e "$root_file" ]; then
@@ -2060,7 +2060,7 @@ rig_load_config() {
   rig_progress_result succeeded sources
   rig_progress_finish
 
-  rig_progress_start 'configuration parsing' "$source_count"
+  rig_progress_start 'config parsing' "$source_count"
   source_index=0
   while [ "$source_index" -lt "$source_count" ]; do
     rig_progress_begin "source $((source_index + 1))"
@@ -2070,13 +2070,13 @@ rig_load_config() {
   done
   rig_progress_finish
 
-  rig_progress_start 'configuration synthesis' 1
+  rig_progress_start 'config synthesis' 1
   rig_progress_begin model
   rig_synthesise_bindings || return
   rig_progress_result succeeded model
   rig_progress_finish
 
-  rig_progress_start 'configuration validation' 1
+  rig_progress_start 'config validation' 1
   rig_progress_begin model
   rig_validate_model || return
   rig_progress_result succeeded model

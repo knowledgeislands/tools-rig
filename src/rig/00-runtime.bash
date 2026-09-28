@@ -95,8 +95,15 @@ RIG_PROGRESS_CONTEXT=query
 RIG_PROGRESS_RENDER=off
 RIG_PROGRESS_PASSTHROUGH=0
 RIG_PROGRESS_BAR=
-RIG_PROGRESS_BAR_WIDTH=16
-RIG_PROGRESS_RENDERED=0
+RIG_PROGRESS_BAR_WIDTH=0
+RIG_PROGRESS_BAR_MAXIMUM=48
+RIG_PROGRESS_BAR_MINIMUM=8
+RIG_PROGRESS_LABEL_WIDTH=20
+RIG_PROGRESS_LABEL_BUDGET=20
+RIG_PROGRESS_COUNT_WIDTH=7
+RIG_PROGRESS_ITEM_WIDTH=28
+RIG_PROGRESS_ITEM_BUDGET=28
+RIG_PROGRESS_STATE_WIDTH=4
 RIG_PROGRESS_COLUMNS=
 RIG_OUTCOME_RESULT=
 RIG_OUTCOME_DETAIL=
@@ -299,22 +306,26 @@ rig_progress_select_renderer() {
 }
 
 rig_progress_make_bar() {
-  local current total filled index
+  local current total width running filled index
 
   current=$1
   total=$2
+  width=$3
+  running=$4
   filled=0
   index=0
   RIG_PROGRESS_BAR=
   if [ "$total" -gt 0 ]; then
-    filled=$((current * RIG_PROGRESS_BAR_WIDTH / total))
+    filled=$((current * width / total))
   fi
-  [ "$filled" -le "$RIG_PROGRESS_BAR_WIDTH" ] || filled=$RIG_PROGRESS_BAR_WIDTH
-  while [ "$index" -lt "$RIG_PROGRESS_BAR_WIDTH" ]; do
+  [ "$filled" -le "$width" ] || filled=$width
+  while [ "$index" -lt "$width" ]; do
     if [ "$index" -lt "$filled" ]; then
       RIG_PROGRESS_BAR=${RIG_PROGRESS_BAR}#
+    elif [ "$index" -eq "$filled" ] && [ "$running" -eq 1 ]; then
+      RIG_PROGRESS_BAR="${RIG_PROGRESS_BAR}>"
     else
-      RIG_PROGRESS_BAR=${RIG_PROGRESS_BAR}-
+      RIG_PROGRESS_BAR=${RIG_PROGRESS_BAR}.
     fi
     index=$((index + 1))
   done
@@ -326,19 +337,58 @@ rig_progress_columns() {
   [ -z "$RIG_PROGRESS_COLUMNS" ] || return 0
   columns=${COLUMNS:-}
   case "$columns" in
-    ''|*[!0-9]*)
-      columns=
-      if [ -t 2 ]; then
-        size=$(stty size <&2 2>/dev/null) || size=
-        columns=${size#* }
-      fi
-      ;;
+  ''|*[!0-9]*)
+    columns=
+    if [ -t 2 ]; then
+      size=$(stty size <&2 2>/dev/null) || size=
+      columns=${size#* }
+    fi
+    ;;
   esac
   case "$columns" in
-    ''|*[!0-9]*) columns=100 ;;
+  ''|*[!0-9]*) columns=100 ;;
   esac
   [ "$columns" -ge 40 ] || columns=100
   RIG_PROGRESS_COLUMNS=$columns
+}
+
+# Every field except the bar holds a fixed width, so a longer phase name, a
+# counter that gains a digit, or a longer identity never shifts the column
+# beside it. The bar spends what the terminal has left, up to a bound past
+# which a longer bar tells a reader nothing the identity beside it does not;
+# beyond that bound the surplus goes to the identity, which can always use it.
+rig_progress_geometry() {
+  local line label item bar
+
+  rig_progress_columns
+  line=$((RIG_PROGRESS_COLUMNS - 1))
+  label=$RIG_PROGRESS_LABEL_WIDTH
+  item=$RIG_PROGRESS_ITEM_WIDTH
+  bar=$((line - label - item - RIG_PROGRESS_COUNT_WIDTH -
+    RIG_PROGRESS_STATE_WIDTH - 11))
+  if [ "$bar" -gt "$RIG_PROGRESS_BAR_MAXIMUM" ]; then
+    bar=$RIG_PROGRESS_BAR_MAXIMUM
+    item=$((line - label - bar - RIG_PROGRESS_COUNT_WIDTH -
+      RIG_PROGRESS_STATE_WIDTH - 11))
+  elif [ "$bar" -lt "$RIG_PROGRESS_BAR_MINIMUM" ]; then
+    # A narrow terminal buys the bar's minimum from the identity first, then
+    # from the phase name, and finally gives the bar up altogether rather than
+    # draw one too short to read.
+    item=$((item + bar - RIG_PROGRESS_BAR_MINIMUM))
+    bar=$RIG_PROGRESS_BAR_MINIMUM
+    if [ "$item" -lt 8 ]; then
+      label=$((label + item - 8))
+      item=8
+      if [ "$label" -lt 10 ]; then
+        bar=$((bar + label - 10))
+        label=10
+      fi
+      [ "$bar" -ge 4 ] || bar=0
+    fi
+  fi
+  RIG_PROGRESS_LABEL_BUDGET=$label
+  RIG_PROGRESS_ITEM_BUDGET=$item
+  RIG_PROGRESS_BAR_WIDTH=$bar
 }
 
 rig_progress_compact() {
@@ -356,74 +406,59 @@ rig_progress_compact() {
 }
 
 rig_progress_bar_render() {
-  local state detail summary label_width head_width budget line_width
+  local state detail result running label count line
 
   state=$1
-  rig_progress_columns
-  rig_progress_make_bar "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL"
+  rig_progress_geometry
+  running=0
+  [ "$state" != running ] || running=1
+  rig_progress_make_bar "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" \
+    "$RIG_PROGRESS_BAR_WIDTH" "$running"
+
   detail=$RIG_PROGRESS_ITEM
-  if [ -n "$RIG_PROGRESS_SCOPE" ]; then
-    detail="$detail [$RIG_PROGRESS_SCOPE]"
-  fi
-
-  label_width=${#RIG_PROGRESS_LABEL}
-  [ "$label_width" -ge 22 ] || label_width=22
-  head_width=$((5 + label_width + 2 + ${#RIG_PROGRESS_BAR} + 2 \
-    + ${#RIG_PROGRESS_CURRENT} + 1 + ${#RIG_PROGRESS_TOTAL}))
-  budget=$((RIG_PROGRESS_COLUMNS - head_width - 3))
-
-  summary=
+  result=
   case "$state" in
-    started)
-      rig_progress_compact starting "$budget"
-      summary=$RIG_VALUE
-      ;;
-    running)
-      rig_progress_compact "$detail" "$budget"
-      summary=$RIG_VALUE
-      ;;
-    succeeded|skipped|failed)
-      rig_progress_compact "$detail" "$((budget - ${#state} - 1))"
-      summary=$RIG_VALUE
-      [ -z "$summary" ] || summary="$summary $state"
-      ;;
-    finished)
-      rig_progress_compact \
-        "$RIG_PROGRESS_SUCCEEDED succeeded, $RIG_PROGRESS_SKIPPED skipped, $RIG_PROGRESS_FAILED failed" \
-        "$budget"
-      summary=$RIG_VALUE
-      ;;
-    interrupted)
-      rig_progress_compact \
-        "interrupted; $RIG_PROGRESS_SUCCEEDED succeeded, $RIG_PROGRESS_SKIPPED skipped, $RIG_PROGRESS_FAILED failed" \
-        "$budget"
-      summary=$RIG_VALUE
-      ;;
-    phase-failed)
-      rig_progress_compact \
-        "$RIG_PROGRESS_SUCCEEDED succeeded, $RIG_PROGRESS_SKIPPED skipped, $RIG_PROGRESS_FAILED failed" \
-        "$budget"
-      summary=$RIG_VALUE
-      ;;
+  started) detail=starting ;;
+  succeeded) result=ok ;;
+  skipped) result=skip ;;
+  failed) result=fail ;;
+  finished|phase-failed)
+    detail="ok=$RIG_PROGRESS_SUCCEEDED skip=$RIG_PROGRESS_SKIPPED"
+    detail="$detail fail=$RIG_PROGRESS_FAILED"
+    ;;
+  interrupted)
+    detail="stopped ok=$RIG_PROGRESS_SUCCEEDED skip=$RIG_PROGRESS_SKIPPED"
+    detail="$detail fail=$RIG_PROGRESS_FAILED"
+    ;;
   esac
 
-  line_width=$head_width
-  [ -z "$summary" ] || line_width=$((line_width + 2 + ${#summary}))
+  rig_progress_compact "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_LABEL_BUDGET"
+  label=$RIG_VALUE
+  count="$RIG_PROGRESS_CURRENT/$RIG_PROGRESS_TOTAL"
+  rig_progress_compact "$detail" "$RIG_PROGRESS_ITEM_BUDGET"
+  detail=$RIG_VALUE
 
-  printf '\rrig: %-22s [%s] %s/%s' \
-    "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_BAR" \
-    "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" >&2
-  [ -z "$summary" ] || printf '  %s' "$summary" >&2
-  if [ "$RIG_PROGRESS_RENDERED" -gt "$line_width" ]; then
-    printf '%*s' "$((RIG_PROGRESS_RENDERED - line_width))" '' >&2
+  if [ "$RIG_PROGRESS_BAR_WIDTH" -gt 0 ]; then
+    printf -v line 'rig: %-*s %*s [%s] %-*s %-*s' \
+      "$RIG_PROGRESS_LABEL_BUDGET" "$label" \
+      "$RIG_PROGRESS_COUNT_WIDTH" "$count" "$RIG_PROGRESS_BAR" \
+      "$RIG_PROGRESS_ITEM_BUDGET" "$detail" \
+      "$RIG_PROGRESS_STATE_WIDTH" "$result"
+  else
+    printf -v line 'rig: %-*s %*s %-*s %-*s' \
+      "$RIG_PROGRESS_LABEL_BUDGET" "$label" \
+      "$RIG_PROGRESS_COUNT_WIDTH" "$count" \
+      "$RIG_PROGRESS_ITEM_BUDGET" "$detail" \
+      "$RIG_PROGRESS_STATE_WIDTH" "$result"
   fi
-  printf '\r' >&2
-  RIG_PROGRESS_RENDERED=$line_width
+  # The frame is written to one fixed width, so it erases the frame before it
+  # without remembering how long that one was.
+  line=${line:0:$((RIG_PROGRESS_COLUMNS - 1))}
+  printf '\r%-*s\r' "$((RIG_PROGRESS_COLUMNS - 1))" "$line" >&2
   case "$state" in
-    finished|phase-failed|interrupted)
-      printf '\n' >&2
-      RIG_PROGRESS_RENDERED=0
-      ;;
+  finished|phase-failed|interrupted)
+    printf '\n' >&2
+    ;;
   esac
 }
 
@@ -431,7 +466,6 @@ rig_progress_start() {
   rig_progress_fail
   RIG_PROGRESS_ACTIVE=0
   RIG_PROGRESS_CURRENT=0
-  RIG_PROGRESS_RENDERED=0
   RIG_PROGRESS_LABEL=$1
   RIG_PROGRESS_TOTAL=$2
   RIG_PROGRESS_ITEM=

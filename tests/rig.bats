@@ -1821,14 +1821,14 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [[ "$output" == 'Needs attention: '* ]] || false
   [[ "$output" != *'rig: observing'* ]] || false
   progress_output=$(<"$progress_file")
-  [[ "$progress_output" == *'rig: progress: configuration discovery 0/1: sources running'* ]] || false
-  [[ "$progress_output" == *'rig: progress: configuration discovery 1/1: sources succeeded'* ]] || false
-  [[ "$progress_output" == *'rig: progress: configuration parsing finished completed=1/1'* ]] || false
+  [[ "$progress_output" == *'rig: progress: config discovery 0/1: sources running'* ]] || false
+  [[ "$progress_output" == *'rig: progress: config discovery 1/1: sources succeeded'* ]] || false
+  [[ "$progress_output" == *'rig: progress: config parsing finished completed=1/1'* ]] || false
   [[ "$progress_output" == *'rig: progress: resolution finished completed=2/2'* ]] || false
   [[ "$progress_output" == *'rig: progress: planning finished completed=2/2'* ]] || false
-  [[ "$progress_output" == *'rig: progress: tool observation 0/4: base via runner running'* ]] || false
-  [[ "$progress_output" == *'rig: progress: tool observation 1/4: base via runner succeeded'* ]] || false
-  [[ "$progress_output" == *'rig: progress: tool observation 4/4: notes via - skipped'* ]] || false
+  [[ "$progress_output" == *'rig: progress: tool observation 0/4: runner:base running'* ]] || false
+  [[ "$progress_output" == *'rig: progress: tool observation 1/4: runner:base succeeded'* ]] || false
+  [[ "$progress_output" == *'rig: progress: tool observation 4/4: notes skipped'* ]] || false
   [[ "$progress_output" == *'rig: progress: tool observation finished completed=4/4 succeeded=3 skipped=1 failed=0'* ]] || false
   [[ "$progress_output" != *'failed completed='* ]] || false
 
@@ -1886,13 +1886,14 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [[ "$progress_output" != *'observing finished'* ]] || false
 }
 
-@test "interactive progress rewrites an ASCII bar and lines mode stays durable" {
+@test "interactive progress rewrites an ASCII bar whose columns never move" {
   local wrapper
 
   wrapper=$BATS_TEST_TMPDIR/progress-terminal-$BATS_TEST_NUMBER
   printf '%s\n' \
     '#!/usr/bin/env bash' \
     '. "$1"' \
+    'COLUMNS=100' \
     'RIG_PROGRESS=auto' \
     'RIG_PROGRESS_CONTEXT=operational' \
     'rig_progress_start applying 2' \
@@ -1910,10 +1911,13 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   fi
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *'[----------------] 0/2'* ]] || false
-  [[ "$output" == *'[########--------] 1/2'* ]] || false
-  [[ "$output" == *'[################] 2/2'* ]] || false
-  [[ "$output" == *'1 succeeded, 1 skipped, 0 failed'* ]] || false
+  [[ "$output" == *'0/2 [.............................] starting'* ]] || false
+  [[ "$output" == *'0/2 [>............................] alpha'* ]] || false
+  [[ "$output" == *'1/2 [##############...............] alpha'* ]] || false
+  [[ "$output" == *'2/2 [#############################] beta'* ]] || false
+  [[ "$output" == *'2/2 [#############################] ok=1 skip=1 fail=0'* ]] || false
+  [[ "$output" == *'rig: applying'* ]] || false
+  [[ "$output" != *'[declaration]'* ]] || false
   [[ "$output" != *'rig: progress:'* ]] || false
 
   run bash -c '
@@ -1957,11 +1961,11 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   fi
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *'residue-beh... succeeded'* ]] || false
-  [[ "$output" != *"$long [declaration] succeeded"* ]] || false
+  [[ "$output" == *'alpha-with-a-long-item-nam... ok'* ]] || false
+  [[ "$output" != *"$long"* ]] || false
 
-  erased=$(printf '%63s' '')
-  [[ "$output" == *"[########--------] 1/2  beta$erased"* ]] || false
+  erased=$(printf '%25s' '')
+  [[ "$output" == *"beta$erased ok"* ]] || false
 }
 
 @test "a pass-through phase reports its start and summary instead of a bar" {
@@ -2055,14 +2059,14 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
 
   [ "$status" -eq 1 ]
   progress_output=$(<"$progress_file")
-  [[ "$progress_output" == *'base via runner [declaration] running'* ]] || false
+  [[ "$progress_output" == *'runner:base [declaration] running'* ]] || false
   [[ "$progress_output" == *'provider-marker'* ]] || false
-  [[ "$progress_output" == *'base via runner [declaration] failed'* ]] || false
+  [[ "$progress_output" == *'runner:base [declaration] failed'* ]] || false
   [[ "$progress_output" == *'applying finished completed=3/3 succeeded=1 skipped=1 failed=1'* ]] || false
   [[ "$progress_output" != *'exit-126'* ]] || false
-  running_line=$(grep -n 'base via runner \[declaration\] running' "$progress_file" | cut -d: -f1)
+  running_line=$(grep -n 'runner:base \[declaration\] running' "$progress_file" | cut -d: -f1)
   provider_line=$(grep -n '^provider-marker$' "$progress_file" | cut -d: -f1)
-  failed_line=$(grep -n 'base via runner \[declaration\] failed' "$progress_file" | cut -d: -f1)
+  failed_line=$(grep -n 'runner:base \[declaration\] failed' "$progress_file" | cut -d: -f1)
   [ "$running_line" -lt "$provider_line" ]
   [ "$provider_line" -lt "$failed_line" ]
 }

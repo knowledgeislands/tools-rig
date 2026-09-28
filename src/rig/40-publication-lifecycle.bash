@@ -703,7 +703,7 @@ rig_run_lifecycle_tasks() {
   while [ "$index" -lt "${#RIG_LIFECYCLE_KEYS[@]}" ]; do
     label=${RIG_LIFECYCLE_LABELS[$index]}
     provider=${RIG_LIFECYCLE_PROVIDERS[$index]}
-    rig_progress_begin "$label via $provider"
+    rig_progress_begin "$provider:$label"
     if [ "${RIG_LIFECYCLE_SUPPORTED[$index]}" -eq 1 ]; then
       binding=${RIG_LIFECYCLE_BINDINGS[$index]}
       RIG_LIFECYCLE_PREFLIGHT_DETAIL=
@@ -719,23 +719,23 @@ rig_run_lifecycle_tasks() {
           if [ "$RIG_UNATTENDED" -eq 1 ] && rig_lifecycle_requires_person "$provider" "$binding"; then
             RIG_LIFECYCLE_EXECUTABLES[$index]=-
             RIG_LIFECYCLE_DETAILS[$index]=interactive-required
-            rig_progress_result skipped "$label via $provider"
+            rig_progress_result skipped "$provider:$label"
           else
             RIG_LIFECYCLE_EXECUTABLES[$index]=$preflight_executable
             supported_total=$((supported_total + 1))
-            rig_progress_result succeeded "$label via $provider"
+            rig_progress_result succeeded "$provider:$label"
           fi
           ;;
         1)
           RIG_LIFECYCLE_EXECUTABLES[$index]=-
           RIG_LIFECYCLE_DETAILS[$index]=${RIG_LIFECYCLE_PREFLIGHT_DETAIL:-preflight-failed}
-          rig_progress_result skipped "$label via $provider"
+          rig_progress_result skipped "$provider:$label"
           ;;
         *) return "$preflight_status" ;;
       esac
     else
       RIG_LIFECYCLE_EXECUTABLES[$index]=-
-      rig_progress_result skipped "$label via $provider"
+      rig_progress_result skipped "$provider:$label"
     fi
     index=$((index + 1))
   done
@@ -778,7 +778,7 @@ rig_run_lifecycle_tasks() {
       else
         progress_scope=declaration
       fi
-      rig_progress_begin "$label via $provider" "$progress_scope"
+      rig_progress_begin "$provider:$label" "$progress_scope"
       # An unattended run must never block on a question, so a provider that
       # asks one reads end-of-file and fails instead of hanging the job.
       if [ "$RIG_UNATTENDED" -eq 1 ]; then
@@ -791,13 +791,13 @@ rig_run_lifecycle_tasks() {
         row=$(printf '%s\t%s\tcompleted\t%s' "$label" "$provider" "$action")
         printf '%s\n' "$row"
         completed=$((completed + 1))
-        rig_progress_result succeeded "$label via $provider" "$progress_scope"
+        rig_progress_result succeeded "$provider:$label" "$progress_scope"
       else
         row=$(printf '%s\t%s\tfailed\texit:%s' "$label" "$provider" "$native_status")
         printf '%s\n' "$row"
         failed=$((failed + 1))
         exit_code=1
-        rig_progress_result failed "$label via $provider" "$progress_scope"
+        rig_progress_result failed "$provider:$label" "$progress_scope"
       fi
     fi
     if [ "$RIG_UNATTENDED" -eq 1 ] && [ -n "$row" ]; then

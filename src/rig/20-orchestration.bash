@@ -3620,7 +3620,7 @@ rig_doctor_incompatible_tools() {
 
 rig_observe_plan() {
   local index tool binding provider adapter state detail findings present catalogue_only
-  local findings_output
+  local findings_output progress_label
 
   findings=0
   present=0
@@ -3635,7 +3635,14 @@ rig_observe_plan() {
     tool=${RIG_PLAN_TOOLS[$index]}
     binding=${RIG_PLAN_BINDINGS[$index]}
     provider=${RIG_PLAN_PROVIDERS[$index]}
-    rig_progress_begin "$tool${provider:+ via $provider}"
+    # A catalogue-only tool records its provider as the empty marker, and a
+    # qualified identity that names no provider is worse than a bare one.
+    progress_label=$tool
+    case "$provider" in
+    ''|-) ;;
+    *) progress_label="$provider:$tool" ;;
+    esac
+    rig_progress_begin "$progress_label"
     detail=-
     if [ -z "$binding" ]; then
       state=unavailable
@@ -3693,9 +3700,9 @@ rig_observe_plan() {
       findings=$((findings + 1))
     fi
     case "${RIG_PLAN_RESULTS[$index]}" in
-      neutral|skipped) rig_progress_result skipped "$tool${provider:+ via $provider}" ;;
-      observed) rig_progress_result succeeded "$tool${provider:+ via $provider}" ;;
-      *) rig_progress_result failed "$tool${provider:+ via $provider}" ;;
+      neutral|skipped) rig_progress_result skipped "$progress_label" ;;
+      observed) rig_progress_result succeeded "$progress_label" ;;
+      *) rig_progress_result failed "$progress_label" ;;
     esac
     index=$((index + 1))
   done
@@ -4094,13 +4101,13 @@ rig_run_skill_apply() {
     skill=${RIG_SELECTED_SKILLS[$index]}
     rig_get_value "skill.$skill" authority || return 2
     authority=$RIG_VALUE
-    [ "$dry_run" -eq 1 ] || rig_progress_begin "skill.$skill via $authority" declaration
+    [ "$dry_run" -eq 1 ] || rig_progress_begin "$authority:skill.$skill" declaration
     if [ -n "${RIG_SKILL_PREFLIGHT_DETAILS[$index]:-}" ]; then
       RIG_SKILL_RESULTS[$index]=failed
       RIG_SKILL_DETAILS[$index]=preflight:${RIG_SKILL_PREFLIGHT_DETAILS[$index]}
       RIG_SKILL_APPLY_FAILURE=1
       RIG_SKILL_FAILED=$((RIG_SKILL_FAILED + 1))
-      [ "$dry_run" -eq 1 ] || rig_progress_result failed "skill.$skill via $authority" declaration
+      [ "$dry_run" -eq 1 ] || rig_progress_result failed "$authority:skill.$skill" declaration
     elif [ "$dry_run" -eq 1 ]; then
       RIG_SKILL_RESULTS[$index]=planned
       RIG_SKILL_DETAILS[$index]=-
@@ -4111,7 +4118,7 @@ rig_run_skill_apply() {
       RIG_SKILL_DETAILS[$index]=blocked-by:$blocker
       RIG_SKILL_APPLY_FAILURE=1
       RIG_SKILL_SKIPPED=$((RIG_SKILL_SKIPPED + 1))
-      rig_progress_result skipped "skill.$skill via $authority" declaration
+      rig_progress_result skipped "$authority:skill.$skill" declaration
     else
       rig_apply_skill "$skill"
       native_status=$?
@@ -4119,13 +4126,13 @@ rig_run_skill_apply() {
         RIG_SKILL_RESULTS[$index]=completed
         RIG_SKILL_DETAILS[$index]=-
         RIG_SKILL_COMPLETED=$((RIG_SKILL_COMPLETED + 1))
-        rig_progress_result succeeded "skill.$skill via $authority" declaration
+        rig_progress_result succeeded "$authority:skill.$skill" declaration
       else
         RIG_SKILL_RESULTS[$index]=failed
         RIG_SKILL_DETAILS[$index]=exit:$native_status
         RIG_SKILL_APPLY_FAILURE=1
         RIG_SKILL_FAILED=$((RIG_SKILL_FAILED + 1))
-        rig_progress_result failed "skill.$skill via $authority" declaration
+        rig_progress_result failed "$authority:skill.$skill" declaration
       fi
     fi
     printf '%s\t%s\t%s\t%s\tdeclaration\n' "$skill" "$authority" \
@@ -4418,7 +4425,7 @@ rig_command_apply() {
     binding=${RIG_PLAN_BINDINGS[$index]}
     provider=${RIG_PLAN_PROVIDERS[$index]}
     if [ "$dry_run" -eq 0 ] && [ -n "$binding" ]; then
-      rig_progress_begin "$tool via $provider" declaration
+      rig_progress_begin "$provider:$tool" declaration
     fi
     if [ -z "$binding" ]; then
       RIG_PLAN_RESULTS[$index]=skipped
@@ -4433,7 +4440,7 @@ rig_command_apply() {
       RIG_PLAN_DETAILS[$index]=blocked-by:$blocker
       skipped=$((skipped + 1))
       operational_failure=1
-      rig_progress_result skipped "$tool via $provider" declaration
+      rig_progress_result skipped "$provider:$tool" declaration
     else
       rig_apply_provider "$tool" "$binding" "$provider"
       native_status=$?
@@ -4441,13 +4448,13 @@ rig_command_apply() {
         RIG_PLAN_RESULTS[$index]=completed
         RIG_PLAN_DETAILS[$index]=-
         completed=$((completed + 1))
-        rig_progress_result succeeded "$tool via $provider" declaration
+        rig_progress_result succeeded "$provider:$tool" declaration
       else
         RIG_PLAN_RESULTS[$index]=failed
         RIG_PLAN_DETAILS[$index]=exit:$native_status
         failed=$((failed + 1))
         operational_failure=1
-        rig_progress_result failed "$tool via $provider" declaration
+        rig_progress_result failed "$provider:$tool" declaration
       fi
     fi
     printf '%s\t%s\t%s\t%s\tdeclaration\n' "$tool" "$provider" \
@@ -4476,13 +4483,13 @@ rig_command_apply() {
     provider=$RIG_VALUE
     rig_resource_locator_summary "$section_name" || return 2
     locator=$RIG_VALUE
-    [ "$dry_run" -eq 1 ] || rig_progress_begin "$kind.$id via $provider" declaration
+    [ "$dry_run" -eq 1 ] || rig_progress_begin "$provider:$kind.$id" declaration
     if [ -n "${RIG_RESOURCE_PREFLIGHT_DETAILS[$index]:-}" ]; then
       RIG_RESOURCE_PLAN_RESULTS[$index]=failed
       RIG_RESOURCE_PLAN_DETAILS[$index]=preflight:${RIG_RESOURCE_PREFLIGHT_DETAILS[$index]}
       failed=$((failed + 1))
       operational_failure=1
-      [ "$dry_run" -eq 1 ] || rig_progress_result failed "$kind.$id via $provider" declaration
+      [ "$dry_run" -eq 1 ] || rig_progress_result failed "$provider:$kind.$id" declaration
     elif [ "$dry_run" -eq 1 ]; then
       RIG_RESOURCE_PLAN_RESULTS[$index]=planned
       RIG_RESOURCE_PLAN_DETAILS[$index]=reconcile:$locator
@@ -4493,7 +4500,7 @@ rig_command_apply() {
       RIG_RESOURCE_PLAN_DETAILS[$index]=blocked-by:$blocker
       skipped=$((skipped + 1))
       operational_failure=1
-      rig_progress_result skipped "$kind.$id via $provider" declaration
+      rig_progress_result skipped "$provider:$kind.$id" declaration
     else
       rig_apply_resource "$section_name"
       native_status=$?
@@ -4501,13 +4508,13 @@ rig_command_apply() {
         RIG_RESOURCE_PLAN_RESULTS[$index]=completed
         RIG_RESOURCE_PLAN_DETAILS[$index]=reconciled:$locator
         completed=$((completed + 1))
-        rig_progress_result succeeded "$kind.$id via $provider" declaration
+        rig_progress_result succeeded "$provider:$kind.$id" declaration
       else
         RIG_RESOURCE_PLAN_RESULTS[$index]=failed
         RIG_RESOURCE_PLAN_DETAILS[$index]=exit:$native_status
         failed=$((failed + 1))
         operational_failure=1
-        rig_progress_result failed "$kind.$id via $provider" declaration
+        rig_progress_result failed "$provider:$kind.$id" declaration
       fi
     fi
     printf '%s\t%s\t%s\t%s\t%s\tdeclaration\n' "$id" "$kind" "$provider" \
@@ -4523,11 +4530,11 @@ rig_command_apply() {
     kind=${RIG_STALE_RESOURCE_KINDS[$index]}
     id=${RIG_STALE_RESOURCE_IDS[$index]}
     locator=${RIG_STALE_RESOURCE_LOCATORS[$index]}
-    [ "$dry_run" -eq 1 ] || rig_progress_begin "retire $kind.$id via $provider" declaration
+    [ "$dry_run" -eq 1 ] || rig_progress_begin "retire $provider:$kind.$id" declaration
     if [ "$operational_failure" -ne 0 ]; then
       printf '%s\t%s\t%s\tskipped\tblocked-by:resource-failure\tdeclaration\n' "$id" "$kind" "$provider"
       skipped=$((skipped + 1))
-      [ "$dry_run" -eq 1 ] || rig_progress_result skipped "retire $kind.$id via $provider" declaration
+      [ "$dry_run" -eq 1 ] || rig_progress_result skipped "retire $provider:$kind.$id" declaration
     elif [ "$dry_run" -eq 1 ]; then
       printf '%s\t%s\t%s\tplanned\tretire:%s\tdeclaration\n' "$id" "$kind" "$provider" "$locator"
       planned=$((planned + 1))
@@ -4537,12 +4544,12 @@ rig_command_apply() {
       if [ "$native_status" -eq 0 ]; then
         printf '%s\t%s\t%s\tcompleted\tretired:%s\tdeclaration\n' "$id" "$kind" "$provider" "$locator"
         completed=$((completed + 1))
-        rig_progress_result succeeded "retire $kind.$id via $provider" declaration
+        rig_progress_result succeeded "retire $provider:$kind.$id" declaration
       else
         printf '%s\t%s\t%s\tfailed\texit:%s\tdeclaration\n' "$id" "$kind" "$provider" "$native_status"
         failed=$((failed + 1))
         operational_failure=1
-        rig_progress_result failed "retire $kind.$id via $provider" declaration
+        rig_progress_result failed "retire $provider:$kind.$id" declaration
       fi
     fi
     index=$((index + 1))

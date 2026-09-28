@@ -95,8 +95,15 @@ RIG_PROGRESS_CONTEXT=query
 RIG_PROGRESS_RENDER=off
 RIG_PROGRESS_PASSTHROUGH=0
 RIG_PROGRESS_BAR=
-RIG_PROGRESS_BAR_WIDTH=16
-RIG_PROGRESS_RENDERED=0
+RIG_PROGRESS_BAR_WIDTH=0
+RIG_PROGRESS_BAR_MAXIMUM=48
+RIG_PROGRESS_BAR_MINIMUM=8
+RIG_PROGRESS_LABEL_WIDTH=20
+RIG_PROGRESS_LABEL_BUDGET=20
+RIG_PROGRESS_COUNT_WIDTH=7
+RIG_PROGRESS_ITEM_WIDTH=28
+RIG_PROGRESS_ITEM_BUDGET=28
+RIG_PROGRESS_STATE_WIDTH=4
 RIG_PROGRESS_COLUMNS=
 RIG_OUTCOME_RESULT=
 RIG_OUTCOME_DETAIL=
@@ -299,22 +306,26 @@ rig_progress_select_renderer() {
 }
 
 rig_progress_make_bar() {
-  local current total filled index
+  local current total width running filled index
 
   current=$1
   total=$2
+  width=$3
+  running=$4
   filled=0
   index=0
   RIG_PROGRESS_BAR=
   if [ "$total" -gt 0 ]; then
-    filled=$((current * RIG_PROGRESS_BAR_WIDTH / total))
+    filled=$((current * width / total))
   fi
-  [ "$filled" -le "$RIG_PROGRESS_BAR_WIDTH" ] || filled=$RIG_PROGRESS_BAR_WIDTH
-  while [ "$index" -lt "$RIG_PROGRESS_BAR_WIDTH" ]; do
+  [ "$filled" -le "$width" ] || filled=$width
+  while [ "$index" -lt "$width" ]; do
     if [ "$index" -lt "$filled" ]; then
       RIG_PROGRESS_BAR=${RIG_PROGRESS_BAR}#
+    elif [ "$index" -eq "$filled" ] && [ "$running" -eq 1 ]; then
+      RIG_PROGRESS_BAR="${RIG_PROGRESS_BAR}>"
     else
-      RIG_PROGRESS_BAR=${RIG_PROGRESS_BAR}-
+      RIG_PROGRESS_BAR=${RIG_PROGRESS_BAR}.
     fi
     index=$((index + 1))
   done
@@ -326,19 +337,58 @@ rig_progress_columns() {
   [ -z "$RIG_PROGRESS_COLUMNS" ] || return 0
   columns=${COLUMNS:-}
   case "$columns" in
-    ''|*[!0-9]*)
-      columns=
-      if [ -t 2 ]; then
-        size=$(stty size <&2 2>/dev/null) || size=
-        columns=${size#* }
-      fi
-      ;;
+  ''|*[!0-9]*)
+    columns=
+    if [ -t 2 ]; then
+      size=$(stty size <&2 2>/dev/null) || size=
+      columns=${size#* }
+    fi
+    ;;
   esac
   case "$columns" in
-    ''|*[!0-9]*) columns=100 ;;
+  ''|*[!0-9]*) columns=100 ;;
   esac
   [ "$columns" -ge 40 ] || columns=100
   RIG_PROGRESS_COLUMNS=$columns
+}
+
+# Every field except the bar holds a fixed width, so a longer phase name, a
+# counter that gains a digit, or a longer identity never shifts the column
+# beside it. The bar spends what the terminal has left, up to a bound past
+# which a longer bar tells a reader nothing the identity beside it does not;
+# beyond that bound the surplus goes to the identity, which can always use it.
+rig_progress_geometry() {
+  local line label item bar
+
+  rig_progress_columns
+  line=$((RIG_PROGRESS_COLUMNS - 1))
+  label=$RIG_PROGRESS_LABEL_WIDTH
+  item=$RIG_PROGRESS_ITEM_WIDTH
+  bar=$((line - label - item - RIG_PROGRESS_COUNT_WIDTH -
+    RIG_PROGRESS_STATE_WIDTH - 11))
+  if [ "$bar" -gt "$RIG_PROGRESS_BAR_MAXIMUM" ]; then
+    bar=$RIG_PROGRESS_BAR_MAXIMUM
+    item=$((line - label - bar - RIG_PROGRESS_COUNT_WIDTH -
+      RIG_PROGRESS_STATE_WIDTH - 11))
+  elif [ "$bar" -lt "$RIG_PROGRESS_BAR_MINIMUM" ]; then
+    # A narrow terminal buys the bar's minimum from the identity first, then
+    # from the phase name, and finally gives the bar up altogether rather than
+    # draw one too short to read.
+    item=$((item + bar - RIG_PROGRESS_BAR_MINIMUM))
+    bar=$RIG_PROGRESS_BAR_MINIMUM
+    if [ "$item" -lt 8 ]; then
+      label=$((label + item - 8))
+      item=8
+      if [ "$label" -lt 10 ]; then
+        bar=$((bar + label - 10))
+        label=10
+      fi
+      [ "$bar" -ge 4 ] || bar=0
+    fi
+  fi
+  RIG_PROGRESS_LABEL_BUDGET=$label
+  RIG_PROGRESS_ITEM_BUDGET=$item
+  RIG_PROGRESS_BAR_WIDTH=$bar
 }
 
 rig_progress_compact() {
@@ -356,74 +406,59 @@ rig_progress_compact() {
 }
 
 rig_progress_bar_render() {
-  local state detail summary label_width head_width budget line_width
+  local state detail result running label count line
 
   state=$1
-  rig_progress_columns
-  rig_progress_make_bar "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL"
+  rig_progress_geometry
+  running=0
+  [ "$state" != running ] || running=1
+  rig_progress_make_bar "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" \
+    "$RIG_PROGRESS_BAR_WIDTH" "$running"
+
   detail=$RIG_PROGRESS_ITEM
-  if [ -n "$RIG_PROGRESS_SCOPE" ]; then
-    detail="$detail [$RIG_PROGRESS_SCOPE]"
-  fi
-
-  label_width=${#RIG_PROGRESS_LABEL}
-  [ "$label_width" -ge 22 ] || label_width=22
-  head_width=$((5 + label_width + 2 + ${#RIG_PROGRESS_BAR} + 2 \
-    + ${#RIG_PROGRESS_CURRENT} + 1 + ${#RIG_PROGRESS_TOTAL}))
-  budget=$((RIG_PROGRESS_COLUMNS - head_width - 3))
-
-  summary=
+  result=
   case "$state" in
-    started)
-      rig_progress_compact starting "$budget"
-      summary=$RIG_VALUE
-      ;;
-    running)
-      rig_progress_compact "$detail" "$budget"
-      summary=$RIG_VALUE
-      ;;
-    succeeded|skipped|failed)
-      rig_progress_compact "$detail" "$((budget - ${#state} - 1))"
-      summary=$RIG_VALUE
-      [ -z "$summary" ] || summary="$summary $state"
-      ;;
-    finished)
-      rig_progress_compact \
-        "$RIG_PROGRESS_SUCCEEDED succeeded, $RIG_PROGRESS_SKIPPED skipped, $RIG_PROGRESS_FAILED failed" \
-        "$budget"
-      summary=$RIG_VALUE
-      ;;
-    interrupted)
-      rig_progress_compact \
-        "interrupted; $RIG_PROGRESS_SUCCEEDED succeeded, $RIG_PROGRESS_SKIPPED skipped, $RIG_PROGRESS_FAILED failed" \
-        "$budget"
-      summary=$RIG_VALUE
-      ;;
-    phase-failed)
-      rig_progress_compact \
-        "$RIG_PROGRESS_SUCCEEDED succeeded, $RIG_PROGRESS_SKIPPED skipped, $RIG_PROGRESS_FAILED failed" \
-        "$budget"
-      summary=$RIG_VALUE
-      ;;
+  started) detail=starting ;;
+  succeeded) result=ok ;;
+  skipped) result=skip ;;
+  failed) result=fail ;;
+  finished|phase-failed)
+    detail="ok=$RIG_PROGRESS_SUCCEEDED skip=$RIG_PROGRESS_SKIPPED"
+    detail="$detail fail=$RIG_PROGRESS_FAILED"
+    ;;
+  interrupted)
+    detail="stopped ok=$RIG_PROGRESS_SUCCEEDED skip=$RIG_PROGRESS_SKIPPED"
+    detail="$detail fail=$RIG_PROGRESS_FAILED"
+    ;;
   esac
 
-  line_width=$head_width
-  [ -z "$summary" ] || line_width=$((line_width + 2 + ${#summary}))
+  rig_progress_compact "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_LABEL_BUDGET"
+  label=$RIG_VALUE
+  count="$RIG_PROGRESS_CURRENT/$RIG_PROGRESS_TOTAL"
+  rig_progress_compact "$detail" "$RIG_PROGRESS_ITEM_BUDGET"
+  detail=$RIG_VALUE
 
-  printf '\rrig: %-22s [%s] %s/%s' \
-    "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_BAR" \
-    "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" >&2
-  [ -z "$summary" ] || printf '  %s' "$summary" >&2
-  if [ "$RIG_PROGRESS_RENDERED" -gt "$line_width" ]; then
-    printf '%*s' "$((RIG_PROGRESS_RENDERED - line_width))" '' >&2
+  if [ "$RIG_PROGRESS_BAR_WIDTH" -gt 0 ]; then
+    printf -v line 'rig: %-*s %*s [%s] %-*s %-*s' \
+      "$RIG_PROGRESS_LABEL_BUDGET" "$label" \
+      "$RIG_PROGRESS_COUNT_WIDTH" "$count" "$RIG_PROGRESS_BAR" \
+      "$RIG_PROGRESS_ITEM_BUDGET" "$detail" \
+      "$RIG_PROGRESS_STATE_WIDTH" "$result"
+  else
+    printf -v line 'rig: %-*s %*s %-*s %-*s' \
+      "$RIG_PROGRESS_LABEL_BUDGET" "$label" \
+      "$RIG_PROGRESS_COUNT_WIDTH" "$count" \
+      "$RIG_PROGRESS_ITEM_BUDGET" "$detail" \
+      "$RIG_PROGRESS_STATE_WIDTH" "$result"
   fi
-  printf '\r' >&2
-  RIG_PROGRESS_RENDERED=$line_width
+  # The frame is written to one fixed width, so it erases the frame before it
+  # without remembering how long that one was.
+  line=${line:0:$((RIG_PROGRESS_COLUMNS - 1))}
+  printf '\r%-*s\r' "$((RIG_PROGRESS_COLUMNS - 1))" "$line" >&2
   case "$state" in
-    finished|phase-failed|interrupted)
-      printf '\n' >&2
-      RIG_PROGRESS_RENDERED=0
-      ;;
+  finished|phase-failed|interrupted)
+    printf '\n' >&2
+    ;;
   esac
 }
 
@@ -431,7 +466,6 @@ rig_progress_start() {
   rig_progress_fail
   RIG_PROGRESS_ACTIVE=0
   RIG_PROGRESS_CURRENT=0
-  RIG_PROGRESS_RENDERED=0
   RIG_PROGRESS_LABEL=$1
   RIG_PROGRESS_TOTAL=$2
   RIG_PROGRESS_ITEM=
@@ -2709,7 +2743,7 @@ rig_load_config() {
 
   root_file=$config_home/rig.toml
   sources=()
-  rig_progress_start 'configuration discovery' 1
+  rig_progress_start 'config discovery' 1
   rig_progress_begin sources
   source_count=0
   if [ -e "$root_file" ]; then
@@ -2726,7 +2760,7 @@ rig_load_config() {
   rig_progress_result succeeded sources
   rig_progress_finish
 
-  rig_progress_start 'configuration parsing' "$source_count"
+  rig_progress_start 'config parsing' "$source_count"
   source_index=0
   while [ "$source_index" -lt "$source_count" ]; do
     rig_progress_begin "source $((source_index + 1))"
@@ -2736,13 +2770,13 @@ rig_load_config() {
   done
   rig_progress_finish
 
-  rig_progress_start 'configuration synthesis' 1
+  rig_progress_start 'config synthesis' 1
   rig_progress_begin model
   rig_synthesise_bindings || return
   rig_progress_result succeeded model
   rig_progress_finish
 
-  rig_progress_start 'configuration validation' 1
+  rig_progress_start 'config validation' 1
   rig_progress_begin model
   rig_validate_model || return
   rig_progress_result succeeded model
@@ -7085,7 +7119,7 @@ rig_doctor_incompatible_tools() {
 
 rig_observe_plan() {
   local index tool binding provider adapter state detail findings present catalogue_only
-  local findings_output
+  local findings_output progress_label
 
   findings=0
   present=0
@@ -7100,7 +7134,14 @@ rig_observe_plan() {
     tool=${RIG_PLAN_TOOLS[$index]}
     binding=${RIG_PLAN_BINDINGS[$index]}
     provider=${RIG_PLAN_PROVIDERS[$index]}
-    rig_progress_begin "$tool${provider:+ via $provider}"
+    # A catalogue-only tool records its provider as the empty marker, and a
+    # qualified identity that names no provider is worse than a bare one.
+    progress_label=$tool
+    case "$provider" in
+    ''|-) ;;
+    *) progress_label="$provider:$tool" ;;
+    esac
+    rig_progress_begin "$progress_label"
     detail=-
     if [ -z "$binding" ]; then
       state=unavailable
@@ -7158,9 +7199,9 @@ rig_observe_plan() {
       findings=$((findings + 1))
     fi
     case "${RIG_PLAN_RESULTS[$index]}" in
-      neutral|skipped) rig_progress_result skipped "$tool${provider:+ via $provider}" ;;
-      observed) rig_progress_result succeeded "$tool${provider:+ via $provider}" ;;
-      *) rig_progress_result failed "$tool${provider:+ via $provider}" ;;
+      neutral|skipped) rig_progress_result skipped "$progress_label" ;;
+      observed) rig_progress_result succeeded "$progress_label" ;;
+      *) rig_progress_result failed "$progress_label" ;;
     esac
     index=$((index + 1))
   done
@@ -7559,13 +7600,13 @@ rig_run_skill_apply() {
     skill=${RIG_SELECTED_SKILLS[$index]}
     rig_get_value "skill.$skill" authority || return 2
     authority=$RIG_VALUE
-    [ "$dry_run" -eq 1 ] || rig_progress_begin "skill.$skill via $authority" declaration
+    [ "$dry_run" -eq 1 ] || rig_progress_begin "$authority:skill.$skill" declaration
     if [ -n "${RIG_SKILL_PREFLIGHT_DETAILS[$index]:-}" ]; then
       RIG_SKILL_RESULTS[$index]=failed
       RIG_SKILL_DETAILS[$index]=preflight:${RIG_SKILL_PREFLIGHT_DETAILS[$index]}
       RIG_SKILL_APPLY_FAILURE=1
       RIG_SKILL_FAILED=$((RIG_SKILL_FAILED + 1))
-      [ "$dry_run" -eq 1 ] || rig_progress_result failed "skill.$skill via $authority" declaration
+      [ "$dry_run" -eq 1 ] || rig_progress_result failed "$authority:skill.$skill" declaration
     elif [ "$dry_run" -eq 1 ]; then
       RIG_SKILL_RESULTS[$index]=planned
       RIG_SKILL_DETAILS[$index]=-
@@ -7576,7 +7617,7 @@ rig_run_skill_apply() {
       RIG_SKILL_DETAILS[$index]=blocked-by:$blocker
       RIG_SKILL_APPLY_FAILURE=1
       RIG_SKILL_SKIPPED=$((RIG_SKILL_SKIPPED + 1))
-      rig_progress_result skipped "skill.$skill via $authority" declaration
+      rig_progress_result skipped "$authority:skill.$skill" declaration
     else
       rig_apply_skill "$skill"
       native_status=$?
@@ -7584,13 +7625,13 @@ rig_run_skill_apply() {
         RIG_SKILL_RESULTS[$index]=completed
         RIG_SKILL_DETAILS[$index]=-
         RIG_SKILL_COMPLETED=$((RIG_SKILL_COMPLETED + 1))
-        rig_progress_result succeeded "skill.$skill via $authority" declaration
+        rig_progress_result succeeded "$authority:skill.$skill" declaration
       else
         RIG_SKILL_RESULTS[$index]=failed
         RIG_SKILL_DETAILS[$index]=exit:$native_status
         RIG_SKILL_APPLY_FAILURE=1
         RIG_SKILL_FAILED=$((RIG_SKILL_FAILED + 1))
-        rig_progress_result failed "skill.$skill via $authority" declaration
+        rig_progress_result failed "$authority:skill.$skill" declaration
       fi
     fi
     printf '%s\t%s\t%s\t%s\tdeclaration\n' "$skill" "$authority" \
@@ -7883,7 +7924,7 @@ rig_command_apply() {
     binding=${RIG_PLAN_BINDINGS[$index]}
     provider=${RIG_PLAN_PROVIDERS[$index]}
     if [ "$dry_run" -eq 0 ] && [ -n "$binding" ]; then
-      rig_progress_begin "$tool via $provider" declaration
+      rig_progress_begin "$provider:$tool" declaration
     fi
     if [ -z "$binding" ]; then
       RIG_PLAN_RESULTS[$index]=skipped
@@ -7898,7 +7939,7 @@ rig_command_apply() {
       RIG_PLAN_DETAILS[$index]=blocked-by:$blocker
       skipped=$((skipped + 1))
       operational_failure=1
-      rig_progress_result skipped "$tool via $provider" declaration
+      rig_progress_result skipped "$provider:$tool" declaration
     else
       rig_apply_provider "$tool" "$binding" "$provider"
       native_status=$?
@@ -7906,13 +7947,13 @@ rig_command_apply() {
         RIG_PLAN_RESULTS[$index]=completed
         RIG_PLAN_DETAILS[$index]=-
         completed=$((completed + 1))
-        rig_progress_result succeeded "$tool via $provider" declaration
+        rig_progress_result succeeded "$provider:$tool" declaration
       else
         RIG_PLAN_RESULTS[$index]=failed
         RIG_PLAN_DETAILS[$index]=exit:$native_status
         failed=$((failed + 1))
         operational_failure=1
-        rig_progress_result failed "$tool via $provider" declaration
+        rig_progress_result failed "$provider:$tool" declaration
       fi
     fi
     printf '%s\t%s\t%s\t%s\tdeclaration\n' "$tool" "$provider" \
@@ -7941,13 +7982,13 @@ rig_command_apply() {
     provider=$RIG_VALUE
     rig_resource_locator_summary "$section_name" || return 2
     locator=$RIG_VALUE
-    [ "$dry_run" -eq 1 ] || rig_progress_begin "$kind.$id via $provider" declaration
+    [ "$dry_run" -eq 1 ] || rig_progress_begin "$provider:$kind.$id" declaration
     if [ -n "${RIG_RESOURCE_PREFLIGHT_DETAILS[$index]:-}" ]; then
       RIG_RESOURCE_PLAN_RESULTS[$index]=failed
       RIG_RESOURCE_PLAN_DETAILS[$index]=preflight:${RIG_RESOURCE_PREFLIGHT_DETAILS[$index]}
       failed=$((failed + 1))
       operational_failure=1
-      [ "$dry_run" -eq 1 ] || rig_progress_result failed "$kind.$id via $provider" declaration
+      [ "$dry_run" -eq 1 ] || rig_progress_result failed "$provider:$kind.$id" declaration
     elif [ "$dry_run" -eq 1 ]; then
       RIG_RESOURCE_PLAN_RESULTS[$index]=planned
       RIG_RESOURCE_PLAN_DETAILS[$index]=reconcile:$locator
@@ -7958,7 +7999,7 @@ rig_command_apply() {
       RIG_RESOURCE_PLAN_DETAILS[$index]=blocked-by:$blocker
       skipped=$((skipped + 1))
       operational_failure=1
-      rig_progress_result skipped "$kind.$id via $provider" declaration
+      rig_progress_result skipped "$provider:$kind.$id" declaration
     else
       rig_apply_resource "$section_name"
       native_status=$?
@@ -7966,13 +8007,13 @@ rig_command_apply() {
         RIG_RESOURCE_PLAN_RESULTS[$index]=completed
         RIG_RESOURCE_PLAN_DETAILS[$index]=reconciled:$locator
         completed=$((completed + 1))
-        rig_progress_result succeeded "$kind.$id via $provider" declaration
+        rig_progress_result succeeded "$provider:$kind.$id" declaration
       else
         RIG_RESOURCE_PLAN_RESULTS[$index]=failed
         RIG_RESOURCE_PLAN_DETAILS[$index]=exit:$native_status
         failed=$((failed + 1))
         operational_failure=1
-        rig_progress_result failed "$kind.$id via $provider" declaration
+        rig_progress_result failed "$provider:$kind.$id" declaration
       fi
     fi
     printf '%s\t%s\t%s\t%s\t%s\tdeclaration\n' "$id" "$kind" "$provider" \
@@ -7988,11 +8029,11 @@ rig_command_apply() {
     kind=${RIG_STALE_RESOURCE_KINDS[$index]}
     id=${RIG_STALE_RESOURCE_IDS[$index]}
     locator=${RIG_STALE_RESOURCE_LOCATORS[$index]}
-    [ "$dry_run" -eq 1 ] || rig_progress_begin "retire $kind.$id via $provider" declaration
+    [ "$dry_run" -eq 1 ] || rig_progress_begin "retire $provider:$kind.$id" declaration
     if [ "$operational_failure" -ne 0 ]; then
       printf '%s\t%s\t%s\tskipped\tblocked-by:resource-failure\tdeclaration\n' "$id" "$kind" "$provider"
       skipped=$((skipped + 1))
-      [ "$dry_run" -eq 1 ] || rig_progress_result skipped "retire $kind.$id via $provider" declaration
+      [ "$dry_run" -eq 1 ] || rig_progress_result skipped "retire $provider:$kind.$id" declaration
     elif [ "$dry_run" -eq 1 ]; then
       printf '%s\t%s\t%s\tplanned\tretire:%s\tdeclaration\n' "$id" "$kind" "$provider" "$locator"
       planned=$((planned + 1))
@@ -8002,12 +8043,12 @@ rig_command_apply() {
       if [ "$native_status" -eq 0 ]; then
         printf '%s\t%s\t%s\tcompleted\tretired:%s\tdeclaration\n' "$id" "$kind" "$provider" "$locator"
         completed=$((completed + 1))
-        rig_progress_result succeeded "retire $kind.$id via $provider" declaration
+        rig_progress_result succeeded "retire $provider:$kind.$id" declaration
       else
         printf '%s\t%s\t%s\tfailed\texit:%s\tdeclaration\n' "$id" "$kind" "$provider" "$native_status"
         failed=$((failed + 1))
         operational_failure=1
-        rig_progress_result failed "retire $kind.$id via $provider" declaration
+        rig_progress_result failed "retire $provider:$kind.$id" declaration
       fi
     fi
     index=$((index + 1))
@@ -10524,7 +10565,7 @@ rig_run_lifecycle_tasks() {
   while [ "$index" -lt "${#RIG_LIFECYCLE_KEYS[@]}" ]; do
     label=${RIG_LIFECYCLE_LABELS[$index]}
     provider=${RIG_LIFECYCLE_PROVIDERS[$index]}
-    rig_progress_begin "$label via $provider"
+    rig_progress_begin "$provider:$label"
     if [ "${RIG_LIFECYCLE_SUPPORTED[$index]}" -eq 1 ]; then
       binding=${RIG_LIFECYCLE_BINDINGS[$index]}
       RIG_LIFECYCLE_PREFLIGHT_DETAIL=
@@ -10540,23 +10581,23 @@ rig_run_lifecycle_tasks() {
           if [ "$RIG_UNATTENDED" -eq 1 ] && rig_lifecycle_requires_person "$provider" "$binding"; then
             RIG_LIFECYCLE_EXECUTABLES[$index]=-
             RIG_LIFECYCLE_DETAILS[$index]=interactive-required
-            rig_progress_result skipped "$label via $provider"
+            rig_progress_result skipped "$provider:$label"
           else
             RIG_LIFECYCLE_EXECUTABLES[$index]=$preflight_executable
             supported_total=$((supported_total + 1))
-            rig_progress_result succeeded "$label via $provider"
+            rig_progress_result succeeded "$provider:$label"
           fi
           ;;
         1)
           RIG_LIFECYCLE_EXECUTABLES[$index]=-
           RIG_LIFECYCLE_DETAILS[$index]=${RIG_LIFECYCLE_PREFLIGHT_DETAIL:-preflight-failed}
-          rig_progress_result skipped "$label via $provider"
+          rig_progress_result skipped "$provider:$label"
           ;;
         *) return "$preflight_status" ;;
       esac
     else
       RIG_LIFECYCLE_EXECUTABLES[$index]=-
-      rig_progress_result skipped "$label via $provider"
+      rig_progress_result skipped "$provider:$label"
     fi
     index=$((index + 1))
   done
@@ -10599,7 +10640,7 @@ rig_run_lifecycle_tasks() {
       else
         progress_scope=declaration
       fi
-      rig_progress_begin "$label via $provider" "$progress_scope"
+      rig_progress_begin "$provider:$label" "$progress_scope"
       # An unattended run must never block on a question, so a provider that
       # asks one reads end-of-file and fails instead of hanging the job.
       if [ "$RIG_UNATTENDED" -eq 1 ]; then
@@ -10612,13 +10653,13 @@ rig_run_lifecycle_tasks() {
         row=$(printf '%s\t%s\tcompleted\t%s' "$label" "$provider" "$action")
         printf '%s\n' "$row"
         completed=$((completed + 1))
-        rig_progress_result succeeded "$label via $provider" "$progress_scope"
+        rig_progress_result succeeded "$provider:$label" "$progress_scope"
       else
         row=$(printf '%s\t%s\tfailed\texit:%s' "$label" "$provider" "$native_status")
         printf '%s\n' "$row"
         failed=$((failed + 1))
         exit_code=1
-        rig_progress_result failed "$label via $provider" "$progress_scope"
+        rig_progress_result failed "$provider:$label" "$progress_scope"
       fi
     fi
     if [ "$RIG_UNATTENDED" -eq 1 ] && [ -n "$row" ]; then
