@@ -231,7 +231,7 @@ _Conformance:_ conforming
 
 _Verify:_ Recording-provider Bats tests assert exact verbs, identities, repeated key order, metacharacter and leading-dash boundaries, default fields, capability rejection, observation tokens, and native failure detail.
 
-_Evidence:_ `rig_append_resource_fields`, `rig_prepare_resource_invocation`, `rig_observe_resource`, `rig_apply_resource`, and `rig_retire_resource` implement the external protocol; `resource status and dry-run use literal provider records without mutation` and `resource apply records managed identities and retires deselected entries` compare its literal records and outcomes.
+_Evidence:_ `rig_append_resource_fields`, `rig_prepare_resource_invocation`, `rig_observe_resource`, `rig_apply_resource`, and `rig_retire_resource` implement the external protocol; `resource status and dry-run use literal provider records without mutation` and `resource apply records managed identities and retires deleted declarations` compare its literal records and outcomes.
 
 ### RIG-ORCH-022 — Resource-aware actions
 

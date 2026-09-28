@@ -1139,7 +1139,9 @@ itself notify.
 .I ${XDG_STATE_HOME:-$HOME/.local/state}/rig/resources/PLATFORM.tsv
 Atomic reconciliation receipt for resources last successfully managed on one
 platform. Each tab-separated row stores only provider, resource kind, identity,
-and locator; it is not observed state or declaration authority.
+and locator; it is not observed state or declaration authority. A row survives
+a run that did not select it, and becomes retirement work only once the
+catalogue stops declaring it for the platform.
 .TP
 .I ${XDG_STATE_HOME:-$HOME/.local/state}/rig/reconciliation/PLATFORM.lock
 Exclusive live reconciliation lock. Rig acquires it before reading a receipt
@@ -1305,7 +1307,7 @@ l l l.
 Declaration|Selected lifecycle|Deselection
 Tool|Observe, apply, update, maintain|No automatic removal
 Skill|Observe, apply, update where supported|No automatic removal
-Service or scheduled job|Observe, apply, receipt-backed retire|Retire after successful complete-profile reconciliation
+Service or scheduled job|Observe, apply, receipt-backed retire|No retirement; deleting the declaration retires it
 Setting or Dock layout|Observe and apply|No automatic reversal
 Private port|Observe only|No mutation
 .TE

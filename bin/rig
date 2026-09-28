@@ -4751,6 +4751,30 @@ rig_selected_resource_has_locator() {
   return 1
 }
 
+rig_declared_resource_has_locator() {
+  local provider kind locator platform index section_name current_provider current_locator
+
+  provider=$1
+  kind=$2
+  locator=$3
+  platform=$4
+  index=0
+  while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+    if [ "${RIG_SECTION_TYPES[$index]}" = "$kind" ]; then
+      section_name=${RIG_SECTION_NAMES[$index]}
+      if rig_resource_supports_platform "$section_name" "$platform"; then
+        rig_get_value "$section_name" provider || return 2
+        current_provider=$RIG_VALUE
+        rig_get_value "$section_name" locator || return 2
+        current_locator=$RIG_VALUE
+        [ "$provider" = "$current_provider" ] && [ "$locator" = "$current_locator" ] && return 0
+      fi
+    fi
+    index=$((index + 1))
+  done
+  return 1
+}
+
 rig_load_resource_receipt() {
   local platform receipt provider kind id locator extra
 
@@ -4772,7 +4796,11 @@ rig_load_resource_receipt() {
       rig_fail "invalid resource receipt kind '$kind': $receipt" || return ;;
     esac
     [ -n "$locator" ] || rig_fail "invalid empty resource receipt locator: $receipt" || return
-    if rig_selected_resource_has_locator "$provider" "$kind" "$locator"; then
+    # Retirement follows the catalogue, not the selected profile. A resource the
+    # catalogue still declares for this platform lies outside this invocation's
+    # selection rather than behind it: unloading it because a narrower profile
+    # was applied would tear down services the run never examined.
+    if rig_declared_resource_has_locator "$provider" "$kind" "$locator" "$platform"; then
       continue
     fi
     RIG_STALE_RESOURCE_PROVIDERS[${#RIG_STALE_RESOURCE_PROVIDERS[@]}]=$provider
@@ -4829,7 +4857,7 @@ rig_retire_resource() {
 
 rig_write_resource_receipt() {
   local platform receipt directory temporary section_name section_index
-  local kind id provider locator old_umask
+  local kind id provider locator old_umask extra status written
 
   platform=$1
   rig_resource_receipt_path "$platform" || return
@@ -4839,6 +4867,7 @@ rig_write_resource_receipt() {
   umask 077
   mkdir -p "$directory" || { umask "$old_umask"; return 1; }
   temporary=$(mktemp "$directory/.resources.XXXXXX") || { umask "$old_umask"; return 1; }
+  written=()
   for section_name in "${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}"; do
     rig_section_index "$section_name" || { rm -f "$temporary"; umask "$old_umask"; return 2; }
     section_index=$RIG_INDEX
@@ -4851,7 +4880,28 @@ rig_write_resource_receipt() {
     locator=$RIG_VALUE
     printf '%s\t%s\t%s\t%s\n' "$provider" "$kind" "$id" "$locator" >>"$temporary" ||
       { rm -f "$temporary"; umask "$old_umask"; return 1; }
+    written[${#written[@]}]=$provider.$kind.$locator
   done
+  # A narrow selection reconciles part of the catalogue, so the receipt carries
+  # forward every record this platform still declares. Keeping only the selected
+  # records would forget which resources this rig materialised, leaving a later
+  # apply unable to observe or retire them.
+  if [ -f "$receipt" ] && [ -r "$receipt" ]; then
+    while IFS=$'\t' read -r provider kind id locator extra ||
+      [ -n "$provider$kind$id$locator$extra" ]; do
+      [ -n "$provider" ] || continue
+      rig_array_contains "$provider.$kind.$locator" \
+        "${written[@]+"${written[@]}"}" && continue
+      status=0
+      rig_declared_resource_has_locator "$provider" "$kind" "$locator" "$platform" ||
+        status=$?
+      [ "$status" -ne 1 ] || continue
+      [ "$status" -eq 0 ] || { rm -f "$temporary"; umask "$old_umask"; return 2; }
+      printf '%s\t%s\t%s\t%s\n' "$provider" "$kind" "$id" "$locator" >>"$temporary" ||
+        { rm -f "$temporary"; umask "$old_umask"; return 1; }
+      written[${#written[@]}]=$provider.$kind.$locator
+    done <"$receipt"
+  fi
   mv "$temporary" "$receipt" || { rm -f "$temporary"; umask "$old_umask"; return 1; }
   umask "$old_umask"
 }

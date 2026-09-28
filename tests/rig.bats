@@ -3868,7 +3868,8 @@ write_launchd_fixture() {
   [ "$status" -eq 1 ]
   output_has_table_row $'daemon\tservice\tlaunchd\tdrifted\tplist'
 
-  sed -e 's/services = \["daemon"\]/services = []/' \
+  sed -e '/^\[service.daemon\]/,/^\[profile.default\]/{/^\[profile.default\]/!d;}' \
+    -e 's/services = \["daemon"\]/services = []/' \
     -e 's/scheduled-jobs = \["morning", "weekly"\]/scheduled-jobs = []/' \
     "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/retire.toml"
   mv "$CONFIG_HOME/retire.toml" "$CONFIG_HOME/rig.toml"
@@ -4036,7 +4037,7 @@ install.locator = "base"
   [[ "$output" == *' -- --follow'* ]] || false
 }
 
-@test "resource apply records managed identities and retires deselected entries" {
+@test "resource apply records managed identities and retires deleted declarations" {
   write_resource_fixture
   sed '/requires = \["base"\]/d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/without-requirement.toml"
   mv "$CONFIG_HOME/without-requirement.toml" "$CONFIG_HOME/rig.toml"
@@ -4048,6 +4049,29 @@ install.locator = "base"
   grep -F $'runner\tservice\tdaemon\texample.test.daemon' "$BATS_TEST_TMPDIR/state/resources/macos.tsv"
   grep -F $'runner\tscheduled-job\tmorning\texample.test.morning' "$BATS_TEST_TMPDIR/state/resources/macos.tsv"
 
+  sed -e '/^\[service.daemon\]/,/^\[scheduled-job.morning\]/{/^\[scheduled-job.morning\]/!d;}' \
+    -e 's/services = \["daemon"\]/services = []/' \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/deleted.toml"
+  mv "$CONFIG_HOME/deleted.toml" "$CONFIG_HOME/rig.toml"
+  : >"$RESOURCE_LOG"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" \
+    RESOURCE_LOG="$RESOURCE_LOG" RIG_PLATFORM=macos "$RIG" apply
+  [ "$status" -eq 0 ]
+  grep -F 'rig-provider-v1 retire-resource runner daemon service example.test.daemon previous-managed=true' "$RESOURCE_LOG"
+  ! grep -F 'retire-resource runner morning' "$RESOURCE_LOG"
+  ! grep -F $'runner\tservice\tdaemon\t' "$BATS_TEST_TMPDIR/state/resources/macos.tsv"
+  grep -F $'runner\tscheduled-job\tmorning\texample.test.morning' "$BATS_TEST_TMPDIR/state/resources/macos.tsv"
+}
+
+@test "profile deselection retires no resource the catalogue still declares" {
+  write_resource_fixture
+  sed '/requires = \["base"\]/d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/without-requirement.toml"
+  mv "$CONFIG_HOME/without-requirement.toml" "$CONFIG_HOME/rig.toml"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" \
+    RESOURCE_LOG="$RESOURCE_LOG" RIG_PLATFORM=macos "$RIG" apply
+  [ "$status" -eq 0 ]
+
   sed 's/services = \["daemon"\]/services = []/; s/scheduled-jobs = \["morning"\]/scheduled-jobs = []/' \
     "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/deselected.toml"
   mv "$CONFIG_HOME/deselected.toml" "$CONFIG_HOME/rig.toml"
@@ -4055,9 +4079,14 @@ install.locator = "base"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" \
     RESOURCE_LOG="$RESOURCE_LOG" RIG_PLATFORM=macos "$RIG" apply
   [ "$status" -eq 0 ]
-  grep -F 'rig-provider-v1 retire-resource runner daemon service example.test.daemon previous-managed=true' "$RESOURCE_LOG"
-  grep -F 'rig-provider-v1 retire-resource runner morning scheduled-job example.test.morning previous-managed=true' "$RESOURCE_LOG"
-  [ ! -s "$BATS_TEST_TMPDIR/state/resources/macos.tsv" ]
+  ! grep -F retire-resource "$RESOURCE_LOG"
+  grep -F $'runner\tservice\tdaemon\texample.test.daemon' "$BATS_TEST_TMPDIR/state/resources/macos.tsv"
+  grep -F $'runner\tscheduled-job\tmorning\texample.test.morning' "$BATS_TEST_TMPDIR/state/resources/macos.tsv"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" \
+    RESOURCE_LOG="$RESOURCE_LOG" RIG_PLATFORM=macos "$RIG" status
+  [ "$status" -eq 0 ]
+  [[ "$output" != *retire-pending* ]] || false
 }
 
 @test "resource schema rejects unsafe calendar declarations before provider execution" {

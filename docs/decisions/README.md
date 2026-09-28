@@ -12,3 +12,4 @@ Rig keeps living product, architecture, security, and governance decisions in th
 8. [ADR-RIG-005](ADR-RIG-005-provider-execution-contract.md) — defining provider invocation, state, ordering, and outcome reporting.
 9. [ADR-RIG-006](ADR-RIG-006-declarative-operational-resources.md) — making services and scheduled jobs profile-selected declarations with safe retirement receipts.
 10. [ADR-RIG-007](ADR-RIG-007-resolved-artifact-link-evidence.md) — observing a declared artifact link through the target that supplies its installation evidence.
+11. [ADR-RIG-008](ADR-RIG-008-catalogue-scoped-resource-retirement.md) — retiring a resource because the catalogue no longer declares it rather than because a profile did not select it.

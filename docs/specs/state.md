@@ -198,7 +198,7 @@ _Conformance:_ conforming
 
 _Verify:_ Bats tests all resource state tokens, protocol failures, stale receipts, healthy and finding outcomes, and provider logs containing only observation verbs.
 
-_Evidence:_ `rig_observe_resource_plan`, `rig_print_resource_status`, and the resource branch of `rig_command_doctor` compare selected and stale resources; `resource status and dry-run use literal provider records without mutation` and `resource apply records managed identities and retires deselected entries` cover observation-only dispatch and retirement-pending state.
+_Evidence:_ `rig_observe_resource_plan`, `rig_print_resource_status`, and the resource branch of `rig_command_doctor` compare selected and stale resources; `resource status and dry-run use literal provider records without mutation`, `resource apply records managed identities and retires deleted declarations`, and `profile deselection retires no resource the catalogue still declares` cover observation-only dispatch and retirement-pending state.
 
 ### RIG-STATE-019 — Resource application and retirement
 
@@ -212,13 +212,13 @@ _Evidence:_ `rig_preflight_apply`, `rig_resource_blocker`, `rig_command_apply`, 
 
 ### RIG-STATE-020 — Reconciliation receipt
 
-After a fully successful resource reconciliation, Rig MUST atomically replace `${RIG_STATE_HOME}/resources/PLATFORM.tsv` with one tab-separated provider, kind, identity, and locator row per selected resource. It MUST NOT persist observations or declaration fields. A later plan MUST treat receipt rows whose provider, kind, and locator are absent from the selected set as stale retirement work. Reusing the same provider, kind, and locator under a new Rig identity MUST transfer ownership without retirement. Malformed or unsafe receipt paths MUST fail before mutation; failed or dry-run applications MUST leave the previous receipt unchanged.
+After a fully successful resource reconciliation, Rig MUST atomically replace `${RIG_STATE_HOME}/resources/PLATFORM.tsv` with one tab-separated provider, kind, identity, and locator row per selected resource, followed by every remaining receipt row whose provider, kind, and locator the catalogue still declares for that platform. It MUST NOT persist observations or declaration fields. A later plan MUST treat receipt rows whose provider, kind, and locator are absent from every resource the catalogue declares for that platform as stale retirement work, and MUST NOT treat a declared resource that the current selection omits as stale. Reusing the same provider, kind, and locator under a new Rig identity MUST transfer ownership without retirement. Malformed or unsafe receipt paths MUST fail before mutation; failed or dry-run applications MUST leave the previous receipt unchanged.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests XDG and Rig state overrides, first write, exact content, deselection, deletion, rename transfer, malformed records, unsafe targets, native failure preservation, atomic replacement, and empty successful receipts.
+_Verify:_ Bats tests XDG and Rig state overrides, first write, exact content, profile deselection, catalogue deletion, retention of a declared row a narrow selection omits, rename transfer, malformed records, unsafe targets, native failure preservation, atomic replacement, and empty successful receipts.
 
-_Evidence:_ receipt helpers read a bounded four-field format, compare locators, preflight the filesystem boundary, write a mode-restricted sibling temporary file, and rename only after success.
+_Evidence:_ receipt helpers read a bounded four-field format, compare each row against the catalogue through `rig_declared_resource_has_locator`, preflight the filesystem boundary, write a mode-restricted sibling temporary file, and rename only after success; [ADR-RIG-008](../decisions/ADR-RIG-008-catalogue-scoped-resource-retirement.md) records why retirement follows the catalogue rather than the selection.
 
 ### RIG-STATE-021 — Typed machine-resource state
 
@@ -254,13 +254,13 @@ _Evidence:_ `rig_observe_tool_artifacts` and `rig_resolve_artifact_link` impleme
 
 ### RIG-STATE-024 — Declaration-kind deselection
 
-A successful complete-profile reconciliation MUST retire previously receipted services and scheduled jobs omitted from the next selection. Profile deselection MUST NOT remove packages, tool artifacts, settings, Dock layouts, ports, or skills without a separate explicit cleanup contract. A view MUST NOT load retirement work or replace a receipt.
+A successful complete-profile reconciliation MUST retire previously receipted services and scheduled jobs that the catalogue no longer declares for the platform. Profile deselection MUST NOT retire a service or scheduled job the catalogue still declares, and MUST NOT remove packages, tool artifacts, settings, Dock layouts, ports, or skills without a separate explicit cleanup contract. A view MUST NOT load retirement work or replace a receipt.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats switches complete resource selections and inspects retirement, then observes a view against the same state and confirms no retirement work or receipt mutation.
+_Verify:_ Bats deletes a declaration and inspects its retirement, narrows a profile to nothing and confirms neither retirement nor receipt loss, then observes a view against the same state and confirms no retirement work or receipt mutation.
 
-_Evidence:_ `rig_load_resource_receipt` records only service and scheduled-job retirement while `rig_resolve_operational_plan` excludes views from receipt loading; resource and profile-authority Bats cover both paths.
+_Evidence:_ `rig_load_resource_receipt` records only service and scheduled-job retirement and only for rows the catalogue no longer declares, while `rig_resolve_operational_plan` excludes views from receipt loading; resource and profile-authority Bats cover both paths.
 
 ### RIG-STATE-025 — Exclusive reconciliation target
 
