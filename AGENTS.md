@@ -35,6 +35,8 @@ Run `bats tests/` with stdin redirected from `/dev/null`; without it a test that
 
 Every `setup` calls `rig_test_isolate` from `tests/helpers/isolate.bash` as its first statement. A person's shell exports `XDG_CONFIG_HOME` and `XDG_STATE_HOME`, and the launchd adapter defaults to `/bin/launchctl` in `gui/<uid>`, so an invocation that names no override reconciles the runner's own machine and an apply retires the resources it finds there. The helper removes the inherited base directories, moves `HOME` into the test's tree, and points launchd at an inert stub in a domain no machine owns; an explicit override on a single invocation still wins.
 
+`defaults`, `dockutil`, and `killall` are the same hazard by a different route, and the helper stubs all three for it. Moving `HOME` does not contain `defaults`: it reaches the user domain through `cfprefsd`, so a run under a sandboxed `HOME` writes the real domain using the sandboxed path as its value, which is how this workstation's screenshot location came to point at a deleted temporary directory. Each stub logs its own argv beside itself, because asserting on an observed value cannot distinguish a contained read from a real one when the runner has never set the key.
+
 ## Verification
 
 Run the complete local gate before committing:

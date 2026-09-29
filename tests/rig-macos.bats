@@ -213,3 +213,26 @@ run_rig() {
   [ "$status" -eq 1 ] || { printf '%s\n' "$output" >&3; false; }
   [[ "$output" != *'autoupdate-agent'* ]] || false
 }
+
+@test "the harness contains the macOS mutators when a test names no override" {
+  local mutator
+
+  for mutator in "$RIG_DEFAULTS" "$RIG_DOCKUTIL" "$RIG_KILLALL"; do
+    [ "${mutator%/*}" = "$BATS_TEST_TMPDIR" ] || false
+    [ -x "$mutator" ] || false
+  done
+
+  # This invocation deliberately names no mutator override, so the harness has
+  # to supply one, and the stub's own log is the proof that it did. Asserting
+  # on the observed state instead would prove nothing: the declared key is one
+  # this runner has never set, so the real defaults reports it absent exactly
+  # as the stub does. Only a read path is exercised here, so the assertion
+  # cannot itself write the domain it is protecting.
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" "$RIG" status --format json
+
+  [ "$status" -eq 1 ] || { printf '%s\n' "$output" >&3; false; }
+  [ -f "$RIG_DEFAULTS.log" ] || { printf '%s\n' "$output" >&3; false; }
+  grep -q '^read NSGlobalDomain ' "$RIG_DEFAULTS.log" ||
+    { cat "$RIG_DEFAULTS.log" >&3; false; }
+}
