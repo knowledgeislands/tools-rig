@@ -8126,6 +8126,10 @@ rig_apply_select_targets() {
     esac
   done
   rig_apply_mark_dependencies || return
+  if { [ "$scope" = resources ] || [ "$scope" = skills ]; } &&
+    [ "${#RIG_APPLY_KEEP_TOOLS[@]}" -gt 0 ]; then
+    rig_fail "target requires missing tool '${RIG_APPLY_KEEP_TOOLS[0]}' outside --scope $scope" || return
+  fi
   tools=()
   bindings=()
   providers=()

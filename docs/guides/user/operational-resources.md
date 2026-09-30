@@ -200,6 +200,8 @@ By default, `rig apply` reconciles the exact selected complete profile after ful
 
 Rig records only the minimal evidence required to retire a deselected long-lived resource safely. A receipt is not observed state or configuration authority. Removing a service or scheduled job from the selected profile schedules its former native locator for retirement on the next application.
 
+When `--scope` would exclude a missing prerequisite of a requested target, Rig rejects that selection before dispatch. Widen the scope or bring the prerequisite to `present` first.
+
 A resource-local preflight finding prevents that resource from being invoked while independent resources may continue. Any selected resource failure withholds stale-resource retirement and receipt replacement. Always review `rig apply --dry-run` after changing profile membership.
 
 Built-in launchd actions such as log inspection, restart, or running one scheduled job are explicit exceptions to desired-state reconciliation. Use an [external provider action](provider-actions.md) only when the operation cannot be represented by a built-in provider or managed declaration.

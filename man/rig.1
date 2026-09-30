@@ -370,7 +370,9 @@ Reconcile one selected tool ID, or a qualified
 or
 .BR port:ID .
 Repeat the option for several exact targets. Missing prerequisites are included
-and labelled as dependencies; already-present prerequisites are omitted.
+and labelled as dependencies; already-present prerequisites are omitted. A
+.B \-\-scope
+that excludes a missing prerequisite fails before dispatch.
 Use
 .B \-\-dry-run
 to inspect the bounded plan first.

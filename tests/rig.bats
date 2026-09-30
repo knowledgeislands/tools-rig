@@ -45,12 +45,14 @@ setup() {
 
   : >"$ORCHESTRATION_LOG"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply --target app --target independent --dry-run
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply --target app --target independent
   [ "$status" -eq 0 ] || false
-  [[ "$output" == *$'app\trunner\tplanned\t-\ttarget'* ]] || false
-  [[ "$output" == *$'independent\trunner\tplanned\t-\ttarget'* ]] || false
-  [[ "$output" != *$'base\trunner\tplanned'* ]] || false
-  ! grep -Fq 'CALL=apply:' "$ORCHESTRATION_LOG" || false
+  [[ "$output" == *$'app\trunner\tcompleted\t-\ttarget'* ]] || false
+  [[ "$output" == *$'independent\trunner\tcompleted\t-\ttarget'* ]] || false
+  [[ "$output" != *$'base\trunner\tcompleted'* ]] || false
+  [ "$(grep -Fc 'CALL=apply:app:present' "$ORCHESTRATION_LOG")" -eq 1 ] || false
+  [ "$(grep -Fc 'CALL=apply:independent:present' "$ORCHESTRATION_LOG")" -eq 1 ] || false
+  ! grep -Fq 'CALL=apply:base:' "$ORCHESTRATION_LOG" || false
 
   : >"$ORCHESTRATION_LOG"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
@@ -160,6 +162,15 @@ setup() {
     RESOURCE_LOG="$RESOURCE_LOG" "$RIG" apply --target scheduled-job:morning --scope tools --dry-run
   [ "$status" -eq 0 ] || false
   [[ "$output" != *$'morning\tscheduled-job\trunner\tplanned'* ]] || false
+  [ ! -s "$RESOURCE_LOG" ] || false
+}
+
+@test "narrow scope refuses a target whose missing prerequisite is excluded" {
+  write_resource_fixture
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RESOURCE_LOG="$RESOURCE_LOG" "$RIG" apply --target service:daemon --scope resources
+  [ "$status" -eq 2 ] || false
+  [[ "$output" == *"target requires missing tool 'base' outside --scope resources"* ]] || false
   [ ! -s "$RESOURCE_LOG" ] || false
 }
 

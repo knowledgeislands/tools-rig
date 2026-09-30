@@ -381,11 +381,11 @@ _Evidence:_ `rig_apply_select_targets` filters the fully resolved plan; `tests/r
 
 ### RIG-ORCH-036 — Target prerequisite closure
 
-A targeted apply MUST include each transitive declared prerequisite that is not observed `present`, preserve dependency-first dispatch, and identify requested and dependency-included entries separately in its report. An already-present prerequisite MUST NOT be dispatched merely because its dependant was selected.
+A targeted apply MUST include each transitive declared prerequisite that is not observed `present`, preserve dependency-first dispatch, and identify requested and dependency-included entries separately in its report. An already-present prerequisite MUST NOT be dispatched merely because its dependant was selected. If `--scope` excludes a missing prerequisite, Rig MUST reject the target before dispatch rather than apply it without that prerequisite.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats supplies present and missing tool and resource prerequisites, asserts dispatch order and target/dependency rows, and checks that present prerequisites are absent from the targeted plan.
+_Verify:_ Bats supplies present and missing tool and resource prerequisites, asserts dispatch order and target/dependency rows, checks that present prerequisites are absent from the targeted plan, and rejects a resource-only target with a missing tool prerequisite before invocation.
 
 _Evidence:_ `rig_apply_mark_dependencies` observes and closes tool and resource requirements; targeted tool and resource tests in `tests/rig.bats` verify the resulting rows and calls.
 
