@@ -20,3 +20,6 @@ policy: safe-local-v1
 | Item | Result | Baseline | Result commit | Exception |
 | --- | --- | --- | --- | --- |
 | RIG-CORE-025 | awaiting-review | `2fe4ca00b43b4e74a68e32046ae52765bc4bfc97` | `89132f4f00722a891ddf0f8e40544ebe839b2749` | None |
+| RIG-CORE-036 | awaiting-review | `89132f4f00722a891ddf0f8e40544ebe839b2749` | `b6faee0ed621b73809cc803319205a7e70210027` | None |
+
+<!-- ki-batch-close: RIG-BATCH-001 awaiting-review b6faee0ed621b73809cc803319205a7e70210027 -->
