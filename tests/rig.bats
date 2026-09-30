@@ -2008,8 +2008,28 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
 
   [ "$status" -eq 0 ]
-  [ "$output" = $'Needs attention: 0 of 4 entries\nProfile: default\nPlatform: macos\nTOOL         PROVIDER  STATE        DETAIL\n-----------  --------  -----------  --------------\nbase         runner    present      -\napp          runner    present      -\nindependent  runner    present      -\nnotes        -         unavailable  catalogue-only\nSummary: present=3 missing=0 drifted=0 unavailable=1 unknown=0 catalogue-only=1' ]
+  [ "$output" = $'Needs attention: 0 of 4 entries\nProfile: default\nPlatform: macos\nTOOL         PROVIDER  STATE           DETAIL\n-----------  --------  --------------  --------------\nbase         runner    present         -\napp          runner    present         -\nindependent  runner    present         -\nnotes        -         catalogue-only  catalogue-only\nSummary: present=3 missing=0 drifted=0 unavailable=0 unknown=0 catalogue-only=1' ]
   [ "$(grep '^CALL=' "$ORCHESTRATION_LOG")" = $'CALL=observe:base:present\nCALL=observe:app:present\nCALL=observe:independent:present' ]
+}
+
+@test "status separates unavailable provider observations from catalogue-only tools" {
+  write_orchestration_config
+  sed "s#${ORCHESTRATION_PROVIDER}#$BATS_TEST_TMPDIR/absent-provider#" \
+    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/unavailable.toml"
+  mv "$CONFIG_HOME/unavailable.toml" "$CONFIG_HOME/rig.toml"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" status
+  [ "$status" -eq 1 ] || false
+  output_has_table_row $'base\trunner\tunavailable\texecutable-unavailable'
+  output_has_table_row $'notes\t-\tcatalogue-only\tcatalogue-only'
+  [[ "$output" == *'Summary: present=0 missing=0 drifted=0 unavailable=2 unknown=1 catalogue-only=1'* ]] || false
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" status --format json
+  [ "$status" -eq 1 ] || false
+  [[ "$output" == *'"unavailable":2'*'"catalogue_only":1'* ]] || false
+  [[ "$output" == *'{"id":"notes","provider":"-","state":"catalogue-only","detail":"catalogue-only"}'* ]] || false
 }
 
 @test "provider-backed work reports progress on stderr without changing stdout" {
@@ -2510,7 +2530,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   output_has_table_row $'base\trunner\tmissing\t-'
   output_has_table_row $'app\trunner\tdrifted\t-'
   output_has_table_row $'independent\trunner\tunknown\t-'
-  [[ "$output" == *'Summary: present=0 missing=1 drifted=1 unavailable=1 unknown=1 catalogue-only=1'* ]] || false
+  [[ "$output" == *'Summary: present=0 missing=1 drifted=1 unavailable=0 unknown=1 catalogue-only=1'* ]] || false
 }
 
 @test "status leads with a verdict naming how much needs attention and where" {
@@ -2526,7 +2546,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [ "$(printf '%s\n' "$output" | sed -n 1p)" = 'Needs attention: 1 of 4 entries (tools 1)' ]
   [ "$(printf '%s\n' "$output" | sed -n 2p)" = 'Profile: default' ]
   output_has_table_row $'base\trunner\tmissing\t-'
-  output_has_table_row $'notes\t-\tunavailable\tcatalogue-only'
+  output_has_table_row $'notes\t-\tcatalogue-only\tcatalogue-only'
 }
 
 @test "status problems reports the entries that need attention and nothing else" {
@@ -2543,7 +2563,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   output_has_table_row $'base\trunner\tmissing\t-'
   [[ "$output" != *' present '* ]] || false
   [[ "$output" != *notes* ]] || false
-  [[ "$output" == *'Summary: present=2 missing=1 drifted=0 unavailable=1 unknown=0 catalogue-only=1'* ]] || false
+  [[ "$output" == *'Summary: present=2 missing=1 drifted=0 unavailable=0 unknown=0 catalogue-only=1'* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status --problems --format json
@@ -2552,7 +2572,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [[ "$output" == *'"healthy":false'* ]] || false
   [[ "$output" == *'{"id":"base","provider":"runner","state":"missing"'* ]] || false
   [[ "$output" == *'{"id":"app","provider":"runner","state":"present"'* ]] || false
-  [[ "$output" == *'{"id":"notes","provider":"-","state":"unavailable","detail":"catalogue-only"}'* ]] || false
+  [[ "$output" == *'{"id":"notes","provider":"-","state":"catalogue-only","detail":"catalogue-only"}'* ]] || false
 }
 
 @test "status problems keeps a healthy verdict and omits every section it empties" {

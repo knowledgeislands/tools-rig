@@ -16,7 +16,7 @@ _Evidence:_ `rig_command_status` consumes the dependency-first operational plan;
 
 ### RIG-STATE-002 — Observation vocabulary
 
-Rig MUST classify each expected tool as exactly one of `present`, `missing`, `drifted`, `unavailable`, or `unknown`.
+Rig MUST classify each provider-observed tool as exactly one of `present`, `missing`, `drifted`, `unavailable`, or `unknown`. `rig status` MUST use the separate neutral display state `catalogue-only` for a tool with no selected installation; it is not a provider observation.
 
 _Conformance:_ conforming
 
@@ -46,7 +46,7 @@ _Evidence:_ `rig_command_status`, `rig_observe_plan`, and `rig_observe_resource_
 
 ### RIG-STATE-008 — Catalogue-only neutrality
 
-`rig status` MUST report a selected catalogue-only tool with provider `-`, state `unavailable`, and detail `catalogue-only` without making that row unhealthy.
+`rig status` MUST report a selected catalogue-only tool with provider `-`, state `catalogue-only`, and detail `catalogue-only` without making that row unhealthy. The summary MUST count the row only under `catalogue-only`, not `unavailable`; the JSON tool row and summary MUST agree with text.
 
 _Conformance:_ conforming
 

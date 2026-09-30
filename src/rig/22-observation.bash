@@ -772,6 +772,14 @@ rig_print_unmanaged_skills() {
   printf 'Unmanaged skills: %s\n' "$count"
 }
 
+rig_status_tool_state() {
+  if [ "${RIG_PLAN_RESULTS[$1]}" = neutral ]; then
+    RIG_VALUE=catalogue-only
+  else
+    RIG_VALUE=${RIG_PLAN_STATES[$1]}
+  fi
+}
+
 rig_status_totals() {
   local index state
 
@@ -789,16 +797,14 @@ rig_status_totals() {
   RIG_STATUS_UNHEALTHY=0
   index=0
   while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
-    state=${RIG_PLAN_STATES[$index]}
+    rig_status_tool_state "$index"
+    state=$RIG_VALUE
     case "$state" in
       present) RIG_STATUS_PRESENT=$((RIG_STATUS_PRESENT + 1)) ;;
       missing) RIG_STATUS_MISSING=$((RIG_STATUS_MISSING + 1)) ;;
       drifted) RIG_STATUS_DRIFTED=$((RIG_STATUS_DRIFTED + 1)) ;;
-      unavailable)
-        RIG_STATUS_UNAVAILABLE=$((RIG_STATUS_UNAVAILABLE + 1))
-        [ "${RIG_PLAN_RESULTS[$index]}" = neutral ] &&
-          RIG_STATUS_CATALOGUE_ONLY=$((RIG_STATUS_CATALOGUE_ONLY + 1))
-        ;;
+      unavailable) RIG_STATUS_UNAVAILABLE=$((RIG_STATUS_UNAVAILABLE + 1)) ;;
+      catalogue-only) RIG_STATUS_CATALOGUE_ONLY=$((RIG_STATUS_CATALOGUE_ONLY + 1)) ;;
       unknown) RIG_STATUS_UNKNOWN=$((RIG_STATUS_UNKNOWN + 1)) ;;
     esac
     rig_status_needs_attention "$index" &&
@@ -890,7 +896,7 @@ rig_json_envelope() {
 }
 
 rig_status_json() {
-  local unmanaged_requested index separator healthy port section_name number mode owner
+  local unmanaged_requested index separator healthy port section_name number mode owner state
 
   unmanaged_requested=$1
   rig_json_envelope status
@@ -905,9 +911,11 @@ rig_status_json() {
   index=0
   separator=
   while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
+    rig_status_tool_state "$index"
+    state=$RIG_VALUE
     rig_json_field "$separator{" id "${RIG_PLAN_TOOLS[$index]}"
     rig_json_field ',' provider "${RIG_PLAN_PROVIDERS[$index]}"
-    rig_json_field ',' state "${RIG_PLAN_STATES[$index]}"
+    rig_json_field ',' state "$state"
     rig_json_field ',' detail "${RIG_PLAN_DETAILS[$index]}"
     printf '}'
     separator=,
@@ -1092,13 +1100,14 @@ rig_command_status() {
   rig_table_reset
   rig_table_add_column TOOL 28
   rig_table_add_column PROVIDER 18
-  rig_table_add_column STATE 12
+  rig_table_add_column STATE 14
   rig_table_add_column DETAIL 56
   index=0
   while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
     tool=${RIG_PLAN_TOOLS[$index]}
     provider=${RIG_PLAN_PROVIDERS[$index]}
-    state=${RIG_PLAN_STATES[$index]}
+    rig_status_tool_state "$index"
+    state=$RIG_VALUE
     detail=${RIG_PLAN_DETAILS[$index]}
     if [ "$problems" -eq 0 ] || rig_status_needs_attention "$index"; then
       rig_table_add_row "$tool" "$provider" "$state" "$detail" || return 2

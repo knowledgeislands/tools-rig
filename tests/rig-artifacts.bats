@@ -163,7 +163,7 @@ run_status() {
 
   run_status
   [ "$status" -eq 0 ]
-  output_has_table_row $'subject\t-\tunavailable\tcatalogue-only'
+  output_has_table_row $'subject\t-\tcatalogue-only\tcatalogue-only'
   [[ "$output" != *'artifact-missing'* ]] || false
 }
 
