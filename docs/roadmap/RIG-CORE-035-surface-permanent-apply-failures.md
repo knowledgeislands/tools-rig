@@ -3,13 +3,13 @@ id: RIG-CORE-035
 area: CORE
 title: Surface permanent apply failures
 theme: orchestration
-horizon: triage
+horizon: next
 status: draft
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-30T00:00:00Z
-updated_at: 2026-09-30T00:00:00Z
+updated_at: 2026-09-30T09:50:25Z
 ---
 
 ## Goal
@@ -29,6 +29,48 @@ The iWork three have since been moved to catalogue-only, Zoom's receipt was repa
 This is Rig's portable observation and reporting model. It does not decide how any one workstation declares Zoom or iWork, which is the host configuration's business, nor does it make `rig doctor` run providers' mutating paths to find out whether they would fail — a read-only command stays read-only.
 
 It is not [RIG-CORE-024](RIG-CORE-024-widen-needs-person-detection.md), which predicts a needs-person outcome before invocation, and not [RIG-CLI-015](RIG-CLI-015-close-outcome-contract-gaps.md), which is the outcome line. It may reuse `last-update`'s report shape, and planning should say whether it does.
+
+## Current state
+
+`apply` does not persist its result rows. `status` reports current provider observations and `doctor` synthesises current findings, so neither can identify repeated materialisation failures when a manager receipt still says `present`.
+
+## Steps
+
+- [ ] Define a bounded, timestamped last-apply record keyed by target and preserve the current `present` observation separately.
+- [ ] Record failed and successful apply outcomes without turning a read-only command into a mutation.
+- [ ] Choose and document whether one recent failure or repeated consecutive failures cause a doctor finding; make stale evidence explicit.
+- [ ] Surface the recorded failure and age in `doctor` and `status` without changing native observation or the closed outcome vocabulary.
+- [ ] Cover first failure, repeated failure, later success, missing/corrupt report, and unrelated targets with isolated state homes.
+
+## Files touched
+
+`src/rig/20-orchestration.bash`, possibly shared runtime report helpers, generated `bin/rig`, state tests, and state Specifications.
+
+## Verify
+
+Fixture-backed apply results and read-only follow-up assertions prove historical failures are visible and labelled by age. Run ShellCheck, assembly check, and Bats with an isolated state home.
+
+## Dependencies / blocks
+
+No build-order dependency. The choice of persistence semantics must be settled before Ready; the final report renderer changes presentation later.
+
+## Documentation impact
+
+### Decision Records
+
+Record a durable decision if the persisted evidence model changes Rig's state authority.
+
+### Specifications
+
+Specify retained last-apply evidence, ageing, and the finding threshold before implementation.
+
+### Guides
+
+Document where users inspect the report and how its age differs from live observation.
+
+### Roadmap
+
+Keep a live provider materialisability capability as a separate follow-up only if evidence warrants it.
 
 ## Discussion
 

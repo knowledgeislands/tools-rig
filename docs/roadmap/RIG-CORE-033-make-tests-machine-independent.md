@@ -3,13 +3,13 @@ id: RIG-CORE-033
 area: CORE
 title: Make tests machine independent
 theme: orchestration
-horizon: next
-status: draft
+horizon: now
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-28T07:05:00Z
-updated_at: 2026-09-28T07:05:00Z
+updated_at: 2026-09-30T09:50:25Z
 ---
 
 ## Goal
@@ -22,7 +22,7 @@ RIG-CORE-032 severed the base directories and the launchd domain, which is what 
 
 That is both a determinism problem and a coverage ceiling. The machine presents one state per declaration — usually installed and current — so the interesting states are unreachable at any price: a tool absent, a tool present at the wrong version, a provider failing, a provider whose capability is unavailable, a locator that moved. The same applies to platform: `RIG_PLATFORM` is already an override, but a test that omits it exercises only the runner's own platform, so the macOS and Linux paths are never both covered in one run.
 
-RIG-CORE-025 predicted the outage this closes the remainder of, and its mechanism is now superseded by `rig_test_isolate`. Two of its Steps were never delivered and belong here: a test asserting the isolation holds, and a suite run under a deliberately hostile ambient environment, which is the only evidence that nothing reached the real directories. Whether RIG-CORE-025 is closed as merged or narrowed to those two Steps is the reviewer's decision, not an assumption of this record.
+[RIG-CORE-025](RIG-CORE-025-isolate-state-in-tests.md) now owns the remaining direct containment guard and hostile ambient run. This item owns the separate manager-executable and platform fixture boundary. The benchmark still lacks its own state home; the required local gate currently stops when the benchmark's `status` command exits 1 after its three query cases.
 
 ## Boundary
 
@@ -36,7 +36,7 @@ Excluded: containers or a separate user account; rewriting assertions that are a
 
 ## Current state
 
-To be established when this item is planned. The counts above are the starting evidence: seventeen `PATH` overrides across the suite, one skipped timing test, and `scripts/benchmark-rig` still naming no `RIG_STATE_HOME`, so it reads the runner's real receipt while running `diag`, `show`, `list`, and `status`.
+The shared helper isolates directories and destructive macOS writers, but it does not isolate package-manager executables or default `RIG_PLATFORM`. Some tests use explicit manager stubs, while others inherit whichever manager is installed. `scripts/benchmark-rig` constructs a fake uv executable for observation but names no `RIG_STATE_HOME` and its status case currently fails in the local gate.
 
 ## Steps
 
@@ -45,12 +45,11 @@ To be established when this item is planned. The counts above are the starting e
 - [ ] Convert the existing tests that reach a real provider, file by file, to declare their observations.
 - [ ] Add the variation matrix: provider by kind by observation state by platform, covering absent, present, drifted, failed, and capability-unavailable.
 - [ ] Sandbox `scripts/benchmark-rig` so it names its own state home rather than inheriting the runner's.
-- [ ] Add the hermeticity guard inherited from RIG-CORE-025: a test asserting nothing outside `$BATS_TEST_TMPDIR` was written, and a gate run under a hostile ambient environment.
 - [ ] Record the fixture convention in the authoring notes so a new test file inherits it.
 
 ## Files touched
 
-To be established when this item is planned. Expected: `tests/helpers/` for the fixture mechanism, the thirteen `tests/*.bats` files as they convert, `scripts/benchmark-rig`, and `AGENTS.md`.
+`tests/helpers/` for provider fixtures, the affected Bats files as they convert, `scripts/benchmark-rig`, and `AGENTS.md`. No runtime source change is planned.
 
 ## Verify
 
@@ -62,11 +61,11 @@ scripts/benchmark-rig
 scripts/smoke-native-providers
 ```
 
-Pass means the suite green, and green under a hostile ambient environment, which is the assertion that matters. The determinism claim needs its own evidence: the suite must pass with `PATH` reduced to the fixture directory and the standard utilities, because a test that still needed a real manager could not pass. `bin/rig` byte-identical before and after is the evidence that no test-only path entered the runtime.
+Pass means the suite is green under a fixture-only manager path and on both selected platform values. The benchmark must pass with its own isolated state home. `bin/rig` byte-identical before and after is evidence that no test-only path entered the runtime; the hostile ambient directory check belongs to RIG-CORE-025.
 
 ## Dependencies / blocks
 
-Nothing blocks this. RIG-CORE-032 delivered the directory and launchd half of the same boundary and is accepted. RIG-CORE-025 overlaps and should be resolved against this record before either is planned further. Neither is a build-order dependency.
+Nothing blocks this by build order. RIG-CORE-032 delivered initial directory and launchd isolation; RIG-CORE-025 owns its missing proof. This fixture conversion benefits from landing that guard first.
 
 ## Documentation impact
 
@@ -84,7 +83,7 @@ None expected. No specified behaviour changes; the `_Verify_` clauses continue t
 
 ### Roadmap
 
-This record absorbs the `scripts/benchmark-rig` concern recorded under RIG-CORE-032 and the two undelivered RIG-CORE-025 Steps. RIG-CORE-025's disposition is a decision for its reviewer.
+This record absorbs the `scripts/benchmark-rig` concern recorded under RIG-CORE-032. It no longer duplicates RIG-CORE-025's remaining verification work.
 
 ## Discussion
 

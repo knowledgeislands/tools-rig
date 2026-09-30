@@ -3,13 +3,13 @@ id: RIG-CLI-016
 area: CLI
 title: Apply one resource
 theme: cli
-horizon: next
+horizon: now
 status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-26T10:00:00Z
-updated_at: 2026-09-26T15:45:00Z
+updated_at: 2026-09-30T09:39:54Z
 ---
 
 ## Goal

@@ -3,13 +3,13 @@ id: RIG-CORE-029
 area: CORE
 title: Inventory applications alongside providers
 theme: orchestration
-horizon: triage
+horizon: next
 status: draft
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-27T08:13:24Z
-updated_at: 2026-09-27T08:13:24Z
+updated_at: 2026-09-30T09:50:25Z
 ---
 
 ## Goal
@@ -37,6 +37,47 @@ The gap also propagates into another repository's reasoning. `DOTFILES-UE-036` s
 This is about which inventory surfaces `--unmanaged` consults and how it reports a surface it did not examine. It does not change what counts as unmanaged once a surface is scanned, the inventory capability protocol, the state vocabulary, or exit statuses. It does not add new inventory providers, and it does not decide which of this workstation's undeclared applications should be declared — that is configuration work owned by the chezmoi source.
 
 Whether wrapped iOS-on-macOS bundles should be inventoried the same way as native ones is a real question the scan will meet, but it is a classification concern rather than this dispatch bug.
+
+## Current state
+
+The built-in macOS applications inventory runs only when no providers are declared. A configuration with Homebrew and Paperclip providers therefore omits that inventory without a problem row.
+
+## Steps
+
+- [ ] Make the built-in applications inventory a macOS baseline alongside declared providers.
+- [ ] Deduplicate any application identity also reported by a declared provider without hiding a genuinely unclaimed application.
+- [ ] Report an unavailable inventory surface as a problem rather than as an examined empty result.
+- [ ] Add isolated cases with zero, one unrelated, and one overlapping declared provider, plus a failed applications scan.
+
+## Files touched
+
+`src/rig/20-orchestration.bash`, generated `bin/rig`, unmanaged-inventory Bats coverage, and state or orchestration Specifications describing the baseline.
+
+## Verify
+
+Assert that an unclaimed application appears with and without a declared provider, one claimed application appears once, and a failed scan is visible. Run ShellCheck, assembly check, and the Bats suite.
+
+## Dependencies / blocks
+
+No build-order dependency. Provider fixtures from [RIG-CORE-033](RIG-CORE-033-make-tests-machine-independent.md) may be reused, but this item must retain its own assertions.
+
+## Documentation impact
+
+### Decision Records
+
+None expected for the bounded macOS baseline.
+
+### Specifications
+
+Specify the macOS baseline and the meaning of an unavailable scan.
+
+### Guides
+
+Update unmanaged-inventory guidance if it currently implies a different coverage rule.
+
+### Roadmap
+
+The other repository's safety-net rationale remains its own record to review separately.
 
 ## Discussion
 

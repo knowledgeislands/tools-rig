@@ -3,13 +3,13 @@ id: RIG-CLI-022
 area: CLI
 title: Name relationship endpoints
 theme: cli
-horizon: triage
+horizon: soon
 status: draft
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-30T09:10:00Z
-updated_at: 2026-09-30T09:10:00Z
+updated_at: 2026-09-30T09:39:54Z
 ---
 
 ## Goal
@@ -31,6 +31,10 @@ The case surfaced under `DOTFILES-UE-061`, which typed two displacements as `alt
 ## Current state
 
 `rig_command_explain` in `src/rig/30-commands.bash` joins the collected identifiers for all three relationship kinds with `rig_join_query_items` and prints them as-is at `:1467`. The category line at `:1466` prints `identifier (Display Name)`, which is the precedent.
+
+## Shaping
+
+Use `identifier (Display Name)` for relationship endpoints, matching the existing Category line. Promote this after the command-surface audit confirms that `rig explain` remains a distinct query and before the shared report-rendering change, so the text representation has one reviewed owner. No export schema change is needed.
 
 ## Discussion
 

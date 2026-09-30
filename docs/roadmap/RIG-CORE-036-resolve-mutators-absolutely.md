@@ -3,13 +3,13 @@ id: RIG-CORE-036
 area: CORE
 title: Resolve mutators absolutely
 theme: orchestration
-horizon: triage
-status: draft
+horizon: now
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-30T09:10:00Z
-updated_at: 2026-09-30T09:10:00Z
+updated_at: 2026-09-30T09:50:25Z
 ---
 
 ## Goal
@@ -33,6 +33,43 @@ If `PATH` resolution is kept for any of the three, the reason is written into th
 ## Current state
 
 `rig_macos_defaults_command`, `rig_macos_dockutil_command`, and `rig_macos_killall_command` return `${RIG_DEFAULTS:-defaults}`, `${RIG_DOCKUTIL:-dockutil}`, and `${RIG_KILLALL:-killall}`. The harness exports all three to stubs, so the suite cannot reach the live commands by omission, but a fixture that prepends to `PATH` still can by construction.
+
+## Steps
+
+- [ ] Default `defaults` and `killall` to their macOS system paths, retaining their explicit overrides.
+- [ ] Keep `dockutil` resolved through `PATH` because its Homebrew installation prefix is not fixed; document that deliberate distinction beside the helper.
+- [ ] Cover the default values and explicit overrides in isolated tests without invoking any live mutator.
+- [ ] Reassemble `bin/rig` and update the developer safety note if its description of bare-name resolution has changed.
+
+## Files touched
+
+`src/rig/20-orchestration.bash`, generated `bin/rig`, focused tests, and the safety note in `AGENTS.md` if needed.
+
+## Verify
+
+Assert helper resolution for default and override paths in an isolated Bats fixture; run ShellCheck, Bash syntax, assembly check, and the Bats suite with stdin closed.
+
+## Dependencies / blocks
+
+No build-order dependency. This shares the test-containment boundary with [RIG-CORE-025](RIG-CORE-025-isolate-state-in-tests.md), but each change can be verified independently.
+
+## Documentation impact
+
+### Decision Records
+
+None expected; the choice is limited to executable lookup defaults.
+
+### Specifications
+
+None expected; the command contract is unchanged.
+
+### Guides
+
+The developer safety note must describe the final resolution rules.
+
+### Roadmap
+
+Record any distinct lookup hazard found during implementation separately.
 
 ## Discussion
 

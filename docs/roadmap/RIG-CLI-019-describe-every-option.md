@@ -3,13 +3,13 @@ id: RIG-CLI-019
 area: CLI
 title: Describe every option
 theme: cli
-horizon: next
+horizon: now
 status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-26T13:00:00Z
-updated_at: 2026-09-26T15:45:00Z
+updated_at: 2026-09-30T09:39:54Z
 ---
 
 ## Goal

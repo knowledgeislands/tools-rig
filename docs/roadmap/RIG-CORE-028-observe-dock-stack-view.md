@@ -3,13 +3,13 @@ id: RIG-CORE-028
 area: CORE
 title: Observe Dock stack view
 theme: orchestration
-horizon: triage
+horizon: next
 status: draft
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-27T08:13:24Z
-updated_at: 2026-09-27T08:13:24Z
+updated_at: 2026-09-30T09:50:25Z
 ---
 
 ## Goal
@@ -31,6 +31,47 @@ This is the general shape of an unchecked field rather than a Dock quirk. An obs
 This is about what the Dock observation compares and what it reports. It does not change how `rig_dock_apply` materialises a Dock, the full-teardown strategy that apply uses, the state vocabulary, or exit statuses. It does not add Dock fields beyond those already declarable, and it does not decide whether any particular workstation should prefer list or grid — that is configuration, not portable behaviour.
 
 Whether other resource adapters share the same partial-comparison shape is worth knowing but is not scoped here.
+
+## Current state
+
+Dock observation compares declared paths and order only. Apply passes declared `view` and `display` to `dockutil`, and `dockutil --list` does not expose those fields.
+
+## Steps
+
+- [ ] Establish a fixture-backed read-only source for observed stack view and display, documenting the encoding and unavailable-evidence case.
+- [ ] Compare the declared values per Dock folder while preserving the existing path and order checks.
+- [ ] Report distinguishable drift details for view and display, and avoid claiming `present` when those declared fields cannot be observed.
+- [ ] Cover matching, mismatching, missing, and unreadable observations with isolated macOS fixtures.
+
+## Files touched
+
+`src/rig/20-orchestration.bash`, generated `bin/rig`, `tests/rig-macos.bats` or a focused test file, and state Specifications if the unavailable-evidence rule changes them.
+
+## Verify
+
+Use fixture plists and stubs; assert the observed state and detail for view, display, order, and unavailable evidence. Run ShellCheck, assembly check, Bats, and native-provider smoke without applying to a live Dock.
+
+## Dependencies / blocks
+
+No build-order dependency. The machine-independent test fixture work in [RIG-CORE-033](RIG-CORE-033-make-tests-machine-independent.md) can make the macOS cases easier to run on Linux.
+
+## Documentation impact
+
+### Decision Records
+
+None expected unless the observation source creates a durable portability decision.
+
+### Specifications
+
+State which declared Dock fields are observed and how unavailable evidence is reported.
+
+### Guides
+
+Update Dock guidance if the source imposes a user-visible limitation.
+
+### Roadmap
+
+Keep any broader partial-comparison audit distinct from this Dock fix.
 
 ## Discussion
 

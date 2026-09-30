@@ -3,13 +3,13 @@ id: RIG-CORE-030
 area: CORE
 title: Govern tool repair lifecycle
 theme: orchestration
-horizon: triage
+horizon: soon
 status: draft
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-27T15:59:32Z
-updated_at: 2026-09-27T15:59:32Z
+updated_at: 2026-09-30T09:39:54Z
 ---
 
 ## Goal
@@ -29,6 +29,10 @@ Other tools expose related boundaries. The mcporter restart wrapper mixes reusab
 This item belongs to Rig for the reusable orchestration, observation and provider-contract questions. Paperclip patches, its membership API fix, credentials, company data and repair snapshots remain outside Rig core. Personal selections and repair declarations belong to the host configuration; substantial tool-specific maintenance logic belongs to its tested provider or component. The agentic harness owns portable operating guidance, not a second machine repair catalogue.
 
 Capture does not authorise applying patches, upgrading tools, deploying dotfiles, restarting services, changing grants or editing another repository. It does not commit to a generic patch engine, a new repository or package registry, or bulk migration of every existing wrapper.
+
+## Shaping
+
+Start with a read-only comparison of the existing Paperclip repairs and Rig provider protocol. The first deliverable is an ownership and integration decision with verification examples; implementation across Rig or the dotfiles repository follows only if that decision identifies a concrete gap. The external component's current behaviour and upgrade evidence must be rechecked before promotion to Next.
 
 ## Discussion
 

@@ -3,13 +3,13 @@ id: RIG-CLI-021
 area: CLI
 title: Report progress when redirected
 theme: cli
-horizon: triage
+horizon: soon
 status: draft
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-30T00:00:00Z
-updated_at: 2026-09-30T00:00:00Z
+updated_at: 2026-09-30T09:39:54Z
 ---
 
 ## Goal
@@ -25,6 +25,10 @@ This was step 5 of RIG-CLI-017 and was held there rather than delivered. It is a
 ## Boundary
 
 This changes only which renderer `auto` selects when stderr is not a terminal. It does not change the `lines` event shape, the bar, the stdout report, exit statuses, or the outcome line. Declaration-only queries stay quiet under `auto` regardless.
+
+## Shaping
+
+Keep this as the non-terminal progress change in the final output wave. Before promotion, check the scheduled `workstation-health` consumer, decide how unrelated Bats assertions opt out of progress, and verify that the live terminal display design leaves line events and stdout reports intact.
 
 ## Discussion
 
