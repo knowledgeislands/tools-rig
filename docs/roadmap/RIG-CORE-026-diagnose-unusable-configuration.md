@@ -3,13 +3,13 @@ id: RIG-CORE-026
 area: CORE
 title: Diagnose unusable configuration
 theme: orchestration
-horizon: next
+horizon: now
 status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-26T10:00:00Z
-updated_at: 2026-09-30T10:20:23Z
+updated_at: 2026-09-30T12:28:35Z
 ---
 
 ## Goal

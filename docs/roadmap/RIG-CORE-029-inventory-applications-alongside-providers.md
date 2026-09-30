@@ -3,13 +3,13 @@ id: RIG-CORE-029
 area: CORE
 title: Inventory applications alongside providers
 theme: orchestration
-horizon: next
-status: draft
+horizon: now
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-27T08:13:24Z
-updated_at: 2026-09-30T10:20:23Z
+updated_at: 2026-09-30T12:28:35Z
 ---
 
 ## Goal
@@ -44,9 +44,9 @@ The built-in macOS applications inventory runs only when no providers are declar
 
 ## Steps
 
-- [ ] Make the built-in applications inventory a macOS baseline alongside declared providers.
-- [ ] Deduplicate any application identity also reported by a declared provider without hiding a genuinely unclaimed application.
-- [ ] Report an unavailable inventory surface as a problem rather than as an examined empty result.
+- [ ] Run the built-in applications inventory on macOS after declared provider inventories, even when providers are configured.
+- [ ] Deduplicate an exact application path also reported by a declared provider without conflating unrelated provider identities that share a name.
+- [ ] Report an unavailable or failed application scan through the existing inventory problem channel, distinct from an examined empty result.
 - [ ] Add isolated cases with zero, one unrelated, and one overlapping declared provider, plus a failed applications scan.
 
 ## Files touched
@@ -84,6 +84,8 @@ The other repository's safety-net rationale remains its own record to review sep
 ### Fallback or baseline
 
 Reading the guard as a deliberate fallback is possible: perhaps a configuration that declares providers was meant to own its own inventory completely. That reading does not survive the evidence, because neither declared provider here inventories applications and no diagnostic reports the absence. The two candidate fixes differ in what they assume. Always including `macos-applications` on macOS treats it as a platform baseline and risks double-reporting if a future provider also claims applications. Including it unless a declared provider announces the same surface needs providers to declare what they inventory, which is a protocol change and the larger claim.
+
+Planning selected the macOS baseline. Declaring `inventory` does not promise application coverage, so no declared provider can suppress the platform scan. Two inventories naming the same exact application path have observed one bundle and should emit one unmanaged row; a shared unqualified label or numeric identity is not enough to merge provider namespaces. A failed scan goes through the existing problem channel and must not look like an observed empty scan.
 
 ### Silence is the underlying defect
 
