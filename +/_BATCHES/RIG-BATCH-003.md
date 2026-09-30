@@ -21,3 +21,5 @@ policy: safe-local-v1
 | --- | --- | --- | --- | --- |
 | RIG-CORE-029 | awaiting-review | `09e167f01f37968a5c3dded4562b0bf119567ff6` | `b456ad974b38a0d7acc6c7b6662747acc3619bc3` | None |
 | RIG-CORE-026 | awaiting-review | `09e167f01f37968a5c3dded4562b0bf119567ff6` | `05eeb0fd93631e9dcbf4b4276502bd6d6797e5f0` | None |
+
+<!-- ki-batch-close: RIG-BATCH-003 awaiting-review 7991826002aad0a24d1c4e0998d2ef76dd5b5561 -->
