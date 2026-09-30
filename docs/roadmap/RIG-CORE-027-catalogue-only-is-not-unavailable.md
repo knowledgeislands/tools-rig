@@ -3,13 +3,13 @@ id: RIG-CORE-027
 area: CORE
 title: Catalogue-only is not unavailable
 theme: orchestration
-horizon: next
+horizon: now
 status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-26T13:00:00Z
-updated_at: 2026-09-30T10:20:23Z
+updated_at: 2026-09-30T13:31:00Z
 ---
 
 ## Goal

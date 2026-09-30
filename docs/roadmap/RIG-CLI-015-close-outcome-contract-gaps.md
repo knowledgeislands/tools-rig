@@ -3,13 +3,13 @@ id: RIG-CLI-015
 area: CLI
 title: Close outcome contract gaps
 theme: cli
-horizon: next
+horizon: now
 status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-25T15:00:00Z
-updated_at: 2026-09-27T22:44:49Z
+updated_at: 2026-09-30T13:31:00Z
 ---
 
 ## Goal
