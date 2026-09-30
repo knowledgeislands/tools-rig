@@ -9489,6 +9489,25 @@ rig_join_query_items() {
   RIG_VALUE=${joined:-none}
 }
 
+rig_join_query_tool_names() {
+  local index item name joined
+
+  joined=
+  index=0
+  while [ "$index" -lt "${#RIG_QUERY_ITEMS[@]}" ]; do
+    item=${RIG_QUERY_ITEMS[$index]}
+    rig_get_value "tool.$item" name || return 2
+    name=$RIG_VALUE
+    if [ -n "$joined" ]; then
+      joined="$joined, $item ($name)"
+    else
+      joined="$item ($name)"
+    fi
+    index=$((index + 1))
+  done
+  RIG_VALUE=${joined:-none}
+}
+
 rig_print_tool_row() {
   local tool name category purpose
 
@@ -10316,18 +10335,18 @@ rig_command_explain() {
   rig_join_query_items
   platforms=$RIG_VALUE
   rig_collect_field_values "tool.$tool" requires
-  rig_join_query_items
+  rig_join_query_tool_names || return
   requires=$RIG_VALUE
   rig_collect_field_values "tool.$tool" related
-  rig_join_query_items
+  rig_join_query_tool_names || return
   related=$RIG_VALUE
   rig_collect_field_values "tool.$tool" alternative
-  rig_join_query_items
+  rig_join_query_tool_names || return
   alternatives=$RIG_VALUE
   rig_collect_tool_artifacts "$tool" "$platform" || return
   rig_join_query_items
   artifacts=$RIG_VALUE
-    rig_collect_profile_memberships "$tool"
+  rig_collect_profile_memberships "$tool"
   rig_join_query_items
   profiles=$RIG_VALUE
 

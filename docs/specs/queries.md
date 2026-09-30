@@ -26,13 +26,13 @@ _Evidence:_ `tests/rig.bats` compares exact tabular output before and after frag
 
 ### RIG-QUERY-003 — Explain a tool
 
-`rig explain TOOL` MUST report the tool's name, category, purpose, rationale, platforms, relationships, profile membership, and compatible installation metadata.
+`rig explain TOOL` MUST report the tool's name, category, purpose, rationale, platforms, relationships, profile membership, and compatible installation metadata. Each `Requires`, `Related`, and `Alternatives` endpoint MUST render as `identifier (Display Name)` in declaration order, or `none` when empty; the structured export MUST retain identifiers.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests explain one fixture tool and assert every declared and derived field is attributed correctly.
+_Verify:_ Bats tests explain fixture tools and assert every declared and derived field, `none` for absent relationships, ordered `identifier (Display Name)` endpoints, and punctuation in names.
 
-_Evidence:_ `tests/rig.bats` checks exact identity and meaning fields plus sorted platforms, requirements, relationships, profile membership, and active-platform installation.
+_Evidence:_ `rig_join_query_tool_names` resolves the three tool relationship fields for `rig_command_explain`; `tests/rig.bats` checks exact identity and meaning fields plus sorted platforms, named requirements and relationships, profile membership, and active-platform installation.
 
 ### RIG-QUERY-004 — Declarative query boundary
 

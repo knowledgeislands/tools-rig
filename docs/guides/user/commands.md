@@ -28,7 +28,7 @@ These commands parse configuration and never invoke providers:
 
 - `rig show [--profile NAME]` describes the resolved default or named profile in readable tables.
 - `rig list [--category ID] [--profile NAME]` browses catalogue tools, optionally restricted by category or profile.
-- `rig explain ID` shows one complete declaration and its profile membership. Qualify non-tool identities, for example `skill:caveman`, `service:example-daemon`, or `port:example-api`.
+- `rig explain ID` shows one complete declaration and its profile membership. Tool relationships show both the stable identifier and display name, such as `builtin-finder (Finder)`. Qualify non-tool identities, for example `skill:caveman`, `service:example-daemon`, or `port:example-api`.
 - `rig diag` reports the running executable, Bash and platform details, XDG paths, configuration sources, selection mode, and model counts.
 
 Use `show` for the whole selected setup, `list` to browse tools, `explain` for one identity, and `diag` when Rig is not finding or parsing what you expect.

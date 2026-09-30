@@ -996,12 +996,30 @@ write_query_config() {
     "$RIG" explain mgit
 
   [ "$status" -eq 0 ]
-  [ "$output" = $'Tool: mgit\nName: MGit\nCategory: navigation (Navigation)\nPurpose: Navigate many repositories\nRationale: It presents the Knowledge Islands estate\nPlatforms: linux, macos\nRequires: git\nRelated: fzf\nAlternatives: lazygit\nProfiles: default (inherited), focused (direct), knowledge-islands (direct)\nInstallation: marker (executable: mgit)\nArtifacts: none' ]
+  [ "$output" = $'Tool: mgit\nName: MGit\nCategory: navigation (Navigation)\nPurpose: Navigate many repositories\nRationale: It presents the Knowledge Islands estate\nPlatforms: linux, macos\nRequires: git (Git)\nRelated: fzf (fzf)\nAlternatives: lazygit (LazyGit)\nProfiles: default (inherited), focused (direct), knowledge-islands (direct)\nInstallation: marker (executable: mgit)\nArtifacts: none' ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" explain git
   [ "$status" -eq 0 ]
   [[ "$output" == *"Profiles: default (inherited), focused (required), knowledge-islands (inherited), minimal (direct)"* ]] || false
+  [[ "$output" == *'Related: none'* ]] || false
+  [[ "$output" == *'Alternatives: none'* ]] || false
+}
+
+@test "explain preserves punctuation in relationship display names" {
+  write_query_config
+  sed 's/name = "LazyGit"/name = "LazyGit: ready!"/' \
+    "$CONFIG_HOME/conf.d/10-lazygit.toml" >"$CONFIG_HOME/conf.d/10-lazygit.next"
+  mv "$CONFIG_HOME/conf.d/10-lazygit.next" "$CONFIG_HOME/conf.d/10-lazygit.toml"
+  sed 's/related = \["fzf"\]/related = ["fzf", "git"]/' \
+    "$CONFIG_HOME/conf.d/30-mgit.toml" >"$CONFIG_HOME/conf.d/30-mgit.next"
+  mv "$CONFIG_HOME/conf.d/30-mgit.next" "$CONFIG_HOME/conf.d/30-mgit.toml"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" explain mgit
+  [ "$status" -eq 0 ] || false
+  [[ "$output" == *'Related: fzf (fzf), git (Git)'* ]] || false
+  [[ "$output" == *'Alternatives: lazygit (LazyGit: ready!)'* ]] || false
 }
 
 @test "source configuration rejects former binding tables before writing stdout" {
