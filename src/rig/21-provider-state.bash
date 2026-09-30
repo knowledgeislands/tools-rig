@@ -1121,6 +1121,12 @@ rig_inventory_provider() {
   while IFS=$'\t' read -r identity detail; do
     [ -n "$identity" ] || continue
     rig_binding_declares_locator "$provider" "$identity" && continue
+    # The built-in scanner emits canonical app paths. Merge only an exact
+    # path already observed by a provider, never names in separate namespaces.
+    if [ "$provider" = macos-applications ] &&
+      rig_array_contains "$identity" "${RIG_UNMANAGED_IDENTITIES[@]+"${RIG_UNMANAGED_IDENTITIES[@]}"}"; then
+      continue
+    fi
     [ -n "$detail" ] || detail=-
     RIG_UNMANAGED_IDENTITIES[${#RIG_UNMANAGED_IDENTITIES[@]}]=$identity
     RIG_UNMANAGED_PROVIDERS[${#RIG_UNMANAGED_PROVIDERS[@]}]=$provider
@@ -1136,7 +1142,7 @@ rig_collect_unmanaged() {
   RIG_UNMANAGED_DETAILS=()
   RIG_UNMANAGED_PROBLEMS=()
   rig_collect_section_ids provider || RIG_QUERY_ITEMS=()
-  if [ "$RIG_RESOLVED_PLATFORM" = macos ] && [ "${#RIG_QUERY_ITEMS[@]}" -eq 0 ]; then
+  if [ "$RIG_RESOLVED_PLATFORM" = macos ]; then
     RIG_QUERY_ITEMS[${#RIG_QUERY_ITEMS[@]}]=macos-applications
   fi
   total=0

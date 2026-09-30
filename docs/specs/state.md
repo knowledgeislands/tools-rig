@@ -335,3 +335,13 @@ _Conformance:_ conforming
 _Verify:_ Bats runs an unattended update, parses the report's keys and rows, compares them with the run's stdout and stated outcome, asserts no file after a dry run, and asserts an unsafe target is left unaltered.
 
 _Evidence:_ `rig_write_last_run_report` and `rig_run_lifecycle_tasks` implement it; `tests/rig-lifecycle.bats` verifies it.
+
+### RIG-STATE-032 — macOS application inventory baseline
+
+On macOS, `rig status --unmanaged` MUST inspect native application bundles alongside every declared inventory provider, not only when no provider is declared. An exact application path observed by both a provider and the built-in scan MUST appear once; unrelated provider identities MUST remain distinct. An unavailable or failed application scan MUST be reported as an inventory problem rather than an observed empty result. The baseline scan MUST NOT run on other platforms.
+
+_Conformance:_ conforming
+
+_Verify:_ Isolated Bats cases exercise zero providers, one unrelated provider, the same canonical app path reported twice, and unavailable and failed scans; a non-macOS case checks the platform boundary.
+
+_Evidence:_ `rig_collect_unmanaged` always includes the macOS application adapter on macOS, and `rig_inventory_provider` deduplicates exact application paths; `tests/rig-application-inventory.bats` covers the observation and problem states.

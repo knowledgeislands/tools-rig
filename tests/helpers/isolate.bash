@@ -43,6 +43,13 @@ rig_test_isolate() {
   export RIG_TEST_PROVIDER_TABLE RIG_TEST_PROVIDER_LOG
   export PATH="$RIG_TEST_PROVIDER_BIN:/usr/bin:/bin"
   export RIG_PLATFORM=macos
+  # A macOS unmanaged scan must not inspect the runner's /Applications tree.
+  export RIG_APPLICATION_ROOTS=$BATS_TEST_TMPDIR/applications
+  mkdir -p "$RIG_APPLICATION_ROOTS"
+  stub=$BATS_TEST_TMPDIR/isolated-plutil
+  printf '%s\n' '#!/usr/bin/env bash' 'exit 1' >"$stub"
+  chmod +x "$stub"
+  export RIG_PLUTIL=$stub
 
   # The stub reports every label absent and accepts every mutation, so a
   # forgotten override fails the assertion it belongs to rather than the

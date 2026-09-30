@@ -27,6 +27,8 @@ setup() {
   [ "$RIG_PLATFORM" = macos ] || false
   [ "$PATH" = "$RIG_TEST_PROVIDER_BIN:/usr/bin:/bin" ] || false
   [ ! -e "$RIG_TEST_PROVIDER_BIN/brew" ] || false
+  [ "$RIG_APPLICATION_ROOTS" = "$BATS_TEST_TMPDIR/applications" ] || false
+  [ "$RIG_PLUTIL" = "$BATS_TEST_TMPDIR/isolated-plutil" ] || false
 
   run "$RIG" diag
   [ "$status" -eq 1 ] || false
