@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-27T08:13:24Z
-updated_at: 2026-09-30T20:07:25Z
+updated_at: 2026-09-30T22:25:21Z
 ---
 
 ## Goal
@@ -38,10 +38,12 @@ Dock observation compares declared paths and order only. Apply passes declared `
 
 ## Steps
 
-- [ ] Establish a fixture-backed read-only source for observed stack view and display, documenting the encoding and unavailable-evidence case.
-- [ ] Compare the declared values per Dock folder while preserving the existing path and order checks.
-- [ ] Report distinguishable drift details for view and display, and avoid claiming `present` when those declared fields cannot be observed.
-- [ ] Cover matching, mismatching, missing, and unreadable observations with isolated macOS fixtures.
+- [ ] Preserve dockutil path/order comparison, then read one defaults export of com.apple.dock only when paths agree and folder view/display attributes are explicitly declared.
+- [ ] Use native plutil typed extraction to inspect persistent-others folder tiles, matching normalized file URLs to declared paths without another parser or runtime dependency.
+- [ ] Compare declared view and display independently; keep drift precedence of order, then view, then display. Omitted attributes remain unconstrained.
+- [ ] Report unknown for unreadable or malformed snapshots, missing or duplicate matching tiles, missing typed fields and unsupported encodings; never infer present from incomplete evidence.
+- [ ] Cover supported encodings, matching/mismatching attributes, escaped paths, omitted declarations and unavailable evidence with isolated XML/binary plist fixtures. Assert no defaults write, Dock restart or dockutil mutation occurs.
+- [ ] Run the full repository gate and record the observation contract before the final display batch.
 
 ## Files touched
 
@@ -79,9 +81,9 @@ Keep any broader partial-comparison audit distinct from this Dock fix.
 
 `rig_dock_expected_paths` returns paths because that is what its name promises and what the order check needs. Widening it in place would make the order comparison harder to read. A separate expected-triple builder, or an extra comparison pass keyed by path, both keep the order finding intact. The detail token matters as much as the state: `order` and a new value such as `view` are different findings, and collapsing both into bare `drifted` would lose the distinction that makes the row actionable.
 
-### Reading dockutil's own output
+### Reading native evidence
 
-`dockutil --list` emits label, path, and container columns, not the view or display setting, so the current observation could not have compared those fields from the output it already reads. The values do live in `com.apple.dock` under `persistent-others[].tile-data`, as `showas` and `displayas` integers — observed on this machine as `showas: 3` for list and `displayas: 1` for folder. Reading them means either parsing that plist directly, which couples Rig to an Apple-internal encoding, or finding a `dockutil` query that exposes them. That choice is the substance of the work and is genuinely open; the plist route is more capable and less portable, and the integer mapping is undocumented.
+Dockutil list output does not expose the folder attributes. The proposed bounded source is a read-only defaults export parsed through macOS-native plutil, not a general parser added to Rig. Upstream dockutil maps view auto/fan/grid/list to 0/1/2/3 and display stack/folder to 0/1. Pin the mappings in fixture-backed adapter tests and report unfamiliar encodings as unknown rather than assuming defaults. Apply remains unchanged.
 
 ### Relationship to the catalogue-only work
 

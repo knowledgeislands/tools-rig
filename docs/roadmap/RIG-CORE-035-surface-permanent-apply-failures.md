@@ -9,79 +9,81 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-30T00:00:00Z
-updated_at: 2026-09-30T20:07:25Z
+updated_at: 2026-09-30T22:28:16Z
 ---
 
 ## Goal
 
-A materialisation that fails on every `rig apply` is visible to `rig doctor` and `rig status`, so a person learns about a permanently broken install path from a read-only command rather than by reading the failure rows of a mutating run.
+Make a failed application visible to read-only health checks even when the native manager still reports the tool installed. Keep historical failure evidence distinct from what is observed on the machine now.
 
 ## Context
 
-On this workstation `rig apply` ended `failed=5` on every run for weeks while `rig doctor` reported `findings=0` and `rig status` reported every tool `present`. Both were right under their own rules. Presence is the native manager's receipt: Homebrew listed the cask, `mas` listed the app, so the tool was present. The failures were in the act of materialising — `mas` could not resolve the iWork ADAM IDs, the Zoom cask upgrade needed `sudo` and could not prompt, `npm-check-updates` failed its install, and the `paperclip` provider ran while its service was still restarting — and nothing Rig observes between applies carries that.
+Repeated failed applications previously disappeared into terminal scrollback while status showed tools present and doctor had no findings. Installation receipts do not prove that the last attempted change succeeded. The command cutover preserves this gap: apply has resource reconciliation receipts but no durable per-target outcome history.
 
-No apply record persists either. `${XDG_STATE_HOME}/rig/reconciliation/` held only a lock, and the one report Rig does write, `last-update`, is for unattended `update` and `maintain` runs only. So the last apply's failure set lived in a terminal scrollback that, in this case, had been garbled by the progress rendering collision that RIG-CLI-020 and the earlier phase-rendering fix addressed.
-
-The iWork three have since been moved to catalogue-only, Zoom's receipt was repaired by hand, and Paperclip's provider ordering is fixed. The shape recurs though: an application that updates itself behind its manager's back, a store entry the store can no longer resolve, a provider that needs a credential it cannot ask for. [RIG-CORE-024](RIG-CORE-024-widen-needs-person-detection.md) owns predicting the credential case ahead of an unattended run; this item is about the general case being remembered and reported afterwards.
+The user approved the reliability work and the recommendation to show the last failed attempt immediately, without labelling one failure permanent. This item records failure evidence; [unattended-contract hardening](RIG-CORE-024-widen-needs-person-detection.md) preserves known preflight exclusions. Neither substitutes for the other.
 
 ## Boundary
 
-This is Rig's portable observation and reporting model. It does not decide how any one workstation declares Zoom or iWork, which is the host configuration's business, nor does it make `rig doctor` run providers' mutating paths to find out whether they would fail — a read-only command stays read-only.
-
-It is not [RIG-CORE-024](RIG-CORE-024-widen-needs-person-detection.md), which predicts a needs-person outcome before invocation, and not the already delivered outcome-line contract. It may reuse `last-update`'s report shape, and planning should say whether it does.
+Do not probe mutating provider paths from status or doctor, add a provider capability, introduce an event database, infer a credential problem from an error, or repair personal declarations. Preserve the live observation and existing outcome vocabulary. Display styling follows in the separate live-display item.
 
 ## Current state
 
-`apply` does not persist its result rows. `status` reports current provider observations and `doctor` synthesises current findings, so neither can identify repeated materialisation failures when a manager receipt still says `present`.
+Apply prints per-target outcomes and an aggregate result, but those rows are not retained. Last-upgrade is a separate unattended lifecycle report, not apply evidence. Targeted apply already requires preservation of unrelated resource receipts; a new failure ledger must likewise avoid losing evidence about targets absent from a narrow run.
 
 ## Steps
 
-- [ ] Define a bounded, timestamped last-apply record keyed by target and preserve the current `present` observation separately.
-- [ ] Record failed and successful apply outcomes without turning a read-only command into a mutation.
-- [ ] Choose and document whether one recent failure or repeated consecutive failures cause a doctor finding; make stale evidence explicit.
-- [ ] Surface the recorded failure and age in `doctor` and `status` without changing native observation or the closed outcome vocabulary.
-- [ ] Cover first failure, repeated failure, later success, missing/corrupt report, and unrelated targets with isolated state homes.
+- [ ] Specify one bounded versioned failure ledger per platform under Rig state, keyed by qualified target and provider, carrying the last actual failed attempt's UTC time and native exit status without native output, arguments or credentials.
+- [ ] Record actual dispatch failures and clear a target only after its later successful dispatch. Leave unrelated, skipped, unselected, preflight-rejected and dry-run targets untouched.
+- [ ] Add safe atomic merge/replacement with a short state-write lock so concurrent tool-only applies cannot overwrite unrelated outcomes; define same-target attempt ordering so an older failed attempt cannot replace a later successful result. Refuse unsafe paths and preserve previous valid evidence on failure.
+- [ ] Show selected unresolved failures as explicitly historical findings in doctor and a separate status section, including problems-only and JSON projections. Preserve current native state and expose recorded time/age; historical health findings contribute to the documented finding exit status.
+- [ ] Treat missing history as neutral and corrupt or unreadable history as unavailable evidence. Make persistence failures visible separately without rewriting the provider's actual result.
+- [ ] Cover failure, repeated failure, later success, targeted preservation, provider/platform separation, changed declarations, interrupted runs, unsafe state, concurrent writers and read-only follow-up.
+- [ ] Align state specifications and guides, run the full gate and prepare the review packet.
 
 ## Files touched
 
-`src/rig/23-application.bash`, `src/rig/22-observation.bash`, possibly shared runtime report helpers, generated `bin/rig`, state tests, and state Specifications.
+The apply and observation modules, a focused authored history helper if factoring warrants it, deterministic assembly, generated executable, isolated state tests, state specification and inspection guides. Do not implement this as duplicated persistence logic in status and doctor.
 
 ## Verify
 
-Fixture-backed apply results and read-only follow-up assertions prove historical failures are visible and labelled by age. Run ShellCheck, assembly check, and Bats with an isolated state home.
+Use recording provider stubs and isolated state homes. Prove live observation remains present while historical failure is visible; a later successful attempt clears only the matching target. Dry runs and read-only checks must not change ledger bytes or invoke mutation. Exercise malformed files, symlinks, failed writes and parallel disjoint-target merges. Run the complete AGENTS.md gate with Bats stdin redirected from /dev/null.
 
 ## Dependencies / blocks
 
-No build-order dependency. The choice of persistence semantics must be settled before Ready; the final report renderer changes presentation later.
+No build-order dependency. Sequence this before [live display](RIG-CLI-023-design-live-operational-display.md) so presentation consumes settled evidence. The Dock observation fix is independently executable and may share an aggregate verification pass after each item has its own tests and review packet.
+
+## Delegation
+
+One implementation lane owns the shared history contract and apply/observation integration to avoid competing writes to the same state model. A separate reviewer checks data safety, targeted preservation and read-only guarantees. The coordinator owns roadmap state, integration and final verification; no worker live-machine mutations or Git writes.
 
 ## Documentation impact
 
 ### Decision Records
 
-Record a durable decision if the persisted evidence model changes Rig's state authority.
+Explain the distinction between remembered execution evidence and provider-owned current state if a durable authority clarification is needed.
 
 ### Specifications
 
-Specify retained last-apply evidence, ageing, and the finding threshold before implementation.
+Specify ledger keys, merge/clear rules, privacy, age, interrupted-run behavior and finding exit semantics before implementation. The first unresolved failure is visible; there is no new permanent-failure state.
 
 ### Guides
 
-Document where users inspect the report and how its age differs from live observation.
+Explain how to inspect a past failed attempt, why an installed tool can also have a historical finding, and why unrelated targeted applications do not clear it.
 
 ### Roadmap
 
-Keep a live provider materialisability capability as a separate follow-up only if evidence warrants it.
+No provider materialisability capability or repair framework is included. Retain those as separate concerns only if later evidence justifies them.
 
 ## Discussion
 
-### Two candidate shapes
+### Last attempted result, not permanence
 
-The smaller shape is memory: `rig apply` persists its result rows beside `last-update`, and `rig doctor` reads them, reporting a tool whose last materialisation failed as a finding with the recorded detail, aged by the apply's timestamp. This adds no provider protocol and asks nothing of providers. Its weakness is staleness: the finding is about the last run, not now, and the report must say so.
+Use the latest actual failure and its timestamp, not a consecutive-failure threshold or an event log. Repeated failure updates that evidence; a matching success clears it. The stable title is historical, not a claim that Rig can prove permanence. This keeps the chosen reliability benefit small and understandable.
 
-The larger shape is a provider capability — a `check` or `materialisable` observation that asks whether the install path is sound without taking it. It answers the question live, but every provider would need to implement it and most native managers offer no such primitive, so it would be partial by construction.
+### Scope and stale evidence
 
-Planning should start from memory and treat the capability as a possible follow-on that the evidence has not yet justified.
+Select historical findings using the current target/provider/platform identity and label them as past execution evidence. A configuration change is not proof of recovery, but neither should an old provider's failure be attributed to its replacement. Deleted or no-longer-selected targets must not contaminate an unrelated status result. Decide retention and changed-binding presentation explicitly in the specification.
 
-### What counts as permanent
+### Interrupted writes and concurrency
 
-One failed apply is weather; the same target failing on consecutive applies is a finding. A record of the last run alone cannot distinguish them, so the persisted report may need to carry a consecutive-failure count per target, or `rig doctor` may simply report the last failure and let the reader judge. Say which.
+Persist completed attempts safely without turning a failed ledger write into a fictional provider failure. Leave previous valid evidence intact when publication cannot complete. Interrupted operations must not be presented as successful; document whether only completed attempt evidence survives. A whole-run report that overwrites unrelated targeted results is not an acceptable shortcut.

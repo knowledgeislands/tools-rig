@@ -3,13 +3,13 @@ id: RIG-CLI-023
 area: CLI
 title: Design live operational display
 theme: cli
-horizon: soon
+horizon: next
 status: draft
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-30T07:40:30Z
-updated_at: 2026-09-30T20:07:25Z
+updated_at: 2026-09-30T22:28:16Z
 ---
 
 ## Goal
@@ -24,9 +24,52 @@ Rig currently has an in-place progress bar on terminal stderr and automatic line
 
 "Tmux-like" is a design direction, not a requirement to run tmux, create panes, or add a runtime dependency. Preserve Rig's Bash 3.2 single-executable contract and stdout report versus stderr progress boundary. Do not make a read-only query appear operational, hide provider diagnostics, or let an interactive display alter JSON output or exit status.
 
-## Shaping
+## Current state
 
-Settle a compact terminal layout and a testable fallback with a captured interactive fixture before promoting this item. The display must preserve final stdout, stderr progress, and the existing `RIG_PROGRESS` control. The preceding surface audit and output-contract work establish which information belongs in each region.
+The compact progress renderer already protects native output by avoiding cursor redraw during passthrough phases. The user selected this as the final implementation batch after reliability and asked to review command output as well as live operation. Preserve that terminal-ownership boundary instead of introducing competing writers.
+
+## Steps
+
+- [ ] Present representative isolated output for every public command, separating informational queries, mutation previews, operation results and machine-readable output; agree the display interaction before implementation.
+- [ ] Prototype the agreed layout; the recommended bounded option is a compact two-line terminal panel containing phase, completed/total work, current qualified target and truthful outcome counts.
+- [ ] Explicitly choose whether the first display may yield while native output streams. Recommended scope is to clear the panel before native output, leave a durable task header and redraw afterwards; a permanently anchored pane is a different, larger mediation design.
+- [ ] Integrate the agreed panel through shared progress helpers with narrow/dumb-terminal fallback and existing lines/never controls; add no tmux dependency, alternate screen or background animation.
+- [ ] Preserve final stdout report bytes, JSON, provider diagnostics, exit status, interruption behavior and the privacy boundary for identifiers versus arbitrary native/authored values.
+- [ ] Extend PTY fixtures for widths, resizing, no-final-newline output, failure, interruption, redirection and fallback; run the full gate and provide an acceptance capture.
+
+## Files touched
+
+Shared runtime progress helpers, only the command call sites necessary for terminal ownership, generated executable, PTY/output fixtures, orchestration specification, manual and relevant user guides. Do not rewrite individual command renderers independently.
+
+## Verify
+
+Use isolated terminal fixtures and fake providers. Compare final stdout byte-for-byte with the noninteractive run, test JSON independently, preserve native diagnostic sentinels and signal exit status, and prove narrow/fallback modes leave no cursor artifacts. No workstation mutation is needed to capture examples. Run the full AGENTS.md gate.
+
+## Dependencies / blocks
+
+Sequence after reliability and unattended-contract work so their evidence and result semantics are settled. This is user-selected delivery order, not a missing shared build prerequisite. The display interaction remains a review checkpoint before Ready.
+
+## Delegation
+
+A renderer worker owns the shared terminal helpers and PTY tests. A separate reviewer checks output channels, privacy, fallback and interruption behavior. The coordinator owns the user-facing preview, agreed scope, call-site integration and final gate.
+
+## Documentation impact
+
+### Decision Records
+
+Record any durable terminal-ownership decision if it changes the existing passthrough boundary; do not infer permission for a terminal multiplexer.
+
+### Specifications
+
+Specify supported layout/fallback behavior and maintain the separation between live progress, durable diagnostics and final report data.
+
+### Guides
+
+Show the agreed interactive layout and how to select line-oriented or suppressed progress. Keep read-only command examples quiet.
+
+### Roadmap
+
+This is the last feature batch before the new 0.x release. Broader terminal mediation is not silently admitted if the compact panel proves insufficient.
 
 ## Discussion
 
@@ -36,4 +79,4 @@ Explore a small stable terminal layout with visible phase, task, count, and erro
 
 ### Sequencing
 
-Agree the interaction model after the command-surface review, then revise the existing report and progress plans where their rendering assumptions change. Keep each resulting change independently testable so a live display failure cannot obscure the final outcome report.
+Agree the interaction model in chat before implementation. The proposed first version yields terminal ownership during native diagnostics; a persistent pane throughout those calls needs explicit agreement on a larger design. Keep each resulting change independently testable so a live display failure cannot obscure the final outcome report.

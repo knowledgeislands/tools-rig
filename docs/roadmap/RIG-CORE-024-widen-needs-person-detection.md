@@ -1,7 +1,7 @@
 ---
 id: RIG-CORE-024
 area: CORE
-title: Widen needs-person detection
+title: Harden unattended upgrade contract
 theme: orchestration
 horizon: next
 status: draft
@@ -9,113 +9,81 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-25T15:00:00Z
-updated_at: 2026-09-30T20:07:25Z
+updated_at: 2026-09-30T22:25:21Z
 ---
 
 ## Goal
 
-An unattended run says ahead of time that a piece of work needs a person, whatever provider that work belongs to, instead of discovering it as an ordinary failure afterwards.
+An unattended upgrade distinguishes known work requiring a person from ordinary native failures without hiding independent results or promising that arbitrary native programs cannot prompt.
 
 ## Context
 
-`rig update --unattended` reports work that cannot proceed without a person as `unavailable` before invoking it. That pre-emptive check currently recognises exactly one case: a Homebrew store-app target. Any other provider that demands an interactive credential instead reads end-of-file and fails, and a post-hoc non-zero exit is indistinguishable from an ordinary failure.
+The user approved simplifying this item after the command cutover. Its former motivating defect was a mixed Homebrew Bundle task in which one App Store failure could mask other entries. Declaration-scoped upgrades have removed that task shape. Selected App Store bindings now receive individual unavailable results, while independent upgrades continue.
 
-The narrowest instance of the gap is already observed. A `mas` entry inside a Homebrew manifest is invisible to the check, because a manifest dispatches as one task carrying one representative binding: `brew bundle` calls `mas upgrade`, `mas` calls `sudo` to replace a root-owned bundle, and the whole manifest task fails on one stale App Store app while every other Homebrew result is masked. This workstation's chezmoi source works around it in its own scheduled wrapper by setting `HOMEBREW_BUNDLE_MAS_SKIP` from `mas outdated`.
-
-That workaround runs daily but does not hold, and the evidence that suggested it did was misread. The scheduled run on 2026-09-26 completed sixteen targets with none failed and none unavailable, exit 0 — but that clean result came from the skip list being empty, not from it protecting anything. Both the wrapper and Homebrew Bundle derive their view of what is outdated from a single call to `mas outdated`, which on mas 7.0.0 defaults to `--inaccurate`, described in its own help as "inaccurate, faster logic avoids dialogs". It reported nothing while roughly twenty-five App Store updates were in fact pending, and those had to be applied by hand the following day.
-
-So the gap is neither closed nor masked: it is untested. No stale App Store app has yet reached `brew bundle` on this machine, because the detector that would have named one has never named anything. The original failure — one stale App Store app failing the whole Homebrew manifest task and hiding every other Homebrew result — remains reachable here as well as on any other machine following the same guide. `DOTFILES-UE-051` in the chezmoi source owns making that machine's detection trustworthy; this record's case for a provider-side protocol stands on its own either way, and no longer rests on a workaround that works.
+The old optional provider action, manifest exclusions and custom lifecycle extension are no longer justified by that removed defect. The residual work is an honest, tested unattended contract, not a universal credential detector.
 
 ## Boundary
 
-This is not a cleverer classifier of non-zero exits after the fact. It does not teach Rig `mas` internals, or any other provider's internals, to serve one machine's quirk, and it does not touch the machine's own wrapper — that belongs to the chezmoi source.
+Do not add a provider-protocol action, custom upgrade dispatch, schema field, manifest parser, credential probe, retry loop or process supervisor. Do not skip every cask or classify failures by stderr text. Do not modify workstation schedules, credentials, packages or chezmoi source here.
 
 ## Current state
 
-The whole check is one predicate, and its narrowness is deliberate and documented in place.
+The lifecycle preflight conservatively excludes selected App Store bindings when unattended, provider stdin is redirected from /dev/null, and Homebrew receives its noninteractive environment flag. Ordinary failures and successful independent tasks remain distinct and the unattended report is written to last-upgrade. The mixed App Store/uv fixture covers the known exclusion, but not a failed cask and successful formula within the same native manager.
 
-`rig_lifecycle_requires_person` in `src/rig/40-publication-lifecycle.bash:632` returns false for an empty or `skill.*` binding, returns false for any provider that declares a native manifest — with the comment explaining that a manifest task carries one representative binding for many declarations — reads the binding's `kind`, and reduces to `[ "$kind" = mas ]`. That single comparison is the entire recognised set.
-
-Its one caller is `rig_command_lifecycle`, at line 719: when `RIG_UNATTENDED` is 1 and the predicate holds, the entry's executable is set to `-`, `RIG_LIFECYCLE_DETAILS[$index]` becomes `interactive-required`, progress records `skipped`, and the later reporting loop turns that detail into an `unavailable` row and sets `exit_code=1`. So the honest-signal path is complete and correct; only its input is narrow.
-
-The manifest exclusion is what hides the observed case. `rig_lifecycle_manifest` returning true short-circuits the predicate before `kind` is ever read, so a `mas` entry inside a Homebrew manifest is invisible by construction rather than by oversight.
-
-Everything else fails ordinarily. `rig_execute_lifecycle_task` runs with `</dev/null` when unattended, with the comment stating the intent — a provider that asks a question reads end-of-file and fails rather than hanging — and that failure becomes a `failed` row indistinguishable from any other.
-
-No provider declares anything about interactivity. There is no configuration field, no provider-protocol action, and no adapter capability through which a provider could say that work it is about to dispatch needs a person.
+Closing stdin prevents stdin questions from waiting for input. It does not guarantee that subprocesses never use a controlling terminal, graphical authentication or an independent credential helper.
 
 ## Steps
 
-- [ ] Add a provider-protocol action through which a provider may declare, before dispatch, the entries of an upcoming task that need a credential an unattended run cannot supply, returning nothing when it has none to declare.
-- [ ] Define the absence of that action as "declares nothing", so every existing provider keeps working unchanged and no provider is required to implement it.
-- [ ] Call the new action during lifecycle preflight for an unattended run, and merge what it returns with `rig_lifecycle_requires_person`'s existing answer rather than replacing it.
-- [ ] Keep the `[ "$kind" = mas ]` case as the built-in Homebrew adapter's own declaration, so the behaviour observed today does not regress if a provider declares nothing.
-- [ ] For a manifest task whose declaration covers some entries but not all, report one `unavailable` row per declared entry and still dispatch the manifest task, so the remaining entries are not masked by the declared ones.
-- [ ] Make exclusion the provider's job, not Rig's: the unattended dispatch tells the provider it is unattended, and the provider excludes the entries it itself declared. Rig never names `mas`, never constructs an exclusion list, and never reads a manifest.
-- [ ] Add Bats coverage with a fake provider implementing the new action: assert an unattended run reports the declared entries as `unavailable` with `interactive-required` before invoking anything, that a provider not implementing the action behaves exactly as today, that an interactive run ignores the declaration entirely, and that a manifest task's mixed case follows the stated rule.
-- [ ] Update `docs/specs/orchestration.md`, the provider-boundary decision record, `man/rig.1`, and `docs/guides/user/unattended-updates.md` for the widened protocol.
+- [ ] Reconcile the unattended specification, manual and guide with declaration-scoped upgrades and distinguish stdin containment from a guarantee against all native interaction.
+- [ ] Preserve the existing App Store exclusion and ordinary failure semantics without introducing a protocol or schema extension.
+- [ ] Add an isolated mixed Homebrew fixture with a skipped App Store entry, failed cask upgrade and successful formula upgrade; assert independent outcomes, exit status, persisted rows, stdin handling and noninteractive environment.
+- [ ] Prove the fixture never dispatches Bundle, cleanup or the excluded App Store operation; retain interactive and dry-run coverage.
+- [ ] Run the full repository gate and record a review packet stating both the proven contract and its native-program limitation.
 
 ## Files touched
 
-- `src/rig/40-publication-lifecycle.bash` — `rig_lifecycle_requires_person`, `rig_preflight_lifecycle_task`, and the unattended branch of `rig_command_lifecycle`.
-- `src/rig/20-orchestration.bash` — the provider-protocol action vocabulary and dispatch.
-- `bin/rig` — regenerated by `scripts/assemble-rig`.
-- `tests/rig-lifecycle.bats` — the fake-provider declaration cases.
-- `docs/specs/orchestration.md`, `docs/decisions/XDR-RIG-001-executable-provider-boundary.md` — the provider contract.
-- `man/rig.1`, `docs/guides/user/unattended-updates.md` — the documented unattended behaviour.
+Lifecycle tests, the orchestration specification, unattended-upgrade guide and manual. Touch the lifecycle source module only if the isolated regression exposes a deviation from the preserved contract; regenerate the executable for any source change.
 
 ## Verify
 
-```sh
-scripts/assemble-rig --check
-bats tests/
-scripts/smoke-native-providers
-shellcheck bin/rig src/rig/*.bash
-mandoc -T lint man/rig.1
-```
-
-Pass means the new Bats cases are green, `scripts/smoke-native-providers` still passes with no provider implementing the new action, and this workstation's scheduled `rig update --unattended` run still completes with none failed — the point of the work is that the same outcome no longer depends on the machine's own `HOMEBREW_BUNDLE_MAS_SKIP` wrapper, so a second machine following the same guide reaches it too.
-
-The workstation run is weak evidence on its own and must not be read as the proof. It has completed with none failed throughout the period in which the wrapper was in fact inert, so a clean run demonstrates only that nothing was dispatched that needed a person. The Bats cases carry the verification; the workstation run is a regression check against the observed baseline.
+Use inert provider stubs and isolated state homes. Assert the App Store target is not invoked, the cask's nonzero exit remains an ordinary failure, and the independent formula succeeds. Check the persisted report and exit status 1. Run the complete AGENTS.md gate, with Bats stdin redirected from /dev/null. No live scheduled or interactive upgrade is a verification step.
 
 ## Dependencies / blocks
 
-Nothing blocks this and it blocks nothing. It is independent of output rendering and the already delivered targeted-apply feature, touching lifecycle preflight rather than apply. It has a cross-repository consequence rather than a dependency: once the signal is honest, this workstation's chezmoi source can retire its `HOMEBREW_BUNDLE_MAS_SKIP` wrapper, which that repository owns and which this item must not change.
+No missing build dependency: the command cutover already exists. This complements [apply failure history](RIG-CORE-035-surface-permanent-apply-failures.md), but does not block it. Both precede the live-display finishing batch by delivery priority rather than a dependency edge.
+
+## Delegation
+
+One bounded worker owns lifecycle regression tests and related contract clarification. The coordinator owns roadmap state, integration, independent review, assembly when needed and the aggregate gate. No live provider mutation or worker Git writes.
 
 ## Documentation impact
 
 ### Decision Records
 
-`docs/decisions/XDR-RIG-001-executable-provider-boundary.md` changes, because the provider protocol gains an action and the boundary's shape is what that record owns. The change is additive and optional, and the record should say so plainly: a provider that does not answer is not in breach.
+No protocol expansion or new authority decision; preserve the existing native-provider execution boundary.
 
 ### Specifications
 
-`docs/specs/orchestration.md` changes for the new action, for when it is called, and for the manifest mixed-case rule. The `--unattended` contract's existing promise — that the flag changes neither target selection, dependency order, dispatch, the per-task outcome vocabulary, nor exit statuses — must be re-read against this work, because moving an entry from `failed` to `unavailable` changes which row a reader sees even though both exit 1.
+Clarify unattended guarantees, the known exclusion and ordinary native failures without expanding the outcome vocabulary.
 
 ### Guides
 
-`docs/guides/user/unattended-updates.md` carries the scheduled-job recipe and must say what a declared interactive entry now looks like in the report. `man/rig.1` needs the same for `--unattended`.
+Explain native interaction limits and investigation of failures. Remove obsolete Bundle assumptions rather than recommending another wrapper.
 
 ### Roadmap
 
-No new follow-on work in this repository. The dotfiles source has a consequential item — retiring the `HOMEBREW_BUNDLE_MAS_SKIP` wrapper once this lands — which belongs to that repository's roadmap and is mentioned here only so the connection is not lost.
+This narrowed item replaces the mixed-manifest implementation plan. A future explicit interactivity declaration would need a separately evidenced product decision.
 
 ## Discussion
 
-### Why not a cleverer classifier
+### Why the original design was withdrawn
 
-A failure that has already happened carries no reliable evidence that a person was what it wanted. Widening the honest signal means each provider declaring, before dispatch, which of its work needs a credential a scheduled run cannot supply.
+The old proposal required custom lifecycle support and a protocol for excluding entries from opaque manifests. The command cutover removed the Homebrew manifest task that motivated those additions. Rebuilding that protocol would preserve complexity around a problem the new boundary eliminated.
 
-### Where the signal has to come from
+### Honest detection limits
 
-A manifest is opaque to Rig by design, so either the provider gains a way to report the interactive entries it is about to hand to its own tooling, or a manifest task keeps reporting one outcome for many entries. The second is defensible; it just has to be stated rather than assumed.
+Known interactivity and an unexplained failure are different facts. Preserve the conservative App Store policy without inferring credential requirements for every cask or private source. Standard-input isolation is not process supervision; broader preflight work should follow a demonstrated remaining case.
 
-Planning took the first, with the exclusion left on the provider's side of the boundary. The provider declares its interactive entries and then excludes them itself when told the run is unattended; Rig reports each declared entry as `unavailable` and dispatches the rest of the manifest as one task. That keeps the opacity intact — Rig never names `mas`, builds an exclusion list, or reads a manifest — while the reader still gets one row per thing that needs them.
+### Host migration boundary
 
-The second option was rejected on the evidence rather than on principle. One stale App Store app masking every other Homebrew result is the observed failure, and reporting one outcome for many entries preserves exactly that masking. It would be honest about the limitation and useless against the problem.
-
-The machine's own wrapper shows the shape that provider-side exclusion should take — `HOMEBREW_BUNDLE_MAS_SKIP` is exactly that, written by hand on one machine — but it does not demonstrate that the shape works, because its input has never been correct. Take it as the design sketch it is. The work is to move that capability behind the protocol so every machine gets it, and a provider implementing the protocol will need a detector it can trust rather than the one the sketch happens to use.
-
-### Replanning checkpoint — 2026-09-30
-
-Implementation was parked before code changes. The proposed optional provider action cannot be exercised by the fake custom provider the Steps require: `rig_lifecycle_supported` currently admits only built-in Homebrew, uv, mise, npm, and skills-cli lifecycle targets, while `rig_validate_model` forbids a reserved built-in provider from declaring custom capabilities. A Homebrew manifest is opaque to Rig, so its built-in adapter cannot identify all interactive entries from its representative binding. Extending custom providers into lifecycle dispatch, changing the built-in provider boundary, or reading a native manifest would each widen the approved trust or responsibility boundary. This item returns to Next draft until the provider action and mixed-manifest dispatch are designed together; no live update or apply was run.
+The user separately requested replacing chezmoi's Brewfile and Bundle machinery with Rig declarations. That source migration must prove package-intent coverage, preserve any non-package stanzas and respect chezmoi's diff-review/apply boundary. Removing the Bundle workaround does not prove App Store update detection accurate; still-relevant host observation work retains its owner.

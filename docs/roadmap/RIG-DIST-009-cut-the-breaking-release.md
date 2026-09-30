@@ -3,107 +3,94 @@ id: RIG-DIST-009
 area: DIST
 title: Cut the breaking release
 theme: distribution
-horizon: now
-status: ready
+horizon: next
+status: draft
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-25T15:00:00Z
-updated_at: 2026-09-26T15:45:00Z
+updated_at: 2026-09-30T22:25:21Z
 ---
 
 ## Goal
 
-The Rig people install carries the changed export surface, marked plainly as a breaking change, and no machine that follows the upgrade quietly stops working.
+Publish the completed Rig finishing round as a clearly documented new 0.x release, with compatible consumer migrations and a verified installation path.
 
 ## Context
 
-Two delivered items left a release unblocked but uncut. The export instruction moved onto the command line, which is a breaking change to a published command's shape, and the verification gate was restored so a release has evidence behind it — including a Linux runner that covers the plist escaping defect no Bash 3.2 workstation can regression-test locally. Nothing is tagged, so the last released Rig still accepts the old export form and the breakage is currently invisible. The change is on `origin/main` and unreleased; the gate passes there, including the bats suite at 243 tests, the benchmarks inside budget, and the native-provider smoke run.
+The user requested release after the remaining reliability, unattended-contract and live-display work, while repair-lifecycle design stays deferred. The command cutover is implemented locally and is a much larger break than the export-only change described by this item's previous plan. Publication must cover removed verbs, retired Homebrew configuration, reviewed capture and initialization, report paths and host wrappers.
 
-One known consumer follows this repository's releases. `kit-midnight.ninja` calls `rig export midnight-ninja` in `apps/site-rig/pipeline/pull.ts` and will break on the next Rig it installs. That repository owns its own migration; the release must not ship before it lands.
+The release plan returns from Ready to draft because its candidate contents and migration evidence have changed. Do not execute its former export-only checklist as though it covers this release.
 
 ## Boundary
 
-This item does not make the consuming change inside `kit-midnight.ninja` — that repository owns it. It does not revise the release process, and it does not reopen the question of publishing to any package registry.
+This item prepares and publishes Rig only. It does not edit dotfiles, the website or the Homebrew tap, install software on the workstation, or bypass another repository's review/apply policy. Repair-lifecycle design is explicitly outside this release. Do not publish before the finishing scope, exact version, candidate verification and coordinated consumer migrations are settled.
 
 ## Current state
 
-Planning found the release state worse than uncut. Three facts do not agree with each other.
+Read-only local and remote tag inspection on 2026-09-30 found v0.1.0 and v0.2.0 only. The authored runtime still reports 0.3.0 and the changelog carries a dated 0.3.0 entry without a corresponding tag. Installer examples naming v0.3.0 therefore need correction; a changelog entry is not evidence of a published release. Recheck remote state before selecting the candidate.
 
-`git tag` lists `v0.1.0` and `v0.2.0` only. `CHANGELOG.md` nonetheless carries a dated `## [0.3.0] — 2026-09-22` entry, and its own preamble says a dated `0.x` entry records an immutable public preview. No such preview exists. `src/rig/00-runtime.bash` sets `RIG_VERSION=0.3.0` with no `+dev` marker, which contradicts [the release guide](../guides/developer/releasing.md) rule to hold the authored version at the latest release plus `+dev` until an exact version is selected. A contributor who runs `./install.sh --link` therefore gets an executable reporting a version nobody can install.
-
-`HEAD` is `aca3ed4`, equal to `origin/main`, and 121 commits ahead of `v0.2.0`. The `Unreleased` section above the 0.3.0 entry holds the breaking `rig export` change and the unattended-update work.
-
-The consumer is unmigrated. `kit-midnight.ninja` still calls `rig export midnight-ninja` in `apps/site-rig/pipeline/pull.ts`, which the new command shape rejects.
+The CLI cutover is committed locally, not pushed by this delivery. Its latest suite has 311 tests; the final release must use the actual post-finishing test count and evidence rather than preserving a stale count. The previously identified website export consumer and chezmoi's catalogue, Bundle machinery, scheduled commands and report readers need fresh compatibility evidence.
 
 ## Steps
 
-- [ ] Confirm from `kit-midnight.ninja` that its `pull.ts` migration to `rig export --profile … --output … --title … --base-url …` has landed on that repository's main branch; stop here and record the wait if it has not.
-- [ ] Fold the never-published `## [0.3.0] — 2026-09-22` changelog entry and the current `Unreleased` material into one dated `## [0.4.0]` entry, and state in that entry that 0.3.0 was prepared but never published so no installed Rig claims it.
-- [ ] Set `RIG_VERSION=0.4.0` in `src/rig/00-runtime.bash` and run `scripts/assemble-rig` so `bin/rig` carries the same version.
-- [ ] Update every immutable installer example and release-facing version reference in `README.md`, `docs/guides/user/getting-started.md`, and `man/rig.1` to `v0.4.0`.
-- [ ] Run the complete gate from [Working in Rig](../../AGENTS.md) plus the release-candidate checks in the release guide: disposable `./install.sh --link`, the release-installer fixture, staged bootstrap tests, `scripts/smoke-native-providers`, and an offline public export.
-- [ ] Prepare the annotated `v0.4.0` tag text naming the breaking export change and the consumer migration it requires, without creating the tag.
-- [ ] Obtain explicit authority for external mutation, then create the tag and GitHub release, verify the immutable installer URL, and confirm `rig --version` and `man rig` from a clean install.
-- [ ] Hand the exact version and immutable installer URL to `knowledgeislands/homebrew-tap`, and let the website advance its existing Rig entry through its own reviewed workflow.
+- [ ] Confirm delivery and review of failure history, Dock observation, narrowed unattended handling and the agreed live display; record repair-lifecycle deferral explicitly.
+- [ ] Recheck local and remote release state and select the exact next 0.x version. Keep 0.4.0 as the existing candidate, not a claim that a tag exists.
+- [ ] Verify the website export consumer's current invocation and the reviewed chezmoi migration plan, including package-intent coverage and wrapper/report compatibility; coordinate deployment order without applying another repository's changes here.
+- [ ] Reconcile the unpublished 0.3.0 changelog material and Unreleased changes into accurate release notes, clearly identifying all breaking command and configuration migrations.
+- [ ] Set the selected authored runtime version, regenerate bin/rig, and align README, manual and immutable installer examples with the intended tag.
+- [ ] Run the complete local gate and the release guide's isolated installation/export checks; verify the final candidate on the supported CI platforms before publication.
+- [ ] Review the exact candidate commit, migration evidence and publication scope, then create and publish the selected annotated tag and GitHub release under the user's conditional release instruction.
+- [ ] Verify the immutable installer and clean-install version/manual, then hand the exact version and URL to the tap and website owners through their own workflows.
 
 ## Files touched
 
-- `src/rig/00-runtime.bash` — authored `RIG_VERSION`.
-- `bin/rig` — regenerated by `scripts/assemble-rig`, never edited directly.
-- `CHANGELOG.md` — one dated `0.4.0` entry replacing `Unreleased` and the unpublished `0.3.0` entry.
-- `README.md`, `docs/guides/user/getting-started.md`, `man/rig.1` — immutable installer and version references.
-
-No source module changes. This item ships what is already on `origin/main`.
+The authored runtime version, generated executable, changelog, README, getting-started guide, manual and this record. No feature implementation or cross-repository edits belong in this release unit.
 
 ## Verify
 
-```sh
-scripts/assemble-rig --check
-bin/rig --version                     # prints exactly 0.4.0
-git tag --list 'v0.4.0'               # empty before authority, one line after
-bats tests/
-shellcheck bin/rig install.sh src/rig/*.bash scripts/assemble-rig
-mandoc -T lint man/rig.1
-ki repo audit --repo .
-```
-
-Pass means `scripts/assemble-rig --check` reports no drift, `bin/rig --version` and the top `CHANGELOG.md` entry name the same version, `grep -rn 'v0\.3\.0\|v0\.2\.0' README.md docs/guides man` finds no installer example on a superseded tag, and the full gate is green on the tagged commit.
+Use the complete gate in AGENTS.md and [the release checklist](../guides/developer/releasing.md). The candidate version, assembled executable, release notes, intended tag and installer URLs must agree. Test installation in a disposable directory rather than replacing the operator's executable. A tag must be absent before creation and resolve to the verified candidate afterwards. Confirm migration examples against the actual CLI and inventory all retired commands/configuration fields in known consumers.
 
 ## Dependencies / blocks
 
-No roadmap item blocks this one, and it blocks none. The `kit-midnight.ninja` migration is a publication precondition owned by that repository, not a dependency edge here: every step up to tag preparation can complete while the consumer is unmigrated, and only the publication step must wait. Recording the wait honestly is part of the work if the check in step one fails.
+The user selected release last, after the finishing items, not after the deferred repair investigation. This is a release sequencing condition, not an invented build dependency. Consumer migration and deployment coordination are external publication preconditions; source preparation can precede host deployment, but the new Rig and compatible host configuration must be rolled out in an explicit order.
 
 ## Documentation impact
 
 ### Decision Records
 
-None. The export surface change and its breaking nature are already recorded; cutting the release decides nothing new.
+No new runtime authority or provider model is selected by release; those decisions belong to their implementation records.
 
 ### Specifications
 
-None. No behaviour-level contract changes — the behaviour shipped, the release only publishes it.
+Ship the verified final specifications without introducing new behavior in a version bump.
 
 ### Guides
 
-`docs/guides/user/getting-started.md` and the README carry immutable installer examples pinned to a tag and must name `v0.4.0`. The release guide itself is unchanged; this item follows it rather than revising it.
+Align immutable installation examples, the breaking-migration guide and the actual release artifact. Describe the compatible deployment order for host configuration without claiming it was applied.
 
 ### Roadmap
 
-Closing this unblocks nothing mechanically, but the version-marker discipline failure found here is worth a follow-on record if it recurs: the authored version drifted to an untagged number and the changelog dated an entry that was never published. If a second occurrence appears, raise an item for a gate that fails when a dated changelog entry has no matching tag.
+Retain the repair investigation in Waiting for. Close this item only after publication and immutable-install verification, not merely after preparing release notes.
 
 ## Discussion
 
-### Sequencing
+### A new 0.x version
 
-The consumer migration is a precondition rather than a dependency of this repository's work: the tag can be prepared at any time, but publishing it before the site has migrated hands a broken pipeline to the next install.
+The user confirmed another 0.x release rather than a 1.0 stability declaration. The existing candidate is 0.4.0, which avoids reusing the historical unpublished 0.3.0 entry for a materially different snapshot. Verify that the number remains free and select it explicitly at release preparation; do not retroactively publish an extra historical preview.
 
-### Open questions
+### Migration is part of release readiness
 
-Whether the version is `v0.4.0` or something else, and whether the Homebrew tap needs a matching update in the same pass, are both undecided.
+Changing the executable does not update personal Rig declarations, native manifests, launchd wrappers or downstream export consumers. ChezMoi's source migration must retain intentional formulae, casks, App Store apps, extensions and any necessary native bootstrap semantics before Brewfile removal. Source review and live application are separate gates; a package inventory mismatch must not be hidden by deleting the old authority first.
 
-### Which version number, settled
+### Immediate host compatibility and Brewfile retirement
 
-Planning resolved the first of those. `v0.4.0` is the plan's answer because `0.3.0` was dated in the changelog but never tagged or published, so nothing installed anywhere claims it and the number is free of obligations either way. Reusing `0.3.0` would tag a commit long past what that entry describes; skipping to `0.4.0` and saying plainly in the entry that 0.3.0 never shipped keeps the changelog's own rule that a dated entry is an immutable public preview. The alternative — retroactively tagging `v0.3.0` at the commit its entry describes, then a second `v0.4.0` — publishes a preview nobody asked for and doubles the verification work.
+Read-only source inspection found that the active local Rig executable is a development symlink to this checkout, while the personal provider configuration still names the retired Homebrew manifest and its scheduled wrapper still calls update. The mismatch already exists locally; do not defer it until publication or claim that leaving chezmoi untouched makes the linked runtime unchanged. The source owner must prepare compatible configuration and wrapper changes, then obtain scoped diff-review approval before applying them.
 
-The tap question stays open and belongs to the handoff step rather than to version selection.
+The source Brewfile contains 73 formulae, 60 casks, nine App Store entries, 39 VS Code extensions and nine taps. Rig already declares the cask/App Store acquisitions and seven formulae. The 66 unmatched formula entries include resolver dependencies and an overlapping acquisition route; they are not automatically 66 intentional tools to adopt. Existing dotfiles item DOTFILES-UE-036 owns formula intent and DOTFILES-UE-027 owns honest rationale. Preserve each intentional acquisition before deleting the old inventory.
+
+Extensions and tap/trust choices need native source-owned homes rather than another Rig core feature. Prefer an explicit native extension list/helper and reviewed Homebrew prerequisite metadata/procedure; do not create implicit chezmoi hooks or discard unmatched taps. Reconcile source tests, software-lifecycle guidance and audits as well as the files themselves. Preserve the scheduled resource identity, wrapper path and logs while changing its command/report contract, so migration does not replace launchd resources unnecessarily. Remove the managed Brewfile target through chezmoi's removal mechanism only after its remaining intent is accounted for.
+
+### Publication boundary
+
+The current instruction requests release after the last agreed work is finished. It does not authorise publishing an incomplete candidate, pushing unrelated commits, changing another repository, or bypassing required verification. Recheck that condition and the exact ref scope at the publication boundary.
