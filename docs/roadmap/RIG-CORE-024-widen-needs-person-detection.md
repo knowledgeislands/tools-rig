@@ -3,13 +3,13 @@ id: RIG-CORE-024
 area: CORE
 title: Widen needs-person detection
 theme: orchestration
-horizon: now
-status: ready
+horizon: next
+status: draft
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-25T15:00:00Z
-updated_at: 2026-09-30T13:16:00Z
+updated_at: 2026-09-30T13:22:00Z
 ---
 
 ## Goal
@@ -115,3 +115,7 @@ Planning took the first, with the exclusion left on the provider's side of the b
 The second option was rejected on the evidence rather than on principle. One stale App Store app masking every other Homebrew result is the observed failure, and reporting one outcome for many entries preserves exactly that masking. It would be honest about the limitation and useless against the problem.
 
 The machine's own wrapper shows the shape that provider-side exclusion should take — `HOMEBREW_BUNDLE_MAS_SKIP` is exactly that, written by hand on one machine — but it does not demonstrate that the shape works, because its input has never been correct. Take it as the design sketch it is. The work is to move that capability behind the protocol so every machine gets it, and a provider implementing the protocol will need a detector it can trust rather than the one the sketch happens to use.
+
+### Replanning checkpoint — 2026-09-30
+
+Implementation was parked before code changes. The proposed optional provider action cannot be exercised by the fake custom provider the Steps require: `rig_lifecycle_supported` currently admits only built-in Homebrew, uv, mise, npm, and skills-cli lifecycle targets, while `rig_validate_model` forbids a reserved built-in provider from declaring custom capabilities. A Homebrew manifest is opaque to Rig, so its built-in adapter cannot identify all interactive entries from its representative binding. Extending custom providers into lifecycle dispatch, changing the built-in provider boundary, or reading a native manifest would each widen the approved trust or responsibility boundary. This item returns to Next draft until the provider action and mixed-manifest dispatch are designed together; no live update or apply was run.
