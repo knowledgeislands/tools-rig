@@ -4,12 +4,12 @@ area: CORE
 title: Make tests machine independent
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: f2499332afbfa7a758148c6495ffc1bacbe1bb7d
 created_at: 2026-09-28T07:05:00Z
-updated_at: 2026-09-30T11:03:19Z
+updated_at: 2026-09-30T20:11:30Z
 ---
 
 ## Goal
@@ -110,6 +110,10 @@ No runtime mock mode or test branch was introduced. An undeclared fixture invoca
 ### Mini recap
 
 Provider and platform fixture isolation is delivered for acceptance review; the default local verification gate now passes without a benchmark state override.
+
+## Done
+
+Accepted 2026-09-30 by Kris Brown on the review packet above.
 
 ## Discussion
 

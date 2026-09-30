@@ -4,12 +4,12 @@ area: CORE
 title: Isolate state in tests
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 2fe4ca00b43b4e74a68e32046ae52765bc4bfc97
 created_at: 2026-09-25T15:00:00Z
-updated_at: 2026-09-30T10:29:31Z
+updated_at: 2026-09-30T20:11:30Z
 ---
 
 ## Goal
@@ -89,6 +89,10 @@ The test now fails if the helper stops isolating default state or any of the fou
 ### Mini recap
 
 The missing isolation proof is delivered for acceptance review. The provider fixture conversion remains the next test-harness item; no additional state-isolation mechanism is needed.
+
+## Done
+
+Accepted 2026-09-30 by Kris Brown on the review packet above.
 
 ## Discussion
 

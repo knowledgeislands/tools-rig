@@ -4,12 +4,12 @@ area: CORE
 title: Inventory applications alongside providers
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 09e167f01f37968a5c3dded4562b0bf119567ff6
 created_at: 2026-09-27T08:13:24Z
-updated_at: 2026-09-30T12:45:00Z
+updated_at: 2026-09-30T20:11:30Z
 ---
 
 ## Goal
@@ -104,6 +104,10 @@ Deduplication is limited to the exact canonical application path; shared names i
 ### Mini recap
 
 The missing macOS baseline is delivered for acceptance review, with the repository-wide Agora audit exception recorded rather than changed out of scope.
+
+## Done
+
+Accepted 2026-09-30 by Kris Brown on the review packet above.
 
 ## Discussion
 

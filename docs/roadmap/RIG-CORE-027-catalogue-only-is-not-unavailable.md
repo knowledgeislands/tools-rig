@@ -4,12 +4,12 @@ area: CORE
 title: Catalogue-only is not unavailable
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 8b35359326ba8d2a1e861ad3162b3dd56f667d9b
 created_at: 2026-09-26T13:00:00Z
-updated_at: 2026-09-30T13:50:00Z
+updated_at: 2026-09-30T20:11:30Z
 ---
 
 ## Goal
@@ -121,6 +121,10 @@ The neutral-only fixture still exits 0. A missing provider makes bound tools una
 ### Mini recap
 
 The misleading double count and fault-looking neutral row are removed for acceptance review.
+
+## Done
+
+Accepted 2026-09-30 by Kris Brown on the review packet above.
 
 ## Discussion
 

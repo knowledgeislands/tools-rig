@@ -4,12 +4,12 @@ area: CLI
 title: Apply one resource
 theme: cli
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 40a85cd9f285a01ed42375f2b0a6a39e81f65f13
 created_at: 2026-09-26T10:00:00Z
-updated_at: 2026-09-30T12:18:56Z
+updated_at: 2026-09-30T20:11:30Z
 ---
 
 ## Goal
@@ -118,6 +118,10 @@ The selector does not change provider semantics or partial-profile resolution. A
 ### Mini recap
 
 Focused apply is delivered for acceptance review. Further report unification can use the target/dependency scope labels without changing selection behavior.
+
+## Done
+
+Accepted 2026-09-30 by Kris Brown on the review packet above.
 
 ## Discussion
 

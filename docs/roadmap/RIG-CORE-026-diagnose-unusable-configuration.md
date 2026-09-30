@@ -4,12 +4,12 @@ area: CORE
 title: Diagnose unusable configuration
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 09e167f01f37968a5c3dded4562b0bf119567ff6
 created_at: 2026-09-26T10:00:00Z
-updated_at: 2026-09-30T13:14:50Z
+updated_at: 2026-09-30T20:11:30Z
 ---
 
 ## Goal
@@ -124,6 +124,10 @@ Only doctor captures loader errors; status and apply still emit the original rej
 ### Mini recap
 
 Configuration diagnosis is ready for acceptance review, with no migration or repair mode added.
+
+## Done
+
+Accepted 2026-09-30 by Kris Brown on the review packet above.
 
 ## Discussion
 

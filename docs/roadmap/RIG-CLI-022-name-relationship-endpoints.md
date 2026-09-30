@@ -4,12 +4,12 @@ area: CLI
 title: Name relationship endpoints
 theme: cli
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 8b35359326ba8d2a1e861ad3162b3dd56f667d9b
 created_at: 2026-09-30T09:10:00Z
-updated_at: 2026-09-30T13:56:48Z
+updated_at: 2026-09-30T20:11:30Z
 ---
 
 ## Goal
@@ -94,6 +94,10 @@ The output preserves ID-first category-style formatting and declaration order, i
 ### Mini recap
 
 Named relationship endpoints are delivered for acceptance review ahead of shared report rendering.
+
+## Done
+
+Accepted 2026-09-30 by Kris Brown on the review packet above.
 
 ## Discussion
 

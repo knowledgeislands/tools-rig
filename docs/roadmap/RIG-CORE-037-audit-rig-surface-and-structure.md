@@ -4,12 +4,12 @@ area: CORE
 title: Audit surface and structure
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: b0b716dd004a4b9a053cf4ec0b0ac487c200f124
 created_at: 2026-09-30T07:38:05Z
-updated_at: 2026-09-30T10:05:46Z
+updated_at: 2026-09-30T20:11:30Z
 ---
 
 ## Goal
@@ -93,6 +93,10 @@ The guide gives maintainers a concrete route from command to source owner and di
 ### Mini recap
 
 The surface audit is delivered for acceptance review. Follow-up routes are the existing option and renderer records plus RIG-CORE-038 for source structure; no separate command-removal proposal is supported by the current evidence.
+
+## Done
+
+Accepted 2026-09-30 by Kris Brown on the review packet above.
 
 ## Discussion
 

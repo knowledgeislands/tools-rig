@@ -4,12 +4,12 @@ area: CLI
 title: Report progress when redirected
 theme: cli
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 1dfaec09165709b4a394b267403035c45b7593b9
 created_at: 2026-09-30T00:00:00Z
-updated_at: 2026-09-30T19:45:03Z
+updated_at: 2026-09-30T20:11:30Z
 ---
 
 ## Goal
@@ -94,6 +94,10 @@ The implementation reuses the established line-event vocabulary and keeps it sep
 ### Mini recap
 
 Redirected operational progress is delivered and verified. The interactive display design and any acceptance follow-ups remain separate.
+
+## Done
+
+Accepted 2026-09-30 by Kris Brown on the review packet above.
 
 ## Discussion
 

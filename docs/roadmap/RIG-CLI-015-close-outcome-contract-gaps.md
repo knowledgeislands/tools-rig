@@ -4,12 +4,12 @@ area: CLI
 title: Close outcome contract gaps
 theme: cli
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 8b35359326ba8d2a1e861ad3162b3dd56f667d9b
 created_at: 2026-09-25T15:00:00Z
-updated_at: 2026-09-30T13:39:00Z
+updated_at: 2026-09-30T20:11:30Z
 ---
 
 ## Goal
@@ -110,6 +110,10 @@ No sixth result value, status change, or new outcome line was introduced. Status
 ### Mini recap
 
 The stale outcome gaps are closed by tests and ready for acceptance review without runtime changes.
+
+## Done
+
+Accepted 2026-09-30 by Kris Brown on the review packet above.
 
 ## Discussion
 

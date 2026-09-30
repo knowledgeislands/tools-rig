@@ -4,12 +4,12 @@ area: CLI
 title: Describe every option
 theme: cli
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: d3ecdbe678e4f3f37486d6afbc0e45aa4f4dd9b1
 created_at: 2026-09-26T13:00:00Z
-updated_at: 2026-09-30T11:31:28Z
+updated_at: 2026-09-30T20:11:30Z
 ---
 
 ## Goal
@@ -122,6 +122,10 @@ The public flags and command behavior are unchanged. One shared row supplies eac
 ### Mini recap
 
 The command-help consolidation is delivered for acceptance review. RIG-CLI-016 can add `--target` to the shared table during the same batch.
+
+## Done
+
+Accepted 2026-09-30 by Kris Brown on the review packet above.
 
 ## Discussion
 

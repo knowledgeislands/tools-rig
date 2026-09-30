@@ -4,12 +4,12 @@ area: CLI
 title: One report renderer
 theme: cli
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 5700121b46532d19d068e9a7b35823b759d17866
 created_at: 2026-09-26T13:00:00Z
-updated_at: 2026-09-30T15:14:29Z
+updated_at: 2026-09-30T20:11:30Z
 ---
 
 ## Goal
@@ -132,6 +132,10 @@ The renderer preserves actionable IDs while abbreviating lower-priority prose, a
 ### Mini recap
 
 The report consolidation is implemented and ready for acceptance review; live-display design and any acceptance follow-ups stay separate.
+
+## Done
+
+Accepted 2026-09-30 by Kris Brown on the review packet above.
 
 ## Discussion
 

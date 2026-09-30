@@ -4,12 +4,12 @@ area: CORE
 title: Resolve mutators absolutely
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 89132f4f00722a891ddf0f8e40544ebe839b2749
 created_at: 2026-09-30T09:10:00Z
-updated_at: 2026-09-30T10:34:58Z
+updated_at: 2026-09-30T20:11:30Z
 ---
 
 ## Goal
@@ -96,6 +96,10 @@ Lookup now follows the fixed versus variable executable locations without changi
 ### Mini recap
 
 The runtime lookup decision is delivered for acceptance review. Provider fixtures remain owned by RIG-CORE-033.
+
+## Done
+
+Accepted 2026-09-30 by Kris Brown on the review packet above.
 
 ## Discussion
 

@@ -4,12 +4,12 @@ area: CORE
 title: Factor orchestration modules
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 356deaef4c287398fe1e32cb1e0d9fb593fb3546
 created_at: 2026-09-30T10:03:46Z
-updated_at: 2026-09-30T10:20:23Z
+updated_at: 2026-09-30T20:11:30Z
 ---
 
 ## Goal
@@ -91,6 +91,10 @@ This is a source navigation improvement with no observed runtime behaviour chang
 ### Mini recap
 
 Factorization is delivered for acceptance review. Later provider, observation, application, and output work can edit the new domain files without reopening the assembly contract.
+
+## Done
+
+Accepted 2026-09-30 by Kris Brown on the review packet above.
 
 ## Discussion
 
