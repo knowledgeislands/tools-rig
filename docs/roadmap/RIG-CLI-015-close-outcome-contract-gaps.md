@@ -4,12 +4,12 @@ area: CLI
 title: Close outcome contract gaps
 theme: cli
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 8b35359326ba8d2a1e861ad3162b3dd56f667d9b
 created_at: 2026-09-25T15:00:00Z
-updated_at: 2026-09-30T13:31:00Z
+updated_at: 2026-09-30T13:39:00Z
 ---
 
 ## Goal
@@ -40,10 +40,10 @@ What remains is that nothing stops either gap reopening. The five-value vocabula
 
 ## Steps
 
-- [ ] Add a Bats case asserting the outcome line's `result` value for every command that emits one falls inside the five-value vocabulary, and that no command emits a sixth value.
-- [ ] Add a Bats case asserting a status-2 rejection emits the `rig: error:` line and no outcome line, locking the decision `rig_outcome_report` already implements.
-- [ ] Add a Bats case asserting every command whose outcome line can carry a detail clause does carry one, so a future command that loses its detail fails the suite rather than shipping.
-- [ ] Confirm `docs/specs/state.md` states the vocabulary as closed and names the status-2 exception, and add the missing statement if either is implicit.
+- [x] Assert the current command set stays within the five-value outcome vocabulary.
+- [x] Assert a status-2 rejection emits `rig: error:` and no outcome line.
+- [x] Assert observation and lifecycle outcomes retain their detail clauses.
+- [x] Confirm `docs/specs/state.md` explicitly closes the vocabulary and names the status-2 exception; no specification edit was needed.
 
 ## Files touched
 
@@ -84,6 +84,32 @@ None. No behaviour or option changes, so nothing a reader is told needs correcti
 ### Roadmap
 
 None. This record's `Context` and `Boundary` were corrected during planning rather than deferred into the step list, so the record is honest at Ready. Had the user not selected this item for promotion, a terminal Triage disposition would have been the alternative reading — the gaps closed without this item doing anything — and the step list is deliberately the small amount of work that makes the closure verifiable instead of assumed.
+
+## Review
+
+### Delivered
+
+From baseline `8b35359326ba8d2a1e861ad3162b3dd56f667d9b`, the existing outcome contract now has regression tests for its closed result vocabulary, rejection exception, and detail clauses.
+
+### Change Summary
+
+Expanded `tests/rig.bats` with a current-command matrix at the outcome function boundary, a stronger no-second-line rejection assertion, and an integration matrix for status, doctor, apply, update, and maintain details. Runtime and Specifications were already conforming and did not change.
+
+### Verification
+
+Focused outcome tests and the full Bats suite passed. Repository audit, ShellCheck, Bash syntax, assembly check, benchmark, native-provider smoke test, man lint, and diff check passed.
+
+### Outstanding concerns
+
+The command matrix names today's verbs explicitly; a newly introduced verb must be added to it. It tests the common reporter while the integration matrix covers commands that currently set detail.
+
+### Post-change review
+
+No sixth result value, status change, or new outcome line was introduced. Status-2 errors remain named once by `rig: error:`.
+
+### Mini recap
+
+The stale outcome gaps are closed by tests and ready for acceptance review without runtime changes.
 
 ## Discussion
 
