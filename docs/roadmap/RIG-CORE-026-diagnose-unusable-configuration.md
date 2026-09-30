@@ -4,12 +4,12 @@ area: CORE
 title: Diagnose unusable configuration
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 09e167f01f37968a5c3dded4562b0bf119567ff6
 created_at: 2026-09-26T10:00:00Z
-updated_at: 2026-09-30T12:28:35Z
+updated_at: 2026-09-30T13:14:50Z
 ---
 
 ## Goal
@@ -49,13 +49,13 @@ Every other command begins the same way, which is correct and stays correct: `ri
 
 ## Steps
 
-- [ ] Add a defensive load path that `rig doctor` alone uses: attempt `rig_resolve_operational_plan`, capture its status and the rejection message instead of propagating them, and continue.
-- [ ] Report a captured load failure as `doctor`'s first finding, carrying the file, the line, and the reason exactly as the existing message states them, so the good message survives intact.
-- [ ] Skip the configuration-dependent checks when the load failed, and run the machine-level checks — provider executable availability, effective paths, platform — against what can still be determined.
-- [ ] Exit 1 rather than 2 when the only reason `doctor` cannot proceed is a configuration finding, because that is the status `doctor` already uses for an unhealthy check, and keep 2 for a rejection of the `doctor` invocation itself such as a bad `--format` value.
-- [ ] Emit the same finding in the JSON projection so `--format json` reports it as a finding rather than producing no payload.
-- [ ] Add Bats coverage for a configuration directory containing a retired `[publication.ID]` table: assert `rig doctor` exits 1, names the file and line in a finding, still reports provider availability, and that `rig status` and `rig apply` given the same directory still exit 2 with the unchanged message.
-- [ ] Update `man/rig.1` and `docs/guides/user/commands.md` where they state `doctor`'s exit statuses.
+- [x] Add a defensive load path that `rig doctor` alone uses: capture the configuration load status and rejection message before resolving the operational plan, and continue when loading fails.
+- [x] Report a captured load failure as `doctor`'s first finding, carrying the file, line, and reason as the existing message states them.
+- [x] Skip configuration-dependent checks on load failure and run provider executable availability, effective paths, and platform checks.
+- [x] Exit 1 for a configuration finding while keeping 2 for a rejected invocation such as a bad `--format` value.
+- [x] Emit the same finding in the JSON projection.
+- [x] Cover a retired `[publication.ID]` table in Bats, including doctor, status, and dry-run apply statuses.
+- [x] Update `man/rig.1` and `docs/guides/user/commands.md` for the exit statuses.
 
 ## Files touched
 
@@ -98,6 +98,32 @@ None needed, and worth stating why: strict loading everywhere else is the existi
 ### Roadmap
 
 No new follow-on work. A repair or migration mode stays out of scope and is not a deferred half of this item.
+
+## Review
+
+### Delivered
+
+From baseline `09e167f01f37968a5c3dded4562b0bf119567ff6`, `rig doctor` treats an unusable configuration as an actionable finding and exits 1; operational commands remain strict.
+
+### Change Summary
+
+Doctor captures load errors without printing a standalone rejection, then either resolves the preloaded catalogue or reports the original error in text and JSON. In the degraded branch it reports effective paths, platform, and native manager executable availability without invoking providers. The Specification, guide, and manual describe the split.
+
+### Verification
+
+The complete Bats suite passed, including retired-table, missing-source, invalid-model, JSON, status, dry-run apply, and syntax cases. ShellCheck, Bash syntax, assembly check, benchmark, native-provider smoke test, repository audit, man lint, and diff check passed. No live apply was run.
+
+### Outstanding concerns
+
+Doctor cannot perform profile-dependent observations until the configuration is repaired. Native availability in the degraded report is informational, not a claim that any provider is selected.
+
+### Post-change review
+
+Only doctor captures loader errors; status and apply still emit the original rejection at status 2. The configuration JSON key is additive to schema 1, and healthy loads leave its array empty.
+
+### Mini recap
+
+Configuration diagnosis is ready for acceptance review, with no migration or repair mode added.
 
 ## Discussion
 
