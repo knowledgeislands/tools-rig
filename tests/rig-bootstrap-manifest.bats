@@ -38,17 +38,21 @@ run_rig() {
 @test "bootstrap dry-run exposes Homebrew manifest stage without invocation" {
   run_rig bootstrap --dry-run
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'MANAGER\tPROVIDER\tRESULT\tDETAIL'* ]] || false
-  [[ "$output" == *$'manifest\thomebrew\tplanned\tbundle:'"$MANIFEST"* ]] || false
-  [[ "$output" == *$'alpha\thomebrew\tplanned\t-'* ]] || false
+  rig_test_report_contains "$output" $'MANAGER\tPROVIDER\tRESULT\tDETAIL' || false
+  rig_test_report_contains "$output" $'manifest\thomebrew\tplanned\tbundle:' || false
+  rig_test_report_contains "$output" $'alpha\thomebrew\tplanned\t-' || false
   [ ! -e "$BREW_LOG" ]
+
+  run_rig bootstrap --dry-run --format json
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"bundle:$MANIFEST"* ]] || false
 }
 
 @test "bootstrap applies Homebrew manifest exactly once before tools" {
   run_rig bootstrap
   [ "$status" -eq 0 ]
   [ "$(grep -c '^CALL <bundle>' "$BREW_LOG")" -eq 1 ]
-  [[ "$output" == *$'MANAGER\tPROVIDER\tRESULT\tDETAIL\tSCOPE'* ]] || false
+  rig_test_report_contains "$output" $'MANAGER\tPROVIDER\tRESULT\tDETAIL\tSCOPE' || false
   [ "$(sed -n '1p' "$BREW_LOG")" = "CALL <bundle> <--file=$MANIFEST>" ]
   [ "$(sed -n '2p' "$BREW_LOG")" = 'CALL <install> <--formula> <example/alpha>' ]
 }
@@ -57,7 +61,7 @@ run_rig() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$STATE_HOME" \
     RIG_PLATFORM=macos BREW_LOG="$BREW_LOG" BREW_BUNDLE_STATUS=7 "$RIG" bootstrap
   [ "$status" -eq 7 ]
-  [[ "$output" == *$'manifest\thomebrew\tfailed\texit:7'* ]] || false
+  rig_test_report_contains "$output" $'manifest\thomebrew\tfailed\texit:7' || false
   [ "$(wc -l <"$BREW_LOG" | tr -d ' ')" -eq 1 ]
   grep -F "CALL <bundle> <--file=$MANIFEST>" "$BREW_LOG"
 }
@@ -84,7 +88,7 @@ run_rig() {
 
   run_rig bootstrap --dry-run
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'autoupdate\thomebrew\tplanned\tinterval:43200'* ]] || false
+  rig_test_report_contains "$output" $'autoupdate\thomebrew\tplanned\tinterval:43200' || false
   [ ! -e "$BREW_LOG" ]
 
   run_rig bootstrap

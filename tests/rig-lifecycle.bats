@@ -127,8 +127,8 @@ run_rig() {
   run run_rig apply --dry-run
 
   [ "$status" -eq 0 ] || { printf '%s\n' "$output" >&3; false; }
-  [[ "$output" == *$'node\tmise\tplanned\t-'* ]] || false
-  [[ "$output" == *$'typescript\tnpm\tplanned\t-'* ]] || false
+  rig_test_report_contains "$output" $'node\tmise\tplanned\t-' || false
+  rig_test_report_contains "$output" $'typescript\tnpm\tplanned\t-' || false
 
   run run_rig apply
 
@@ -141,12 +141,12 @@ run_rig() {
   run run_rig update --dry-run
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'manifest\thomebrew\tplanned\tupdate'* ]] || false
-  [ "$(printf '%s\n' "$output" | grep -Fc $'manifest\thomebrew\tplanned')" -eq 1 ]
-  [[ "$output" == *$'ruff\tuv\tplanned\tupdate'* ]] || false
-  [[ "$output" == *$'node\tmise\tplanned\tupdate'* ]] || false
-  [[ "$output" == *$'typescript\tnpm\tplanned\tupdate'* ]] || false
-  [[ "$output" == *$'dotfiles\tchezmoi\tskipped\tunsupported-update'* ]] || false
+  rig_test_report_contains "$output" $'manifest\thomebrew\tplanned\tupdate' || false
+  [ "$(printf '%s\n' "$output" | awk '$1 == "manifest" && $2 == "homebrew" && $3 == "planned" { count++ } END { print count + 0 }')" -eq 1 ]
+  rig_test_report_contains "$output" $'ruff\tuv\tplanned\tupdate' || false
+  rig_test_report_contains "$output" $'node\tmise\tplanned\tupdate' || false
+  rig_test_report_contains "$output" $'typescript\tnpm\tplanned\tupdate' || false
+  rig_test_report_contains "$output" $'dotfiles\tchezmoi\tskipped\tunsupported-update' || false
   [ ! -e "$CALL_LOG" ]
 }
 
@@ -171,14 +171,22 @@ run_rig() {
   grep -Fqx $'uv\tcache prune' "$CALL_LOG"
   grep -Fqx $'mise\treshim' "$CALL_LOG"
   grep -Fqx $'npm\tcache verify' "$CALL_LOG"
-  [[ "$output" == *$'chezmoi\tchezmoi\tskipped\tunsupported-maintain'* ]] || false
+  rig_test_report_contains "$output" $'chezmoi\tchezmoi\tskipped\tunsupported-maintain' || false
 }
 
 @test "capture previews and refreshes only explicit Homebrew manifest" {
   run run_rig capture homebrew --dry-run
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'homebrew\tplanned\tcapture'* ]] || false
+  rig_test_report_contains "$output" $'homebrew\tplanned\tcapture' || false
+  [ ! -e "$CALL_LOG" ]
+
+  run run_rig capture homebrew --dry-run --format json
+  [ "$status" -eq 0 ]
+  printf '%s\n' "$output" | /usr/bin/python3 -m json.tool >/dev/null || false
+  [[ "$output" == *'"command":"capture"'* ]] || false
+  [[ "$output" == *'"platform":"fixture"'* ]] || false
+  [[ "$output" == *'["homebrew","planned","capture"]'* ]] || false
   [ ! -e "$CALL_LOG" ]
 
   run run_rig capture homebrew
@@ -211,15 +219,15 @@ run_rig() {
   run run_rig update --dry-run
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *$'ruff\tuv\tunavailable\texecutable-unavailable'* ]] || false
-  [[ "$output" == *$'manifest\thomebrew\tplanned\tupdate'* ]] || false
+  rig_test_report_contains "$output" $'ruff\tuv\tunavailable\texecutable-unavailable' || false
+  rig_test_report_contains "$output" $'manifest\thomebrew\tplanned\tupdate' || false
   [[ "$output" == *'Summary: planned=3 completed=0 failed=0 unavailable=1 skipped=1'* ]] || false
   [ ! -e "$CALL_LOG" ]
 
   run run_rig update
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *$'ruff\tuv\tunavailable\texecutable-unavailable'* ]] || false
+  rig_test_report_contains "$output" $'ruff\tuv\tunavailable\texecutable-unavailable' || false
   [[ "$output" == *'Summary: planned=0 completed=3 failed=0 unavailable=1 skipped=1'* ]] || false
   grep -Fqx $'brew\tbundle install --upgrade --file='"$MANIFEST" "$CALL_LOG"
   grep -Fqx $'mise\tupgrade node' "$CALL_LOG"
@@ -253,8 +261,8 @@ SCRIPT
   [ "$status" -eq 1 ] || { printf '%s\n' "$output" >&3; false; }
   grep -Fqx $'uv-stdin\tend-of-file' "$CALL_LOG"
   grep -Fqx $'brew-noninteractive\t1' "$CALL_LOG"
-  [[ "$output" == *$'ruff\tuv\tfailed\texit:3'* ]] || false
-  [[ "$output" == *$'node\tmise\tcompleted\tupdate'* ]] || false
+  rig_test_report_contains "$output" $'ruff\tuv\tfailed\texit:3' || false
+  rig_test_report_contains "$output" $'node\tmise\tcompleted\tupdate' || false
 }
 
 @test "an unattended run records its outcome where a wrapper can read it" {
@@ -334,8 +342,8 @@ EOF
   run run_rig update --unattended </dev/null
 
   [ "$status" -eq 1 ] || { printf '%s\n' "$output" >&3; false; }
-  [[ "$output" == *$'store-app\thomebrew\tunavailable\tinteractive-required'* ]] || false
-  [[ "$output" == *$'ruff\tuv\tcompleted\tupdate'* ]] || false
+  rig_test_report_contains "$output" $'store-app\thomebrew\tunavailable\tinteractive-required' || false
+  rig_test_report_contains "$output" $'ruff\tuv\tcompleted\tupdate' || false
   [ "$(grep -Fc mas "$CALL_LOG")" -eq 0 ]
   grep -Fqx $'store-app\thomebrew\tunavailable\tinteractive-required' \
     "$STATE_HOME/last-update"
@@ -343,7 +351,7 @@ EOF
   run run_rig update </dev/null
 
   [ "$status" -eq 0 ] || { printf '%s\n' "$output" >&3; false; }
-  [[ "$output" == *$'store-app\thomebrew\tcompleted\tupdate'* ]] || false
+  rig_test_report_contains "$output" $'store-app\thomebrew\tcompleted\tupdate' || false
   grep -Fqx $'mas\tupgrade 497799835' "$CALL_LOG"
 }
 

@@ -822,7 +822,7 @@ rig_run_lifecycle_tasks() {
   return "$exit_code"
 }
 
-rig_command_lifecycle() {
+rig_command_lifecycle_impl() {
   local action profile dry_run profile_seen dry_run_seen unattended_seen usage
 
   action=$1
@@ -879,7 +879,11 @@ rig_command_lifecycle() {
   rig_run_lifecycle_tasks "$action" "$dry_run"
 }
 
-rig_command_capture() {
+rig_command_lifecycle() {
+  rig_buffer_mutation_report "$1" rig_command_lifecycle_impl "$@"
+}
+
+rig_command_capture_impl() {
   local provider dry_run dry_run_seen adapter executable native_status
 
   provider=
@@ -949,4 +953,8 @@ rig_command_capture() {
     printf '%s\tfailed\texit:%s\n' "$provider" "$native_status"
   fi
   return "$native_status"
+}
+
+rig_command_capture() {
+  rig_buffer_mutation_report capture rig_command_capture_impl "$@"
 }

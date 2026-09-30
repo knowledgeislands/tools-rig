@@ -345,3 +345,17 @@ _Conformance:_ conforming
 _Verify:_ Isolated Bats cases exercise zero providers, one unrelated provider, the same canonical app path reported twice, and unavailable and failed scans; a non-macOS case checks the platform boundary.
 
 _Evidence:_ `rig_collect_unmanaged` always includes the macOS application adapter on macOS, and `rig_inventory_provider` deduplicates exact application paths; `tests/rig-application-inventory.bats` covers the observation and problem states.
+
+### RIG-STATE-033 — Shared report and command projection
+
+Every human-readable table MUST use the shared column renderer. It MUST preserve the full value of an identity column and spend a 120-character line budget on abbreviating other columns first; when the identities alone exceed that budget, preserving the identities takes precedence. Report spacing MUST NOT be treated as a machine interface.
+
+`rig show`, `rig list`, `rig explain`, `rig apply`, `rig bootstrap`, `rig update`, `rig maintain`, and `rig capture` MUST accept `--format text|json`, default to text, and reject another format with status 2 before dispatch. JSON MUST be one parseable object on stdout with the common schema, version, command, profile, platform, and observation-time envelope. The selection, declaration, and result values carried in JSON MUST remain complete even when text abbreviates a prose column. Mutation projections MUST group unabridged result rows by their named columns and retain the full source report; explanation projections MUST retain the full report alongside labelled fields.
+
+Mutation text reports MUST emit a completed table after its work finishes, so native diagnostics written to stderr cannot divide its rows when a terminal merges the streams. Progress and native diagnostics MUST remain on stderr during execution; buffering stdout MUST NOT change the command's exit status or stated outcome.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats checks a long identifier in show and status, parses JSON from every listed command, checks full JSON values, and exercises a provider that writes to stderr during apply. The complete test gate checks existing command outcomes and report rows.
+
+_Evidence:_ `rig_table_fit_widths`, `rig_render_mutation_report`, `rig_mutation_json`, `rig_show_json`, and the command wrappers implement the contract; `tests/rig.bats` and `tests/rig-projection.bats` cover it.

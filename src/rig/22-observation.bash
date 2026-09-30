@@ -326,11 +326,11 @@ rig_print_port_status() {
 
   problems=${1:-0}
   rig_table_reset
-  rig_table_add_column PORT 16
+  rig_table_add_column PORT 16 end keep
   rig_table_add_column NUMBER 6
   rig_table_add_column PROTOCOL 8
   rig_table_add_column MODE 10
-  rig_table_add_column OWNER 16
+  rig_table_add_column OWNER 16 end keep
   rig_table_add_column STATE 12
   rig_table_add_column DETAIL 40
   unhealthy=0
@@ -384,7 +384,7 @@ rig_print_unmanaged_listeners() {
   rig_load_listeners || return
   printf '\n'
   rig_table_reset
-  rig_table_add_column LISTENER 14
+  rig_table_add_column LISTENER 14 end keep
   rig_table_add_column PROTOCOL 8
   rig_table_add_column SCOPE 18
   rig_table_add_column STATE 12
@@ -435,9 +435,9 @@ rig_print_resource_status() {
   problems=${1:-0}
   unhealthy=0
   rig_table_reset
-  rig_table_add_column RESOURCE 26
+  rig_table_add_column RESOURCE 26 end keep
   rig_table_add_column KIND 14
-  rig_table_add_column PROVIDER 18
+  rig_table_add_column PROVIDER 18 end keep
   rig_table_add_column STATE 12
   rig_table_add_column DETAIL 42
   index=0
@@ -691,8 +691,8 @@ rig_print_skill_status() {
 
   problems=${1:-0}
   rig_table_reset
-  rig_table_add_column SKILL 28
-  rig_table_add_column AUTHORITY 20
+  rig_table_add_column SKILL 28 end keep
+  rig_table_add_column AUTHORITY 20 end keep
   rig_table_add_column STATE 12
   rig_table_add_column DETAIL 54
   unhealthy=0
@@ -755,8 +755,8 @@ rig_print_unmanaged_skills() {
   count=0
   printf '\n'
   rig_table_reset
-  rig_table_add_column SKILL 28
-  rig_table_add_column AUTHORITY 20
+  rig_table_add_column SKILL 28 end keep
+  rig_table_add_column AUTHORITY 20 end keep
   rig_table_add_column STATE 12
   rig_table_add_column DETAIL 54
   index=0
@@ -1098,8 +1098,8 @@ rig_command_status() {
   rig_print_status_verdict
   printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   rig_table_reset
-  rig_table_add_column TOOL 28
-  rig_table_add_column PROVIDER 18
+  rig_table_add_column TOOL 28 end keep
+  rig_table_add_column PROVIDER 18 end keep
   rig_table_add_column STATE 14
   rig_table_add_column DETAIL 56
   index=0
@@ -1134,7 +1134,7 @@ rig_command_status() {
     printf '\n'
     rig_table_reset
     rig_table_add_column IDENTITY 32 middle
-    rig_table_add_column PROVIDER 18
+    rig_table_add_column PROVIDER 18 end keep
     rig_table_add_column STATE 12
     rig_table_add_column DETAIL 52
     index=0

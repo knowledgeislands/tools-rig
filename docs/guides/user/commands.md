@@ -4,16 +4,16 @@ Rig's commands follow a deliberate progression from understanding declared inten
 
 ## Command synopsis
 
-- `rig show [--profile NAME]`
-- `rig list [--category ID] [--profile NAME]`
-- `rig explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID`
+- `rig show [--profile NAME] [--format text|json]`
+- `rig list [--category ID] [--profile NAME] [--format text|json]`
+- `rig explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID [--format text|json]`
 - `rig status [--profile NAME] [--problems] [--unmanaged] [--format text|json]`
 - `rig doctor [--profile NAME] [--format text|json]`
-- `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID]... [--dry-run]`
-- `rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]`
-- `rig update [--profile NAME] [--dry-run] [--unattended]`
-- `rig maintain [--profile NAME] [--dry-run] [--unattended]`
-- `rig capture PROVIDER [--dry-run]`
+- `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID]... [--dry-run] [--format text|json]`
+- `rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run] [--format text|json]`
+- `rig update [--profile NAME] [--dry-run] [--unattended] [--format text|json]`
+- `rig maintain [--profile NAME] [--dry-run] [--unattended] [--format text|json]`
+- `rig capture PROVIDER [--dry-run] [--format text|json]`
 - `rig run PROVIDER ACTION [-- ARGUMENT...]`
 - `rig export --profile NAME --output DIRECTORY [--title TEXT] [--base-url URL]`
 - `rig diag`
@@ -26,12 +26,14 @@ Rig's commands follow a deliberate progression from understanding declared inten
 
 These commands parse configuration and never invoke providers:
 
-- `rig show [--profile NAME]` describes the resolved default or named profile in readable tables.
-- `rig list [--category ID] [--profile NAME]` browses catalogue tools, optionally restricted by category or profile.
-- `rig explain ID` shows one complete declaration and its profile membership. Tool relationships show both the stable identifier and display name, such as `builtin-finder (Finder)`. Qualify non-tool identities, for example `skill:caveman`, `service:example-daemon`, or `port:example-api`.
+- `rig show [--profile NAME] [--format text|json]` describes the resolved default or named profile in readable tables or an unabridged JSON selection.
+- `rig list [--category ID] [--profile NAME] [--format text|json]` browses catalogue tools, optionally restricted by category or profile.
+- `rig explain ID [--format text|json]` shows one complete declaration and its profile membership. Tool relationships show both the stable identifier and display name, such as `builtin-finder (Finder)`. Qualify non-tool identities, for example `skill:caveman`, `service:example-daemon`, or `port:example-api`.
 - `rig diag` reports the running executable, Bash and platform details, XDG paths, configuration sources, selection mode, and model counts.
 
 Use `show` for the whole selected setup, `list` to browse tools, `explain` for one identity, and `diag` when Rig is not finding or parsing what you expect.
+
+For scripts, `show --format json` has selected tool, skill, resource, and port arrays; `list --format json` has complete tool fields; and `explain --format json` has labelled fields plus the full report text. Text tables may abbreviate prose, but never a catalogue identifier.
 
 ## Observe the machine
 
@@ -40,7 +42,7 @@ These commands are read-only, but may invoke built-in observations or observatio
 - `rig doctor [--profile NAME] [--format text|json]` gives a compact health answer and actionable findings, even when the configuration cannot load.
 - `rig status [--profile NAME] [--problems] [--unmanaged] [--format text|json]` gives the detailed expected-versus-observed comparison. `--problems` reports only the entries that need attention. `--unmanaged` asks supported sources for undeclared tools, skills, and listeners, and always scans macOS application bundles on macOS even when other providers are configured. An unavailable or failed scan appears as an inventory problem rather than an empty result.
 
-Status opens with a verdict line naming how many entries need attention and which sections they fall in, so a healthy setup answers in its first line. It then groups tools, skills, managed resources, private ports, and unmanaged observations into aligned tables, each closing with its own summary counters. A tool deliberately left outside installation has state `catalogue-only`, counted only under `catalogue-only`, while `unavailable` is reserved for observation faults. `--problems` drops the rows that are present and the sections that consequently hold nothing, leaving only what wants a decision; a catalogue-only tool needs nobody, so it is not such a row. The verdict, the summaries, the exit status, and the JSON payload stay the same either way. Columns grow to fit ordinary values but each table remains within 120 characters; unusually long values use a visible `...` marker, with paths retaining both their beginning and identifying tail where useful. The display is for people rather than scripts: use `rig explain ID` for the complete declaration, and do not parse spacing as a machine interface.
+Status opens with a verdict line naming how many entries need attention and which sections they fall in, so a healthy setup answers in its first line. It then groups tools, skills, managed resources, private ports, and unmanaged observations into aligned tables, each closing with its own summary counters. A tool deliberately left outside installation has state `catalogue-only`, counted only under `catalogue-only`, while `unavailable` is reserved for observation faults. `--problems` drops the rows that are present and the sections that consequently hold nothing, leaving only what wants a decision; a catalogue-only tool needs nobody, so it is not such a row. The verdict, the summaries, the exit status, and the JSON payload stay the same either way. Columns grow to fit ordinary values while preserving identifiers; prose may use a visible `...` marker to fit a 120-character line, with paths retaining both their beginning and identifying tail where useful. The display is for people rather than scripts: use `--format json` for complete values, and do not parse spacing as a machine interface.
 
 The port table compares each declared owner against the process actually bound. A listener launched through an interpreter — `node` running a service's `program`, or a virtual environment's `python` running a tool — matches its declaration, because the comparison reads the whole command line rather than the executable name alone. `conflicting` therefore asserts something specific: the command line was read, and it identifies a different process. Where that command line cannot be read and the executable name does not match either, the port reports `unknown` with `owner-unavailable`, or stays informational for an `allocated` port. A stranger on the port and a process Rig could not inspect are different answers, and the table says which one it means.
 
@@ -72,20 +74,22 @@ rig apply --dry-run
 rig bootstrap --dry-run
 ```
 
-- `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID]... [--dry-run]` reconciles an operable complete profile in tools → skills → resources order. Repeat an exact `--target` to select several entries; unknown IDs fail before dispatch. Missing prerequisites join the bounded plan and have separate dependency rows.
-- `rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]` runs Rig's bounded new-machine lifecycle, stages supported declared manager prerequisites where needed, and then materialises the selected bootstrap profile.
+- `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID]... [--dry-run] [--format text|json]` reconciles an operable complete profile in tools → skills → resources order. Repeat an exact `--target` to select several entries; unknown IDs fail before dispatch. Missing prerequisites join the bounded plan and have separate dependency rows.
+- `rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run] [--format text|json]` runs Rig's bounded new-machine lifecycle, stages supported declared manager prerequisites where needed, and then materialises the selected bootstrap profile.
 
 Bootstrap is a lifecycle stage, not a provider or a reason to create another profile. It can stage only Rig's fixed Homebrew → mise → npm prerequisite chain when the selected declarations require it; configuration cannot supply arbitrary setup commands.
 
 Both commands preflight the selected plan before the first mutation. A shared safety problem rejects the plan. A finding local to one managed resource fails that row while allowing independent work to remain visible.
 
+Mutation reports are buffered until the operation finishes, so provider diagnostics on stderr cannot divide a table on a terminal. Progress still reports slow work as it happens. `--format json` returns complete result rows grouped by their named columns, plus notes and the full report text, with the same exit status as text.
+
 ## Advance native provider state
 
 Reconciliation makes declared intent present. It does not silently upgrade every tool, run package-manager maintenance, or rewrite a native manifest. Those changes are explicit:
 
-- `rig update [--profile NAME] [--dry-run] [--unattended]` advances selected tools through supported native managers.
-- `rig maintain [--profile NAME] [--dry-run] [--unattended]` runs one bounded maintenance operation for each supported selected provider.
-- `rig capture PROVIDER [--dry-run]` deliberately refreshes a supported provider-native manifest.
+- `rig update [--profile NAME] [--dry-run] [--unattended] [--format text|json]` advances selected tools through supported native managers.
+- `rig maintain [--profile NAME] [--dry-run] [--unattended] [--format text|json]` runs one bounded maintenance operation for each supported selected provider.
+- `rig capture PROVIDER [--dry-run] [--format text|json]` deliberately refreshes a supported provider-native manifest.
 
 Use dry run first. These commands have broader provider effects than applying one declaration, and Rig reports whether each operation has declaration, manifest, or provider-wide scope.
 

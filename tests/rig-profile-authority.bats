@@ -272,7 +272,7 @@ write_lock_fixture() {
   run_rig apply --scope resources
   [ "$status" -eq 0 ]
   [[ "$output" == *'Operation scope: declaration'* ]] || false
-  [[ "$output" == *$'daemon\tservice\trunner\tcompleted\treconciled:example.daemon\tdeclaration'* ]] || false
+  rig_test_report_contains "$output" $'daemon\tservice\trunner\tcompleted\treconciled:example.daemon\tdeclaration' || false
   [ ! -e "$STATE_HOME/reconciliation/macos.lock" ]
   [ -f "$STATE_HOME/resources/macos.tsv" ]
 }

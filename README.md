@@ -49,6 +49,8 @@ Follow [Get started with Rig](docs/guides/user/getting-started.md) to write a sm
 
 To preview just one declared change, use `rig apply --target ID --dry-run`; repeat `--target` to select several exact entries.
 
+Use `--format json` with `show`, `list`, `explain`, `status`, `doctor`, `apply`, `bootstrap`, `update`, `maintain`, or `capture` when a script needs complete values rather than a human-readable table.
+
 The [user-guide journey](docs/guides/user/README.md) then introduces profiles, machine resources, user-level skills, provider boundaries, and publication in stages. Use `man rig` for the exhaustive command and configuration reference.
 
 ## Documentation

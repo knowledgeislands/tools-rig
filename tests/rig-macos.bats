@@ -78,15 +78,15 @@ run_rig() {
 @test "typed macOS resources query and dry-run deterministically" {
   run_rig show
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'Settings: 1\nID\tNAME\tPROVIDER\tVALUE\ndark-mode\tDark mode\tmacos-defaults\ttrue'* ]] || false
-  [[ "$output" == *$'Dock layouts: 1\nID\tNAME\tPROVIDER\tITEMS\nmain\tMain Dock\tmacos-dock\t2'* ]] || false
+  rig_test_report_contains "$output" $'Settings: 1\nID\tNAME\tPROVIDER\tVALUE\ndark-mode\tDark mode\tmacos-defaults\ttrue' || false
+  rig_test_report_contains "$output" $'Dock layouts: 1\nID\tNAME\tPROVIDER\tITEMS\nmain\tMain Dock\tmacos-dock\t2' || false
   run_rig explain setting:dark-mode
   [ "$status" -eq 0 ]
   [[ "$output" == *'provider=macos-defaults'* ]] || false
   run_rig apply --scope resources --dry-run
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'main\tdock\tmacos-dock\tplanned'* ]] || false
-  [[ "$output" == *$'dark-mode\tsetting\tmacos-defaults\tplanned'* ]] || false
+  rig_test_report_contains "$output" $'main\tdock\tmacos-dock\tplanned' || false
+  rig_test_report_contains "$output" $'dark-mode\tsetting\tmacos-defaults\tplanned' || false
   [ ! -e "$MACOS_LOG" ]
 }
 
@@ -179,14 +179,18 @@ run_rig() {
 
   run_rig apply --scope resources --dry-run
   [ "$status" -eq 1 ]
-  [[ "$output" == *$'main\tdock\tmacos-dock\tfailed\tpreflight:dock-item-path-missing:'"$TEST_HOME/Missing"* ]] || false
-  [[ "$output" == *$'dark-mode\tsetting\tmacos-defaults\tplanned'* ]] || false
+  rig_test_report_contains "$output" $'main\tdock\tmacos-dock\tfailed' || false
+  rig_test_report_contains "$output" $'dark-mode\tsetting\tmacos-defaults\tplanned' || false
   [ ! -e "$MACOS_LOG" ]
+
+  run_rig apply --scope resources --dry-run --format json
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"preflight:dock-item-path-missing:$TEST_HOME/Missing"* ]] || false
 
   run_rig apply --scope resources
   [ "$status" -eq 1 ]
-  [[ "$output" == *$'main\tdock\tmacos-dock\tfailed\tpreflight:dock-item-path-missing:'"$TEST_HOME/Missing"* ]] || false
-  [[ "$output" == *$'dark-mode\tsetting\tmacos-defaults\tcompleted'* ]] || false
+  rig_test_report_contains "$output" $'main\tdock\tmacos-dock\tfailed' || false
+  rig_test_report_contains "$output" $'dark-mode\tsetting\tmacos-defaults\tcompleted' || false
   grep -F 'defaults <write> <NSGlobalDomain> <AppleInterfaceStyleSwitchesAutomatically> <-bool> <true>' "$MACOS_LOG"
   ! grep -F 'dockutil <--remove>' "$MACOS_LOG"
   ! grep -F 'killall <Dock>' "$MACOS_LOG"

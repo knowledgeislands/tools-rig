@@ -117,8 +117,8 @@ run_rig() {
   run_rig bootstrap --dry-run
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'provider:mise\thomebrew\tplanned\tbootstrap-prerequisite'* ]] || false
-  [[ "$output" == *$'provider:npm\tmise\tplanned\tbootstrap-prerequisite'* ]] || false
+  rig_test_report_contains "$output" $'provider:mise\thomebrew\tplanned\tbootstrap-prerequisite' || false
+  rig_test_report_contains "$output" $'provider:npm\tmise\tplanned\tbootstrap-prerequisite' || false
   [ ! -e "$CALL_LOG" ]
   [ ! -e "$FAKE_BIN/mise" ]
   [ ! -e "$FAKE_BIN/npm" ]
@@ -131,6 +131,6 @@ run_rig() {
   [ "$(sed -n '1p' "$CALL_LOG")" = $'brew\tbundle --file='"$MANIFEST" ]
   [ "$(sed -n '2p' "$CALL_LOG")" = $'mise\tinstall node' ]
   grep -Fqx $'npm\tinstall --global typescript' "$CALL_LOG"
-  [[ "$output" == *$'provider:mise\thomebrew\tcompleted\tavailable'* ]] || false
-  [[ "$output" == *$'provider:npm\tmise\tcompleted\tavailable'* ]] || false
+  rig_test_report_contains "$output" $'provider:mise\thomebrew\tcompleted\tavailable' || false
+  rig_test_report_contains "$output" $'provider:npm\tmise\tcompleted\tavailable' || false
 }

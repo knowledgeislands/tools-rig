@@ -117,3 +117,32 @@ rig_test_provider_response() {
   # manager | exact argv | exit status | output (or '-' for no output)
   printf '%s|%s|%s|%s\n' "$1" "$2" "$3" "$4" >>"$RIG_TEST_PROVIDER_TABLE"
 }
+
+rig_test_report_contains() {
+  local report expected wanted line remainder cell matched
+  local -a cells
+
+  report=$1
+  expected=$2
+  while IFS= read -r wanted || [ -n "$wanted" ]; do
+    [ -n "$wanted" ] || continue
+    if [[ "$wanted" != *$'\t'* ]]; then
+      [[ "$report" == *"$wanted"* ]] || return 1
+      continue
+    fi
+    IFS=$'\t' read -r -a cells <<< "$wanted"
+    matched=0
+    while IFS= read -r line || [ -n "$line" ]; do
+      remainder=$line
+      for cell in "${cells[@]}"; do
+        case "$remainder" in
+          *"$cell"*) remainder=${remainder#*"$cell"} ;;
+          *) continue 2 ;;
+        esac
+      done
+      matched=1
+      break
+    done <<< "$report"
+    [ "$matched" -eq 1 ] || return 1
+  done <<< "$expected"
+}

@@ -86,7 +86,7 @@ write_skill_config() {
   run "$RIG" show
   [ "$status" -eq 0 ]
   [[ "$output" == *'Skills: 1'* ]] || false
-  [[ "$output" == *$'caveman\tCaveman\tskills-cli\tclaude-code, codex'* ]] || false
+  rig_test_report_contains "$output" $'caveman\tCaveman\tskills-cli\tclaude-code, codex' || false
   [ ! -e "$SKILLS_LOG" ]
 
   run "$RIG" explain skill:caveman
@@ -221,7 +221,7 @@ write_skill_config() {
 
   run "$RIG" apply --dry-run
   [ "$status" -eq 0 ]
-  [[ "$output" == *$'TOOL\tPROVIDER\tRESULT\tDETAIL\tSCOPE'*$'SKILL\tAUTHORITY\tRESULT\tDETAIL\tSCOPE'*$'RESOURCE\tKIND\tPROVIDER\tRESULT\tDETAIL\tSCOPE'* ]] || false
+  rig_test_report_contains "$output" $'TOOL\tPROVIDER\tRESULT\tDETAIL\tSCOPE\nSKILL\tAUTHORITY\tRESULT\tDETAIL\tSCOPE\nRESOURCE\tKIND\tPROVIDER\tRESULT\tDETAIL\tSCOPE' || false
 
   : >"$SKILLS_LOG"
   run "$RIG" apply --profile minimal --dry-run
@@ -303,7 +303,7 @@ assert data["profile"]["skills"] == []
   run "$RIG" update
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *$'skill:caveman\tskills-cli\tunavailable\texecutable-unavailable'* ]] || false
+  rig_test_report_contains "$output" $'skill:caveman\tskills-cli\tunavailable\texecutable-unavailable' || false
   [[ "$output" == *'unavailable=1'* ]] || false
   [ ! -s "$SKILLS_LOG" ]
 }

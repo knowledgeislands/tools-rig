@@ -639,19 +639,6 @@ rig_join_query_tool_names() {
   RIG_VALUE=${joined:-none}
 }
 
-rig_print_tool_row() {
-  local tool name category purpose
-
-  tool=$1
-  rig_get_value "tool.$tool" name || return
-  name=$RIG_VALUE
-  rig_get_value "tool.$tool" category || return
-  category=$RIG_VALUE
-  rig_get_value "tool.$tool" purpose || return
-  purpose=$RIG_VALUE
-  printf '  %s\t%s\t%s\t%s\n' "$tool" "$name" "$category" "$purpose"
-}
-
 rig_repeat_character() {
   local character count repeated
 
@@ -700,16 +687,18 @@ rig_table_reset() {
   RIG_TABLE_MAX_WIDTHS=()
   RIG_TABLE_WIDTHS=()
   RIG_TABLE_ELLIPSIS=()
+  RIG_TABLE_KEEP=()
   RIG_TABLE_CELLS=()
   RIG_TABLE_ROW_COUNT=0
 }
 
 rig_table_add_column() {
-  local header maximum ellipsis index width
+  local header maximum ellipsis keep index width
 
   header=$1
   maximum=$2
   ellipsis=${3:-end}
+  keep=${4:-shrink}
   index=${#RIG_TABLE_HEADERS[@]}
   width=${#header}
   [ "$width" -le "$maximum" ] || width=$maximum
@@ -717,6 +706,34 @@ rig_table_add_column() {
   RIG_TABLE_MAX_WIDTHS[$index]=$maximum
   RIG_TABLE_WIDTHS[$index]=$width
   RIG_TABLE_ELLIPSIS[$index]=$ellipsis
+  RIG_TABLE_KEEP[$index]=$keep
+}
+
+rig_table_fit_widths() {
+  local index total overflow minimum available reduction
+
+  total=$(((${#RIG_TABLE_HEADERS[@]} - 1) * 2))
+  index=0
+  while [ "$index" -lt "${#RIG_TABLE_WIDTHS[@]}" ]; do
+    total=$((total + ${RIG_TABLE_WIDTHS[$index]}))
+    index=$((index + 1))
+  done
+  overflow=$((total - 120))
+  [ "$overflow" -gt 0 ] || return 0
+  index=$((${#RIG_TABLE_WIDTHS[@]} - 1))
+  while [ "$index" -ge 0 ] && [ "$overflow" -gt 0 ]; do
+    if [ "${RIG_TABLE_KEEP[$index]}" != keep ]; then
+      minimum=${#RIG_TABLE_HEADERS[$index]}
+      available=$((${RIG_TABLE_WIDTHS[$index]} - minimum))
+      if [ "$available" -gt 0 ]; then
+        reduction=$available
+        [ "$reduction" -le "$overflow" ] || reduction=$overflow
+        RIG_TABLE_WIDTHS[$index]=$((${RIG_TABLE_WIDTHS[$index]} - reduction))
+        overflow=$((overflow - reduction))
+      fi
+    fi
+    index=$((index - 1))
+  done
 }
 
 rig_table_add_row() {
@@ -725,10 +742,14 @@ rig_table_add_row() {
   [ "$#" -eq "${#RIG_TABLE_HEADERS[@]}" ] || return 2
   index=0
   for cell in "$@"; do
+    cell=${cell//$'\t'/\\t}
+    cell=${cell//$'\n'/\\n}
     RIG_TABLE_CELLS[${#RIG_TABLE_CELLS[@]}]=$cell
     width=${#cell}
     maximum=${RIG_TABLE_MAX_WIDTHS[$index]}
-    [ "$width" -le "$maximum" ] || width=$maximum
+    if [ "${RIG_TABLE_KEEP[$index]}" != keep ]; then
+      [ "$width" -le "$maximum" ] || width=$maximum
+    fi
     [ "$width" -le "${RIG_TABLE_WIDTHS[$index]}" ] || RIG_TABLE_WIDTHS[$index]=$width
     index=$((index + 1))
   done
@@ -766,6 +787,7 @@ rig_table_print_row() {
 rig_table_print() {
   local index offset
 
+  rig_table_fit_widths
   rig_table_print_row -1
   index=0
   while [ "$index" -lt "${#RIG_TABLE_HEADERS[@]}" ]; do
@@ -784,18 +806,255 @@ rig_table_print() {
   done
 }
 
-rig_print_profile_tool_table() {
+rig_mutation_split_row() {
+  local rest count scope_last index first detail scope
+
+  rest=$1
+  count=$2
+  scope_last=$3
+  RIG_MUTATION_CELLS=()
+  index=0
+  while [ "$index" -lt "$((count - 1 - scope_last))" ]; do
+    case "$rest" in *$'\t'*) ;; *) return 1 ;; esac
+    first=${rest%%$'\t'*}
+    rest=${rest#*$'\t'}
+    RIG_MUTATION_CELLS[${#RIG_MUTATION_CELLS[@]}]=$first
+    index=$((index + 1))
+  done
+  if [ "$scope_last" -eq 1 ]; then
+    case "$rest" in *$'\t'*) ;; *) return 1 ;; esac
+    detail=${rest%$'\t'*}
+    scope=${rest##*$'\t'}
+    RIG_MUTATION_CELLS[${#RIG_MUTATION_CELLS[@]}]=$detail
+    RIG_MUTATION_CELLS[${#RIG_MUTATION_CELLS[@]}]=$scope
+  else
+    RIG_MUTATION_CELLS[${#RIG_MUTATION_CELLS[@]}]=$rest
+  fi
+}
+
+rig_render_mutation_report() {
+  local report line column table_active scope_last
+  local -a columns
+
+  report=$1
+  table_active=0
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      $'TOOL\tPROVIDER\tRESULT\tDETAIL\tSCOPE'|\
+      $'SKILL\tAUTHORITY\tRESULT\tDETAIL\tSCOPE'|\
+      $'RESOURCE\tKIND\tPROVIDER\tRESULT\tDETAIL\tSCOPE'|\
+      $'MANAGER\tPROVIDER\tRESULT\tDETAIL\tSCOPE'|\
+      $'TARGET\tPROVIDER\tRESULT\tDETAIL'|\
+      $'PROVIDER\tRESULT\tDETAIL')
+        [ "$table_active" -eq 0 ] || rig_table_print
+        rig_table_reset
+        IFS=$'\t' read -r -a columns <<< "$line"
+        for column in "${columns[@]}"; do
+          case "$column" in
+            TOOL|SKILL|RESOURCE|MANAGER|TARGET|PROVIDER|AUTHORITY)
+              rig_table_add_column "$column" 28 end keep ;;
+            KIND|RESULT|SCOPE) rig_table_add_column "$column" 16 ;;
+            DETAIL) rig_table_add_column DETAIL 64 ;;
+          esac
+        done
+        scope_last=0
+        [ "${columns[$((${#columns[@]} - 1))]}" != SCOPE ] || scope_last=1
+        table_active=1
+        ;;
+      *)
+        if [ "$table_active" -eq 1 ] && [[ "$line" == *$'\t'* ]]; then
+          if rig_mutation_split_row "$line" "${#RIG_TABLE_HEADERS[@]}" "$scope_last"; then
+            rig_table_add_row "${RIG_MUTATION_CELLS[@]}"
+            continue
+          fi
+        fi
+        if [ "$table_active" -eq 1 ]; then
+          rig_table_print
+          table_active=0
+        fi
+        printf '%s\n' "$line"
+        ;;
+    esac
+  done <<< "$report"
+  [ "$table_active" -eq 0 ] || rig_table_print
+}
+
+rig_mutation_json() {
+  local command report line profile platform table_open section_separator row_separator column_separator cell scope_last
+  local -a columns
+
+  command=$1
+  report=$2
+  profile=
+  platform=
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      'Profile: '*) profile=${line#Profile: } ;;
+      'Platform: '*) platform=${line#Platform: } ;;
+    esac
+  done <<< "$report"
+  [ -n "$profile" ] || profile=$RIG_RESOLVED_PROFILE
+  [ -n "$platform" ] || platform=$RIG_RESOLVED_PLATFORM
+  RIG_RESOLVED_PROFILE=$profile
+  RIG_RESOLVED_PLATFORM=$platform
+  rig_json_envelope "$command"
+  printf ',"sections":['
+  table_open=0
+  section_separator=
+  row_separator=
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      $'TOOL\tPROVIDER\tRESULT\tDETAIL\tSCOPE'|\
+      $'SKILL\tAUTHORITY\tRESULT\tDETAIL\tSCOPE'|\
+      $'RESOURCE\tKIND\tPROVIDER\tRESULT\tDETAIL\tSCOPE'|\
+      $'MANAGER\tPROVIDER\tRESULT\tDETAIL\tSCOPE'|\
+      $'TARGET\tPROVIDER\tRESULT\tDETAIL'|\
+      $'PROVIDER\tRESULT\tDETAIL')
+        if [ "$table_open" -eq 1 ]; then printf ']}'; fi
+        printf '%s{"columns":[' "$section_separator"
+        IFS=$'\t' read -r -a columns <<< "$line"
+        column_separator=
+        for cell in "${columns[@]}"; do
+          rig_json_escape "$cell"
+          printf '%s"%s"' "$column_separator" "$RIG_VALUE"
+          column_separator=,
+        done
+        printf '],"rows":['
+        scope_last=0
+        [ "${columns[$((${#columns[@]} - 1))]}" != SCOPE ] || scope_last=1
+        table_open=1
+        section_separator=,
+        row_separator=
+        ;;
+      *)
+        if [ "$table_open" -eq 1 ] && [[ "$line" == *$'\t'* ]]; then
+          if rig_mutation_split_row "$line" "${#columns[@]}" "$scope_last"; then
+            printf '%s[' "$row_separator"
+            column_separator=
+            for cell in "${RIG_MUTATION_CELLS[@]}"; do
+              rig_json_escape "$cell"
+              printf '%s"%s"' "$column_separator" "$RIG_VALUE"
+              column_separator=,
+            done
+            printf ']'
+            row_separator=,
+            continue
+          fi
+        fi
+        if [ "$table_open" -eq 1 ]; then
+          printf ']}'
+          table_open=0
+        fi
+        ;;
+    esac
+  done <<< "$report"
+  if [ "$table_open" -eq 1 ]; then printf ']}'; fi
+  printf '],"notes":['
+  column_separator=
+  table_open=0
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      $'TOOL\tPROVIDER\tRESULT\tDETAIL\tSCOPE'|\
+      $'SKILL\tAUTHORITY\tRESULT\tDETAIL\tSCOPE'|\
+      $'RESOURCE\tKIND\tPROVIDER\tRESULT\tDETAIL\tSCOPE'|\
+      $'MANAGER\tPROVIDER\tRESULT\tDETAIL\tSCOPE'|\
+      $'TARGET\tPROVIDER\tRESULT\tDETAIL'|\
+      $'PROVIDER\tRESULT\tDETAIL') table_open=1; continue ;;
+    esac
+    if [ "$table_open" -eq 1 ] && [[ "$line" == *$'\t'* ]]; then continue; fi
+    table_open=0
+    [ -n "$line" ] || continue
+    rig_json_escape "$line"
+    printf '%s"%s"' "$column_separator" "$RIG_VALUE"
+    column_separator=,
+  done <<< "$report"
+  printf ']'
+  rig_json_field ',' report "$report"
+  printf '}\n'
+}
+
+rig_capture_report_context() {
+  local captured metadata status
+
+  if captured=$(
+    "$@"
+    status=$?
+    printf '\036%s\037%s\037%s\037%s\n' \
+      "$RIG_OUTCOME_RESULT" "$RIG_OUTCOME_DETAIL" \
+      "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
+    exit "$status"
+  ); then
+    status=0
+  else
+    status=$?
+  fi
+  case "$captured" in
+    *$'\036'*) ;;
+    *)
+      RIG_CAPTURED_REPORT=$captured
+      RIG_CAPTURED_STATUS=$status
+      return "$status"
+      ;;
+  esac
+  metadata=${captured##*$'\036'}
+  RIG_CAPTURED_REPORT=${captured%$'\036'*}
+  RIG_CAPTURED_REPORT=${RIG_CAPTURED_REPORT%$'\n'}
+  RIG_CAPTURED_STATUS=$status
+  IFS=$'\037' read -r RIG_OUTCOME_RESULT RIG_OUTCOME_DETAIL \
+    RIG_RESOLVED_PROFILE RIG_RESOLVED_PLATFORM <<< "$metadata"
+  return "$status"
+}
+
+rig_buffer_mutation_report() {
+  local command backend format format_seen report status
+  local -a args
+
+  command=$1
+  backend=$2
+  shift 2
+  format=text
+  format_seen=0
+  args=()
+  while [ "$#" -gt 0 ]; do
+    if [ "$1" = --format ]; then
+      if [ "$format_seen" -eq 1 ] || [ "$#" -lt 2 ]; then
+        rig_command_syntax_error "$command" || return
+      fi
+      case "$2" in
+        text|json) format=$2 ;;
+        *) rig_command_syntax_error "$command" || return ;;
+      esac
+      format_seen=1
+      shift 2
+    else
+      args[${#args[@]}]=$1
+      shift
+    fi
+  done
+  if rig_capture_report_context "$backend" "${args[@]+"${args[@]}"}"; then
+    status=0
+  else
+    status=$?
+  fi
+  report=$RIG_CAPTURED_REPORT
+  if [ -n "$report" ]; then
+    if [ "$format" = json ] && [ "${args[0]-}" != --help ]; then
+      rig_mutation_json "$command" "$report"
+    else
+      rig_render_mutation_report "$report"
+    fi
+  fi
+  return "$status"
+}
+
+rig_print_profile_tools() {
   local index tool name category purpose
-  local display_tool display_name display_category display_purpose
-  local id_width name_width category_width purpose_width
-  local purpose_limit
-  local id_rule name_rule category_rule purpose_rule
 
-  id_width=4
-  name_width=4
-  category_width=8
-  purpose_width=7
-
+  rig_table_reset
+  rig_table_add_column ID 24 end keep
+  rig_table_add_column NAME 24
+  rig_table_add_column CATEGORY 16
+  rig_table_add_column PURPOSE 72
   index=0
   while [ "$index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
     tool=${RIG_SELECTED_TOOLS[$index]}
@@ -805,58 +1064,10 @@ rig_print_profile_tool_table() {
     category=$RIG_VALUE
     rig_get_value "tool.$tool" purpose || return
     purpose=$RIG_VALUE
-
-    [ "${#tool}" -le "$id_width" ] || id_width=${#tool}
-    [ "${#name}" -le "$name_width" ] || name_width=${#name}
-    [ "${#category}" -le "$category_width" ] || category_width=${#category}
-    [ "${#purpose}" -le "$purpose_width" ] || purpose_width=${#purpose}
+    rig_table_add_row "$tool" "$name" "$category" "$purpose"
     index=$((index + 1))
   done
-
-  [ "$id_width" -le 24 ] || id_width=24
-  [ "$name_width" -le 24 ] || name_width=24
-  [ "$category_width" -le 16 ] || category_width=16
-  purpose_limit=$((120 - id_width - name_width - category_width - 6))
-  [ "$purpose_width" -le "$purpose_limit" ] || purpose_width=$purpose_limit
-
-  rig_repeat_character - "$id_width"
-  id_rule=$RIG_VALUE
-  rig_repeat_character - "$name_width"
-  name_rule=$RIG_VALUE
-  rig_repeat_character - "$category_width"
-  category_rule=$RIG_VALUE
-  rig_repeat_character - "$purpose_width"
-  purpose_rule=$RIG_VALUE
-
-  printf '%-*s  %-*s  %-*s  %s\n' \
-    "$id_width" ID "$name_width" NAME "$category_width" CATEGORY PURPOSE
-  printf '%s  %s  %s  %s\n' \
-    "$id_rule" "$name_rule" "$category_rule" "$purpose_rule"
-
-  index=0
-  while [ "$index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
-    tool=${RIG_SELECTED_TOOLS[$index]}
-    rig_get_value "tool.$tool" name || return
-    name=$RIG_VALUE
-    rig_get_value "tool.$tool" category || return
-    category=$RIG_VALUE
-    rig_get_value "tool.$tool" purpose || return
-    purpose=$RIG_VALUE
-
-    rig_ellipsize "$tool" "$id_width"
-    display_tool=$RIG_VALUE
-    rig_ellipsize "$name" "$name_width"
-    display_name=$RIG_VALUE
-    rig_ellipsize "$category" "$category_width"
-    display_category=$RIG_VALUE
-    rig_ellipsize "$purpose" "$purpose_width"
-    display_purpose=$RIG_VALUE
-
-    printf '%-*s  %-*s  %-*s  %s\n' \
-      "$id_width" "$display_tool" "$name_width" "$display_name" \
-      "$category_width" "$display_category" "$display_purpose"
-    index=$((index + 1))
-  done
+  rig_table_print
 }
 
 rig_profile_declares_tool() {
@@ -1085,11 +1296,15 @@ rig_print_profile_resource_tables() {
     esac
     printf '\n%s: %s\n' "$label" "$count"
     [ "$count" -gt 0 ] || continue
+    rig_table_reset
+    rig_table_add_column ID 24 end keep
+    rig_table_add_column NAME 24
+    rig_table_add_column PROVIDER 20 end keep
     case "$wanted" in
-      service) printf 'ID\tNAME\tPROVIDER\tDESIRED\n' ;;
-      scheduled-job) printf 'ID\tNAME\tPROVIDER\tDESIRED\tSCHEDULE\n' ;;
-      setting) printf 'ID\tNAME\tPROVIDER\tVALUE\n' ;;
-      dock) printf 'ID\tNAME\tPROVIDER\tITEMS\n' ;;
+      service) rig_table_add_column DESIRED 36 ;;
+      scheduled-job) rig_table_add_column DESIRED 24; rig_table_add_column SCHEDULE 40 ;;
+      setting) rig_table_add_column VALUE 64 ;;
+      dock) rig_table_add_column ITEMS 8 ;;
     esac
     for section_name in "${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}"; do
       [ "${section_name%%.*}" = "$wanted" ] || continue
@@ -1103,26 +1318,27 @@ rig_print_profile_resource_tables() {
       case "$wanted" in
         service)
           rig_get_value "$section_name" desired-state || return 2
-          printf '%s\t%s\t%s\t%s\n' "$id" "$name" "$provider" "$RIG_VALUE"
+          rig_table_add_row "$id" "$name" "$provider" "$RIG_VALUE"
           ;;
         scheduled-job)
           rig_get_value "$section_name" desired-state || return 2
           desired=$RIG_VALUE
           rig_resource_schedule_summary "$section_name" || return
           schedule=$RIG_VALUE
-          printf '%s\t%s\t%s\t%s\t%s\n' "$id" "$name" "$provider" "$desired" "$schedule"
+          rig_table_add_row "$id" "$name" "$provider" "$desired" "$schedule"
           ;;
         setting)
           rig_get_value "$section_name" value || return 2
-          printf '%s\t%s\t%s\t%s\n' "$id" "$name" "$provider" "$RIG_VALUE"
+          rig_table_add_row "$id" "$name" "$provider" "$RIG_VALUE"
           ;;
         dock)
           rig_collect_field_values "$section_name" item
           detail=${#RIG_QUERY_ITEMS[@]}
-          printf '%s\t%s\t%s\t%s\n' "$id" "$name" "$provider" "$detail"
+          rig_table_add_row "$id" "$name" "$provider" "$detail"
           ;;
       esac
     done
+    rig_table_print
   done
 }
 
@@ -1131,7 +1347,13 @@ rig_print_profile_ports() {
 
   printf '\nPorts: %s\n' "${#RIG_SELECTED_PORTS[@]}"
   [ "${#RIG_SELECTED_PORTS[@]}" -gt 0 ] || return 0
-  printf 'ID\tNAME\tPORT\tSCOPE\tMODE\tOWNER\n'
+  rig_table_reset
+  rig_table_add_column ID 24 end keep
+  rig_table_add_column NAME 24
+  rig_table_add_column PORT 8
+  rig_table_add_column SCOPE 20
+  rig_table_add_column MODE 16
+  rig_table_add_column OWNER 24 end keep
   for port in "${RIG_SELECTED_PORTS[@]+"${RIG_SELECTED_PORTS[@]}"}"; do
     section_name=port.$port
     rig_get_value "$section_name" name || return 2
@@ -1144,8 +1366,9 @@ rig_print_profile_ports() {
     mode=$RIG_VALUE
     rig_get_value "$section_name" owner || return 2
     owner=$RIG_VALUE
-    printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$port" "$name" "$number" "$scope" "$mode" "$owner"
+    rig_table_add_row "$port" "$name" "$number" "$scope" "$mode" "$owner"
   done
+  rig_table_print
 }
 
 rig_print_profile_skills() {
@@ -1153,7 +1376,11 @@ rig_print_profile_skills() {
 
   printf '\nSkills: %s\n' "${#RIG_SELECTED_SKILLS[@]}"
   [ "${#RIG_SELECTED_SKILLS[@]}" -gt 0 ] || return 0
-  printf 'ID\tNAME\tAUTHORITY\tRUNTIMES\n'
+  rig_table_reset
+  rig_table_add_column ID 24 end keep
+  rig_table_add_column NAME 24
+  rig_table_add_column AUTHORITY 24 end keep
+  rig_table_add_column RUNTIMES 56
   for skill in "${RIG_SELECTED_SKILLS[@]}"; do
     rig_get_value "skill.$skill" name || return 2
     name=$RIG_VALUE
@@ -1162,37 +1389,137 @@ rig_print_profile_skills() {
     rig_collect_field_values "skill.$skill" runtime
     rig_join_query_items
     runtimes=$RIG_VALUE
-    printf '%s\t%s\t%s\t%s\n' "$skill" "$name" "$authority" "$runtimes"
+    rig_table_add_row "$skill" "$name" "$authority" "$runtimes"
   done
+  rig_table_print
+}
+
+rig_show_json() {
+  local index tool name category purpose skill authority runtimes section_name section_index id kind provider value
+  local separator
+
+  rig_json_envelope show
+  printf ',"tools":['
+  separator=
+  for tool in "${RIG_SELECTED_TOOLS[@]+"${RIG_SELECTED_TOOLS[@]}"}"; do
+    rig_get_value "tool.$tool" name || return 2; name=$RIG_VALUE
+    rig_get_value "tool.$tool" category || return 2; category=$RIG_VALUE
+    rig_get_value "tool.$tool" purpose || return 2; purpose=$RIG_VALUE
+    rig_json_field "$separator{" id "$tool"
+    rig_json_field ',' name "$name"
+    rig_json_field ',' category "$category"
+    rig_json_field ',' purpose "$purpose"
+    printf '}'
+    separator=,
+  done
+  printf '],"skills":['
+  separator=
+  for skill in "${RIG_SELECTED_SKILLS[@]+"${RIG_SELECTED_SKILLS[@]}"}"; do
+    rig_get_value "skill.$skill" name || return 2; name=$RIG_VALUE
+    rig_get_value "skill.$skill" authority || return 2; authority=$RIG_VALUE
+    rig_collect_field_values "skill.$skill" runtime
+    rig_join_query_items
+    runtimes=$RIG_VALUE
+    rig_json_field "$separator{" id "$skill"
+    rig_json_field ',' name "$name"
+    rig_json_field ',' authority "$authority"
+    rig_json_field ',' runtimes "$runtimes"
+    printf '}'
+    separator=,
+  done
+  printf '],"resources":['
+  separator=
+  for section_name in "${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}"; do
+    rig_section_index "$section_name" || return 2
+    section_index=$RIG_INDEX
+    id=${RIG_SECTION_IDS[$section_index]}
+    kind=${RIG_SECTION_TYPES[$section_index]}
+    rig_get_value "$section_name" name || return 2; name=$RIG_VALUE
+    rig_get_value "$section_name" provider || return 2; provider=$RIG_VALUE
+    rig_json_field "$separator{" id "$id"
+    rig_json_field ',' kind "$kind"
+    rig_json_field ',' name "$name"
+    rig_json_field ',' provider "$provider"
+    case "$kind" in
+      service|scheduled-job)
+        rig_get_value "$section_name" desired-state || return 2
+        rig_json_field ',' desired "$RIG_VALUE"
+        if [ "$kind" = scheduled-job ]; then
+          rig_resource_schedule_summary "$section_name" || return
+          rig_json_field ',' schedule "$RIG_VALUE"
+        fi
+        ;;
+      setting)
+        rig_get_value "$section_name" value || return 2
+        rig_json_field ',' value "$RIG_VALUE"
+        ;;
+      dock)
+        rig_collect_field_values "$section_name" item
+        printf ',"items":['
+        index=0
+        while [ "$index" -lt "${#RIG_QUERY_ITEMS[@]}" ]; do
+          [ "$index" -eq 0 ] || printf ','
+          rig_json_escape "${RIG_QUERY_ITEMS[$index]}"
+          printf '"%s"' "$RIG_VALUE"
+          index=$((index + 1))
+        done
+        printf ']'
+        ;;
+    esac
+    printf '}'
+    separator=,
+  done
+  printf '],"ports":['
+  separator=
+  for id in "${RIG_SELECTED_PORTS[@]+"${RIG_SELECTED_PORTS[@]}"}"; do
+    section_name=port.$id
+    rig_json_field "$separator{" id "$id"
+    for value in name port scope mode owner; do
+      rig_get_value "$section_name" "$value" || return 2
+      rig_json_field ',' "$value" "$RIG_VALUE"
+    done
+    printf '}'
+    separator=,
+  done
+  printf ']}\n'
 }
 
 rig_command_show() {
-  local profile platform
+  local profile platform format profile_seen format_seen
 
   profile=
-  case "$#" in
-    0) ;;
-    1)
-      case "$1" in
-        -h|--help) rig_command_help show; return ;;
-        *) rig_command_syntax_error show || return ;;
-      esac
-      ;;
-    2)
-      [ "$1" = --profile ] && [ -n "$2" ] ||
-        rig_command_syntax_error show || return
-      profile=$2
-      ;;
-    *) rig_command_syntax_error show || return ;;
-  esac
+  format=text
+  profile_seen=0
+  format_seen=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      -h|--help)
+        [ "$#" -eq 1 ] || rig_command_syntax_error show || return
+        rig_command_help show; return ;;
+      --profile)
+        [ "$profile_seen" -eq 0 ] && [ "$#" -ge 2 ] && [ -n "$2" ] ||
+          rig_command_syntax_error show || return
+        profile=$2; profile_seen=1; shift 2 ;;
+      --format)
+        [ "$format_seen" -eq 0 ] && [ "$#" -ge 2 ] ||
+          rig_command_syntax_error show || return
+        case "$2" in text|json) format=$2 ;; *) rig_command_syntax_error show || return ;; esac
+        format_seen=1; shift 2 ;;
+      *) rig_command_syntax_error show || return ;;
+    esac
+  done
 
   rig_load_config || return
   rig_current_platform || return
   platform=$RIG_VALUE
   rig_resolve_profile "$profile" "$platform" || return
+  if [ "$format" = json ]; then
+    rig_show_json
+    return
+  fi
   printf 'Profile:  %s\nPlatform: %s\nTools:    %s\n\n' \
     "$RIG_RESOLVED_PROFILE" "$platform" "${#RIG_SELECTED_TOOLS[@]}"
-  rig_print_profile_tool_table
+  rig_print_profile_tools
   rig_print_profile_skills || return
   if [ "${#RIG_SELECTED_RESOURCE_SECTIONS[@]}" -gt 0 ]; then
     rig_print_profile_resource_tables
@@ -1202,7 +1529,7 @@ rig_command_show() {
   fi
 }
 
-rig_command_list() {
+rig_list_select() {
   local category profile platform category_seen profile_seen tool index declared_category
   local -a tools
 
@@ -1210,11 +1537,6 @@ rig_command_list() {
   profile=
   category_seen=0
   profile_seen=0
-  if [ "$#" -eq 1 ]; then
-    case "$1" in
-      -h|--help) rig_command_help list; return ;;
-    esac
-  fi
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --category)
@@ -1244,23 +1566,13 @@ rig_command_list() {
     rig_current_platform || return
     platform=$RIG_VALUE
     rig_resolve_profile "$profile" "$platform" || return
-    tools=()
-    index=0
-    while [ "$index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
-      tools[$index]=${RIG_SELECTED_TOOLS[$index]}
-      index=$((index + 1))
-    done
+    tools=("${RIG_SELECTED_TOOLS[@]+"${RIG_SELECTED_TOOLS[@]}"}")
   else
     rig_collect_section_ids tool
-    tools=()
-    index=0
-    while [ "$index" -lt "${#RIG_QUERY_ITEMS[@]}" ]; do
-      tools[$index]=${RIG_QUERY_ITEMS[$index]}
-      index=$((index + 1))
-    done
+    tools=("${RIG_QUERY_ITEMS[@]+"${RIG_QUERY_ITEMS[@]}"}")
   fi
 
-  printf '%s\n' $'ID\tNAME\tCATEGORY\tPURPOSE'
+  RIG_LIST_TOOLS=()
   index=0
   while [ "$index" -lt "${#tools[@]}" ]; do
     tool=${tools[$index]}
@@ -1272,7 +1584,7 @@ rig_command_list() {
         continue
       fi
     fi
-    rig_print_tool_row "$tool" || return
+    RIG_LIST_TOOLS[${#RIG_LIST_TOOLS[@]}]=$tool
     index=$((index + 1))
   done
 }
@@ -1428,7 +1740,7 @@ rig_explain_skill() {
     "$platforms" "$runtimes" "$requires" "$profiles" "$public_source"
 }
 
-rig_command_explain() {
+rig_command_explain_impl() {
   local tool name category category_name purpose rationale platforms requires related alternatives profiles platform binding
   local artifacts
 
@@ -1448,6 +1760,7 @@ rig_command_explain() {
     rig_fail "unknown tool '$tool'" || return
   rig_current_platform || return
   platform=$RIG_VALUE
+  RIG_RESOLVED_PLATFORM=$platform
   rig_describe_compatible_binding "$tool" "$platform" || return
   binding=$RIG_VALUE
 
@@ -1487,4 +1800,131 @@ rig_command_explain() {
     "$platforms" "$requires" "$related" "$alternatives" "$profiles"
   printf 'Installation: %s\n' "$binding"
     printf 'Artifacts: %s\n' "$artifacts"
+}
+
+rig_render_list_report() {
+  local id name category purpose
+
+  rig_table_reset
+  rig_table_add_column ID 28 end keep
+  rig_table_add_column NAME 24
+  rig_table_add_column CATEGORY 20
+  rig_table_add_column PURPOSE 64
+  for id in "${RIG_LIST_TOOLS[@]+"${RIG_LIST_TOOLS[@]}"}"; do
+    rig_get_value "tool.$id" name || return 2; name=$RIG_VALUE
+    rig_get_value "tool.$id" category || return 2; category=$RIG_VALUE
+    rig_get_value "tool.$id" purpose || return 2; purpose=$RIG_VALUE
+    rig_table_add_row "$id" "$name" "$category" "$purpose"
+  done
+  rig_table_print
+}
+
+rig_command_list() {
+  local format format_seen id name category purpose separator
+  local -a args
+
+  format=text
+  format_seen=0
+  args=()
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --format)
+        [ "$format_seen" -eq 0 ] && [ "$#" -ge 2 ] || rig_command_syntax_error list || return
+        case "$2" in text|json) format=$2 ;; *) rig_command_syntax_error list || return ;; esac
+        format_seen=1
+        shift 2 ;;
+      *)
+        args[${#args[@]}]=$1
+        shift ;;
+    esac
+  done
+  case "${args[0]-}" in
+    -h|--help)
+      [ "${#args[@]}" -eq 1 ] || rig_command_syntax_error list || return
+      rig_command_help list
+      return ;;
+  esac
+  rig_list_select "${args[@]+"${args[@]}"}" || return
+  if [ "$format" = text ]; then
+    rig_render_list_report
+    return
+  fi
+  rig_json_envelope list
+  printf ',"tools":['
+  separator=
+  for id in "${RIG_LIST_TOOLS[@]+"${RIG_LIST_TOOLS[@]}"}"; do
+    rig_get_value "tool.$id" name || return 2; name=$RIG_VALUE
+    rig_get_value "tool.$id" category || return 2; category=$RIG_VALUE
+    rig_get_value "tool.$id" purpose || return 2; purpose=$RIG_VALUE
+    rig_json_field "$separator{" id "$id"
+    rig_json_field ',' name "$name"
+    rig_json_field ',' category "$category"
+    rig_json_field ',' purpose "$purpose"
+    printf '}'
+    separator=,
+  done
+  printf ']}\n'
+}
+
+rig_command_explain() {
+  local format format_seen report status line label value separator target
+  local -a args
+
+  format=text
+  format_seen=0
+  args=()
+  while [ "$#" -gt 0 ]; do
+    if [ "$1" = --format ]; then
+      [ "$format_seen" -eq 0 ] && [ "$#" -ge 2 ] || rig_command_syntax_error explain || return
+      case "$2" in text|json) format=$2 ;; *) rig_command_syntax_error explain || return ;; esac
+      format_seen=1
+      shift 2
+    else
+      args[${#args[@]}]=$1
+      shift
+    fi
+  done
+  case "${args[0]-}" in
+    -h|--help)
+      [ "${#args[@]}" -eq 1 ] || rig_command_syntax_error explain || return
+      rig_command_help explain
+      return ;;
+  esac
+  if [ "$format" = text ]; then
+    rig_command_explain_impl "${args[@]+"${args[@]}"}"
+    return
+  fi
+  if rig_capture_report_context rig_command_explain_impl "${args[@]+"${args[@]}"}"; then status=0; else status=$?; fi
+  [ "$status" -eq 0 ] || return "$status"
+  report=$RIG_CAPTURED_REPORT
+  target=${args[0]-}
+  rig_json_envelope explain
+  rig_json_field ',' target "$target"
+  printf ',"fields":['
+  separator=
+  label=
+  value=
+  while IFS= read -r line || [ -n "$line" ]; do
+    if [ "${line#*:}" != "$line" ]; then
+      if [ -n "$label" ]; then
+        rig_json_field "$separator{" label "$label"
+        rig_json_field ',' value "$value"
+        printf '}'
+        separator=,
+      fi
+      label=${line%%:*}
+      value=${line#*:}
+      value=${value# }
+    elif [ -n "$label" ]; then
+      value=$value$'\n'$line
+    fi
+  done <<< "$report"
+  if [ -n "$label" ]; then
+    rig_json_field "$separator{" label "$label"
+    rig_json_field ',' value "$value"
+    printf '}'
+  fi
+  printf ']'
+  rig_json_field ',' report "$report"
+  printf '}\n'
 }

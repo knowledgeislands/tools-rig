@@ -4,12 +4,12 @@ area: CLI
 title: One report renderer
 theme: cli
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 5700121b46532d19d068e9a7b35823b759d17866
 created_at: 2026-09-26T13:00:00Z
-updated_at: 2026-09-30T14:02:00Z
+updated_at: 2026-09-30T15:14:29Z
 ---
 
 ## Goal
@@ -52,13 +52,13 @@ The interleaving defect is not in the renderer. Rig writes the report on stdout 
 
 ## Steps
 
-- [ ] Give `rig_table_add_column` a per-column truncation priority so identifier columns keep their full value and the remaining width budget is spent on prose columns, replacing fixed per-column maxima with a bounded total line width.
-- [ ] Retire `rig_print_profile_tool_table` and render `rig show`'s tool table through the shared renderer.
-- [ ] Convert `rig show`'s settings, Dock, and port output, and the `TARGET PROVIDER RESULT DETAIL` reports in `rig apply`, `rig bootstrap`, `rig update`, and `rig maintain`, to the shared renderer.
-- [ ] Wire `--format text|json` through `rig show`, `rig list`, `rig explain`, `rig apply`, `rig bootstrap`, `rig update`, and `rig maintain`, reusing `rig_json_envelope` and keeping each JSON projection complete regardless of what the text form shows.
-- [ ] Buffer a mutation report's rows until the task they describe is complete, so a provider line written to stderr cannot land inside a table on a merged terminal, and confirm progress still reports the slow task as it happens.
-- [ ] Add Bats coverage asserting that no rendered identifier cell contains an ellipsis for the longest identifier in the fixture catalogue, that every command accepting `--format json` emits a parseable payload, and that a provider writing to stderr mid-apply leaves the table rows contiguous on stdout.
-- [ ] Regenerate completions and update `man/rig.1`, `docs/guides/user/commands.md`, and the README command summaries wherever they state which commands take `--format`.
+- [x] Give `rig_table_add_column` a per-column truncation priority so identifier columns keep their full value and the remaining width budget is spent on prose columns, replacing fixed per-column maxima with a bounded total line width.
+- [x] Retire `rig_print_profile_tool_table` and render `rig show`'s tool table through the shared renderer.
+- [x] Convert `rig show`'s settings, Dock, and port output, and the `TARGET PROVIDER RESULT DETAIL` reports in `rig apply`, `rig bootstrap`, `rig update`, and `rig maintain`, to the shared renderer.
+- [x] Wire `--format text|json` through `rig show`, `rig list`, `rig explain`, `rig apply`, `rig bootstrap`, `rig update`, and `rig maintain`, reusing `rig_json_envelope` and keeping each JSON projection complete regardless of what the text form shows.
+- [x] Buffer a mutation report's rows until the task they describe is complete, so a provider line written to stderr cannot land inside a table on a merged terminal, and confirm progress still reports the slow task as it happens.
+- [x] Add Bats coverage asserting that no rendered identifier cell contains an ellipsis for the longest identifier in the fixture catalogue, that every command accepting `--format json` emits a parseable payload, and that a provider writing to stderr mid-apply leaves the table rows contiguous on stdout.
+- [x] Regenerate completions and update `man/rig.1`, `docs/guides/user/commands.md`, and the README command summaries wherever they state which commands take `--format`.
 
 ## Files touched
 
@@ -106,6 +106,32 @@ None on the stdout/stderr split, which stays as specified. If buffering mutation
 ### Roadmap
 
 No new follow-on work. A consistent table makes RIG-CLI-017 a filtering change rather than a filtering-and-tidying change.
+
+## Review
+
+### Delivered
+
+From baseline `5700121b46532d19d068e9a7b35823b759d17866`, Rig uses one bounded text-table renderer across the selected setup, catalogue list, observations, and mutation reports. Identity columns keep their full value. The listed commands, plus `capture` to close the same public-surface gap, accept complete JSON reports.
+
+### Change Summary
+
+The separate `show` formatter and raw human-facing tab tables are retired. Shared table columns spend width on identifiers before prose. `show` and `list` project directly from resolved catalogue data; `explain` preserves labelled fields and the full report. Mutation commands buffer stdout until their work ends, then render aligned tables or JSON sections with unabridged rows, notes, and the full source report. Provider diagnostics and progress remain live on stderr. Help, generated completions, manual, guide, README, and the report Specification reflect the format surface.
+
+### Verification
+
+Focused Bats coverage checks long identifiers, multiline catalogue prose, parseable JSON across the command surface, invalid-format rejection before dispatch, and provider stderr preceding a contiguous apply table. The complete Bats suite, repository audit, ShellCheck, Bash syntax, assembly check, benchmark, native-provider smoke test, man lint, and diff check passed after the implementation.
+
+### Outstanding concerns
+
+Aligned text intentionally changes the old tab-separated display contract; scripts should use JSON. A single identity longer than the entire 120-character width budget is printed intact rather than truncated, so that exceptional row may exceed the usual width. The tmux-like live-display direction remains RIG-CLI-023 and is not introduced by this batch. No push, release, or human acceptance is implied.
+
+### Post-change review
+
+The renderer preserves actionable IDs while abbreviating lower-priority prose, and every table-shaped public report now follows it. Buffering does not defer provider stderr or progress, and the outcome and exit-status contract survives the report-capture boundary. JSON retains full values, including multiline declarations and long native details. The benchmark remains within its portable query budgets.
+
+### Mini recap
+
+The report consolidation is implemented and ready for acceptance review; live-display design and any acceptance follow-ups stay separate.
 
 ## Discussion
 

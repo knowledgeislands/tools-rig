@@ -629,7 +629,7 @@ rig_apply_row_scope() {
   done
 }
 
-rig_command_apply() {
+rig_command_apply_impl() {
   local profile scope dry_run profile_seen scope_seen dry_run_seen index tool binding provider
   local blocker native_status planned completed failed skipped operational_failure
   local section_name section_index kind id locator resource_total lock_acquired exit_code
@@ -934,6 +934,14 @@ rig_command_apply() {
   return "$exit_code"
 }
 
+rig_command_apply() {
+  rig_buffer_mutation_report apply rig_command_apply_impl "$@"
+}
+
+rig_command_bootstrap() {
+  rig_buffer_mutation_report bootstrap rig_command_bootstrap_impl "$@"
+}
+
 rig_bootstrap_preflight_homebrew_manifest() {
   local scope index uses_homebrew manifest executable
 
@@ -1021,7 +1029,7 @@ rig_bootstrap_apply_npm_prerequisite() {
     rig_fail "bootstrap prerequisite '$tool' did not make provider 'npm' available: $executable" || return
 }
 
-rig_command_bootstrap() {
+rig_command_bootstrap_impl() {
   local profile scope dry_run profile_seen scope_seen dry_run_seen native_status manager_total
   local lock_acquired exit_code
 
@@ -1232,14 +1240,14 @@ rig_command_bootstrap() {
   [ "$dry_run" -eq 1 ] || RIG_BOOTSTRAP_ALLOW_DEFERRED_MANAGERS=0
   if [ -n "$profile" ]; then
     if [ "$dry_run" -eq 1 ]; then
-      rig_command_apply --profile "$profile" --scope "$scope" --dry-run
+      rig_command_apply_impl --profile "$profile" --scope "$scope" --dry-run
     else
-      rig_command_apply --profile "$profile" --scope "$scope"
+      rig_command_apply_impl --profile "$profile" --scope "$scope"
     fi
   elif [ "$dry_run" -eq 1 ]; then
-    rig_command_apply --scope "$scope" --dry-run
+    rig_command_apply_impl --scope "$scope" --dry-run
   else
-    rig_command_apply --scope "$scope"
+    rig_command_apply_impl --scope "$scope"
   fi
   exit_code=$?
   if [ "$lock_acquired" -eq 1 ]; then

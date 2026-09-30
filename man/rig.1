@@ -8,13 +8,16 @@ rig \- describe and manage a personal working setup
 .br
 .B rig show
 .RI [ \-\-profile " NAME" ]
+.RI [ \-\-format " text|json" ]
 .br
 .B rig list
 .RI [ \-\-category " ID" ]
 .RI [ \-\-profile " NAME" ]
+.RI [ \-\-format " text|json" ]
 .br
 .B rig explain
 .I TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID
+.RI [ \-\-format " text|json" ]
 .br
 .B rig status
 .RI [ \-\-profile " NAME" ]
@@ -31,24 +34,29 @@ rig \- describe and manage a personal working setup
 .RI [ \-\-scope " tools|skills|resources|all" ]
 .RI [ \-\-target " ID" ]...
 .RI [ \-\-dry-run ]
+.RI [ \-\-format " text|json" ]
 .br
 .B rig bootstrap
 .RI [ \-\-profile " NAME" ]
 .RI [ \-\-scope " tools|skills|resources|all" ]
 .RI [ \-\-dry-run ]
+.RI [ \-\-format " text|json" ]
 .br
 .B rig update
 .RI [ \-\-profile " NAME" ]
 .RI [ \-\-dry-run ]
 .RI [ \-\-unattended ]
+.RI [ \-\-format " text|json" ]
 .br
 .B rig maintain
 .RI [ \-\-profile " NAME" ]
 .RI [ \-\-dry-run ]
 .RI [ \-\-unattended ]
+.RI [ \-\-format " text|json" ]
 .br
 .BI "rig capture " PROVIDER
 .RI [ \-\-dry-run ]
+.RI [ \-\-format " text|json" ]
 .br
 .BI "rig run " PROVIDER " " ACTION
 .RI [ \-\- " ARGUMENT..." ]
@@ -196,6 +204,21 @@ relationship endpoint as its identifier followed by its display name in
 parentheses. Port explanations
 include TCP number, bind scope, mode, qualified owner, purpose, rationale, and
 profile membership.
+.PP
+.BR show ,
+.BR list ,
+.BR explain ,
+.BR apply ,
+.BR bootstrap ,
+.BR update ,
+.BR maintain ,
+and
+.B capture
+accept
+.BI "\-\-format " text|json .
+Text is the default. JSON keeps complete values even when a text column is
+abbreviated. Mutation JSON groups unabridged result rows by their named
+columns; progress and provider diagnostics remain on standard error.
 .TP
 .B rig status
 Compare every tool, user-level skill, and operational resource in the
