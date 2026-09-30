@@ -3,13 +3,13 @@ id: RIG-CORE-024
 area: CORE
 title: Widen needs-person detection
 theme: orchestration
-horizon: next
+horizon: now
 status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-25T15:00:00Z
-updated_at: 2026-09-27T08:13:24Z
+updated_at: 2026-09-30T13:16:00Z
 ---
 
 ## Goal
