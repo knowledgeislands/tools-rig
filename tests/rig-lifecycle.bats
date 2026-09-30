@@ -364,5 +364,5 @@ EOF
   run run_rig update --help </dev/null
 
   [ "$status" -eq 0 ]
-  [[ "$output" == 'Usage: rig update [--profile NAME] [--dry-run] [--unattended]' ]] || false
+  [[ "$output" == *'Usage: rig update [--profile NAME] [--dry-run] [--unattended]'* ]] || false
 }

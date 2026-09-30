@@ -409,13 +409,13 @@ rig_command_apply() {
   while [ "$#" -gt 0 ]; do
     case "$1" in
       -h|--help)
-      [ "$#" -eq 1 ] || { syntax_error 'usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'; return; }
-      printf '%s\n' 'Usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'
+      [ "$#" -eq 1 ] || { rig_command_syntax_error apply; return; }
+      rig_command_help apply
         return
         ;;
       --profile)
         if [ "$profile_seen" -ne 0 ] || [ "$#" -lt 2 ] || [ -z "$2" ]; then
-        syntax_error 'usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'
+        rig_command_syntax_error apply
           return
         fi
         profile=$2
@@ -424,11 +424,11 @@ rig_command_apply() {
         ;;
       --scope)
         if [ "$scope_seen" -ne 0 ] || [ "$#" -lt 2 ]; then
-        syntax_error 'usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'
+        rig_command_syntax_error apply
           return
         fi
         case "$2" in tools|skills|resources|all) scope=$2 ;; *)
-          syntax_error 'usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'
+          rig_command_syntax_error apply
           return ;;
         esac
         scope_seen=1
@@ -436,12 +436,12 @@ rig_command_apply() {
         ;;
       --dry-run)
       [ "$dry_run_seen" -eq 0 ] ||
-        { syntax_error 'usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'; return; }
+        { rig_command_syntax_error apply; return; }
         dry_run=1
         dry_run_seen=1
         shift
         ;;
-      *) syntax_error 'usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'; return ;;
+      *) rig_command_syntax_error apply; return ;;
     esac
   done
 
@@ -770,15 +770,15 @@ rig_command_bootstrap() {
     case "$1" in
       -h|--help)
         [ "$#" -eq 1 ] || {
-          syntax_error 'usage: rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'
+          rig_command_syntax_error bootstrap
           return
         }
-      printf '%s\n' 'Usage: rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'
+      rig_command_help bootstrap
         return
         ;;
       --profile)
         if [ "$profile_seen" -ne 0 ] || [ "$#" -lt 2 ] || [ -z "$2" ]; then
-        syntax_error 'usage: rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'
+        rig_command_syntax_error bootstrap
           return
         fi
         profile=$2
@@ -787,11 +787,11 @@ rig_command_bootstrap() {
         ;;
       --scope)
         if [ "$scope_seen" -ne 0 ] || [ "$#" -lt 2 ]; then
-        syntax_error 'usage: rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'
+        rig_command_syntax_error bootstrap
           return
         fi
         case "$2" in tools|skills|resources|all) scope=$2 ;; *)
-          syntax_error 'usage: rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'
+          rig_command_syntax_error bootstrap
           return ;;
         esac
         scope_seen=1
@@ -799,14 +799,14 @@ rig_command_bootstrap() {
         ;;
       --dry-run)
         [ "$dry_run_seen" -eq 0 ] || {
-          syntax_error 'usage: rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'
+          rig_command_syntax_error bootstrap
           return
         }
         dry_run=1
         dry_run_seen=1
         shift
         ;;
-      *) syntax_error 'usage: rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'; return ;;
+      *) rig_command_syntax_error bootstrap; return ;;
     esac
   done
 

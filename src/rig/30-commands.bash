@@ -227,21 +227,21 @@ rig_command_run_action() {
   if [ "$#" -eq 1 ]; then
     case "$1" in
       -h|--help)
-        printf '%s\n' 'Usage: rig run PROVIDER ACTION [-- ARGUMENT...]'
+        rig_command_help run
         return
         ;;
     esac
   fi
 
   [ "$#" -ge 2 ] ||
-    syntax_error 'usage: rig run PROVIDER ACTION [-- ARGUMENT...]' || return
+    rig_command_syntax_error run || return
   provider=$1
   action=$2
   shift 2
   caller_arguments=()
   if [ "$#" -gt 0 ]; then
     [ "$1" = -- ] ||
-      syntax_error 'usage: rig run PROVIDER ACTION [-- ARGUMENT...]' || return
+      rig_command_syntax_error run || return
     shift
     caller_arguments=("$@")
   fi
@@ -428,10 +428,10 @@ rig_command_diag() {
 
   if [ "$#" -eq 1 ]; then
     case "$1" in
-      -h|--help) printf '%s\n' 'Usage: rig diag'; return ;;
+      -h|--help) rig_command_help diag; return ;;
     esac
   fi
-  [ "$#" -eq 0 ] || syntax_error 'usage: rig diag' || return
+  [ "$#" -eq 0 ] || rig_command_syntax_error diag || return
 
   rig_effective_paths || return 1
   rig_diagnostic_platform
@@ -1155,16 +1155,16 @@ rig_command_show() {
     0) ;;
     1)
       case "$1" in
-        -h|--help) printf '%s\n' 'Usage: rig show [--profile NAME]'; return ;;
-        *) syntax_error 'usage: rig show [--profile NAME]' || return ;;
+        -h|--help) rig_command_help show; return ;;
+        *) rig_command_syntax_error show || return ;;
       esac
       ;;
     2)
       [ "$1" = --profile ] && [ -n "$2" ] ||
-        syntax_error 'usage: rig show [--profile NAME]' || return
+        rig_command_syntax_error show || return
       profile=$2
       ;;
-    *) syntax_error 'usage: rig show [--profile NAME]' || return ;;
+    *) rig_command_syntax_error show || return ;;
   esac
 
   rig_load_config || return
@@ -1193,26 +1193,26 @@ rig_command_list() {
   profile_seen=0
   if [ "$#" -eq 1 ]; then
     case "$1" in
-      -h|--help) printf '%s\n' 'Usage: rig list [--category ID] [--profile NAME]'; return ;;
+      -h|--help) rig_command_help list; return ;;
     esac
   fi
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --category)
         [ "$category_seen" -eq 0 ] && [ "$#" -ge 2 ] && [ -n "$2" ] ||
-          syntax_error 'usage: rig list [--category ID] [--profile NAME]' || return
+          rig_command_syntax_error list || return
         category=$2
         category_seen=1
         shift 2
         ;;
       --profile)
         [ "$profile_seen" -eq 0 ] && [ "$#" -ge 2 ] && [ -n "$2" ] ||
-          syntax_error 'usage: rig list [--category ID] [--profile NAME]' || return
+          rig_command_syntax_error list || return
         profile=$2
         profile_seen=1
         shift 2
         ;;
-      *) syntax_error 'usage: rig list [--category ID] [--profile NAME]' || return ;;
+      *) rig_command_syntax_error list || return ;;
     esac
   done
 
@@ -1415,10 +1415,10 @@ rig_command_explain() {
 
   if [ "$#" -eq 1 ]; then
     case "$1" in
-      -h|--help) printf '%s\n' 'Usage: rig explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID'; return ;;
+      -h|--help) rig_command_help explain; return ;;
     esac
   fi
-  [ "$#" -eq 1 ] || syntax_error 'usage: rig explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID' || return
+  [ "$#" -eq 1 ] || rig_command_syntax_error explain || return
   tool=$1
   rig_load_config || return
   case "$tool" in

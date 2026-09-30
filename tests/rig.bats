@@ -444,7 +444,7 @@ write_query_config() {
     run "$RIG" completion "$flag"
 
     [ "$status" -eq 0 ]
-    [ "$output" = "Usage: rig completion bash|zsh" ]
+    [[ "$output" == *"Usage: rig completion bash|zsh"* ]] || false
 
     run "$RIG" help "$flag"
 
@@ -530,11 +530,12 @@ write_query_config() {
   [[ "$output" == *"-h --help -V --version show list explain status doctor apply bootstrap update maintain capture run export diag completion help"* ]] || false
   [[ "$output" == *'show) COMPREPLY=($(compgen -W "-h --help --profile"'* ]] || false
   [[ "$output" == *'explain) COMPREPLY=($(compgen -W "-h --help"'* ]] || false
-  [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile --problems --unmanaged --format"'* ]] || false
-  [[ "$output" == *'doctor) COMPREPLY=($(compgen -W "-h --help --profile --format"'* ]] || false
+  [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile --problems --unmanaged --format text json"'* ]] || false
+  [[ "$output" == *'doctor) COMPREPLY=($(compgen -W "-h --help --profile --format text json"'* ]] || false
   [[ "$output" == *'apply) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all"'* ]] || false
   [[ "$output" == *'bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all"'* ]] || false
-  [[ "$output" == *'update|maintain) COMPREPLY=($(compgen -W "-h --help --profile --dry-run --unattended"'* ]] || false
+  [[ "$output" == *'update) COMPREPLY=($(compgen -W "-h --help --profile --dry-run --unattended"'* ]] || false
+  [[ "$output" == *'maintain) COMPREPLY=($(compgen -W "-h --help --profile --dry-run --unattended"'* ]] || false
   [[ "$output" == *'capture) COMPREPLY=($(compgen -W "-h --help --dry-run homebrew"'* ]] || false
   [[ "$output" == *'run) COMPREPLY=($(compgen -W "-h --help --"'* ]] || false
   [[ "$output" == *'export) COMPREPLY=($(compgen -W "-h --help --profile --output --title --base-url"'* ]] || false
@@ -554,8 +555,9 @@ write_query_config() {
   [[ "$output" == *"update:update selected provider-managed tools"* ]] || false
   [[ "$output" == *"maintain:run explicit selected-provider maintenance"* ]] || false
   [[ "$output" == *"capture:refresh one provider-native manifest"* ]] || false
-  [[ "$output" == *"update|maintain) _arguments"*"--profile[select profile]"*"--dry-run[print plan without invoking providers]"*"--unattended[run with nobody watching and record the outcome]"* ]] || false
-  [[ "$output" == *"capture) _arguments"*"1:provider:(homebrew)"*"--dry-run[print plan without invoking provider]"* ]] || false
+  [[ "$output" == *"update) _arguments"*"--profile[Select a profile.]"*"--dry-run[Print the plan without invoking providers.]"*"--unattended[Record an outcome when nobody is watching.]"* ]] || false
+  [[ "$output" == *"maintain) _arguments"*"--unattended[Record an outcome when nobody is watching.]"* ]] || false
+  [[ "$output" == *"capture) _arguments"*"--dry-run[Print the plan without invoking the provider.]"*"1:provider:(homebrew)"* ]] || false
   [[ "$output" == *"export:generate public rig data"* ]] || false
   [[ "$output" == *"run:invoke a declared provider action"* ]] || false
   [[ "$output" == *"run) _arguments"*"'3:separator:(--)'"* ]] || false
@@ -565,6 +567,37 @@ write_query_config() {
   [[ "$output" == *"explain) _arguments '(-h --help)'"* ]] || false
   [[ "$output" == *"completion) _arguments '(-h --help)'"* ]] || false
   [[ "$output" == *"help) _arguments '(-h --help)'"* ]] || false
+}
+
+@test "all accepted command options are described and completed" {
+  local command expected option help_text bash_completion zsh_completion
+  bash_completion=$("$RIG" completion bash)
+  zsh_completion=$("$RIG" completion zsh)
+  for command in show list explain status doctor apply bootstrap update maintain capture run export diag completion; do
+    case "$command" in
+      show) expected='--profile' ;;
+      list) expected='--category --profile' ;;
+      explain|run|diag|completion) expected= ;;
+      status) expected='--profile --problems --unmanaged --format' ;;
+      doctor) expected='--profile --format' ;;
+      apply|bootstrap) expected='--profile --scope --dry-run' ;;
+      update|maintain) expected='--profile --dry-run --unattended' ;;
+      capture) expected='--dry-run' ;;
+      export) expected='--profile --output --title --base-url' ;;
+    esac
+    run "$RIG" "$command" --help
+    [ "$status" -eq 0 ] || false
+    help_text=$output
+    [[ "$help_text" == *'  -h, --help  Show command help.'* ]] || false
+    [[ "$help_text" == *'Example: rig '* ]] || false
+    for option in $expected; do
+      [[ "$help_text" == *"  $option"* ]] || false
+      [[ "$bash_completion" == *"$command) COMPREPLY="*" $option"* ]] || false
+      [[ "$zsh_completion" == *"$command) _arguments"*"'$option["* ]] || false
+    done
+  done
+  [[ "$("$RIG" apply --help)" == *'may restart applications mid-run'* ]] || false
+  [[ "$("$RIG" --help)" != *'Interactive operations use'* ]] || false
 }
 
 @test "completion definitions evaluate and expose accepted options" {
@@ -718,7 +751,7 @@ write_query_config() {
   for flag in -h --help; do
     run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" diag "$flag"
     [ "$status" -eq 0 ]
-    [ "$output" = "Usage: rig diag" ]
+    [[ "$output" == *"Usage: rig diag"* ]] || false
   done
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" diag extra
@@ -906,15 +939,15 @@ write_query_config() {
   for flag in -h --help; do
     run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" show "$flag"
     [ "$status" -eq 0 ]
-    [ "$output" = "Usage: rig show [--profile NAME]" ]
+    [[ "$output" == *"Usage: rig show [--profile NAME]"* ]] || false
 
     run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" list "$flag"
     [ "$status" -eq 0 ]
-    [ "$output" = "Usage: rig list [--category ID] [--profile NAME]" ]
+    [[ "$output" == *"Usage: rig list [--category ID] [--profile NAME]"* ]] || false
 
     run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" explain "$flag"
     [ "$status" -eq 0 ]
-    [ "$output" = "Usage: rig explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID" ]
+    [[ "$output" == *"Usage: rig explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID"* ]] || false
   done
 }
 
@@ -2210,7 +2243,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
 
   run "$RIG" doctor --help
   [ "$status" -eq 0 ]
-  [ "$output" = 'Usage: rig doctor [--profile NAME] [--format text|json]' ]
+  [[ "$output" == *"Usage: rig doctor [--profile NAME] [--format text|json]"* ]] || false
 }
 
 @test "custom provider ABI preserves versioned literal argument boundaries" {
@@ -2683,15 +2716,15 @@ bootstrap-profile = "absent"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.t
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" status --help
   [ "$status" -eq 0 ]
-  [ "$output" = 'Usage: rig status [--profile NAME] [--problems] [--unmanaged] [--format text|json]' ]
+  [[ "$output" == *"Usage: rig status [--profile NAME] [--problems] [--unmanaged] [--format text|json]"* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --help
   [ "$status" -eq 0 ]
-  [ "$output" = 'Usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]' ]
+  [[ "$output" == *"Usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]"* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" bootstrap --help
   [ "$status" -eq 0 ]
-  [ "$output" = 'Usage: rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]' ]
+  [[ "$output" == *"Usage: rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]"* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --dry-run --dry-run
   [ "$status" -eq 2 ]
@@ -3234,7 +3267,7 @@ assert tools["beta"]["relationships"] == {
 @test "export help and syntax are local and explicit" {
   run "$RIG" export --help
   [ "$status" -eq 0 ]
-  [ "$output" = 'Usage: rig export --profile NAME --output DIRECTORY [--title TEXT] [--base-url URL]' ]
+  [[ "$output" == *"Usage: rig export --profile NAME --output DIRECTORY [--title TEXT] [--base-url URL]"* ]] || false
 
   run "$RIG" export --profile public
   [ "$status" -eq 2 ]
@@ -3467,7 +3500,7 @@ write_operation_config() {
 
   run "$RIG" run --help
   [ "$status" -eq 0 ]
-  [ "$output" = 'Usage: rig run PROVIDER ACTION [-- ARGUMENT...]' ]
+  [[ "$output" == *"Usage: rig run PROVIDER ACTION [-- ARGUMENT...]"* ]] || false
 
   run "$RIG" run runner
   [ "$status" -eq 2 ]

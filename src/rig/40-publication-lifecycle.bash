@@ -321,8 +321,7 @@ rig_command_export() {
   while [ "$#" -gt 0 ]; do
     case "$1" in
       -h|--help)
-        printf '%s\n' \
-          'Usage: rig export --profile NAME --output DIRECTORY [--title TEXT] [--base-url URL]'
+        rig_command_help export
         return
         ;;
       --profile|--output|--title|--base-url)
@@ -340,7 +339,7 @@ rig_command_export() {
     esac
   done
   [ -n "$profile" ] && [ -n "$output" ] ||
-    syntax_error 'usage: rig export --profile NAME --output DIRECTORY [--title TEXT] [--base-url URL]' ||
+    rig_command_syntax_error export ||
     return
   rig_load_config || return
   rig_valid_id "$profile" && rig_reference_exists profile "$profile" ||
@@ -834,12 +833,13 @@ rig_command_lifecycle() {
   dry_run_seen=0
   unattended_seen=0
   RIG_UNATTENDED=0
-  usage="usage: rig $action [--profile NAME] [--dry-run] [--unattended]"
+  usage=$(rig_command_usage "$action")
+  usage="usage: ${usage#Usage: }"
   while [ "$#" -gt 0 ]; do
     case "$1" in
       -h|--help)
         [ "$#" -eq 1 ] || { syntax_error "$usage"; return; }
-        printf 'Usage: rig %s [--profile NAME] [--dry-run] [--unattended]\n' "$action"
+        rig_command_help "$action"
         return
         ;;
       --profile)
@@ -888,13 +888,13 @@ rig_command_capture() {
   while [ "$#" -gt 0 ]; do
     case "$1" in
       -h|--help)
-        [ "$#" -eq 1 ] || { syntax_error 'usage: rig capture PROVIDER [--dry-run]'; return; }
-        printf '%s\n' 'Usage: rig capture PROVIDER [--dry-run]'
+        [ "$#" -eq 1 ] || { rig_command_syntax_error capture; return; }
+        rig_command_help capture
         return
         ;;
       --dry-run)
         if [ "$dry_run_seen" -ne 0 ]; then
-          syntax_error 'usage: rig capture PROVIDER [--dry-run]'
+          rig_command_syntax_error capture
           return
         fi
         dry_run=1
@@ -903,7 +903,7 @@ rig_command_capture() {
         ;;
       *)
         if [ -n "$provider" ]; then
-          syntax_error 'usage: rig capture PROVIDER [--dry-run]'
+          rig_command_syntax_error capture
           return
         fi
         provider=$1
@@ -911,7 +911,7 @@ rig_command_capture() {
         ;;
     esac
   done
-  [ -n "$provider" ] || { syntax_error 'usage: rig capture PROVIDER [--dry-run]'; return; }
+  [ -n "$provider" ] || { rig_command_syntax_error capture; return; }
   rig_load_config || return
   rig_current_platform || return
   RIG_RESOLVED_PROFILE=-

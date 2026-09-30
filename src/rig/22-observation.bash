@@ -1026,7 +1026,7 @@ rig_command_status() {
   while [ "$#" -gt 0 ]; do
     case "$1" in
       -h|--help)
-        printf '%s\n' 'Usage: rig status [--profile NAME] [--problems] [--unmanaged] [--format text|json]'
+        rig_command_help status
         return
         ;;
       --unmanaged)
@@ -1039,7 +1039,7 @@ rig_command_status() {
         ;;
       --profile)
         if [ "$#" -lt 2 ] || [ -z "$2" ]; then
-          syntax_error 'usage: rig status [--profile NAME] [--problems] [--unmanaged] [--format text|json]'
+          rig_command_syntax_error status
           return
         fi
         profile=$2
@@ -1049,14 +1049,14 @@ rig_command_status() {
         case "${2:-}" in
           text|json) format=$2 ;;
           *)
-            syntax_error 'usage: rig status [--profile NAME] [--problems] [--unmanaged] [--format text|json]'
+            rig_command_syntax_error status
             return
             ;;
         esac
         shift 2
         ;;
       *)
-        syntax_error 'usage: rig status [--profile NAME] [--problems] [--unmanaged] [--format text|json]'
+        rig_command_syntax_error status
         return
         ;;
     esac
@@ -1342,12 +1342,12 @@ rig_command_doctor() {
   while [ "$#" -gt 0 ]; do
     case "$1" in
       -h|--help)
-        printf '%s\n' 'Usage: rig doctor [--profile NAME] [--format text|json]'
+        rig_command_help doctor
         return
         ;;
       --profile)
         if [ "$#" -lt 2 ] || [ -z "$2" ]; then
-          syntax_error 'usage: rig doctor [--profile NAME] [--format text|json]'
+          rig_command_syntax_error doctor
           return
         fi
         profile=$2
@@ -1357,14 +1357,14 @@ rig_command_doctor() {
         case "${2:-}" in
           text|json) format=$2 ;;
           *)
-            syntax_error 'usage: rig doctor [--profile NAME] [--format text|json]'
+            rig_command_syntax_error doctor
             return
             ;;
         esac
         shift 2
         ;;
       *)
-        syntax_error 'usage: rig doctor [--profile NAME] [--format text|json]'
+        rig_command_syntax_error doctor
         return
         ;;
     esac

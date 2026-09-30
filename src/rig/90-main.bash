@@ -93,9 +93,9 @@ main() {
       rig_command_diag "$@"
       ;;
     completion)
-      [ "$#" -eq 2 ] || syntax_error 'usage: rig completion bash|zsh' || return
+      [ "$#" -eq 2 ] || rig_command_syntax_error completion || return
       case "$2" in
-        -h|--help) printf '%s\n' 'Usage: rig completion bash|zsh' ;;
+        -h|--help) rig_command_help completion ;;
         bash) print_bash_completion ;;
         zsh) print_zsh_completion ;;
         *) syntax_error "unsupported shell: $2" || return ;;
