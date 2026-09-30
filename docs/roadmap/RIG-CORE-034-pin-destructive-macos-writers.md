@@ -4,12 +4,12 @@ area: CORE
 title: Pin destructive macOS writers
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: c773a5396af4a8c31f844730d04567d6bcafb496
 created_at: 2026-09-28T09:28:51Z
-updated_at: 2026-09-29T10:20:00Z
+updated_at: 2026-09-30T09:00:00Z
 ---
 
 ## Goal
@@ -125,6 +125,10 @@ Ready for acceptance.
 ### Mini recap
 
 `defaults`, `dockutil`, and `killall` resolved as bare names and the harness never pinned them, so a test that forgot an override rewrote the runner's real machine — which is how this workstation's screenshot location came to point at a deleted temporary directory. `rig_test_isolate` now stubs all three, and the regression test asserts on the stub's own argv log, because the obvious assertion on an observed value passes even when the pinning is gone.
+
+## Done
+
+Accepted 2026-09-30 by Kris Brown on the review packet above.
 
 ## Discussion
 
