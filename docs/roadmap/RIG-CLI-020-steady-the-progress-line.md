@@ -4,7 +4,7 @@ area: CLI
 title: Steady the progress line
 theme: cli
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 4e8b0c4ca83f2a0754edd0932e65f6e04a7bd3cd
@@ -121,6 +121,10 @@ Goal met: nothing moves between frames. Scope held to the stderr line; stdout is
 ### Mini recap
 
 Steadied the progress line with fixed fields, an elastic three-zone bar, and shorter vocabulary; verified by the full gate and a live terminal. Possible learning route: the fixed-field-plus-elastic-bar geometry is the same shape `ki repo audit` uses and could be named once in the harness's CLI guidance.
+
+## Done
+
+Accepted 2026-09-30 by Kris Brown on the review packet above.
 
 ## Discussion
 

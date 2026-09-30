@@ -4,7 +4,7 @@ area: CLI
 title: Report what needs attention
 theme: cli
 horizon: next
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: abe812f2c48640bac54d710a990beb9bcf5c5238
@@ -123,6 +123,10 @@ The goal is met: the first line of stdout answers how much needs a person and wh
 ### Mini recap
 
 Delivered a verdict line, per-section summaries, and an opt-in `--problems` filter for `rig status`; verified by the full local gate; one step spun out as RIG-CLI-021. Possible learning route: the "needs attention" rule in RIG-STATE-031 could inform how RIG-CORE-027 renames the catalogue-only state.
+
+## Done
+
+Accepted 2026-09-30 by Kris Brown on the review packet above.
 
 ## Discussion
 
