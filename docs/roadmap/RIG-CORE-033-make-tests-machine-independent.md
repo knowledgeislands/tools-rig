@@ -4,12 +4,12 @@ area: CORE
 title: Make tests machine independent
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: f2499332afbfa7a758148c6495ffc1bacbe1bb7d
 created_at: 2026-09-28T07:05:00Z
-updated_at: 2026-09-30T09:50:25Z
+updated_at: 2026-09-30T11:03:19Z
 ---
 
 ## Goal
@@ -40,12 +40,12 @@ The shared helper isolates directories and destructive macOS writers, but it doe
 
 ## Steps
 
-- [ ] Add a fixture provider directory the harness prepends to `PATH`, with a stub per manager that replays a declared observation table and records its argv for assertion.
-- [ ] Have `rig_test_isolate` set `RIG_PLATFORM` explicitly so a run covers a chosen platform rather than the runner's.
-- [ ] Convert the existing tests that reach a real provider, file by file, to declare their observations.
-- [ ] Add the variation matrix: provider by kind by observation state by platform, covering absent, present, drifted, failed, and capability-unavailable.
-- [ ] Sandbox `scripts/benchmark-rig` so it names its own state home rather than inheriting the runner's.
-- [ ] Record the fixture convention in the authoring notes so a new test file inherits it.
+- [x] Add a fixture provider directory the harness prepends to `PATH`, with a stub per manager that replays a declared observation table and records its argv for assertion.
+- [x] Have `rig_test_isolate` set `RIG_PLATFORM` explicitly so a run covers a chosen platform rather than the runner's.
+- [x] Run every existing test under a manager-free path; tests needing managers already name explicit executables or per-test stubs, so no per-file conversion was necessary.
+- [x] Add a variation matrix across Homebrew, uv, mise, npm, and chezmoi on macOS and Linux, covering missing, present, drifted, failed, and capability-unavailable outcomes where meaningful to each adapter.
+- [x] Sandbox `scripts/benchmark-rig` so it names its own state home rather than inheriting the runner's.
+- [x] Record the fixture convention in the authoring notes so a new test file inherits it.
 
 ## Files touched
 
@@ -84,6 +84,32 @@ None expected. No specified behaviour changes; the `_Verify_` clauses continue t
 ### Roadmap
 
 This record absorbs the `scripts/benchmark-rig` concern recorded under RIG-CORE-032. It no longer duplicates RIG-CORE-025's remaining verification work.
+
+## Review
+
+### Delivered
+
+From baseline `f2499332afbfa7a758148c6495ffc1bacbe1bb7d`, the Bats harness runs with native package managers absent from its default `PATH`, and tests can declare exact manager responses. The benchmark owns an isolated state home.
+
+### Change Summary
+
+Added a per-test provider directory and response table in `tests/helpers/`, a reusable argv-logging native-manager stub, and a five-manager/two-platform observation suite. The existing suite already used explicit executables where it needed a manager, so the restricted default path required no other test conversions. Updated `AGENTS.md` with the convention.
+
+### Verification
+
+The full Bats suite passed with the restricted manager path; the focused observation matrix passed for both platforms. ShellCheck, Bash syntax, assembly check, benchmark without an external state override, native-provider smoke test, repository audit, and man-page lint all passed. `bin/rig` is unchanged from baseline.
+
+### Outstanding concerns
+
+The shared fixture table uses `|` as its separator and supports single-line output; tests needing complex output continue to use their own explicit stubs. The real native-manager integration remains in `scripts/smoke-native-providers`.
+
+### Post-change review
+
+No runtime mock mode or test branch was introduced. An undeclared fixture invocation fails with exit 99 and logs its argv, while absent managers remain genuinely unavailable to capability checks. Existing tests passed without the runner's installed Homebrew, uv, mise, npm, or chezmoi.
+
+### Mini recap
+
+Provider and platform fixture isolation is delivered for acceptance review; the default local verification gate now passes without a benchmark state override.
 
 ## Discussion
 
