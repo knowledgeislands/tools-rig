@@ -22,3 +22,5 @@ policy: safe-local-v1
 | RIG-CLI-015 | awaiting-review | `8b35359326ba8d2a1e861ad3162b3dd56f667d9b` | `26fbb23acd4209e21867ae4f90a477433a0d74d5` | None |
 | RIG-CORE-027 | awaiting-review | `8b35359326ba8d2a1e861ad3162b3dd56f667d9b` | `efd500e6f28b9fcd0eb3b652f3e4b1fe2dbe7bf5` | None |
 | RIG-CLI-022 | awaiting-review | `8b35359326ba8d2a1e861ad3162b3dd56f667d9b` | `49b60cd0e72e1b65073a01de559095ddfc7e026f` | None |
+
+<!-- ki-batch-close: RIG-BATCH-005 awaiting-review c072476e1146fe6d35a8b2b9454e179ad4c2b68d -->
