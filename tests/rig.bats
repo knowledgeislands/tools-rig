@@ -4841,6 +4841,46 @@ artifacts = ["$HOME/bin/home-tool", "~/bin/tilde-tool", "/opt/rig/absolute-tool"
   [ "$status" -eq 2 ]
   grep -F 'rig: error:' "$outcome_file" >/dev/null
   ! grep -F 'status 2' "$outcome_file" >/dev/null
+  ! grep -E '^rig: status (succeeded|healthy|unhealthy|incomplete|failed):' "$outcome_file" >/dev/null || false
+}
+
+@test "every current command stays inside the closed outcome vocabulary" {
+  local line count
+
+  run env RIG_OUTCOME=always bash -c '
+    source "$1"
+    for command in show list explain status doctor apply bootstrap update maintain capture run export diag; do
+      for result_status in 0 1 7; do
+        RIG_OUTCOME_RESULT=
+        RIG_OUTCOME_DETAIL=
+        rig_outcome_report "$command" "$result_status"
+      done
+    done
+  ' _ "$RIG"
+  [ "$status" -eq 0 ] || false
+  count=0
+  while IFS= read -r line; do
+    [[ "$line" =~ ^rig:\ [a-z-]+\ (succeeded|healthy|unhealthy|incomplete|failed):\ status\ (0|1|7)$ ]] || false
+    count=$((count + 1))
+  done <<< "$output"
+  [ "$count" -eq 39 ] || false
+}
+
+@test "observation and lifecycle outcomes retain a detail clause" {
+  local command outcome
+
+  write_orchestration_config
+  for command in status doctor apply update maintain; do
+    case "$command" in
+      apply|update|maintain) set -- "$command" --dry-run ;;
+      *) set -- "$command" ;;
+    esac
+    run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+      RIG_OUTCOME=always RIG_PROGRESS=never RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" "$@"
+    [ "$status" -eq 0 ] || false
+    outcome=${output##*$'\n'}
+    [[ "$outcome" == "rig: $command "*": status 0 ("*")" ]] || false
+  done
 }
 
 @test "outcome line leaves the JSON payload alone" {
