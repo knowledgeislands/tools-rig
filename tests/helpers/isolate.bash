@@ -43,6 +43,9 @@ rig_test_isolate() {
   export RIG_TEST_PROVIDER_TABLE RIG_TEST_PROVIDER_LOG
   export PATH="$RIG_TEST_PROVIDER_BIN:/usr/bin:/bin"
   export RIG_PLATFORM=macos
+  # Unrelated merged-stream assertions concern reports, not progress events.
+  # Progress tests explicitly select the mode under examination.
+  export RIG_PROGRESS=never
   # A macOS unmanaged scan must not inspect the runner's /Applications tree.
   export RIG_APPLICATION_ROOTS=$BATS_TEST_TMPDIR/applications
   mkdir -p "$RIG_APPLICATION_ROOTS"

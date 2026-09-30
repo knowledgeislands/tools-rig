@@ -4,12 +4,12 @@ area: CLI
 title: Report progress when redirected
 theme: cli
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 1dfaec09165709b4a394b267403035c45b7593b9
 created_at: 2026-09-30T00:00:00Z
-updated_at: 2026-09-30T15:22:00Z
+updated_at: 2026-09-30T19:45:03Z
 ---
 
 ## Goal
@@ -32,10 +32,10 @@ The non-terminal `lines` renderer already exists and is selected by `RIG_PROGRES
 
 ## Steps
 
-- [ ] Select `lines` for `RIG_PROGRESS=auto` in operational context when stderr is redirected; keep terminal `bar`, declaration-query silence, and explicit `always`, `lines`, and `never` behavior.
-- [ ] Set `RIG_PROGRESS=never` in the isolated test default so unrelated merged-stream assertions remain about reports; explicitly select `auto`, `always`, or `lines` in progress tests.
-- [ ] Add Bats checks for redirected automatic phase/item/count events, their arrival during work, quiet queries, explicit suppression, unchanged stdout and exit status, and the provider passthrough boundary.
-- [ ] Update the progress Specification, guide, and manual for the automatic redirected fallback; regenerate the assembled executable.
+- [x] Select `lines` for `RIG_PROGRESS=auto` in operational context when stderr is redirected; keep terminal `bar`, declaration-query silence, and explicit `always`, `lines`, and `never` behavior.
+- [x] Set `RIG_PROGRESS=never` in the isolated test default so unrelated merged-stream assertions remain about reports; explicitly select `auto`, `always`, or `lines` in progress tests.
+- [x] Add Bats checks for redirected automatic phase/item/count events, their arrival during work, quiet queries, explicit suppression, unchanged stdout and exit status, and the provider passthrough boundary.
+- [x] Update the progress Specification, guide, and manual for the automatic redirected fallback; regenerate the assembled executable.
 
 ## Files touched
 
@@ -68,6 +68,32 @@ None. The stdout/stderr split and progress event vocabulary do not change.
 ### Roadmap
 
 RIG-CLI-023 remains a separate interactive display item. No new work record is needed for the read-only `workstation-health` consumer.
+
+## Review
+
+### Delivered
+
+From immutable baseline `1dfaec09165709b4a394b267403035c45b7593b9`, automatic progress now emits line-oriented events during redirected operational work. Interactive operational work keeps its bar, and declaration-only queries remain quiet under `auto`. Explicit modes, stdout reports, exit statuses, and outcome lines are unchanged.
+
+### Change Summary
+
+`src/rig/00-runtime.bash` selects the existing `lines` renderer for non-terminal operational `auto`; `bin/rig` is regenerated. The isolated Bats default disables progress for unrelated merged-stream assertions, while focused tests select modes explicitly. The progress Specification, user guide, and manual describe the fallback. The scheduled `workstation-health` consumer was inspected read-only and remains outside this change.
+
+### Verification
+
+Focused progress Bats tests passed, including an event observed before provider output, counts and phase completion, a quiet query, and explicit suppression. The complete 288-test Bats suite, repository audit, ShellCheck, Bash syntax, assembly check, benchmark, native-provider smoke test, man lint, and diff check passed. The scheduled consumer chooses its notification from `rig doctor` exit status, not parsed report lines.
+
+### Outstanding concerns
+
+Scheduled and scripted operational runs will now receive additional stderr lines by default; callers requiring silence can set `RIG_PROGRESS=never`. The interactive tmux-like display remains a separate design item, RIG-CLI-023. No release, push, or human acceptance is implied.
+
+### Post-change review
+
+The implementation reuses the established line-event vocabulary and keeps it separate from stdout report data. Provider diagnostics can interleave with complete progress lines without a cursor collision. The command's exit status and final report remain independent of the progress setting. The item is ready for acceptance review.
+
+### Mini recap
+
+Redirected operational progress is delivered and verified. The interactive display design and any acceptance follow-ups remain separate.
 
 ## Discussion
 

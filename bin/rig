@@ -362,7 +362,7 @@ rig_progress_enabled() {
     always) return 0 ;;
     lines) return 0 ;;
     never) return 1 ;;
-    auto|'') [ "${RIG_PROGRESS_CONTEXT:-query}" = operational ] && [ -t 2 ] ;;
+    auto|'') [ "${RIG_PROGRESS_CONTEXT:-query}" = operational ] ;;
     *) [ "${RIG_PROGRESS_CONTEXT:-query}" = operational ] && [ -t 2 ] ;;
   esac
 }
@@ -379,8 +379,12 @@ rig_progress_select_renderer() {
       ;;
     never) RIG_PROGRESS_RENDER=off ;;
     auto|'')
-      if [ "${RIG_PROGRESS_CONTEXT:-query}" = operational ] && [ -t 2 ]; then
-        RIG_PROGRESS_RENDER=bar
+      if [ "${RIG_PROGRESS_CONTEXT:-query}" = operational ]; then
+        if [ -t 2 ]; then
+          RIG_PROGRESS_RENDER=bar
+        else
+          RIG_PROGRESS_RENDER=lines
+        fi
       else
         RIG_PROGRESS_RENDER=off
       fi

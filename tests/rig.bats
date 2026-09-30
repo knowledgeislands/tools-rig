@@ -2179,14 +2179,14 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [[ "$output" == *'{"id":"notes","provider":"-","state":"catalogue-only","detail":"catalogue-only"}'* ]] || false
 }
 
-@test "provider-backed work reports progress on stderr without changing stdout" {
+@test "redirected operational work reports automatic progress without changing stdout" {
   local progress_file progress_output
   write_orchestration_config
   progress_file=$BATS_TEST_TMPDIR/progress-$BATS_TEST_NUMBER
 
   run bash -c 'progress_file=$1; shift; "$@" 2>"$progress_file"' _ "$progress_file" \
     env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_PROGRESS=always RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
+    RIG_PROGRESS=auto RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
 
   [ "$status" -eq 0 ]
   [[ "$output" == 'Needs attention: '* ]] || false
@@ -2207,6 +2207,50 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   run bash -c 'progress_file=$1; shift; "$@" 2>"$progress_file"' _ "$progress_file" \
     env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_PROGRESS=never RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" status
+
+  [ "$status" -eq 0 ]
+  [ ! -s "$progress_file" ]
+}
+
+@test "automatic redirected progress is live, quiet for queries, and safe with provider output" {
+  local progress_file progress_output
+
+  progress_file=$BATS_TEST_TMPDIR/progress-auto-$BATS_TEST_NUMBER
+  run bash -c '
+    exec 2>"$2"
+    . "$1"
+    RIG_PROGRESS=auto
+    RIG_PROGRESS_CONTEXT=operational
+    rig_progress_start applying 1 passthrough
+    rig_progress_begin alpha declaration
+    if grep -q "applying 0/1: alpha \[declaration\] running" "$2"; then
+      printf "progress-before-provider\n"
+    fi
+    printf "provider-marker\n" >&2
+    rig_progress_result succeeded alpha declaration
+    rig_progress_finish
+  ' _ "$RIG" "$progress_file"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = progress-before-provider ]
+  progress_output=$(<"$progress_file")
+  [[ "$progress_output" == *'rig: progress: applying 0/1: alpha [declaration] running'* ]] || false
+  [[ "$progress_output" == *'provider-marker'* ]] || false
+  [[ "$progress_output" == *'rig: progress: applying 1/1: alpha [declaration] succeeded'* ]] || false
+  [[ "$progress_output" == *'rig: progress: applying finished completed=1/1 succeeded=1 skipped=0 failed=0'* ]] || false
+  [[ "$progress_output" != *$'\r'* ]] || false
+
+  : >"$progress_file"
+  run bash -c '
+    exec 2>"$2"
+    . "$1"
+    RIG_PROGRESS=auto
+    RIG_PROGRESS_CONTEXT=query
+    rig_progress_start querying 1
+    rig_progress_begin alpha
+    rig_progress_result succeeded alpha
+    rig_progress_finish
+  ' _ "$RIG" "$progress_file"
 
   [ "$status" -eq 0 ]
   [ ! -s "$progress_file" ]
