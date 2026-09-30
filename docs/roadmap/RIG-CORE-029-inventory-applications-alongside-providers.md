@@ -4,12 +4,12 @@ area: CORE
 title: Inventory applications alongside providers
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 09e167f01f37968a5c3dded4562b0bf119567ff6
 created_at: 2026-09-27T08:13:24Z
-updated_at: 2026-09-30T12:28:35Z
+updated_at: 2026-09-30T12:45:00Z
 ---
 
 ## Goal
@@ -44,10 +44,10 @@ The built-in macOS applications inventory runs only when no providers are declar
 
 ## Steps
 
-- [ ] Run the built-in applications inventory on macOS after declared provider inventories, even when providers are configured.
-- [ ] Deduplicate an exact application path also reported by a declared provider without conflating unrelated provider identities that share a name.
-- [ ] Report an unavailable or failed application scan through the existing inventory problem channel, distinct from an examined empty result.
-- [ ] Add isolated cases with zero, one unrelated, and one overlapping declared provider, plus a failed applications scan.
+- [x] Run the built-in applications inventory on macOS after declared provider inventories, even when providers are configured.
+- [x] Deduplicate an exact application path also reported by a declared provider without conflating unrelated provider identities that share a name.
+- [x] Report an unavailable or failed application scan through the existing inventory problem channel, distinct from an examined empty result.
+- [x] Add isolated cases with zero, one unrelated, and one overlapping declared provider, plus a failed applications scan.
 
 ## Files touched
 
@@ -78,6 +78,32 @@ Update unmanaged-inventory guidance if it currently implies a different coverage
 ### Roadmap
 
 The other repository's safety-net rationale remains its own record to review separately.
+
+## Review
+
+### Delivered
+
+From baseline `09e167f01f37968a5c3dded4562b0bf119567ff6`, macOS application inventory runs alongside configured providers. An unexamined scan produces an inventory problem rather than an apparent empty result.
+
+### Change Summary
+
+The collector appends the built-in scan on macOS and suppresses only duplicate canonical application paths already observed from a declared provider. The test harness confines application roots and property-list access to inert fixtures. The state Specification and user command guide describe the coverage rule.
+
+### Verification
+
+The focused six-case application-inventory suite and full Bats suite passed. ShellCheck, Bash syntax, assembly check, benchmark, native-provider smoke test, man lint, and scoped Specification and roadmap audits passed. The repository-wide audit reports unrelated Agora metadata and rubric drift outside this item.
+
+### Outstanding concerns
+
+The cross-repository `DOTFILES-UE-036` rationale still needs its owner to revisit it. This item does not classify iOS-on-macOS bundles or modify the person's catalogue.
+
+### Post-change review
+
+Deduplication is limited to the exact canonical application path; shared names in distinct provider namespaces remain separate. Tests never inventory the runner's real Applications directory.
+
+### Mini recap
+
+The missing macOS baseline is delivered for acceptance review, with the repository-wide Agora audit exception recorded rather than changed out of scope.
 
 ## Discussion
 
