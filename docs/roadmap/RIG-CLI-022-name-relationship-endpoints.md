@@ -1,5 +1,5 @@
 ---
-id: RIG-CLI-021
+id: RIG-CLI-022
 area: CLI
 title: Name relationship endpoints
 theme: cli
