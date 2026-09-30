@@ -2375,18 +2375,20 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [[ "$output" == *'Summary: findings=0 present=3 catalogue-only=1 incompatible-platform=1'* ]] || false
 }
 
-@test "doctor reserves status 2 for syntax configuration and resolution failures" {
+@test "doctor diagnoses configuration failures and reserves status 2 for invalid syntax" {
   missing_config=$BATS_TEST_TMPDIR/missing-doctor-config-$BATS_TEST_NUMBER
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" doctor
-  [ "$status" -eq 2 ]
+  [ "$status" -eq 1 ] || false
+  [[ "$output" == *'Configuration findings:'* ]] || false
   [[ "$output" == *"no configuration sources under: $missing_config"* ]] || false
 
   write_orchestration_config
   printf '%s\n' '[profile.broken]' 'tools = ["absent"]' >>"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" doctor
-  [ "$status" -eq 2 ]
+  [ "$status" -eq 1 ] || false
+  [[ "$output" == *'Configuration findings:'* ]] || false
   [[ "$output" == *"references unknown tool 'absent'"* ]] || false
   [ ! -e "$ORCHESTRATION_LOG" ]
 

@@ -299,6 +299,11 @@ Check a named resolved profile without changing the configured default.
 Doctor invokes only fixed built-in observation operations or external
 observation operations explicitly allowed for selected providers. It never
 applies, repairs, or invokes unselected providers.
+When configuration cannot load, doctor reports its file, line, reason, and
+correction as a finding with status 1. It still checks effective paths,
+platform, and native provider executable availability, but skips checks
+requiring a resolved catalogue. Other operational commands still reject the
+configuration with status 2.
 .TP
 .BI "rig doctor \-\-format " text|json
 Select the rendering. The default
@@ -1545,7 +1550,8 @@ maintain, or capture, including neutral catalogue-only rows and unsupported
 lifecycle skips.
 .TP
 .B 1
-Valid unhealthy observation or doctor finding, resource-local preflight
+Valid unhealthy observation or doctor finding, including a configuration
+that doctor cannot load; resource-local preflight
 finding, unavailable lifecycle target, provider runtime failure, dependency
 suppression, or diagnostic finding. For
 .B rig diag

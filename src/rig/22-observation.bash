@@ -1333,9 +1333,22 @@ rig_json_lines() {
   printf ']'
 }
 
+rig_doctor_native_availability() {
+  local executable state
+
+  for executable in brew uv mise npm chezmoi; do
+    if rig_executable_available "$executable"; then
+      state=available
+    else
+      state=unavailable
+    fi
+    printf '  %s: %s; owner=environment; action=none\n' "$executable" "$state"
+  done
+}
+
 rig_command_doctor() {
   local profile findings incompatible xdg_findings tool_findings resource_findings port_findings skill_findings
-  local index section_name state detail port owner action skill authority format information
+  local index section_name state detail port owner action skill authority format information config_finding config_loaded
 
   profile=
   format=text
@@ -1370,12 +1383,42 @@ rig_command_doctor() {
     esac
   done
 
-  rig_resolve_operational_plan "$profile" || return
+  RIG_CAPTURED_ERROR=
+  RIG_CAPTURE_ERROR=1
+  if rig_load_config; then
+    config_loaded=1
+  else
+    config_loaded=0
+  fi
+  RIG_CAPTURE_ERROR=0
+  config_finding=
+  if [ "$config_loaded" -eq 1 ]; then
+    rig_resolve_operational_plan "$profile" load preloaded || return
+  else
+    config_finding="  ${RIG_CAPTURED_ERROR:-configuration could not be loaded}; owner=configuration; action=correct-configuration"
+    RIG_RESOLVED_PROFILE=${profile:--}
+    rig_current_platform || return
+    RIG_RESOLVED_PLATFORM=$RIG_VALUE
+  fi
   rig_effective_paths || return 2
+  tool_findings=
+  resource_findings=
+  port_findings=
+  skill_findings=
+  findings=0
+  incompatible=0
+  information=
+  if [ "$config_loaded" -eq 0 ]; then
+    findings=1
+    RIG_DOCTOR_PRESENT=0
+    RIG_DOCTOR_CATALOGUE_ONLY=0
+    information=$(printf '  config path: %s\n  data path: %s\n  state path: %s\n  cache path: %s\n' \
+      "$RIG_DIAG_CONFIG_HOME" "$RIG_DIAG_DATA_HOME" "$RIG_DIAG_STATE_HOME" "$RIG_DIAG_CACHE_HOME"; \
+      rig_doctor_native_availability)
+  else
   rig_observe_plan || return
   tool_findings=$RIG_VALUE
   findings=$RIG_DOCTOR_FINDINGS
-  resource_findings=
   if [ "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" -gt 0 ]; then
     rig_observe_resource_plan || return
     index=0
@@ -1397,7 +1440,6 @@ rig_command_doctor() {
     index=$((index + 1))
   done
   resource_findings=${resource_findings%$'\n'}
-  port_findings=
   if [ "${#RIG_SELECTED_PORTS[@]}" -gt 0 ]; then
     rig_observe_ports || return
     index=0
@@ -1421,7 +1463,6 @@ rig_command_doctor() {
     done
     port_findings=${port_findings%$'\n'}
   fi
-  skill_findings=
   if [ "${#RIG_SELECTED_SKILLS[@]}" -gt 0 ]; then
     rig_observe_skills || return
     index=0
@@ -1444,14 +1485,6 @@ rig_command_doctor() {
     done
     skill_findings=${skill_findings%$'\n'}
   fi
-  xdg_findings=$(rig_doctor_path_finding config "$RIG_DIAG_CONFIG_HOME"; \
-    rig_doctor_path_finding data "$RIG_DIAG_DATA_HOME"; \
-    rig_doctor_path_finding state "$RIG_DIAG_STATE_HOME"; \
-    rig_doctor_path_finding cache "$RIG_DIAG_CACHE_HOME")
-  if [ -n "$xdg_findings" ]; then
-    while IFS= read -r _; do findings=$((findings + 1)); done <<< "$xdg_findings"
-  fi
-
   rig_doctor_incompatible_tools "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   incompatible=$RIG_COUNT
   information=$RIG_VALUE
@@ -1463,13 +1496,24 @@ rig_command_doctor() {
       information=$RIG_VALUE
     fi
   fi
+  fi
+  xdg_findings=$(rig_doctor_path_finding config "$RIG_DIAG_CONFIG_HOME"; \
+    rig_doctor_path_finding data "$RIG_DIAG_DATA_HOME"; \
+    rig_doctor_path_finding state "$RIG_DIAG_STATE_HOME"; \
+    rig_doctor_path_finding cache "$RIG_DIAG_CACHE_HOME")
+  if [ -n "$xdg_findings" ]; then
+    while IFS= read -r _; do findings=$((findings + 1)); done <<< "$xdg_findings"
+  fi
+
   if [ "$format" = json ]; then
     rig_json_envelope doctor
     [ "$findings" -eq 0 ] && state=true || state=false
     printf ',"healthy":%s' "$state"
     printf ',"summary":{"findings":%s,"present":%s,"catalogue_only":%s,"incompatible_platform":%s}' \
       "$findings" "$RIG_DOCTOR_PRESENT" "$RIG_DOCTOR_CATALOGUE_ONLY" "$incompatible"
-    printf ',"findings":{"xdg":'
+    printf ',"findings":{"configuration":'
+    rig_json_lines "$config_finding"
+    printf ',"xdg":'
     rig_json_lines "$xdg_findings"
     printf ',"tools":'
     rig_json_lines "$tool_findings"
@@ -1488,6 +1532,9 @@ rig_command_doctor() {
   printf 'Rig doctor: %s\nProfile: %s\nPlatform: %s\n' \
     "$([ "$findings" -eq 0 ] && printf healthy || printf findings)" \
     "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
+  if [ -n "$config_finding" ]; then
+    printf 'Configuration findings:\n%s\n' "$config_finding"
+  fi
   if [ -n "$xdg_findings" ]; then
     printf 'XDG findings:\n%s\n' "$xdg_findings"
   fi

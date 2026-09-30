@@ -177,7 +177,8 @@ assert data["command"] == "doctor"
 assert data["healthy"] is False
 assert data["summary"]["findings"] >= 2
 findings = data["findings"]
-assert set(findings) == {"xdg", "tools", "resources", "ports", "skills"}
+assert set(findings) == {"configuration", "xdg", "tools", "resources", "ports", "skills"}
+assert findings["configuration"] == []
 assert any(line.startswith("beta:") for line in findings["tools"]), findings["tools"]
 assert any(line.startswith("port.api:") for line in findings["ports"]), findings["ports"]
 assert isinstance(data["information"], list)

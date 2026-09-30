@@ -8,6 +8,8 @@
 # Rig — declarative description and manager of a working setup.
 
 RIG_VERSION=0.3.0
+RIG_CAPTURE_ERROR=0
+RIG_CAPTURED_ERROR=
 
 # Indexed arrays keep the installed executable compatible with macOS Bash 3.2.
 RIG_SECTION_NAMES=()
@@ -287,6 +289,10 @@ rig_json_field() {
 
 rig_fail() {
   rig_progress_fail
+  if [ "${RIG_CAPTURE_ERROR:-0}" -eq 1 ]; then
+    RIG_CAPTURED_ERROR=$1
+    return 2
+  fi
   printf 'rig: error: %s\n' "$1" >&2
   return 2
 }

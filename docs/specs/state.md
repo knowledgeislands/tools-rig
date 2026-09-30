@@ -100,13 +100,13 @@ _Evidence:_ `rig_command_doctor` consumes `rig_observe_plan` and `rig_observe_re
 
 ### RIG-STATE-015 — Doctor output and outcomes
 
-`rig doctor` MUST print either `Rig doctor: healthy` or `Rig doctor: findings`, deterministic owner and action fields for each finding, and fixed-order summary counts. It MUST exit 0 when healthy, 1 when valid checks find health issues, and 2 for syntax, configuration, or resolution failure.
+`rig doctor` MUST print either `Rig doctor: healthy` or `Rig doctor: findings`, deterministic owner and action fields for each finding, and fixed-order summary counts. An unusable configuration MUST become a configuration finding retaining its file, line, reason, and corrective guidance in text and JSON. Doctor MUST still report effective paths, platform, and native provider executable availability without running configuration-dependent observations. It MUST exit 0 when healthy, 1 for findings including configuration load failure, and 2 for syntax or resolution failure. Other operational commands MUST continue to reject unusable configuration with status 2.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats compares exact healthy and mixed-finding output and covers statuses 0, 1, and 2.
+_Verify:_ Bats compares exact healthy and mixed-finding output, covers statuses 0, 1, and 2, and checks text and JSON diagnostics for a retired configuration table while status and apply still reject it.
 
-_Evidence:_ Doctor Bats cases assert exact summaries, actionable findings, and failure classes.
+_Evidence:_ Doctor Bats cases and `tests/rig-doctor-config.bats` assert exact summaries, actionable findings, and failure classes.
 
 ## Application
 

@@ -4,11 +4,14 @@
 # shellcheck disable=SC2004,SC2034,SC2094
 
 rig_resolve_operational_plan() {
-  local profile receipt_mode platform index
+  local profile receipt_mode platform index load_mode
 
   profile=$1
   receipt_mode=${2:-load}
-  rig_load_config || return
+  load_mode=${3:-load}
+  if [ "$load_mode" != preloaded ]; then
+    rig_load_config || return
+  fi
   rig_progress_start resolution 2
   rig_progress_begin platform
   rig_current_platform || return
