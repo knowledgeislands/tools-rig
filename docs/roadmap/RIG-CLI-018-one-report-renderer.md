@@ -36,7 +36,7 @@ paperclip-agents	paperclip	completed	-	declaration
 
 This is the presentation layer: how rows are rendered, what gets truncated, and which commands can emit a machine format. It does not change what any command observes, which rows it selects, the state vocabulary, or the outcome contract. It does not change the stdout/stderr split, which is correct as specified — only how a report survives the two streams arriving interleaved on one terminal.
 
-Choosing which rows to show at all is [RIG-CLI-017](RIG-CLI-017-report-what-needs-attention.md).
+Choosing which rows to show at all is RIG-CLI-017.
 
 ## Current state
 
@@ -87,7 +87,7 @@ Pass means every listed command emits a parseable JSON payload under `--format j
 
 ## Dependencies / blocks
 
-Nothing blocks this and it blocks nothing. It wants deciding alongside [RIG-CLI-017](RIG-CLI-017-report-what-needs-attention.md) because both change what a reader sees in the same output, and the width-budget decision here is easier to make once the attention-first view has settled how many rows a table usually carries. Either can land first; landing this one first means CLI-017 filters a table that is already consistent.
+Nothing blocks this and it blocks nothing. It wants deciding alongside RIG-CLI-017 because both change what a reader sees in the same output, and the width-budget decision here is easier to make once the attention-first view has settled how many rows a table usually carries. Either can land first; landing this one first means CLI-017 filters a table that is already consistent.
 
 ## Documentation impact
 
@@ -105,7 +105,7 @@ None on the stdout/stderr split, which stays as specified. If buffering mutation
 
 ### Roadmap
 
-No new follow-on work. A consistent table makes [RIG-CLI-017](RIG-CLI-017-report-what-needs-attention.md) a filtering change rather than a filtering-and-tidying change.
+No new follow-on work. A consistent table makes RIG-CLI-017 a filtering change rather than a filtering-and-tidying change.
 
 ## Discussion
 

@@ -77,7 +77,7 @@ Pass means every command's `--help` lists each of its options with a description
 
 ## Dependencies / blocks
 
-Nothing blocks this and it blocks nothing. It touches the same `-h|--help` branches that [RIG-CLI-017](RIG-CLI-017-report-what-needs-attention.md) and [RIG-CLI-016](RIG-CLI-016-apply-one-resource.md) add options to, so whichever lands second describes its new flag through the table rather than by editing a literal. Landing this one first is cheaper for both.
+Nothing blocks this and it blocks nothing. It touches the same `-h|--help` branches that RIG-CLI-017 and [RIG-CLI-016](RIG-CLI-016-apply-one-resource.md) add options to, so whichever lands second describes its new flag through the table rather than by editing a literal. Landing this one first is cheaper for both.
 
 ## Documentation impact
 

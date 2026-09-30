@@ -76,7 +76,7 @@ Pass means the new Bats cases are green, and on this workstation `rig status` re
 
 ## Dependencies / blocks
 
-Independent of every other item and blocked by none. It compounds with [RIG-CLI-017](RIG-CLI-017-report-what-needs-attention.md): thirteen rows that stop reading as faults are thirteen rows an attention-first view would not show, so landing this first makes that item's filter smaller. Ordering is a convenience, not a constraint — either can land alone.
+Independent of every other item and blocked by none. It compounds with RIG-CLI-017: thirteen rows that stop reading as faults are thirteen rows an attention-first view would not show, so landing this first makes that item's filter smaller. Ordering is a convenience, not a constraint — either can land alone.
 
 ## Documentation impact
 
@@ -94,7 +94,7 @@ None. Catalogue-only declaration already has its meaning recorded; this changes 
 
 ### Roadmap
 
-No new follow-on work. Closing this narrows [RIG-CLI-017](RIG-CLI-017-report-what-needs-attention.md) without changing its scope.
+No new follow-on work. Closing this narrows RIG-CLI-017 without changing its scope.
 
 ## Discussion
 
@@ -110,11 +110,11 @@ Planning confirmed it: `rig_status_totals` skips `neutral` rows when accumulatin
 
 ### Token, not section
 
-Planning chose the token over a separate listing. A separate section would shorten the scanned output, but that is [RIG-CLI-017](RIG-CLI-017-report-what-needs-attention.md)'s job and doing it here would decide that item's design as a side effect. A token is the smaller change, keeps one table, and leaves the sectioning question open where it belongs.
+Planning chose the token over a separate listing. A separate section would shorten the scanned output, but that is RIG-CLI-017's job and doing it here would decide that item's design as a side effect. A token is the smaller change, keeps one table, and leaves the sectioning question open where it belongs.
 
 ### Ordering against the output work
 
-This is independent of [RIG-CLI-017](RIG-CLI-017-report-what-needs-attention.md) but compounds with it: thirteen rows that stop being faults are thirteen rows an attention-first view would no longer show.
+This is independent of RIG-CLI-017 but compounds with it: thirteen rows that stop being faults are thirteen rows an attention-first view would no longer show.
 
 ### Pickup checkpoint — 2026-09-27
 

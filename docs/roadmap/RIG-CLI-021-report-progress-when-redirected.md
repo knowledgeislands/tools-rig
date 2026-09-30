@@ -20,7 +20,7 @@ A long operational command whose stderr is redirected reports as it goes, so a w
 
 `rig_progress_select_renderer` in `src/rig/00-runtime.bash` maps `RIG_PROGRESS=auto` to `bar` when the context is operational and stderr is a terminal, and to `off` otherwise. `RIG_PROGRESS=always` already chooses `lines` for exactly that non-terminal case, so the fallback exists and `auto` simply declines to use it.
 
-This was step 5 of [RIG-CLI-017](RIG-CLI-017-report-what-needs-attention.md) and was held there rather than delivered. It is a live behaviour change for runs nobody is watching: this workstation's `workstation-health` scheduled job would begin receiving per-item progress on stderr, and every Bats test that merges stderr into `$output` without setting `RIG_PROGRESS=never` would see new lines. It is also orthogonal to what 017 set out to fix, so it is spun out so that record can close. It arrives already shaped by that planning, but is captured here unadopted so the roadmap session decides whether and when it lands.
+This was step 5 of RIG-CLI-017 and was held there rather than delivered. It is a live behaviour change for runs nobody is watching: this workstation's `workstation-health` scheduled job would begin receiving per-item progress on stderr, and every Bats test that merges stderr into `$output` without setting `RIG_PROGRESS=never` would see new lines. It is also orthogonal to what 017 set out to fix, so it is spun out so that record can close. It arrives already shaped by that planning, but is captured here unadopted so the roadmap session decides whether and when it lands.
 
 ## Boundary
 
