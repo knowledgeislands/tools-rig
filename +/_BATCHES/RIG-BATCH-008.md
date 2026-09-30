@@ -17,3 +17,6 @@ policy: safe-local-v1
 ## Run ledger
 
 <!-- ki-batch-run: RIG-BATCH-008-RUN-001 4f99b9944ca98f8d84a2e792f3513c727ac8afb07cc9429a7682001420110c3f -->
+| Item | Result | Baseline | Result commit | Exception |
+| --- | --- | --- | --- | --- |
+| RIG-CLI-024 | parked | `47e993b452492ea4afd6d69343223669279d02da` | `7d00cde00ac31dd200e4cbdf2d9a2a301af88d89` | Rig implementation and 311 tests complete; final repository audit blocked by concurrent external Agora governance changes. |
