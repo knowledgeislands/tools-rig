@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-27T08:13:24Z
-updated_at: 2026-09-30T09:50:25Z
+updated_at: 2026-09-30T10:20:23Z
 ---
 
 ## Goal
@@ -18,7 +18,7 @@ updated_at: 2026-09-30T09:50:25Z
 
 ## Context
 
-`rig_collect_unmanaged` in `src/rig/20-orchestration.bash:2132` gathers declared `[provider.*]` sections into `RIG_QUERY_ITEMS`, then adds the built-in applications inventory only under a condition:
+`rig_collect_unmanaged` in `src/rig/21-provider-state.bash` gathers declared `[provider.*]` sections into `RIG_QUERY_ITEMS`, then adds the built-in applications inventory only under a condition:
 
 ```sh
 if [ "$RIG_RESOLVED_PLATFORM" = macos ] && [ "${#RIG_QUERY_ITEMS[@]}" -eq 0 ]; then
@@ -51,7 +51,7 @@ The built-in macOS applications inventory runs only when no providers are declar
 
 ## Files touched
 
-`src/rig/20-orchestration.bash`, generated `bin/rig`, unmanaged-inventory Bats coverage, and state or orchestration Specifications describing the baseline.
+`src/rig/21-provider-state.bash`, generated `bin/rig`, unmanaged-inventory Bats coverage, and state or orchestration Specifications describing the baseline.
 
 ## Verify
 

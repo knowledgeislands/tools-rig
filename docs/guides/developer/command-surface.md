@@ -6,7 +6,10 @@ Rig is authored as ordered Bash 3.2 modules beneath `src/rig/`. `scripts/assembl
 
 - `00-runtime.bash` owns shared state, top-level help, JSON primitives, command outcomes, and live progress.
 - `10-configuration.bash` parses and validates the catalogue, then resolves profiles, variants, bindings, and dependencies.
-- `20-orchestration.bash` owns built-in provider and resource operations, observations, state reports, `apply`, and `bootstrap`.
+- `20-orchestration.bash` owns plan primitives and built-in launchd and macOS resource adapters.
+- `21-provider-state.bash` owns operational profile and receipt handling, provider invocation and observation, inventory, and provider application.
+- `22-observation.bash` owns resource, port, skill, and tool observation plus `status` and `doctor` reports.
+- `23-application.bash` owns skill and resource application, `apply`, and `bootstrap`.
 - `30-commands.bash` owns bounded declared actions, environment diagnostics, catalogue queries, and the current table helper.
 - `40-publication-lifecycle.bash` owns public export, provider lifecycle tasks, their last-run report, and manifest capture.
 - `90-main.bash` dispatches commands, selects query or operational progress context, and emits the common outcome.
@@ -29,4 +32,4 @@ The confirmed presentation duplication is in two places: command usage and compl
 
 `apply` and `bootstrap` each parse `--profile`, `--scope`, and `--dry-run`; their common syntax deserves a shared option description, while their different prerequisite and application flows should stay explicit. `status` and `doctor` both observe the same plan but differ in their reader-facing result. Shared observation is intentional; duplicated output formatting is not.
 
-`20-orchestration.bash` contains provider adapters, macOS resources, state synthesis, and two operational commands in one large authored module. A source-only split can improve navigation while preserving the assembled payload and function order. Make that change independently from behaviour changes, and verify byte-for-byte assembly plus the full suite. Keep the manager-of-managers boundary: providers retain their native manifests, credentials, and execution semantics.
+The orchestration source is split at complete function boundaries. The four ordered modules preserve the previous function order and the assembled payload adds only module comments. Keep future ownership by domain, and verify assembly and the full suite after moving any function. Keep the manager-of-managers boundary: providers retain their native manifests, credentials, and execution semantics.

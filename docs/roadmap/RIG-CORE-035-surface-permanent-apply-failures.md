@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-30T00:00:00Z
-updated_at: 2026-09-30T09:50:25Z
+updated_at: 2026-09-30T10:20:23Z
 ---
 
 ## Goal
@@ -44,7 +44,7 @@ It is not [RIG-CORE-024](RIG-CORE-024-widen-needs-person-detection.md), which pr
 
 ## Files touched
 
-`src/rig/20-orchestration.bash`, possibly shared runtime report helpers, generated `bin/rig`, state tests, and state Specifications.
+`src/rig/23-application.bash`, `src/rig/22-observation.bash`, possibly shared runtime report helpers, generated `bin/rig`, state tests, and state Specifications.
 
 ## Verify
 

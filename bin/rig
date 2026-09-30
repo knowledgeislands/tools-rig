@@ -4587,6 +4587,10 @@ rig_plan_blocker() {
   [ -n "$blocker" ] || return 1
   RIG_VALUE=$blocker
 }
+# rig-module: 21-provider-state
+# shellcheck shell=bash
+# Cross-module state is intentionally consumed by later assembled modules.
+# shellcheck disable=SC2004,SC2034,SC2094
 
 rig_resolve_operational_plan() {
   local profile receipt_mode platform index
@@ -5899,6 +5903,10 @@ rig_apply_provider() {
     "$executable" "${RIG_INVOKE_ARGUMENTS[@]}" 1>&2
   fi
 }
+# rig-module: 22-observation
+# shellcheck shell=bash
+# Cross-module state is intentionally consumed by later assembled modules.
+# shellcheck disable=SC2004,SC2034,SC2094
 
 rig_observe_resource_plan() {
   local index section_name state detail
@@ -7412,6 +7420,10 @@ rig_command_doctor() {
   fi
   [ "$findings" -eq 0 ]
 }
+# rig-module: 23-application
+# shellcheck shell=bash
+# Cross-module state is intentionally consumed by later assembled modules.
+# shellcheck disable=SC2004,SC2034,SC2094
 
 rig_local_skill_roots() {
   local skill section_name source runtime target parent canonical_source canonical_parent

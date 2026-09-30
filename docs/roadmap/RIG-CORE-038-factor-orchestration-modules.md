@@ -4,12 +4,12 @@ area: CORE
 title: Factor orchestration modules
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 356deaef4c287398fe1e32cb1e0d9fb593fb3546
 created_at: 2026-09-30T10:03:46Z
-updated_at: 2026-09-30T10:03:46Z
+updated_at: 2026-09-30T10:20:23Z
 ---
 
 ## Goal
@@ -30,11 +30,11 @@ The existing file has natural contiguous boundaries near resource-plan observati
 
 ## Steps
 
-- [ ] Split the current file at complete function boundaries into ordered authored modules for core resources, provider operations, state observation and reports, and application/bootstrap.
-- [ ] Update `scripts/assemble-rig` with the exact new order, preserving function definitions and their relative order.
-- [ ] Update developer module guidance and source-path references in still-open roadmap plans that this split makes stale.
-- [ ] Reassemble `bin/rig` and inspect the generated diff for moved code only.
-- [ ] Verify the full local gate, with the benchmark given an isolated state home until RIG-CORE-033 fixes its default.
+- [x] Split the current file at complete function boundaries into ordered authored modules for core resources, provider operations, state observation and reports, and application/bootstrap.
+- [x] Update `scripts/assemble-rig` with the exact new order, preserving function definitions and their relative order.
+- [x] Update developer module guidance and source-path references in still-open roadmap plans that this split makes stale.
+- [x] Reassemble `bin/rig` and inspect the generated diff for moved code only.
+- [x] Verify the full local gate, with the benchmark given an isolated state home until RIG-CORE-033 fixes its default.
 
 ## Files touched
 
@@ -65,6 +65,32 @@ Update the developer command-surface map and its module paths.
 ### Roadmap
 
 Update source locations in active plans after the split without changing their outcome or authority.
+
+## Review
+
+### Delivered
+
+From baseline `356deaef4c287398fe1e32cb1e0d9fb593fb3546`, the 4,892-line orchestration source was split into four ordered authored files. The installed `bin/rig` still has one Bash payload and differs only by module comments.
+
+### Change Summary
+
+Kept the first 1,091 lines in `20-orchestration.bash`; moved the remaining complete function groups into `21-provider-state.bash`, `22-observation.bash`, and `23-application.bash`. Updated the assembly list, developer guide, and active roadmap source paths. No function body or relative order changed.
+
+### Verification
+
+Before adding module headers, concatenating the four chunks matched the original file byte for byte. The final `bin/rig` diff contains module comments only. The repository audit, ShellCheck, Bash syntax, assembly check, isolated-state benchmark, native-provider smoke, Bats suite, manual lint, and `git diff --check` passed.
+
+### Outstanding concerns
+
+The unqualified benchmark still reads inherited state; RIG-CORE-033 owns that defect. Historical line citations in retained roadmap discussion describe their original source and should be read as history rather than current navigation.
+
+### Post-change review
+
+This is a source navigation improvement with no observed runtime behaviour change. The code and test gates pass after the split, and subsequent work has smaller source owners.
+
+### Mini recap
+
+Factorization is delivered for acceptance review. Later provider, observation, application, and output work can edit the new domain files without reopening the assembly contract.
 
 ## Discussion
 

@@ -16,6 +16,9 @@ assemble() {
     00-runtime.bash \
     10-configuration.bash \
     20-orchestration.bash \
+    21-provider-state.bash \
+    22-observation.bash \
+    23-application.bash \
     30-commands.bash \
     40-publication-lifecycle.bash \
     90-main.bash; do
