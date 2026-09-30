@@ -4,12 +4,12 @@ area: CORE
 title: Audit surface and structure
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: b0b716dd004a4b9a053cf4ec0b0ac487c200f124
 created_at: 2026-09-30T07:38:05Z
-updated_at: 2026-09-30T09:50:25Z
+updated_at: 2026-09-30T10:05:46Z
 ---
 
 ## Goal
@@ -32,11 +32,11 @@ The six authored modules have distinct broad roles, but no current document maps
 
 ## Steps
 
-- [ ] Inventory every public command's purpose, inputs, outputs, and side effects against CLI help and the Specifications.
-- [ ] Trace profile resolution, provider dispatch, observation, table rendering, progress, and outcomes to their authored modules.
-- [ ] Compare adjacent commands and repeated helpers; record each candidate overlap with source locations and a retain, consolidate, or separate-work decision.
-- [ ] Produce a concise developer-facing surface map, update its guide index, and capture only bounded follow-up work that existing roadmap records do not own.
-- [ ] Recheck the first three delivery waves against the findings before the final output wave begins.
+- [x] Inventory every public command's purpose, inputs, outputs, and side effects against CLI help and the Specifications.
+- [x] Trace profile resolution, provider dispatch, observation, table rendering, progress, and outcomes to their authored modules.
+- [x] Compare adjacent commands and repeated helpers; record each candidate overlap with source locations and a retain, consolidate, or separate-work decision.
+- [x] Produce a concise developer-facing surface map, update its guide index, and capture only bounded follow-up work that existing roadmap records do not own.
+- [x] Recheck the first three delivery waves against the findings before the final output wave begins.
 
 ## Files touched
 
@@ -67,6 +67,32 @@ The developer guide records the durable surface map and its index links to it.
 ### Roadmap
 
 Capture only distinct evidenced follow-ups without duplicating current items.
+
+## Review
+
+### Delivered
+
+The fourteen-command surface and six authored module responsibilities are mapped in the developer guide from baseline `b0b716dd004a4b9a053cf4ec0b0ac487c200f124`. The output and option duplication already have owners; the distinct source factorization follow-up is [RIG-CORE-038](RIG-CORE-038-factor-orchestration-modules.md). No runtime behaviour was changed.
+
+### Change Summary
+
+Added `docs/guides/developer/command-surface.md`, linked it from the developer index, and captured one source-only follow-up. The planned structure, safety, core-behaviour, and final-output waves remain distinct; factorization joins the structure wave before later source edits.
+
+### Verification
+
+Cross-checked all command branches in `src/rig/90-main.bash`, the module function lists, CLI help, and the Specification areas. `ki repo audit --repo .`, focused Guides and authoring audits, `git diff --check`, ShellCheck, Bash syntax, assembly check, isolated-state benchmark, native-provider smoke, Bats, and manual lint passed during this delivery.
+
+### Outstanding concerns
+
+The default benchmark still inherits the runner's state and fails in its `status` case here; the isolated-state invocation passes. RIG-CORE-033 owns that defect. The factorization change is planned and has not yet been implemented.
+
+### Post-change review
+
+The guide gives maintainers a concrete route from command to source owner and distinguishes useful shared paths from duplicated presentation. It preserves the single-file runtime boundary and leaves each proposed code change to its own verification.
+
+### Mini recap
+
+The surface audit is delivered for acceptance review. Follow-up routes are the existing option and renderer records plus RIG-CORE-038 for source structure; no separate command-removal proposal is supported by the current evidence.
 
 ## Discussion
 

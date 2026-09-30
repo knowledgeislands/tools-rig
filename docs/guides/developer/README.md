@@ -16,6 +16,8 @@ Generated artifacts remain observation-only parts of their owning tool. Their na
 
 ## Make a change
 
+[Maintain the command surface](command-surface.md) maps each command and authored module, and identifies the shared report, option, progress, and outcome owners.
+
 Edit the domain-focused authored modules beneath `src/rig/`, then run:
 
 ```sh
