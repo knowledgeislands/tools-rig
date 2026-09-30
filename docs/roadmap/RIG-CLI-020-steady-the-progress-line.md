@@ -4,12 +4,12 @@ area: CLI
 title: Steady the progress line
 theme: cli
 horizon: now
-status: in-progress
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: 4e8b0c4ca83f2a0754edd0932e65f6e04a7bd3cd
 created_at: 2026-09-28T00:00:00Z
-updated_at: 2026-09-28T00:00:00Z
+updated_at: 2026-09-30T00:00:00Z
 ---
 
 ## Goal
@@ -98,7 +98,29 @@ No new follow-on work.
 
 ## Review
 
-Delivered and verified locally on 2026-09-28.
+### Delivered
+
+The approved boundary was the transient bar's geometry and the wording Rig writes into it, with the `lines` renderer keeping its shape. Baseline `4e8b0c4ca83f2a0754edd0932e65f6e04a7bd3cd`; delivered in `c773a53`. Every field but the bar holds a fixed width, the count precedes the bar, the bar takes its width from the terminal between 8 and 48 characters with three zones, each frame is padded to the terminal width, items read `provider:thing`, the configuration phases read `config ...`, and results read `ok`/`skip`/`fail`.
+
+### Change Summary
+
+`src/rig/00-runtime.bash`: new geometry globals, `rig_progress_geometry`, three-zone `rig_progress_make_bar`, rewritten `rig_progress_bar_render`, `RIG_PROGRESS_RENDERED` removed. `src/rig/10-configuration.bash`: four phase names. `src/rig/20-orchestration.bash`, `src/rig/40-publication-lifecycle.bash`: thirty-one item identities, with a catalogue-only tool whose provider is the `-` marker left unqualified rather than rendered `-:tool`. `docs/specs/orchestration.md`, `docs/guides/user/commands.md`, `man/rig.1`, `CHANGELOG.md`, `tests/rig.bats` (two interactive tests rewritten, six assertions renamed). No deviations from the steps.
+
+### Verification
+
+`ki repo audit --repo .` PASS, `shellcheck`, `bash -n`, `scripts/assemble-rig --check`, `scripts/benchmark-rig`, `scripts/smoke-native-providers` (six PASS), `bats tests/` 250 of 250, `mandoc -T lint man/rig.1`, all on 2026-09-28. Frames rendered at 120, 100, 80, 60, and 40 columns hold their columns across a phase; bar widths 48, 29, 9, 8, and none. The owner confirmed the bar on a live terminal on 2026-09-30.
+
+### Outstanding concerns
+
+None. The bar could not be captured on a pseudo-terminal in the authoring environment, so the live check was the owner's; it passed.
+
+### Post-change review
+
+Goal met: nothing moves between frames. Scope held to the stderr line; stdout is untouched and the `lines` events changed only in the item and phase names they carry. Regression risk is confined to the `lines` wording, which nothing on this workstation parses. Ready for acceptance.
+
+### Mini recap
+
+Steadied the progress line with fixed fields, an elastic three-zone bar, and shorter vocabulary; verified by the full gate and a live terminal. Possible learning route: the fixed-field-plus-elastic-bar geometry is the same shape `ki repo audit` uses and could be named once in the harness's CLI guidance.
 
 ## Discussion
 

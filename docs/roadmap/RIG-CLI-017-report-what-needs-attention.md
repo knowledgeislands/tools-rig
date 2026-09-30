@@ -4,12 +4,12 @@ area: CLI
 title: Report what needs attention
 theme: cli
 horizon: next
-status: in-progress
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: abe812f2c48640bac54d710a990beb9bcf5c5238
 created_at: 2026-09-26T13:00:00Z
-updated_at: 2026-09-28T00:00:00Z
+updated_at: 2026-09-30T00:00:00Z
 ---
 
 ## Goal
@@ -48,7 +48,7 @@ Progress explains the silence. `rig_progress_select_renderer` in `src/rig/00-run
 - [x] Add a summary line to the skill table so all four sections summarise themselves consistently.
 - [x] Add `--problems` to `rig status`, narrowing every text section to the rows that need attention, and suppressing a section whose filtered row count is zero.
 - [x] Leave `--problems` out of the JSON projection's effect: `--format json` keeps emitting every row and every summary, so the machine view stays complete and the two flags compose without argument.
-- [ ] Held. Change `RIG_PROGRESS=auto` to select `lines` rather than `off` for an operational command whose stderr is not a terminal, so a fully redirected run reports as it goes instead of arriving at once.
+- [x] Spun out. Changing `RIG_PROGRESS=auto` to select `lines` for an operational command whose stderr is not a terminal is now [RIG-CLI-021](RIG-CLI-021-report-progress-when-redirected.md), for the reasons under Discussion.
 - [x] Regenerate completions for the new flag and update `man/rig.1` and `docs/guides/user/commands.md`. `README.md` carries no command summary to update.
 - [x] Add Bats coverage for the verdict line's position and arithmetic, for `--problems` hiding present rows and empty sections while preserving exit status, and for `--problems --format json` emitting the complete payload. Progress coverage waits on the held step.
 
@@ -100,13 +100,29 @@ No new follow-on work. If making attention-first the default rather than a flag 
 
 ## Review
 
-Delivered and verified locally on 2026-09-28, with one step deliberately held.
+### Delivered
 
-`rig status` now opens with `Needs attention: N of M entries`, naming the sections that hold them, and every section closes with its own summary counters — including the skill table, which previously had none. `rig status --problems` narrows the text sections to the entries that need attention and drops a section the filter empties; the verdict line, the section summaries, the exit status, and the `--format json` payload are identical with the flag and without it. Completions, `man/rig.1`, `docs/guides/user/commands.md`, and RIG-STATE-031 in `docs/specs/state.md` describe the new surface.
+The approved boundary was the rows and summaries a `rig status` reader gets and their order, with no change to observation, the state vocabulary, exit statuses, or the JSON projection's completeness. Baseline `abe812f2c48640bac54d710a990beb9bcf5c5238`; delivered in `04d0e55`. `rig status` opens with `Needs attention: N of M entries` naming the sections that hold them; every section, including the skill table, closes with its own summary counters; `rig status --problems` narrows the text sections to the entries that need attention and drops a section the filter empties. The progress step was excluded and is RIG-CLI-021.
 
-The complete local gate is green: `scripts/assemble-rig --check`, `shellcheck`, `bash -n`, `scripts/benchmark-rig` (status 5s against an 8s budget), `scripts/smoke-native-providers`, `mandoc -T lint man/rig.1`, and `bats tests/` with three new cases for the verdict's position and arithmetic, for the filter's row and section suppression under a preserved exit status, and for `--problems --format json` carrying every row.
+### Change Summary
 
-One thing remains for acceptance: the progress step is held, for the reasons under Discussion. This change was authored in a checkout that also carried another session's uncommitted RIG-CORE-031 retirement work in several of the same files, so it was committed as its own change and that work was left in the working tree untouched.
+`src/rig/20-orchestration.bash` gained `rig_status_needs_attention`, `rig_print_status_verdict`, the `--problems` flag, and per-section unhealthy counters; `src/rig/00-runtime.bash` gained the completion entries; `docs/specs/state.md` gained RIG-STATE-031 and the per-section summary rule; `man/rig.1`, `docs/guides/user/commands.md`, and `CHANGELOG.md` describe the surface; `tests/rig.bats` gained three cases. One approved deviation: the filter's rule is "state other than `present` and apply result not neutral" rather than the step's "state other than `present`", so sixteen catalogue-only rows that ask nobody for anything stay hidden. The change was committed from a clean worktree because the checkout also carried another session's uncommitted RIG-CORE-031 work in the same files.
+
+### Verification
+
+`scripts/assemble-rig --check`, `shellcheck`, `bash -n`, `scripts/benchmark-rig` (status 5s against an 8s budget), `scripts/smoke-native-providers`, `mandoc -T lint man/rig.1`, `bats tests/` (all green with the three new cases), and `ki repo audit --repo .` PASS, all on 2026-09-28.
+
+### Outstanding concerns
+
+The `RIG_PROGRESS=auto` change that was step 5 is not delivered here; it is captured as [RIG-CLI-021](RIG-CLI-021-report-progress-when-redirected.md). Nothing else is unchecked or failing.
+
+### Post-change review
+
+The goal is met: the first line of stdout answers how much needs a person and where. Scope held to presentation; the machine view is byte-identical with and without `--problems`. Regression risk is low — the counters were already computed for the exit status, and the filter is opt-in. Ready for acceptance.
+
+### Mini recap
+
+Delivered a verdict line, per-section summaries, and an opt-in `--problems` filter for `rig status`; verified by the full local gate; one step spun out as RIG-CLI-021. Possible learning route: the "needs attention" rule in RIG-STATE-031 could inform how RIG-CORE-027 renames the catalogue-only state.
 
 ## Discussion
 
@@ -138,4 +154,4 @@ The step above said rows "in a state other than `present`", and on this workstat
 
 Changing `RIG_PROGRESS=auto` to choose `lines` for an operational command with a non-terminal stderr is a live behaviour change for runs nobody is watching, including this machine's `workstation-health` scheduled job, which would begin emitting per-item progress into its report. It is also orthogonal to readability: the verdict line and the filter fix what was observed without it. Bats merges stderr into `$output` and the suite's `setup()` sets no `RIG_PROGRESS=never`, so taking it would perturb many unrelated assertions in the same change.
 
-It is therefore left unchecked rather than quietly dropped. Acceptance can either take it as a follow-up commit here or spin it out as its own item; it should not be closed as delivered.
+It was left unchecked rather than quietly dropped, and on 2026-09-30 it was spun out as [RIG-CLI-021](RIG-CLI-021-report-progress-when-redirected.md) so this record could close on what it delivered.
