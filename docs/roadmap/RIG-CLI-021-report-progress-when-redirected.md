@@ -3,13 +3,13 @@ id: RIG-CLI-021
 area: CLI
 title: Report progress when redirected
 theme: cli
-horizon: soon
-status: draft
+horizon: now
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-30T00:00:00Z
-updated_at: 2026-09-30T09:39:54Z
+updated_at: 2026-09-30T15:22:00Z
 ---
 
 ## Goal
@@ -26,9 +26,48 @@ This was step 5 of RIG-CLI-017 and was held there rather than delivered. It is a
 
 This changes only which renderer `auto` selects when stderr is not a terminal. It does not change the `lines` event shape, the bar, the stdout report, exit statuses, or the outcome line. Declaration-only queries stay quiet under `auto` regardless.
 
-## Shaping
+## Current state
 
-Keep this as the non-terminal progress change in the final output wave. Before promotion, check the scheduled `workstation-health` consumer, decide how unrelated Bats assertions opt out of progress, and verify that the live terminal display design leaves line events and stdout reports intact.
+The non-terminal `lines` renderer already exists and is selected by `RIG_PROGRESS=always`. `RIG_PROGRESS=auto` currently suppresses it, even for operational work. The scheduled `workstation-health` wrapper captures `rig doctor` stdout and stderr into a detail file and chooses its notification from the doctor exit status, not from parsing report lines. Extra progress is visible in its final detail but does not change its health decision. Its source remains outside this repository and is not edited here.
+
+## Steps
+
+- [ ] Select `lines` for `RIG_PROGRESS=auto` in operational context when stderr is redirected; keep terminal `bar`, declaration-query silence, and explicit `always`, `lines`, and `never` behavior.
+- [ ] Set `RIG_PROGRESS=never` in the isolated test default so unrelated merged-stream assertions remain about reports; explicitly select `auto`, `always`, or `lines` in progress tests.
+- [ ] Add Bats checks for redirected automatic phase/item/count events, their arrival during work, quiet queries, explicit suppression, unchanged stdout and exit status, and the provider passthrough boundary.
+- [ ] Update the progress Specification, guide, and manual for the automatic redirected fallback; regenerate the assembled executable.
+
+## Files touched
+
+- `src/rig/00-runtime.bash` and generated `bin/rig` — automatic renderer selection.
+- `tests/helpers/isolate.bash` and `tests/rig.bats` — default isolation and explicit behavior checks.
+- `docs/specs/orchestration.md`, `docs/guides/user/commands.md`, and `man/rig.1` — accepted and user-facing progress contract.
+
+## Verify
+
+Run the complete repository gate from the project `AGENTS.md`. Focused Bats checks must show lines on redirected operational stderr before the final report while an automatic query remains silent. `workstation-health` must still select its result from `rig doctor` status alone.
+
+## Dependencies / blocks
+
+No implementation dependency remains. RIG-CLI-023 owns only the interactive display and must preserve this line-oriented non-terminal fallback. This item can be delivered independently while that design remains draft.
+
+## Documentation impact
+
+### Decision Records
+
+None. The stdout/stderr split and progress event vocabulary do not change.
+
+### Specifications
+
+`docs/specs/orchestration.md` states the automatic non-terminal operational fallback.
+
+### Guides
+
+`docs/guides/user/commands.md` and `man/rig.1` describe automatic line events in redirected operational runs.
+
+### Roadmap
+
+RIG-CLI-023 remains a separate interactive display item. No new work record is needed for the read-only `workstation-health` consumer.
 
 ## Discussion
 
