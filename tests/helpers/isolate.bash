@@ -19,6 +19,9 @@
 # single invocation still wins, so a test that stubs one of them itself is
 # unaffected.
 # The focused guard in tests/rig.bats asserts these default boundaries.
+# The manager-free PATH and declared provider table below make native-manager
+# observations independent of the runner. The real argv is exercised separately
+# by scripts/smoke-native-providers.
 rig_test_isolate() {
   local stub
 
@@ -28,6 +31,18 @@ rig_test_isolate() {
   RIG_TEST_ISOLATED_HOME=$BATS_TEST_TMPDIR/isolated-home
   mkdir -p "$RIG_TEST_ISOLATED_HOME"
   export HOME=$RIG_TEST_ISOLATED_HOME
+  # Keep native managers off PATH. Tests needing a manager install a fixture
+  # executable in this directory or name an explicit provider executable.
+  RIG_TEST_PROVIDER_BIN=$BATS_TEST_TMPDIR/provider-bin
+  mkdir -p "$RIG_TEST_PROVIDER_BIN"
+  export RIG_TEST_PROVIDER_BIN
+  RIG_TEST_PROVIDER_TABLE=$BATS_TEST_TMPDIR/provider-observations
+  RIG_TEST_PROVIDER_LOG=$BATS_TEST_TMPDIR/provider-invocations
+  : >"$RIG_TEST_PROVIDER_TABLE"
+  : >"$RIG_TEST_PROVIDER_LOG"
+  export RIG_TEST_PROVIDER_TABLE RIG_TEST_PROVIDER_LOG
+  export PATH="$RIG_TEST_PROVIDER_BIN:/usr/bin:/bin"
+  export RIG_PLATFORM=macos
 
   # The stub reports every label absent and accepts every mutation, so a
   # forgotten override fails the assertion it belongs to rather than the
@@ -81,4 +96,17 @@ rig_test_isolate() {
   printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\\n" "$*" >>"$0.log"' 'exit 0' >"$stub"
   chmod +x "$stub"
   export RIG_KILLALL=$stub
+}
+
+rig_test_provider() {
+  case "$1" in
+    brew|mas|uv|mise|npm|chezmoi|curl|skills|ki) ;;
+    *) return 2 ;;
+  esac
+  ln -s "$BATS_TEST_DIRNAME/helpers/provider-stub.bash" "$RIG_TEST_PROVIDER_BIN/$1"
+}
+
+rig_test_provider_response() {
+  # manager | exact argv | exit status | output (or '-' for no output)
+  printf '%s|%s|%s|%s\n' "$1" "$2" "$3" "$4" >>"$RIG_TEST_PROVIDER_TABLE"
 }

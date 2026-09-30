@@ -57,6 +57,7 @@ benchmark_command() {
   started=$SECONDS
   env HOME="$benchmark_root/home" \
     RIG_CONFIG_HOME="$config_home" \
+    RIG_STATE_HOME="$benchmark_root/state" \
     RIG_PLATFORM=macos \
     RIG_PROGRESS=never \
     "$rig_executable" "$command_name" >/dev/null || return

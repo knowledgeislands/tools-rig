@@ -24,6 +24,9 @@ setup() {
   [ "$RIG_DOCKUTIL" = "$BATS_TEST_TMPDIR/isolated-dockutil" ] || false
   [ "$RIG_KILLALL" = "$BATS_TEST_TMPDIR/isolated-killall" ] || false
   [ "$RIG_LAUNCHD_DOMAIN" = gui/rig-test ] || false
+  [ "$RIG_PLATFORM" = macos ] || false
+  [ "$PATH" = "$RIG_TEST_PROVIDER_BIN:/usr/bin:/bin" ] || false
+  [ ! -e "$RIG_TEST_PROVIDER_BIN/brew" ] || false
 
   run "$RIG" diag
   [ "$status" -eq 1 ] || false

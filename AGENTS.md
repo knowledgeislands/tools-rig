@@ -37,6 +37,8 @@ Every `setup` calls `rig_test_isolate` from `tests/helpers/isolate.bash` as its 
 
 The focused isolation guard in `tests/rig.bats` checks the default state path and destructive adapter overrides. Run the suite with a hostile inherited `XDG_STATE_HOME` when changing the helper; that proves containment survives an ambient state directory rather than only a normal developer shell.
 
+The helper also sets `RIG_PLATFORM=macos` and gives each test a manager-free `PATH` rooted in `/usr/bin:/bin`. A native-provider test either names its own explicit executable or calls `rig_test_provider NAME`, then registers exact argv, exit status, and output with `rig_test_provider_response NAME 'ARGUMENTS' STATUS 'OUTPUT'` (`-` means no output). The fixture logs invocations in `RIG_TEST_PROVIDER_LOG` and fails an undeclared call with exit 99. Use explicit `RIG_PLATFORM=linux` for the second platform branch. `scripts/smoke-native-providers` remains the real-manager integration check; never make `bin/rig` test-aware.
+
 `defaults`, `dockutil`, and `killall` are the same hazard by a different route, and the helper stubs all three for it. Moving `HOME` does not contain `defaults`: it reaches the user domain through `cfprefsd`, so a run under a sandboxed `HOME` writes the real domain using the sandboxed path as its value, which is how this workstation's screenshot location came to point at a deleted temporary directory. Each stub logs its own argv beside itself, because asserting on an observed value cannot distinguish a contained read from a real one when the runner has never set the key.
 
 ## Verification
