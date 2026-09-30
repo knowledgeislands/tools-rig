@@ -6,7 +6,7 @@ This area of the [Rig Specifications](index.md) defines read-only ways to answer
 
 ### RIG-QUERY-001 — Show a rig
 
-`rig show` MUST describe the resolved default profile, and `rig show --profile NAME` MUST describe a named profile without changing the configured default. The output MUST present profile metadata, a human-readable aligned tool table, and concise selected service, scheduled-job, setting, and Dock-layout sections. Table rows MUST use a stable 120-character budget and mark abbreviated values with `...`; qualified `rig explain` retains complete metadata.
+`rig show` MUST describe the resolved default profile, and `rig show --profile NAME` MUST describe a named profile without changing the configured default. The output MUST present profile metadata, a human-readable aligned tool table, and concise selected service, scheduled-job, setting, and Dock-layout sections. Table rows MUST use a stable 120-character budget and mark abbreviated values with `...`; qualified `rig show` retains complete metadata.
 
 _Conformance:_ conforming
 
@@ -14,35 +14,35 @@ _Verify:_ Bats tests compare exact default and named profile summaries, every se
 
 _Evidence:_ `rig_command_show`, `rig_print_profile_tool_table`, and `rig_print_profile_resource_tables` render the resolved profile within the width budget; `show describes the resolved profile in an aligned table` and the typed macOS query test cover tool and managed-resource sections.
 
-### RIG-QUERY-002 — List catalogue tools
+### RIG-QUERY-002 — Browse catalogue tools
 
-`rig list` MUST list catalogue tools deterministically and support narrowing the result by declared category and resolved profile.
+`rig show --all` MUST list catalogue tools deterministically, including unselected tools, and support `--category`. `rig show --category ID` MUST filter tools within the selected default or named profile. `--all` and `--profile` MUST be mutually exclusive. Item detail MUST reject selection filters.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests assert stable full, `--category`, `--profile`, and combined outputs across permuted input declarations.
+_Verify:_ Run isolated Bats tests for valid, invalid, unavailable and dry-run cases.
 
-_Evidence:_ `tests/rig.bats` compares exact tabular output before and after fragment permutation and covers category, profile, and intersected filters.
+_Evidence:_ `rig_command_show`, catalogue selection helpers and `tests/rig.bats` cover deterministic selection and strict grammar.
 
 ### RIG-QUERY-003 — Explain a tool
 
-`rig explain TOOL` MUST report the tool's name, category, purpose, rationale, platforms, relationships, profile membership, and compatible installation metadata. Each `Requires`, `Related`, and `Alternatives` endpoint MUST render as `identifier (Display Name)` in declaration order, or `none` when empty; the structured export MUST retain identifiers.
+`rig show TOOL` MUST report the tool's name, category, purpose, rationale, platforms, relationships, profile membership, and compatible installation metadata. Each `Requires`, `Related`, and `Alternatives` endpoint MUST render as `identifier (Display Name)` in declaration order, or `none` when empty; the structured export MUST retain identifiers.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats tests explain fixture tools and assert every declared and derived field, `none` for absent relationships, ordered `identifier (Display Name)` endpoints, and punctuation in names.
 
-_Evidence:_ `rig_join_query_tool_names` resolves the three tool relationship fields for `rig_command_explain`; `tests/rig.bats` checks exact identity and meaning fields plus sorted platforms, named requirements and relationships, profile membership, and active-platform installation.
+_Evidence:_ `rig_join_query_tool_names` resolves the three tool relationship fields for `rig_command_explain_impl`; `tests/rig.bats` checks exact identity and meaning fields plus sorted platforms, named requirements and relationships, profile membership, and active-platform installation.
 
 ### RIG-QUERY-004 — Declarative query boundary
 
-`rig show`, `rig list`, and `rig explain` MUST NOT invoke a built-in or external provider.
+`rig show`, `rig show --all`, and `rig show` MUST NOT invoke a built-in or external provider.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats tests configure marker providers, run every query form, and assert the marker log remains absent.
 
-_Evidence:_ `tests/rig.bats` runs all three public query commands against an executable marker provider and proves its marker file is never created.
+_Evidence:_ `tests/rig.bats` runs all three public query forms against an executable marker provider and proves its marker file is never created.
 
 ### RIG-QUERY-005 — Unknown query identity
 
@@ -52,11 +52,11 @@ _Conformance:_ conforming
 
 _Verify:_ Bats tests query each unknown identity class and assert status 2, stderr naming, and no provider invocation.
 
-_Evidence:_ `rig_command_show`, `rig_command_list`, `rig_command_explain`, and `rig_explain_resource` fail closed on unknown identities; `catalogue queries reject unknown identities with status two` covers category, profile, and tool diagnostics without provider execution.
+_Evidence:_ `rig_command_show`, `rig_show_catalogue`, `rig_command_explain_impl`, and `rig_explain_resource` fail closed on unknown identities; `catalogue queries reject unknown identities with status two` covers category, profile, and tool diagnostics without provider execution.
 
 ### RIG-QUERY-006 — Managed resource disclosure
 
-`rig show` MUST include every managed resource selected by the resolved profile. `rig explain service:ID`, `rig explain scheduled-job:ID`, `rig explain setting:ID`, and `rig explain dock:ID` MUST report complete declarative identity, profile membership, native ownership, desired values, literal items, paths, policies, and defaults appropriate to that kind. Dock explanation MUST include ordered item details. The commands MUST NOT invoke any provider or write state.
+`rig show` MUST include every managed resource selected by the resolved profile. `rig show service:ID`, `rig show scheduled-job:ID`, `rig show setting:ID`, and `rig show dock:ID` MUST report complete declarative identity, profile membership, native ownership, desired values, literal items, paths, policies, and defaults appropriate to that kind. Dock explanation MUST include ordered item details. The commands MUST NOT invoke any provider or write state.
 
 _Conformance:_ conforming
 
@@ -66,7 +66,7 @@ _Evidence:_ `rig_explain_resource` expands Dock item identities and their ordere
 
 ### RIG-QUERY-007 — Private port disclosure
 
-`rig show` MUST list every private port selected by the resolved profile with identity, name, number, scope, mode, and qualified owner; `rig explain port:ID` MUST report its complete authored intent and profile membership. Both commands MUST remain inert and MUST NOT inspect listeners or mutate sockets.
+`rig show` MUST list every private port selected by the resolved profile with identity, name, number, scope, mode, and qualified owner; `rig show port:ID` MUST report its complete authored intent and profile membership. Both commands MUST remain inert and MUST NOT inspect listeners or mutate sockets.
 
 _Conformance:_ conforming
 
@@ -76,10 +76,10 @@ _Evidence:_ `rig_print_profile_ports`, `rig_explain_resource`, and the private-p
 
 ### RIG-QUERY-008 — User-level skill disclosure
 
-`rig show` MUST render the resolved profile's skills in a deterministic table, `rig explain skill:ID` MUST report the authored meaning, authority, source identity, runtime projections, trust, and profile membership, and `rig diag` MUST report the declared skill count. These queries MUST remain inert and MUST NOT invoke any skill authority.
+`rig show` MUST render selected skills deterministically and `rig show skill:ID` MUST report their meaning, authority, source, runtime projections, trust and profile membership. Both forms MUST remain inert and MUST NOT invoke a skill authority. Verbose doctor MAY include declared counts alongside its separate read-only observations.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats invokes show, explain, and diag with fake Skills CLI and KI executables, asserts stable output, and proves neither executable ran.
+_Verify:_ Run isolated Bats tests for valid, invalid, unavailable and dry-run cases.
 
-_Evidence:_ `rig_print_profile_skills`, `rig_explain_skill`, `rig_command_diag`, and `tests/rig-skills.bats` implement and verify the contract.
+_Evidence:_ `rig_print_profile_skills`, `rig_explain_skill` and `tests/rig-skills.bats` verify inert declaration queries.

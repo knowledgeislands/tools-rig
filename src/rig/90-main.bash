@@ -10,7 +10,7 @@ main() {
   RIG_INVOKED_PATH=$0
   command_name=${1:-help}
   case "$command_name" in
-    status|doctor|apply|bootstrap|update|maintain|capture|run|export)
+    init|status|doctor|apply|upgrade|capture|export)
       RIG_PROGRESS_CONTEXT=operational
       ;;
     *) RIG_PROGRESS_CONTEXT=query ;;
@@ -40,17 +40,13 @@ main() {
       [ "$#" -eq 1 ] || syntax_error "unexpected arguments for $command_name" || return
       printf 'rig %s\n' "$RIG_VERSION"
       ;;
+    init)
+      shift
+      rig_command_init "$@"
+      ;;
     show)
       shift
       rig_command_show "$@"
-      ;;
-    list)
-      shift
-      rig_command_list "$@"
-      ;;
-    explain)
-      shift
-      rig_command_explain "$@"
       ;;
     status)
       shift
@@ -64,33 +60,17 @@ main() {
       shift
       rig_command_apply "$@"
       ;;
-    bootstrap)
+    upgrade)
       shift
-      rig_command_bootstrap "$@"
-      ;;
-    update)
-      shift
-      rig_command_lifecycle update "$@"
-      ;;
-    maintain)
-      shift
-      rig_command_lifecycle maintain "$@"
+      rig_command_lifecycle upgrade "$@"
       ;;
     capture)
       shift
       rig_command_capture "$@"
       ;;
-    run)
-      shift
-      rig_command_run_action "$@"
-      ;;
     export)
       shift
       rig_command_export "$@"
-      ;;
-    diag)
-      shift
-      rig_command_diag "$@"
       ;;
     completion)
       [ "$#" -eq 2 ] || rig_command_syntax_error completion || return
@@ -101,6 +81,11 @@ main() {
         *) syntax_error "unsupported shell: $2" || return ;;
       esac
       ;;
+    list|explain) syntax_error "command '$command_name' was removed; use rig show [ITEM] or rig show --all" || return ;;
+    bootstrap) syntax_error "command 'bootstrap' was removed; use rig apply [--profile NAME]" || return ;;
+    update) syntax_error "command 'update' was removed; use rig upgrade" || return ;;
+    diag) syntax_error "command 'diag' was removed; use rig doctor --verbose" || return ;;
+    run|maintain) syntax_error "command '$command_name' was removed; use the provider's native tools" || return ;;
     *) syntax_error "unknown command: $command_name" || return ;;
   esac
   exit_code=$?

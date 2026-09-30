@@ -1847,9 +1847,7 @@ rig_validate_model() {
   rig_valid_id "$RIG_VALUE" || rig_fail "invalid default profile '$RIG_VALUE'" || return
   rig_reference_exists profile "$RIG_VALUE" || rig_fail "[rig] references unknown profile '$RIG_VALUE'" || return
   if rig_get_value rig bootstrap-profile; then
-    rig_valid_id "$RIG_VALUE" || rig_fail "invalid bootstrap profile '$RIG_VALUE'" || return
-    rig_reference_exists profile "$RIG_VALUE" ||
-      rig_fail "[rig] references unknown bootstrap profile '$RIG_VALUE'" || return
+    rig_fail '[rig] bootstrap-profile is retired; remove it and use apply --profile NAME with declared prerequisites' || return
   fi
 
   index=0
@@ -1934,6 +1932,15 @@ rig_validate_model() {
         rig_fail "[$section_name] field 'command' is not supported" || return
       fi
       if rig_builtin_provider_adapter "$section_id"; then
+        if [ "$section_id" = homebrew ]; then
+          if rig_get_value "$section_name" manifest; then
+            rig_fail '[provider.homebrew] manifest is retired; declare packages in Rig install metadata and remove the Brewfile binding' || return
+          fi
+          rig_field_count "$index" autoupdate-option
+          if [ "$RIG_COUNT" -gt 0 ] || rig_get_value "$section_name" autoupdate-interval; then
+            rig_fail '[provider.homebrew] autoupdate policy is retired; remove it and schedule rig upgrade or native Homebrew explicitly' || return
+          fi
+        fi
           if rig_get_value "$section_name" adapter; then
             rig_fail "[$section_name] reserved built-in provider cannot declare adapter" || return
           fi

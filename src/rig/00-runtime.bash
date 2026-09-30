@@ -113,7 +113,8 @@ RIG_PROFILE_SELECTION_MODE=
 RIG_RESOLVED_PROFILE_KIND=
 RIG_RECONCILIATION_LOCK=
 RIG_RECONCILIATION_LOCK_ACQUIRED=0
-RIG_BOOTSTRAP_ALLOW_DEFERRED_SKILLS=0
+RIG_APPLY_ALLOW_DEFERRED_SKILLS=0
+RIG_APPLY_ALLOW_DEFERRED_PROVIDERS=0
 RIG_LISTENER_OBSERVATION_AVAILABLE=0
 RIG_UNATTENDED=0
 RIG_APPLY_TARGETS=()
@@ -130,21 +131,16 @@ print_help() {
     '  -V, --version         Print the Rig release or development version.' \
     '' \
     'Commands:' \
-    '  show        Describe a resolved profile with tools and skills.' \
-    '  list        Browse declared catalogue tools.' \
-    '  explain     Explain a declared tool, skill, resource, or private port.' \
+    '  init        Create a minimal Rig configuration.' \
+    '  show        Describe the selected setup or one declared item.' \
     '  status      Compare expected and observed tool, skill, and resource state.' \
-    '  doctor      Check whether Rig can operate.' \
-    '  apply       Materialise a resolved profile.' \
-    '  bootstrap   Materialise the bootstrap profile.' \
-    '  update      Update selected provider-managed tools and skills.' \
-    '  maintain    Run explicit selected-provider maintenance.' \
-    '  capture     Refresh one provider-native manifest.' \
-    '  run         Invoke a declared provider action.' \
+    '  capture     Discover installed items and propose additive declarations.' \
+    '  apply       Materialise the selected setup and its prerequisites.' \
+    '  upgrade     Upgrade selected provider-managed tools and skills.' \
+    '  doctor      Check whether Rig can operate; --verbose adds diagnostics.' \
     '  export      Generate public Rig data.' \
-    '  diag        Print runtime and configuration diagnostics.' \
-    '  completion  Print shell completion source.' \
     '  help        Show this help.' \
+    '  completion  Print shell completion source.' \
     '' \
     "Run 'rig COMMAND --help' for command usage."
 }
@@ -153,25 +149,22 @@ rig_command_options() {
   # name | value placeholder | purpose | completion values | required
   # This is the authored option inventory for help, usage and both completions.
   case "$1" in
-    show) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
-    list) printf '%s\n' '--category|ID|Limit the catalogue to a category.|category id|' '--profile|NAME|Select a profile.|profile name|' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
-    explain) printf '%s\n' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
-    run|diag|completion) ;;
+    init) printf '%s\n' '--dry-run||Preview the configuration without writing it.||' ;;
+    show) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--all||Browse all catalogue tools.||' '--category|ID|Limit tools to a category.|category id|' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
+    completion) ;;
     status) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--problems||Show only entries needing attention.||' '--unmanaged||Include observed items not declared by an installation.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
-    doctor) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
+    doctor) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--verbose||Include runtime and configuration diagnostics.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
     apply) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--scope|SCOPE|Restrict to tools, skills, resources, or all.|tools skills resources all|' '--target|ID|Apply one selected entry; repeat for several targets.||' '--dry-run||Print the plan without invoking providers.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
-    bootstrap) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--scope|SCOPE|Restrict to tools, skills, resources, or all.|tools skills resources all|' '--dry-run||Print the plan without invoking providers.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
-    update|maintain) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--dry-run||Print the plan without invoking providers.||' '--unattended||Record an outcome when nobody is watching.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
-    capture) printf '%s\n' '--dry-run||Print the plan without invoking the provider.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
+    upgrade) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--dry-run||Print the plan without invoking providers.||' '--unattended||Record an outcome when nobody is watching.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
+    capture) printf '%s\n' '--provider|NAME|Select an inventory provider.|homebrew|' '--profile|NAME|Select the profile for proposed membership.|profile name|' '--dry-run||Inspect and preview without writing a proposal.||' '--output|PATH|Write a new proposal outside active configuration.|path|' '--category|ID|Declare the category for selected items.|category id|' '--purpose|TEXT|Declare the purpose for selected items.|text|' '--rationale|TEXT|Declare the rationale for selected items.|text|' ;;
     export) printf '%s\n' '--profile|NAME|Select the view profile to export.|profile name|required' '--output|DIRECTORY|Write the public data tree here.|directory|required' '--title|TEXT|Set the exported document title.|title|' '--base-url|URL|Set the published document canonical URL.|url|' ;;
   esac
 }
 
 rig_command_positionals() {
   case "$1" in
-    explain) printf ' TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID' ;;
-    run) printf ' PROVIDER ACTION [-- ARGUMENT...]' ;;
-    capture) printf ' PROVIDER' ;;
+    show) printf ' [ITEM]' ;;
+    capture) printf ' [ITEM...]' ;;
     completion) printf ' bash|zsh' ;;
   esac
 }
@@ -210,7 +203,7 @@ rig_command_help() {
   if [ "$command" = apply ]; then
     printf '%s\n' '' 'Reconciles the selection; applying resources may restart applications mid-run.'
   fi
-  if [ "$command" = update ] || [ "$command" = maintain ]; then
+  if [ "$command" = upgrade ]; then
     printf '%s\n' '' 'Interactive progress appears on stderr unless a provider writes to the terminal.'
   fi
   printf '%s\n' '' 'Options:' '  -h, --help  Show command help.'
@@ -219,7 +212,7 @@ rig_command_help() {
     printf '  %-20s %s\n' "$option${value:+ $value}" "$description"
   done < <(rig_command_options "$command")
   case "$command" in
-    status|doctor|apply|bootstrap|update|maintain|capture|run|export)
+    init|status|doctor|apply|upgrade|capture|export)
       printf '%s\n' '' 'Exit status: 0 on success, 1 on an operational problem, 2 on usage error.' ;;
   esac
   printf '\nExample: rig %s\n' "$(rig_command_example "$command")"
@@ -227,19 +220,14 @@ rig_command_help() {
 
 rig_command_example() {
   case "$1" in
-    show) printf 'show --profile default' ;;
-    list) printf 'list --category core' ;;
-    explain) printf 'explain tool-name' ;;
+    init) printf 'init --dry-run' ;;
+    show) printf 'show tool-name' ;;
     status) printf 'status --problems' ;;
-    doctor) printf 'doctor' ;;
+    doctor) printf 'doctor --verbose' ;;
     apply) printf 'apply --dry-run' ;;
-    bootstrap) printf 'bootstrap --dry-run' ;;
-    update) printf 'update --dry-run' ;;
-    maintain) printf 'maintain --dry-run' ;;
-    capture) printf 'capture homebrew --dry-run' ;;
-    run) printf 'run provider action -- argument' ;;
+    upgrade) printf 'upgrade --dry-run' ;;
+    capture) printf 'capture --provider homebrew --dry-run' ;;
     export) printf 'export --profile public --output ./public' ;;
-    diag) printf 'diag' ;;
     completion) printf 'completion bash' ;;
   esac
 }
@@ -324,14 +312,14 @@ rig_outcome_report() {
   result=$RIG_OUTCOME_RESULT
   if [ -z "$result" ]; then
     case "$command_name" in
-      status|doctor|diag)
+      status|doctor)
         if [ "$status" -eq 0 ]; then
           result=healthy
         else
           result=unhealthy
         fi
         ;;
-      apply|bootstrap|update|maintain|capture|export)
+      init|apply|upgrade|capture|export)
         if [ "$status" -eq 0 ]; then
           result=succeeded
         elif [ "$status" -eq 1 ]; then
@@ -726,14 +714,12 @@ rig_command_completion_words() {
   done < <(rig_command_options "$1")
   while IFS='|' read -r option value description choices required; do
     case "$choices" in
-      ''|'profile name'|'category id'|directory|title|url) ;;
+      ''|'profile name'|'category id'|directory|path|text|title|url) ;;
       *) printf ' %s' "$choices" ;;
     esac
   done < <(rig_command_options "$1")
   case "$1" in
-    capture) printf ' homebrew' ;;
     completion) printf ' bash zsh' ;;
-    run) printf ' --' ;;
   esac
 }
 
@@ -744,6 +730,7 @@ rig_command_zsh_arguments() {
     [ -n "$option" ] || continue
     if [ -n "$choices" ] && [ "$choices" != 'profile name' ] &&
       [ "$choices" != 'category id' ] && [ "$choices" != directory ] &&
+      [ "$choices" != path ] && [ "$choices" != text ] &&
       [ "$choices" != title ] && [ "$choices" != url ]; then
       printf " '%s[%s]:%s:(%s)'" "$option" "$description" "$value" "$choices"
     elif [ -n "$value" ]; then
@@ -753,9 +740,8 @@ rig_command_zsh_arguments() {
     fi
   done < <(rig_command_options "$1")
   case "$1" in
-    explain) printf " '1:tool, qualified resource, or private port:'" ;;
-    capture) printf " '1:provider:(homebrew)'" ;;
-    run) printf " '1:provider name:' '2:action name:' '3:separator:(--)' '*::action argument:'" ;;
+    show) printf " '1:tool, qualified skill, resource, or private port:'" ;;
+    capture) printf " '*:installed item:'" ;;
     completion) printf " '1:shell:(bash zsh)'" ;;
   esac
 }
@@ -769,12 +755,12 @@ print_bash_completion() {
     '  current=${COMP_WORDS[COMP_CWORD]}' \
     '  command=${COMP_WORDS[1]:-}' \
     '  if [ "$COMP_CWORD" -eq 1 ]; then' \
-    '    COMPREPLY=($(compgen -W "-h --help -V --version show list explain status doctor apply bootstrap update maintain capture run export diag completion help" -- "$current"))' \
+    '    COMPREPLY=($(compgen -W "-h --help -V --version init show status capture apply upgrade doctor export help completion" -- "$current"))' \
     '    return' \
     '  fi' \
     '  case "$command" in'
   local command words
-  for command in show list explain status doctor apply bootstrap update maintain capture run export diag completion; do
+  for command in init show status capture apply upgrade doctor export completion; do
     words=$(rig_command_completion_words "$command")
     # shellcheck disable=SC2016
     printf '    %s) COMPREPLY=($(compgen -W "%s" -- "$current")) ;;\n' "$command" "$words"
@@ -797,21 +783,16 @@ print_zsh_completion() {
     '  local -a commands' \
     '  local state' \
     '  commands=(' \
-    "    'show:describe a resolved profile'" \
-    "    'list:browse declared catalogue tools'" \
-    "    'explain:explain a declared tool, resource, or private port'" \
+    "    'init:create a minimal Rig configuration'" \
+    "    'show:describe the selected setup or one declared item'" \
     "    'status:compare expected and observed state'" \
+    "    'capture:discover installed items and propose additive declarations'" \
+    "    'apply:materialise the selected setup and its prerequisites'" \
+    "    'upgrade:upgrade selected provider-managed tools and skills'" \
     "    'doctor:check whether Rig can operate'" \
-    "    'apply:materialise a resolved profile'" \
-    "    'bootstrap:materialise the bootstrap profile'" \
-    "    'update:update selected provider-managed tools'" \
-    "    'maintain:run explicit selected-provider maintenance'" \
-    "    'capture:refresh one provider-native manifest'" \
-    "    'run:invoke a declared provider action'" \
     "    'export:generate public rig data'" \
-    "    'diag:print runtime and configuration diagnostics'" \
-    "    'completion:print shell completion source'" \
     "    'help:show help'" \
+    "    'completion:print shell completion source'" \
     '  )' \
     "  _arguments '(-h --help)'{-h,--help}'[show help]' '(-V --version)'{-V,--version}'[print the Rig release or development version]' '1:command:->command' '*::argument:->argument'" \
     '  case $state in' \
@@ -819,7 +800,7 @@ print_zsh_completion() {
     '    argument)' \
     '      case $words[2] in'
   local command arguments
-  for command in show list explain status doctor apply bootstrap update maintain capture run export diag completion; do
+  for command in init show status capture apply upgrade doctor export completion; do
     arguments=$(rig_command_zsh_arguments "$command")
     printf '        %s) _arguments%s ;;\n' "$command" "$arguments"
   done

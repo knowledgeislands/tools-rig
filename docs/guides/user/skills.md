@@ -58,7 +58,7 @@ Declaration and observation commands remain read-only:
 
 ```sh
 rig show
-rig explain skill:caveman
+rig show skill:caveman
 rig status --unmanaged
 rig doctor
 ```
@@ -72,7 +72,7 @@ rig apply --scope skills --dry-run
 rig apply --scope skills
 ```
 
-Full application orders tools → skills → resources. `rig update --dry-run` previews explicit Skills CLI updates, and `rig update` advances selected `skills-cli` skills. When the Skills CLI itself is not installed, each `skills-cli` skill is reported as `unavailable` and the rest of the update still runs. Maintenance, cleanup, and profile selection never remove a skill.
+Full application orders tools → skills → resources. `rig upgrade --dry-run` previews explicit Skills CLI updates, and `rig upgrade` advances selected `skills-cli` skills. When the Skills CLI itself is not installed, each `skills-cli` skill is reported as `unavailable` and the rest of the update still runs. Maintenance, cleanup, and profile selection never remove a skill.
 
 ## Publish only deliberate metadata
 

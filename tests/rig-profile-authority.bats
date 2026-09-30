@@ -122,27 +122,27 @@ requires = ["base"]/' \
   [ "$status" -eq 2 ]
   [[ "$output" == *"profile 'public' is a non-appliable view"* ]] || false
 
-  run_rig bootstrap --profile public --dry-run
+  run_rig upgrade --profile public --dry-run
   [ "$status" -eq 2 ]
   [[ "$output" == *"profile 'public' is a non-appliable view"* ]] || false
 
-  run_rig update --profile public --dry-run
+  run_rig apply --profile public --scope resources --dry-run
   [ "$status" -eq 2 ]
   [[ "$output" == *"profile 'public' is a non-appliable view"* ]] || false
 
-  run_rig maintain --profile public --dry-run
+  run_rig capture --profile public
   [ "$status" -eq 2 ]
-  [[ "$output" == *"profile 'public' is a non-appliable view"* ]] || false
+  [[ "$output" == *"complete profile"* ]] || false
 
   sed 's/default-profile = "workstation"/default-profile = "public"/' \
     "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/public-default.toml"
   mv "$CONFIG_HOME/public-default.toml" "$CONFIG_HOME/rig.toml"
-  run_rig run launchd restart -- service:daemon
+  run_rig apply --target service:daemon --dry-run
   [ "$status" -eq 2 ]
   [[ "$output" == *"profile 'public' is a non-appliable view"* ]] || false
 }
 
-@test "views cannot inherit complete profiles and bootstrap profiles must be appliable" {
+@test "views cannot inherit complete profiles and retired bootstrap selection is rejected" {
   write_item_profile_fixture
   sed '/^kind = "view"$/a\
 inherits = ["workstation"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/invalid.toml"
@@ -159,7 +159,7 @@ bootstrap-profile = "public"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/invalid.tom
 
   run_rig show
   [ "$status" -eq 2 ]
-  [[ "$output" == *'bootstrap-profile must be appliable'* ]] || false
+  [[ "$output" == *'bootstrap-profile'*'retired'* ]] || false
 }
 
 @test "export requires a non-appliable view" {

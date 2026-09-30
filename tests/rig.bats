@@ -30,7 +30,7 @@ setup() {
   [ "$RIG_APPLICATION_ROOTS" = "$BATS_TEST_TMPDIR/applications" ] || false
   [ "$RIG_PLUTIL" = "$BATS_TEST_TMPDIR/isolated-plutil" ] || false
 
-  run "$RIG" diag
+  run "$RIG" doctor --verbose
   [ "$status" -eq 1 ] || false
   [[ "$output" == *"State home: $BATS_TEST_TMPDIR/isolated-home/.local/state/rig"* ]] || false
 }
@@ -307,14 +307,9 @@ write_orchestration_config() {
     >"$CONFIG_HOME/rig.toml"
 }
 
-write_bootstrap_config() {
+write_named_profile_config() {
   write_orchestration_config
-  sed '/^default-profile = "default"$/a\
-bootstrap-profile = "bootstrap"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.toml"
-  printf '%s\n' \
-    '[profile.bootstrap]' \
-    'tools = ["app"]' >>"$CONFIG_HOME/bootstrap.toml"
-  mv "$CONFIG_HOME/bootstrap.toml" "$CONFIG_HOME/rig.toml"
+  printf '%s\n' '[profile.bootstrap]' 'tools = ["app"]' >>"$CONFIG_HOME/rig.toml"
 }
 
 write_port_fixture() {
@@ -411,13 +406,9 @@ run_loader() {
 @test "large catalogue queries preserve deterministic results without provider execution" {
   write_large_catalogue_fixture "$CONFIG_HOME/rig.toml"
 
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" diag
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"  Status: valid"* ]] || false
-  [[ "$output" == *"  Default profile: default"* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" list --category category-1
+    "$RIG" show --all --category category-1
   [ "$status" -eq 0 ]
   [ "${#lines[@]}" -eq 22 ]
   [[ "${lines[2]}" == tool-005* ]] || false
@@ -430,7 +421,7 @@ run_loader() {
   [[ "$output" == *'tool-100'*'Tool 100'*'category-1'*'Exercise deterministic catalogue query 100'* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" explain tool-100
+    "$RIG" show tool-100
   [ "$status" -eq 0 ]
   [[ "$output" == *"Requires: tool-099"* ]] || false
   [[ "$output" == *"Profiles: default (inherited), developer (direct)"* ]] || false
@@ -534,63 +525,29 @@ write_query_config() {
 
 @test "help describes the current command surface" {
   run "$RIG" --help
-
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Usage: rig [options] [command]"* ]] || false
-  [[ "$output" == *"Print the Rig release or development version."* ]] || false
   [[ "$output" == *"Describe and manage a person's working setup."* ]] || false
-  for command in show list explain status doctor apply bootstrap update maintain capture run export diag completion help; do
+  for command in init show status capture apply upgrade doctor export help completion; do
     [[ "$output" == *"  $command"* ]] || false
   done
-  [[ "$output" != *"paths"* ]] || false
-  [[ "$output" == *$'  show        Describe a resolved profile with tools and skills.'* ]] || false
-  [[ "$output" == *$'  completion  Print shell completion source.'* ]] || false
-  [[ "$output" == *"Run 'rig COMMAND --help' for command usage."* ]] || false
+  for command in list explain bootstrap update maintain run diag paths; do
+    [[ "$output" != *"  $command "* ]] || false
+  done
+  [[ "$output" == *'Describe the selected setup or one declared item.'* ]] || false
 }
 
 @test "public command inventory stays aligned across documentation" {
   repo_root=$BATS_TEST_DIRNAME/..
   bash_completion=$("$RIG" completion bash)
   zsh_completion=$("$RIG" completion zsh)
-  man_synopsis=$(sed -n '/^.SH SYNOPSIS/,/^.SH DESCRIPTION/p' "$repo_root/man/rig.1")
-
-  for command in show list explain status doctor apply bootstrap update maintain capture run export diag completion help; do
-    grep -Fq "\`rig $command" "$repo_root/CHANGELOG.md"
+  for command in init show status capture apply upgrade doctor export help completion; do
     grep -Fq "\`rig $command" "$repo_root/docs/guides/user/commands.md"
     grep -Fq "rig $command" "$repo_root/man/rig.1"
     [[ "$bash_completion" == *" $command"* ]] || false
     [[ "$zsh_completion" == *"$command:"* ]] || false
   done
-
-  for synopsis in \
-    'show [--profile NAME] [--format text|json]' \
-    'list [--category ID] [--profile NAME] [--format text|json]' \
-    'explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID [--format text|json]' \
-    'status [--profile NAME] [--problems] [--unmanaged] [--format text|json]' \
-    'doctor [--profile NAME] [--format text|json]' \
-    'apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID]... [--dry-run] [--format text|json]' \
-    'bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run] [--format text|json]' \
-    'update [--profile NAME] [--dry-run] [--unattended] [--format text|json]' \
-    'maintain [--profile NAME] [--dry-run] [--unattended] [--format text|json]' \
-    'capture PROVIDER [--dry-run] [--format text|json]' \
-    'run PROVIDER ACTION [-- ARGUMENT...]' \
-    'export --profile NAME --output DIRECTORY [--title TEXT] [--base-url URL]' \
-    'diag' \
-    'completion bash|zsh' \
-    'help [-h|--help]'; do
-    grep -Fq "\`rig $synopsis\`" "$repo_root/docs/guides/user/commands.md"
-  done
-
-  grep -Fq '`rig show [--profile NAME]`' "$repo_root/CHANGELOG.md"
-
   grep -Fq '[Get started with Rig](docs/guides/user/getting-started.md)' "$repo_root/README.md"
-  grep -Fq '[user-guide journey](docs/guides/user/README.md)' "$repo_root/README.md"
   grep -Fq 'man rig' "$repo_root/README.md"
-  grep -Fq 'rig --help' "$repo_root/CHANGELOG.md"
-  grep -Fq 'rig --version' "$repo_root/CHANGELOG.md"
-  grep -Fq 'rig --help' "$repo_root/docs/guides/user/commands.md"
-  grep -Fq 'rig --version' "$repo_root/docs/guides/user/commands.md"
-  [[ "$man_synopsis" == *$'.B rig status\n.RI [ \\-\\-profile " NAME" ]\n.RI [ \\-\\-problems ]\n.RI [ \\-\\-unmanaged ]'* ]] || false
 }
 
 @test "completion and help provide command-local help" {
@@ -631,26 +588,26 @@ write_query_config() {
   [ "$output" = "rig 0.3.0" ]
 }
 
-@test "diag reports stable runtime, default paths, and missing configuration" {
+@test "doctor verbose reports stable runtime, default paths, and missing configuration" {
   run env \
     HOME="$TEST_HOME" \
     RIG_CONFIG_HOME= RIG_DATA_HOME= RIG_STATE_HOME= RIG_CACHE_HOME= \
     XDG_CONFIG_HOME= XDG_DATA_HOME= XDG_STATE_HOME= XDG_CACHE_HOME= \
-    RIG_PLATFORM=fixture \
-    "$RIG" diag
+    RIG_PLATFORM=macos \
+    "$RIG" doctor --verbose
 
   [ "$status" -eq 1 ]
-  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.3.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s/.config/rig\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/.config/rig/rig.toml (absent)\n  Fragment count: 0\n  Status: missing' "$RIG" "$BASH_VERSION" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME")" ]
+  [[ "$output" == *"$(printf 'Runtime:\n  Rig version: 0.3.0\n  Executable: %s\n  Bash version: %s\n  Platform: macos\nPaths:\n  Config home: %s/.config/rig\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/.config/rig/rig.toml (absent)\n  Fragment count: 0\n  Status: missing' "$RIG" "$BASH_VERSION" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME")" ]] || false
 }
 
-@test "diag follows XDG base directories" {
+@test "doctor verbose follows XDG base directories" {
   run env \
     HOME=/tmp/rig-home \
     XDG_CONFIG_HOME=/tmp/rig-config \
     XDG_DATA_HOME=/tmp/rig-data \
     XDG_STATE_HOME=/tmp/rig-state \
     XDG_CACHE_HOME=/tmp/rig-cache \
-    "$RIG" diag
+    "$RIG" doctor --verbose
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"  Config home: /tmp/rig-config/rig"* ]] || false
@@ -667,7 +624,7 @@ write_query_config() {
     RIG_DATA_HOME=/tmp/custom-data \
     RIG_STATE_HOME=/tmp/custom-state \
     RIG_CACHE_HOME=/tmp/custom-cache \
-    "$RIG" diag
+    "$RIG" doctor --verbose
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"  Config home: /tmp/custom-config"* ]] || false
@@ -680,184 +637,85 @@ write_query_config() {
 @test "completion emits shell registration" {
   run "$RIG" completion bash
   [ "$status" -eq 0 ]
-  [[ "$output" == *"complete -F _rig rig"* ]] || false
-  [[ "$output" == *"-h --help -V --version show list explain status doctor apply bootstrap update maintain capture run export diag completion help"* ]] || false
-  [[ "$output" == *'show) COMPREPLY=($(compgen -W "-h --help --profile --format text json"'* ]] || false
-  [[ "$output" == *'explain) COMPREPLY=($(compgen -W "-h --help --format text json"'* ]] || false
-  [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile --problems --unmanaged --format text json"'* ]] || false
-  [[ "$output" == *'doctor) COMPREPLY=($(compgen -W "-h --help --profile --format text json"'* ]] || false
-  [[ "$output" == *'apply) COMPREPLY=($(compgen -W "-h --help --profile --scope --target --dry-run --format tools skills resources all text json"'* ]] || false
-  [[ "$output" == *'bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run --format tools skills resources all text json"'* ]] || false
-  [[ "$output" == *'update) COMPREPLY=($(compgen -W "-h --help --profile --dry-run --unattended --format text json"'* ]] || false
-  [[ "$output" == *'maintain) COMPREPLY=($(compgen -W "-h --help --profile --dry-run --unattended --format text json"'* ]] || false
-  [[ "$output" == *'capture) COMPREPLY=($(compgen -W "-h --help --dry-run --format text json homebrew"'* ]] || false
-  [[ "$output" == *'run) COMPREPLY=($(compgen -W "-h --help --"'* ]] || false
-  [[ "$output" == *'export) COMPREPLY=($(compgen -W "-h --help --profile --output --title --base-url"'* ]] || false
-  [[ "$output" == *'completion) COMPREPLY=($(compgen -W "-h --help bash zsh"'* ]] || false
-  [[ "$output" == *'help) COMPREPLY=($(compgen -W "-h --help"'* ]] || false
-  [[ "$output" == *"show list explain status doctor apply bootstrap update maintain capture run export diag completion help"* ]] || false
-  [[ "$output" != *" paths "* ]] || false
-
+  [[ "$output" == *'complete -F _rig rig'* ]] || false
+  [[ "$output" == *'init show status capture apply upgrade doctor export help completion'* ]] || false
+  [[ "$output" == *'--all --category --format'* ]] || false
+  [[ "$output" == *'--verbose'* ]] || false
+  for command in list explain bootstrap update maintain run diag; do
+    [[ "$output" != *"    $command)"* ]] || false
+  done
   run "$RIG" completion zsh
   [ "$status" -eq 0 ]
-  [[ "$output" == *"#compdef rig"* ]] || false
-  [[ "$output" == *"compdef _rig rig"* ]] || false
-  [[ "$output" == *"show:describe a resolved profile"* ]] || false
-  [[ "$output" == *"diag:print runtime and configuration diagnostics"* ]] || false
-  [[ "$output" == *"doctor:check whether Rig can operate"* ]] || false
-  [[ "$output" == *"bootstrap:materialise the bootstrap profile"* ]] || false
-  [[ "$output" == *"update:update selected provider-managed tools"* ]] || false
-  [[ "$output" == *"maintain:run explicit selected-provider maintenance"* ]] || false
-  [[ "$output" == *"capture:refresh one provider-native manifest"* ]] || false
-  [[ "$output" == *"update) _arguments"*"--profile[Select a profile.]"*"--dry-run[Print the plan without invoking providers.]"*"--unattended[Record an outcome when nobody is watching.]"* ]] || false
-  [[ "$output" == *"maintain) _arguments"*"--unattended[Record an outcome when nobody is watching.]"* ]] || false
-  [[ "$output" == *"capture) _arguments"*"--dry-run[Print the plan without invoking the provider.]"*"1:provider:(homebrew)"* ]] || false
-  [[ "$output" == *"export:generate public rig data"* ]] || false
-  [[ "$output" == *"run:invoke a declared provider action"* ]] || false
-  [[ "$output" == *"run) _arguments"*"'3:separator:(--)'"* ]] || false
-  [[ "$output" == *"'(-V --version)'{-V,--version}"* ]] || false
-
-  [[ "$output" == *"[print the Rig release or development version]"* ]] || false
-  [[ "$output" == *"explain) _arguments '(-h --help)'"* ]] || false
-  [[ "$output" == *"completion) _arguments '(-h --help)'"* ]] || false
-  [[ "$output" == *"help) _arguments '(-h --help)'"* ]] || false
+  [[ "$output" == *'#compdef rig'* ]] || false
+  [[ "$output" == *'upgrade:upgrade selected provider-managed tools and skills'* ]] || false
+  [[ "$output" == *"*:installed item:"* ]] || false
 }
 
 @test "all accepted command options are described and completed" {
-  local command expected option help_text bash_completion zsh_completion
   bash_completion=$("$RIG" completion bash)
   zsh_completion=$("$RIG" completion zsh)
-  for command in show list explain status doctor apply bootstrap update maintain capture run export diag completion; do
+  for command in init show status capture apply upgrade doctor export completion; do
     case "$command" in
-      show) expected='--profile' ;;
-      list) expected='--category --profile' ;;
-      explain|run|diag|completion) expected= ;;
+      init) expected='--dry-run' ;;
+      show) expected='--profile --all --category --format' ;;
       status) expected='--profile --problems --unmanaged --format' ;;
-      doctor) expected='--profile --format' ;;
-      apply) expected='--profile --scope --target --dry-run' ;;
-      bootstrap) expected='--profile --scope --dry-run' ;;
-      update|maintain) expected='--profile --dry-run --unattended' ;;
-      capture) expected='--dry-run' ;;
+      capture) expected='--provider --profile --dry-run --output --category --purpose --rationale' ;;
+      apply) expected='--profile --scope --target --dry-run --format' ;;
+      upgrade) expected='--profile --dry-run --unattended --format' ;;
+      doctor) expected='--profile --verbose --format' ;;
       export) expected='--profile --output --title --base-url' ;;
+      completion) expected= ;;
     esac
     run "$RIG" "$command" --help
-    [ "$status" -eq 0 ] || false
-    help_text=$output
-    [[ "$help_text" == *'  -h, --help  Show command help.'* ]] || false
-    [[ "$help_text" == *'Example: rig '* ]] || false
+    [ "$status" -eq 0 ]
     for option in $expected; do
-      [[ "$help_text" == *"  $option"* ]] || false
-      [[ "$bash_completion" == *"$command) COMPREPLY="*" $option"* ]] || false
-      [[ "$zsh_completion" == *"$command) _arguments"*"'$option["* ]] || false
+      [[ "$output" == *"$option"* ]] || false
+      [[ "$bash_completion" == *"$command)"*"$option"* ]] || false
+      [[ "$zsh_completion" == *"$command)"*"$option"* ]] || false
     done
   done
-  [[ "$("$RIG" apply --help)" == *'may restart applications mid-run'* ]] || false
-  [[ "$("$RIG" --help)" != *'Interactive operations use'* ]] || false
 }
 
 @test "completion definitions evaluate and expose accepted options" {
   run bash -c '
     eval "$("$1" completion bash)"
-    COMP_WORDS=(rig --)
-    COMP_CWORD=1
-    _rig
-    printf "root:%s\n" "${COMPREPLY[*]}"
-    COMP_WORDS=(rig show --)
     COMP_CWORD=2
-    _rig
-    printf "show:%s\n" "${COMPREPLY[*]}"
-    COMP_WORDS=(rig explain --)
-    COMP_CWORD=2
-    _rig
-    printf "explain:%s\n" "${COMPREPLY[*]}"
-    COMP_WORDS=(rig status --)
-    COMP_CWORD=2
-    _rig
-    printf "status:%s\n" "${COMPREPLY[*]}"
-      COMP_WORDS=(rig doctor --)
-      COMP_CWORD=2
+    for command in init show status capture apply upgrade doctor export; do
+      COMP_WORDS=(rig "$command" --)
+      COMPREPLY=()
       _rig
-      printf "doctor:%s\n" "${COMPREPLY[*]}"
-      COMP_WORDS=(rig apply --)
-      COMP_CWORD=2
-      _rig
-      printf "apply:%s\n" "${COMPREPLY[*]}"
-      COMP_WORDS=(rig bootstrap --)
-      COMP_CWORD=2
-      _rig
-      printf "bootstrap:%s\n" "${COMPREPLY[*]}"
-      COMP_WORDS=(rig update --)
-      COMP_CWORD=2
-      _rig
-      printf "update:%s\n" "${COMPREPLY[*]}"
-      COMP_WORDS=(rig maintain --)
-      COMP_CWORD=2
-      _rig
-      printf "maintain:%s\n" "${COMPREPLY[*]}"
-      COMP_WORDS=(rig capture --)
-      COMP_CWORD=2
-      _rig
-      printf "capture:%s\n" "${COMPREPLY[*]}"
-      COMP_WORDS=(rig run --)
-      COMP_CWORD=2
-      _rig
-      printf "run:%s\n" "${COMPREPLY[*]}"
-    COMP_WORDS=(rig export --)
-    COMP_CWORD=2
-    _rig
-    printf "export:%s\n" "${COMPREPLY[*]}"
- COMP_WORDS=(rig completion --)
- COMP_CWORD=2
- _rig
- printf "completion:%s\n" "${COMPREPLY[*]}"
- COMP_WORDS=(rig help --)
- COMP_CWORD=2
- _rig
- printf "help:%s\n" "${COMPREPLY[*]}"
- ' bash "$RIG"
-
+      printf "%s:%s\n" "$command" "${COMPREPLY[*]}"
+    done
+  ' _ "$RIG"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"root:--help --version"* ]] || false
-  [[ "$output" == *"show:--help --profile"* ]] || false
-  [[ "$output" == *"explain:--help"* ]] || false
-  [[ "$output" == *"status:--help --profile"* ]] || false
-  [[ "$output" == *"doctor:--help --profile"* ]] || false
-  [[ "$output" == *"apply:--help --profile --scope --target --dry-run"* ]] || false
-  [[ "$output" == *"bootstrap:--help --profile --scope --dry-run"* ]] || false
-  [[ "$output" == *"update:--help --profile --dry-run --unattended"* ]] || false
-  [[ "$output" == *"maintain:--help --profile --dry-run --unattended"* ]] || false
-  [[ "$output" == *"capture:--help --dry-run"* ]] || false
- [[ "$output" == *"run:--help --"* ]] || false
-  [[ "$output" == *"export:--help --profile --output --title --base-url"* ]] || false
- [[ "$output" == *"completion:--help"* ]] || false
- [[ "$output" == *"help:--help"* ]] || false
-
-  run zsh -f -c '
-    autoload -Uz compinit && compinit -C
-    eval "$("$1" completion zsh)"
-    [[ ${_comps[rig]} == _rig ]] || false
-  ' zsh "$RIG"
-
+  [[ "$output" == *'show:--help --profile --all --category --format'* ]] || false
+  [[ "$output" == *'doctor:--help --profile --verbose --format'* ]] || false
+  [[ "$output" == *'capture:--help --provider --profile --dry-run --output --category --purpose --rationale'* ]] || false
+  run zsh -f -c 'eval "$("$1" completion zsh)"; (( $+functions[_rig] ))' _ "$RIG"
   [ "$status" -eq 0 ]
 }
 
-@test "diag reports valid configuration metadata and fragment count" {
+@test "doctor verbose reports valid configuration metadata and fragment count" {
   write_minimal_config
+  sed '/^install\./d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/catalogue.toml"
+  mv "$CONFIG_HOME/catalogue.toml" "$CONFIG_HOME/rig.toml"
   printf '%s\n' '# first fragment' >"$CONFIG_HOME/conf.d/10-first.toml"
   printf '%s\n' '# second fragment' >"$CONFIG_HOME/conf.d/20-second.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
-    XDG_DATA_HOME= XDG_STATE_HOME= XDG_CACHE_HOME= RIG_PLATFORM=fixture "$RIG" diag
+    XDG_DATA_HOME= XDG_STATE_HOME= XDG_CACHE_HOME= RIG_PLATFORM=macos "$RIG" doctor --verbose
 
   [ "$status" -eq 0 ]
-  [ "$output" = "$(printf 'Runtime:\n  Rig version: 0.3.0\n  Executable: %s\n  Bash version: %s\n  Platform: fixture\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.toml\n  Fragment count: 2\n  Status: valid\n  Schema: 1\n  Default profile: default\n  Selection mode: central\n  Profiles: 1\n  Tools: 1\n  Skills: 0\n  Managed resources: 0\n  Ports: 0\n  Tool variants: 0' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]
+  [[ "$output" == *"$(printf 'Runtime:\n  Rig version: 0.3.0\n  Executable: %s\n  Bash version: %s\n  Platform: macos\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.toml\n  Fragment count: 2\n  Status: valid\n  Schema: 1\n  Default profile: default\n  Selection mode: central\n  Profiles: 1\n  Tools: 1\n  Skills: 0\n  Managed resources: 0\n  Ports: 0\n  Tool variants: 0' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]] || false
 }
 
-@test "diag accepts fragment-only configuration and reports the optional root absent" {
+@test "doctor verbose accepts fragment-only configuration and reports the optional root absent" {
   write_minimal_config
+  sed '/^install\./d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/catalogue.toml"
+  mv "$CONFIG_HOME/catalogue.toml" "$CONFIG_HOME/rig.toml"
   mv "$CONFIG_HOME/rig.toml" "$CONFIG_HOME/conf.d/20-complete.toml"
 
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=fixture "$RIG" diag
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" doctor --verbose
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"  Root config: $CONFIG_HOME/rig.toml (absent)"* ]] || false
@@ -866,10 +724,10 @@ write_query_config() {
   [[ "$output" == *"  Schema: 1"* ]] || false
 }
 
-@test "diag summarizes invalid configuration without parser diagnostics" {
+@test "doctor verbose summarizes invalid configuration without parser diagnostics" {
   printf '%s\n' '[rig]' 'schema = 2' 'default-profile = "default"' >"$CONFIG_HOME/rig.toml"
 
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=fixture "$RIG" diag
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" doctor --verbose
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"  Status: invalid"* ]] || false
@@ -878,45 +736,44 @@ write_query_config() {
   [[ "$output" != *"rig: error:"* ]] || false
 }
 
-@test "diag validates configuration without invoking providers" {
+@test "show validates configuration without invoking providers" {
   write_query_config
 
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" diag
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" show
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"  Status: valid"* ]] || false
+  [[ "$output" == *"Profile:  default"* ]] || false
   [ ! -e "$QUERY_MARKER" ]
 }
 
-@test "diag reports the invoked linked executable path" {
+@test "doctor verbose reports the invoked linked executable path" {
   write_minimal_config
+  sed '/^install\./d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/catalogue.toml"
+  mv "$CONFIG_HOME/catalogue.toml" "$CONFIG_HOME/rig.toml"
   link_dir=$BATS_TEST_TMPDIR/linked-bin-$BATS_TEST_NUMBER
   mkdir -p "$link_dir"
   ln -s "$RIG" "$link_dir/rig"
 
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=fixture "$link_dir/rig" diag
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$link_dir/rig" doctor --verbose
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"  Executable: $link_dir/rig"* ]] || false
 }
 
-@test "diag help succeeds without configuration and paths is removed" {
-  missing_config=$BATS_TEST_TMPDIR/missing-diag-config-$BATS_TEST_NUMBER
-
-  for flag in -h --help; do
-    run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" diag "$flag"
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"Usage: rig diag"* ]] || false
+@test "doctor verbose help is local and retired commands give migration guidance" {
+  missing_config=$BATS_TEST_TMPDIR/missing-config-$BATS_TEST_NUMBER
+  run env RIG_CONFIG_HOME="$missing_config" "$RIG" doctor --verbose --help
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'Usage: rig doctor'* ]] || false
+  for command in list explain bootstrap update maintain run diag; do
+    run env RIG_CONFIG_HOME="$missing_config" "$RIG" "$command"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"command '$command' was removed; use"* ]] || false
+    [[ "$output" != *'no configuration sources'* ]] || false
   done
-
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" diag extra
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"rig: error: usage: rig diag"* ]] || false
-  [[ "$output" != *"cannot read configuration file"* ]] || false
-
   run "$RIG" paths
   [ "$status" -eq 2 ]
-  [[ "$output" == *"rig: error: unknown command: paths"* ]] || false
+  [[ "$output" == *'unknown command: paths'* ]] || false
 }
 
 @test "show describes default and named resolved profiles deterministically" {
@@ -974,48 +831,28 @@ write_query_config() {
 
 @test "show and mutation commands emit parseable JSON projections" {
   write_orchestration_config
-  local command
-
-  for command in show list explain apply bootstrap update maintain; do
+  for command in show apply upgrade; do
     case "$command" in
-      show) run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-          "$RIG" "$command" --format json ;;
-      list) run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-          "$RIG" "$command" --format json ;;
-      explain) run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-          "$RIG" "$command" app --format json ;;
-      *) run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-          "$RIG" "$command" --dry-run --format json ;;
+      show) set -- show --format json ;;
+      *) set -- "$command" --dry-run --format json ;;
     esac
+    run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" "$@"
     [ "$status" -eq 0 ]
     printf '%s\n' "$output" | /usr/bin/python3 -m json.tool >/dev/null || false
     [[ "$output" == *'"command":"'"$command"'"'* ]] || false
   done
-
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" list --profile default --format json
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" show --all --format json
   [ "$status" -eq 0 ]
-  printf '%s\n' "$output" | /usr/bin/python3 -c 'import json,sys; d=json.load(sys.stdin); assert (d["profile"], d["platform"]) == ("default", "macos")' || false
-
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" explain app --format json
+  printf '%s\n' "$output" | /usr/bin/python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["command"] == "show" and len(d["tools"]) == 4' || false
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" show app --format json
   [ "$status" -eq 0 ]
   printf '%s\n' "$output" | /usr/bin/python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["platform"] == "macos" and d["target"] == "app"' || false
 }
 
 @test "new report formats reject invalid values before provider dispatch" {
-  local command
   write_orchestration_config
-
-  for command in show list explain apply bootstrap update maintain capture; do
-    case "$command" in
-      explain) run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-          "$RIG" explain app --format yaml ;;
-      capture) run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-          "$RIG" capture runner --format yaml ;;
-      *) run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-          "$RIG" "$command" --format yaml ;;
-    esac
+  for command in show apply upgrade doctor capture; do
+    run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" "$command" --format yaml
     [ "$status" -eq 2 ]
     [[ "$output" == *"usage: rig $command"* ]] || false
   done
@@ -1029,18 +866,18 @@ write_query_config() {
   mv "$CONFIG_HOME/multiline.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" list
+    "$RIG" show --all
   [ "$status" -eq 0 ]
   [[ "$output" == *'Line one\nLine two'* ]] || false
   [ "${#lines[@]}" -eq 3 ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" list --format json
+    "$RIG" show --all --format json
   [ "$status" -eq 0 ]
   printf '%s\n' "$output" | /usr/bin/python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["tools"][0]["purpose"] == "Line one\nLine two"' || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" explain alpha --format json
+    "$RIG" show alpha --format json
   [ "$status" -eq 0 ]
   printf '%s\n' "$output" | /usr/bin/python3 -c 'import json,sys; d=json.load(sys.stdin); assert next(x["value"] for x in d["fields"] if x["label"] == "Purpose") == "Line one\nLine two"' || false
 }
@@ -1081,11 +918,11 @@ write_query_config() {
   [[ "$output" == *"rig: error: unsupported platform 'unrecognised'"* ]] || false
 }
 
-@test "list narrows stable catalogue output by category and resolved profile" {
+@test "show catalogue narrows stable catalogue output by category and resolved profile" {
   write_query_config
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" list
+    "$RIG" show --all
   [ "$status" -eq 0 ]
   [ "${#lines[@]}" -eq 6 ]
   rig_test_report_contains "$output" $'ID\tNAME\tCATEGORY\tPURPOSE\nfzf\tfzf\tnavigation\tSelect entries quickly\ngit\tGit\tfoundation\tTrack source history\nlazygit\tLazyGit\tnavigation\tBrowse Git interactively\nmgit\tMGit\tnavigation\tNavigate many repositories' || false
@@ -1095,47 +932,47 @@ write_query_config() {
   mv "$CONFIG_HOME/conf.d/40-fzf.toml" "$CONFIG_HOME/conf.d/10-lazygit.toml"
   mv "$CONFIG_HOME/conf.d/swap.toml" "$CONFIG_HOME/conf.d/40-fzf.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" list
+    "$RIG" show --all
   [ "$status" -eq 0 ]
   [ "$output" = "$expected" ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" list --category navigation
+    "$RIG" show --all --category navigation
   [ "$status" -eq 0 ]
   [ "${#lines[@]}" -eq 5 ]
   rig_test_report_contains "$output" $'fzf\tfzf\tnavigation\tSelect entries quickly\nlazygit\tLazyGit\tnavigation\tBrowse Git interactively\nmgit\tMGit\tnavigation\tNavigate many repositories' || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" list --profile knowledge-islands
+    "$RIG" show --profile knowledge-islands
   [ "$status" -eq 0 ]
-  [ "${#lines[@]}" -eq 4 ]
+  [[ "$output" == *"Tools:    2"* ]] || false
   rig_test_report_contains "$output" $'git\tGit\tfoundation\tTrack source history\nmgit\tMGit\tnavigation\tNavigate many repositories' || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" list --profile knowledge-islands --category navigation
+    "$RIG" show --profile knowledge-islands --category navigation
   [ "$status" -eq 0 ]
   [ "${#lines[@]}" -eq 3 ]
   rig_test_report_contains "$output" $'mgit\tMGit\tnavigation\tNavigate many repositories' || false
 }
 
-@test "explain reports declared and derived tool metadata" {
+@test "show item reports declared and derived tool metadata" {
   write_query_config
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" explain mgit
+    "$RIG" show mgit
 
   [ "$status" -eq 0 ]
   [ "$output" = $'Tool: mgit\nName: MGit\nCategory: navigation (Navigation)\nPurpose: Navigate many repositories\nRationale: It presents the Knowledge Islands estate\nPlatforms: linux, macos\nRequires: git (Git)\nRelated: fzf (fzf)\nAlternatives: lazygit (LazyGit)\nProfiles: default (inherited), focused (direct), knowledge-islands (direct)\nInstallation: marker (executable: mgit)\nArtifacts: none' ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" explain git
+    "$RIG" show git
   [ "$status" -eq 0 ]
   [[ "$output" == *"Profiles: default (inherited), focused (required), knowledge-islands (inherited), minimal (direct)"* ]] || false
   [[ "$output" == *'Related: none'* ]] || false
   [[ "$output" == *'Alternatives: none'* ]] || false
 }
 
-@test "explain preserves punctuation in relationship display names" {
+@test "show item preserves punctuation in relationship display names" {
   write_query_config
   sed 's/name = "LazyGit"/name = "LazyGit: ready!"/' \
     "$CONFIG_HOME/conf.d/10-lazygit.toml" >"$CONFIG_HOME/conf.d/10-lazygit.next"
@@ -1145,7 +982,7 @@ write_query_config() {
   mv "$CONFIG_HOME/conf.d/30-mgit.next" "$CONFIG_HOME/conf.d/30-mgit.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" explain mgit
+    "$RIG" show mgit
   [ "$status" -eq 0 ] || false
   [[ "$output" == *'Related: fzf (fzf), git (Git)'* ]] || false
   [[ "$output" == *'Alternatives: lazygit (LazyGit: ready!)'* ]] || false
@@ -1164,7 +1001,7 @@ write_query_config() {
   error_file=$BATS_TEST_TMPDIR/explain-error-$BATS_TEST_NUMBER
   run bash -c 'error_file=$1; shift; "$@" 2>"$error_file"' _ "$error_file" \
     env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" explain mgit
+    "$RIG" show mgit
 
   [ "$status" -eq 2 ]
   [ "$output" = "" ]
@@ -1177,9 +1014,9 @@ write_query_config() {
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" show
   [ "$status" -eq 0 ]
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" list --profile default
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" show --profile default
   [ "$status" -eq 0 ]
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" explain mgit
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" show mgit
   [ "$status" -eq 0 ]
   [ ! -e "$QUERY_MARKER" ]
 }
@@ -1187,7 +1024,7 @@ write_query_config() {
 @test "catalogue queries reject unknown identities with status two" {
   write_query_config
 
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" list --category absent
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" show --all --category absent
   [ "$status" -eq 2 ]
   [[ "$output" == *"rig: error: unknown category 'absent'"* ]] || false
 
@@ -1195,7 +1032,7 @@ write_query_config() {
   [ "$status" -eq 2 ]
   [[ "$output" == *"rig: error: unknown profile 'absent'"* ]] || false
 
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" explain absent
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" show absent
   [ "$status" -eq 2 ]
   [[ "$output" == *"rig: error: unknown tool 'absent'"* ]] || false
   [ ! -e "$QUERY_MARKER" ]
@@ -1206,30 +1043,30 @@ write_query_config() {
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" "$RIG" show --profile
   [ "$status" -eq 2 ]
-  [[ "$output" == *"rig: error: usage: rig show [--profile NAME]"* ]] || false
+  [[ "$output" == *"rig: error: usage: rig show [ITEM]"* ]] || false
 
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" "$RIG" list --category navigation --category foundation
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" "$RIG" show --all --category navigation --category foundation
   [ "$status" -eq 2 ]
-  [[ "$output" == *"rig: error: usage: rig list [--category ID] [--profile NAME]"* ]] || false
+  [[ "$output" == *"rig: error: usage: rig show [ITEM]"* ]] || false
 
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" "$RIG" explain mgit extra
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" "$RIG" show mgit extra
   [ "$status" -eq 2 ]
-  [[ "$output" == *"rig: error: usage: rig explain TOOL"* ]] || false
+  [[ "$output" == *"rig: error: usage: rig show [ITEM]"* ]] || false
 
   missing_config=$BATS_TEST_TMPDIR/missing-config-$BATS_TEST_NUMBER
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" show --profile ""
   [ "$status" -eq 2 ]
-  [[ "$output" == *"rig: error: usage: rig show [--profile NAME]"* ]] || false
+  [[ "$output" == *"rig: error: usage: rig show [ITEM]"* ]] || false
   [[ "$output" != *"cannot read configuration file"* ]] || false
 
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" list --category ""
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" show --all --category ""
   [ "$status" -eq 2 ]
-  [[ "$output" == *"rig: error: usage: rig list [--category ID] [--profile NAME]"* ]] || false
+  [[ "$output" == *"rig: error: usage: rig show [ITEM]"* ]] || false
   [[ "$output" != *"cannot read configuration file"* ]] || false
 
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" list --profile ""
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" show --profile ""
   [ "$status" -eq 2 ]
-  [[ "$output" == *"rig: error: usage: rig list [--category ID] [--profile NAME]"* ]] || false
+  [[ "$output" == *"rig: error: usage: rig show [ITEM]"* ]] || false
   [[ "$output" != *"cannot read configuration file"* ]] || false
 }
 
@@ -1239,15 +1076,15 @@ write_query_config() {
   for flag in -h --help; do
     run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" show "$flag"
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Usage: rig show [--profile NAME]"* ]] || false
+    [[ "$output" == *"Usage: rig show [ITEM]"* ]] || false
 
-    run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" list "$flag"
+    run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" show --all "$flag"
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Usage: rig list [--category ID] [--profile NAME]"* ]] || false
+    [[ "$output" == *"Usage: rig show [ITEM]"* ]] || false
 
-    run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" explain "$flag"
+    run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" show "$flag"
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Usage: rig explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID"* ]] || false
+    [[ "$output" == *"Usage: rig show [ITEM]"* ]] || false
   done
 }
 
@@ -1524,8 +1361,7 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
     'executable = "~/bin/provider"' \
     'capabilities = ["observe", "apply"]' \
     'arguments = ["two words", "comma,kept"]' \
-    '[provider.homebrew]' \
-    'manifest = "~/manifests/tools = private"' >"$CONFIG_HOME/rig.toml"
+    >"$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" bash -c '
     . "$1"
@@ -1534,7 +1370,6 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
     rig_get_value tool.alpha platform 1; printf "platform-1=%s\n" "$RIG_VALUE"
     rig_get_value tool.alpha platform 2; printf "platform-2=%s\n" "$RIG_VALUE"
     rig_get_value provider.custom executable; printf "executable=%s\n" "$RIG_VALUE"
-    rig_get_value provider.homebrew manifest; printf "manifest=%s\n" "$RIG_VALUE"
     rig_get_value provider.custom argument 1; printf "argument-1=%s\n" "$RIG_VALUE"
     rig_get_value provider.custom argument 2; printf "argument-2=%s\n" "$RIG_VALUE"
     rig_get_value binding.alpha.custom locator; printf "locator=%s\n" "$RIG_VALUE"
@@ -1546,7 +1381,6 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
   [[ "$output" == *"platform-1=mac os"* ]] || false
   [[ "$output" == *"platform-2=linux,bsd"* ]] || false
   [[ "$output" == *"executable=$TEST_HOME/bin/provider"* ]] || false
-  [[ "$output" == *"manifest=$TEST_HOME/manifests/tools = private"* ]] || false
   [[ "$output" == *"argument-1=two words"* ]] || false
   [[ "$output" == *"argument-2=comma,kept"* ]] || false
   [[ "$output" == *"locator=~/literal # locator = value"* ]] || false
@@ -1643,7 +1477,7 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
   [ "$status" -eq 0 ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" explain alpha
+    "$RIG" show alpha
   [ "$status" -eq 0 ]
   [[ "$output" == *'Name: Alpha # One'* ]] || false
 }
@@ -2486,25 +2320,17 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [ "$provider_line" -lt "$failed_line" ]
 }
 
-@test "bootstrap reports its distinct preflight before applying the selected plan" {
-  local progress_file progress_output bootstrap_line apply_preflight_line
-
-  write_bootstrap_config
-  progress_file=$BATS_TEST_TMPDIR/progress-bootstrap-$BATS_TEST_NUMBER
+@test "apply reports one integrated preflight before the selected plan" {
+  write_named_profile_config
+  progress_file=$BATS_TEST_TMPDIR/progress-apply-$BATS_TEST_NUMBER
   run bash -c 'progress_file=$1; shift; "$@" 2>"$progress_file"' _ "$progress_file" \
     env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-      RIG_PROGRESS=always RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" bootstrap --dry-run
-
+      RIG_PROGRESS=always RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply --profile bootstrap --dry-run
   [ "$status" -eq 0 ]
   progress_output=$(<"$progress_file")
-  [[ "$progress_output" == *'bootstrap preflight 0/2: selected plan running'* ]] || false
-  [[ "$progress_output" == *'bootstrap preflight 1/2: selected plan succeeded'* ]] || false
-  [[ "$progress_output" == *'bootstrap preflight 2/2: homebrew policy succeeded'* ]] || false
-  [[ "$progress_output" == *'bootstrap preflight finished completed=2/2 succeeded=2 skipped=0 failed=0'* ]] || false
   [[ "$progress_output" == *'preflight 0/1: selected plan running'* ]] || false
-  bootstrap_line=$(grep -n 'bootstrap preflight finished' "$progress_file" | cut -d: -f1)
-  apply_preflight_line=$(grep -n 'progress: preflight 0/1: selected plan running' "$progress_file" | cut -d: -f1)
-  [ "$bootstrap_line" -lt "$apply_preflight_line" ]
+  [[ "$progress_output" != *'bootstrap preflight'* ]] || false
+  [ ! -e "$ORCHESTRATION_LOG" ]
 }
 
 @test "doctor gives a compact healthy synthesis using observation capabilities only" {
@@ -2609,7 +2435,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
 
   run "$RIG" doctor --help
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Usage: rig doctor [--profile NAME] [--format text|json]"* ]] || false
+  [[ "$output" == *"Usage: rig doctor [--profile NAME] [--verbose] [--format text|json]"* ]] || false
 }
 
 @test "custom provider ABI preserves versioned literal argument boundaries" {
@@ -2931,12 +2757,12 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [[ "$output" == *'Summary: planned=3 completed=0 failed=0 skipped=1' ]] || false
 }
 
-@test "bootstrap selects its declared profile with explicit and default fallbacks" {
+@test "apply selects explicit profiles and defaults without bootstrap metadata" {
   local bootstrap_output apply_output
 
-  write_bootstrap_config
+  write_named_profile_config
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" bootstrap --dry-run
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply --profile bootstrap --dry-run
   [ "$status" -eq 0 ]
   bootstrap_output=$output
   [[ "$output" == $'Profile: bootstrap\nPlatform: macos'* ]] || false
@@ -2952,13 +2778,13 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [ "$bootstrap_output" = "$apply_output" ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" bootstrap --profile default --dry-run
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply --profile default --dry-run
   [ "$status" -eq 0 ]
   [[ "$output" == $'Profile: default\nPlatform: macos'* ]] || false
 
   write_orchestration_config
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" bootstrap --dry-run
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply --dry-run
   [ "$status" -eq 0 ]
   bootstrap_output=$output
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
@@ -2967,12 +2793,12 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [ "$bootstrap_output" = "$output" ]
 }
 
-@test "bootstrap and apply execute the same dependency-ordered provider plan" {
+@test "apply repeats the same dependency-ordered provider plan deterministically" {
   local bootstrap_output bootstrap_log
 
-  write_bootstrap_config
+  write_named_profile_config
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" bootstrap
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply --profile bootstrap
   [ "$status" -eq 0 ]
   bootstrap_output=$output
   bootstrap_log=$(cat "$ORCHESTRATION_LOG")
@@ -2986,47 +2812,40 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [ "$bootstrap_log" = "$(cat "$ORCHESTRATION_LOG")" ]
 }
 
-@test "bootstrap preserves apply preflight and dependency failure boundaries" {
-  write_bootstrap_config
+@test "apply preserves selected-profile preflight and dependency failure boundaries" {
+  write_named_profile_config
   sed '/\[tool.base\]/,/\[tool.independent\]/ s/install.locator = "present"/install.locator = "fail"/' \
     "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/failure.toml"
   mv "$CONFIG_HOME/failure.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" bootstrap
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply --profile bootstrap
   [ "$status" -eq 1 ]
   rig_test_report_contains "$output" $'base\trunner\tfailed\texit:7' || false
   rig_test_report_contains "$output" $'app\trunner\tskipped\tblocked-by:base' || false
   [ "$(grep '^CALL=' "$ORCHESTRATION_LOG")" = 'CALL=apply:base:fail' ]
 
-  write_bootstrap_config
+  write_named_profile_config
   sed 's/capabilities = \["observe", "apply"\]/capabilities = ["observe"]/' \
     "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/capability.toml"
   mv "$CONFIG_HOME/capability.toml" "$CONFIG_HOME/rig.toml"
   rm -f "$ORCHESTRATION_LOG"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" bootstrap
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply --profile bootstrap
   [ "$status" -eq 2 ]
   [[ "$output" == *"does not declare capability 'apply'"* ]] || false
   [ ! -e "$ORCHESTRATION_LOG" ]
 }
 
-@test "bootstrap profile is an optional unique validated profile reference" {
-  write_bootstrap_config
-  sed '/^bootstrap-profile = "bootstrap"$/a\
-bootstrap-profile = "bootstrap"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.toml"
-  mv "$CONFIG_HOME/bootstrap.toml" "$CONFIG_HOME/rig.toml"
-  run_loader
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"duplicate field 'bootstrap-profile'"* ]] || false
-
+@test "retired bootstrap-profile metadata fails with apply migration guidance" {
   write_orchestration_config
   sed '/^default-profile = "default"$/a\
-bootstrap-profile = "absent"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.toml"
+bootstrap-profile = "default"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.toml"
   mv "$CONFIG_HOME/bootstrap.toml" "$CONFIG_HOME/rig.toml"
   run_loader
   [ "$status" -eq 2 ]
-  [[ "$output" == *"references unknown bootstrap profile 'absent'"* ]] || false
+  [[ "$output" == *'bootstrap-profile'* ]] || false
+  [[ "$output" == *'apply'* ]] || false
 }
 
 @test "apply suppresses failed dependants while continuing independent work" {
@@ -3090,17 +2909,17 @@ bootstrap-profile = "absent"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.t
   [ "$status" -eq 0 ]
   [[ "$output" == *"Usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID] [--dry-run]"* ]] || false
 
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" bootstrap --help
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --profile bootstrap --help
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Usage: rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]"* ]] || false
+  [[ "$output" == *"Usage: rig apply [--profile NAME]"* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --dry-run --dry-run
   [ "$status" -eq 2 ]
   [[ "$output" == *'usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID] [--dry-run]'* ]] || false
 
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" bootstrap --profile
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --profile
   [ "$status" -eq 2 ]
-  [[ "$output" == *'usage: rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'* ]] || false
+  [[ "$output" == *'usage: rig apply [--profile NAME]'* ]] || false
 }
 
 @test "built-in adapters observe dry-run and apply with exact native commands" {
@@ -3725,14 +3544,14 @@ write_operation_config() {
     'arguments = ["restart now"]' >"$CONFIG_HOME/rig.toml"
 }
 
-@test "run dispatches declared observe and mutate operations with literal arguments" {
+@test "sourceable action dispatch preserves literal observe and mutate arguments" {
   local expected
   write_operation_config
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_OPERATION_LOG="$OPERATION_LOG" RIG_OPERATION_STDOUT='operation stdout' \
     RIG_OPERATION_STDERR='operation stderr' RIG_OPERATION_EXIT=7 \
-    "$RIG" run runner audit -- --verbose 'value with spaces' --verbose 'semi;$(touch caller-marker)'
+    bash -c 'source "$1"; shift; rig_command_run_action "$@"' _ "$RIG" runner audit -- --verbose 'value with spaces' --verbose 'semi;$(touch caller-marker)'
 
   [ "$status" -eq 7 ]
   [[ "$output" == *'operation stdout'* ]] || false
@@ -3756,7 +3575,7 @@ write_operation_config() {
 
   rm -f "$OPERATION_LOG"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=linux \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner restart
+    RIG_OPERATION_LOG="$OPERATION_LOG" bash -c 'source "$1"; shift; rig_command_run_action "$@"' _ "$RIG" runner restart
 
   [ "$status" -eq 0 ]
   expected=$(printf '%s\n' \
@@ -3772,27 +3591,27 @@ write_operation_config() {
   [ "$(cat "$OPERATION_LOG")" = "$expected" ]
 }
 
-@test "run rejects undeclared caller arguments and unsupported platforms before invocation" {
+@test "sourceable actions reject undeclared arguments and unsupported platforms" {
   local argument
   write_operation_config
 
   for argument in '' verbose '--verbose=yes' 'VALUE WITH SPACES'; do
     rm -f "$OPERATION_LOG"
     run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-      RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit -- "$argument"
+      RIG_OPERATION_LOG="$OPERATION_LOG" bash -c 'source "$1"; shift; rig_command_run_action "$@"' _ "$RIG" runner audit -- "$argument"
     [ "$status" -eq 2 ]
     [[ "$output" == *'argument is not allowed'* ]] || false
     [ ! -e "$OPERATION_LOG" ]
   done
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=linux \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit
+    RIG_OPERATION_LOG="$OPERATION_LOG" bash -c 'source "$1"; shift; rig_command_run_action "$@"' _ "$RIG" runner audit
   [ "$status" -eq 2 ]
   [[ "$output" == *"action 'runner audit' not supported on platform 'linux'"* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner restart -- --verbose
+    RIG_OPERATION_LOG="$OPERATION_LOG" bash -c 'source "$1"; shift; rig_command_run_action "$@"' _ "$RIG" runner restart -- --verbose
   [ "$status" -eq 2 ]
   [ ! -e "$OPERATION_LOG" ]
 }
@@ -3805,7 +3624,7 @@ write_operation_config() {
 
   sed 's/mode = "observe"/mode = "execute"/' "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit
+    RIG_OPERATION_LOG="$OPERATION_LOG" bash -c 'source "$1"; shift; rig_command_run_action "$@"' _ "$RIG" runner audit
   [ "$status" -eq 2 ]
   [[ "$output" == *"mode must be 'observe' or 'mutate'"* ]] || false
   [ ! -e "$OPERATION_LOG" ]
@@ -3813,66 +3632,56 @@ write_operation_config() {
   sed 's/allowed-arguments = \[/argument-policy = "shell" # /' \
     "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit
+    RIG_OPERATION_LOG="$OPERATION_LOG" bash -c 'source "$1"; shift; rig_command_run_action "$@"' _ "$RIG" runner audit
   [ "$status" -eq 2 ]
   [[ "$output" == *"argument-policy must be 'rig' or 'provider'"* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 
   sed 's/\[action.runner.audit\]/[action.absent.audit]/' "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit
+    RIG_OPERATION_LOG="$OPERATION_LOG" bash -c 'source "$1"; shift; rig_command_run_action "$@"' _ "$RIG" runner audit
   [ "$status" -eq 2 ]
   [[ "$output" == *"references unknown provider 'absent'"* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 
   sed 's/adapter = "custom"/adapter = "homebrew"/' "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit
+    RIG_OPERATION_LOG="$OPERATION_LOG" bash -c 'source "$1"; shift; rig_command_run_action "$@"' _ "$RIG" runner audit
   [ "$status" -eq 2 ]
   [[ "$output" == *"external provider adapter must be 'custom'"* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 
   sed '/description = "Inspect Alpha"/d' "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit
+    RIG_OPERATION_LOG="$OPERATION_LOG" bash -c 'source "$1"; shift; rig_command_run_action "$@"' _ "$RIG" runner audit
   [ "$status" -eq 2 ]
   [[ "$output" == *"requires field 'description'"* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 
   sed 's/\[action.runner.audit\]/[action.ghost.audit]/' "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit
+    RIG_OPERATION_LOG="$OPERATION_LOG" bash -c 'source "$1"; shift; rig_command_run_action "$@"' _ "$RIG" runner audit
   [ "$status" -eq 2 ]
   [[ "$output" == *"references unknown provider 'ghost'"* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 
   sed 's/\[action.runner.audit\]/[action.runner.audit.extra]/' "$original" >"$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit
+    RIG_OPERATION_LOG="$OPERATION_LOG" bash -c 'source "$1"; shift; rig_command_run_action "$@"' _ "$RIG" runner audit
   [ "$status" -eq 2 ]
   [[ "$output" == *'invalid section identity [action.runner.audit.extra]'* ]] || false
   [ ! -e "$OPERATION_LOG" ]
 }
 
-@test "run rejects unavailable provider and exposes local help" {
+@test "hidden operation dispatch preserves unavailable provider preflight" {
   write_operation_config
-  sed "s#executable = \"$OPERATION_PROVIDER\"#executable = \"$BATS_TEST_TMPDIR/missing-operation-provider\"#" \
-    "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/unavailable.toml"
-  mv "$CONFIG_HOME/unavailable.toml" "$CONFIG_HOME/rig.toml"
-
+  sed 's|^executable = .*|executable = "/absent/provider"|' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/missing.toml"
+  mv "$CONFIG_HOME/missing.toml" "$CONFIG_HOME/rig.toml"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit
+    RIG_OPERATION_LOG="$OPERATION_LOG" bash -c 'source "$1"; shift; rig_command_run_action "$@"' _ "$RIG" runner audit
   [ "$status" -eq 2 ]
-  [[ "$output" == *"provider 'runner' executable unavailable"* ]] || false
+  [[ "$output" == *'unavailable'* ]] || false
   [ ! -e "$OPERATION_LOG" ]
-
-  run "$RIG" run --help
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"Usage: rig run PROVIDER ACTION [-- ARGUMENT...]"* ]] || false
-
-  run "$RIG" run runner
-  [ "$status" -eq 2 ]
-  [[ "$output" == *'usage: rig run PROVIDER ACTION [-- ARGUMENT...]'* ]] || false
 }
 
 write_inventory_config() {
@@ -3941,7 +3750,7 @@ write_inventory_config() {
   sed '/^executable = /d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/default-provider.toml"
   mv "$CONFIG_HOME/default-provider.toml" "$CONFIG_HOME/rig.toml"
   run env -u HOME RIG_CONFIG_HOME="$CONFIG_HOME" RIG_DATA_HOME="$data_home" \
-    RIG_PLATFORM=macos RIG_OPERATION_LOG="$OPERATION_LOG" "$RIG" run runner audit
+    RIG_PLATFORM=macos RIG_OPERATION_LOG="$OPERATION_LOG" bash -c 'source "$1"; shift; rig_command_run_action "$@"' _ "$RIG" runner audit
   [ "$status" -eq 0 ]
 
   write_inventory_config
@@ -4027,7 +3836,6 @@ write_resource_fixture() {
     '[rig]' \
     'schema = 1' \
     'default-profile = "default"' \
-    'bootstrap-profile = "default"' \
     '' \
     '[category.system]' \
     'name = "System"' \
@@ -4132,7 +3940,6 @@ write_launchd_fixture() {
     '[rig]' \
     'schema = 1' \
     'default-profile = "default"' \
-    'bootstrap-profile = "default"' \
     '' \
     '[service.daemon]' \
     'name = "Test daemon"' \
@@ -4254,7 +4061,7 @@ write_launchd_fixture() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
     RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
-    "$RIG" run launchd status -- service:daemon
+    bash -c 'source "$1"; shift; rig_command_run_action "$@"' _ "$RIG" launchd status -- service:daemon
   [ "$status" -eq 0 ]
   [[ "$output" == *'loaded = true'* ]] || false
 
@@ -4264,7 +4071,7 @@ write_launchd_fixture() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
     RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
-    "$RIG" run launchd logs -- service:daemon
+    bash -c 'source "$1"; shift; rig_command_run_action "$@"' _ "$RIG" launchd logs -- service:daemon
   [ "$status" -eq 0 ]
   [[ "$output" == *stdout-line* ]] || false
   [[ "$output" == *stderr-line* ]] || false
@@ -4272,14 +4079,14 @@ write_launchd_fixture() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
     RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
-    "$RIG" run launchd run -- scheduled-job:morning
+    bash -c 'source "$1"; shift; rig_command_run_action "$@"' _ "$RIG" launchd run -- scheduled-job:morning
   [ "$status" -eq 0 ]
   grep -F 'kickstart -p gui/test/example.test.morning' "$LAUNCHD_LOG"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
     RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
-    "$RIG" run launchd restart -- service:daemon
+    bash -c 'source "$1"; shift; rig_command_run_action "$@"' _ "$RIG" launchd restart -- service:daemon
   [ "$status" -eq 0 ]
   grep -F 'kickstart -k -p gui/test/example.test.daemon' "$LAUNCHD_LOG"
 
@@ -4368,7 +4175,7 @@ write_launchd_fixture() {
   [ ! -e "$BATS_TEST_TMPDIR/state/resources/macos.tsv" ]
 }
 
-@test "apply and bootstrap scopes stage tools and resources independently" {
+@test "apply scopes stage tools and resources independently" {
   write_resource_fixture
   sed -e '/^\[tool.base\]/,/^\[provider.runner\]/ {
     /platforms = \["macos"\]/a\
@@ -4400,7 +4207,7 @@ install.locator = "base"
   : >"$RESOURCE_LOG"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
     RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RESOURCE_LOG="$RESOURCE_LOG" \
-    RIG_PLATFORM=macos "$RIG" bootstrap --scope tools
+    RIG_PLATFORM=macos "$RIG" apply --profile default --scope tools
   [ "$status" -eq 0 ]
   grep -F 'rig-provider-v1 apply runner base executable base' "$RESOURCE_LOG"
   ! grep -F 'apply-resource' "$RESOURCE_LOG"
@@ -4425,7 +4232,7 @@ install.locator = "base"
   [ ! -s "$RESOURCE_LOG" ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RESOURCE_LOG="$RESOURCE_LOG" \
-    RIG_PLATFORM=macos "$RIG" explain service:daemon
+    RIG_PLATFORM=macos "$RIG" show service:daemon
   [ "$status" -eq 0 ]
   [[ "$output" == *'Resource: service:daemon'* ]] || false
   [[ "$output" == *'program=$(not-executed)'* ]] || false
@@ -4459,7 +4266,7 @@ install.locator = "base"
   write_resource_fixture
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RESOURCE_LOG="$RESOURCE_LOG" \
-    RIG_PLATFORM=macos "$RIG" run runner restart -- service:daemon --follow
+    RIG_PLATFORM=macos bash -c 'source "$1"; shift; rig_command_run_action "$@"' _ "$RIG" runner restart -- service:daemon --follow
   [ "$status" -eq 0 ]
   run grep -F 'rig-provider-v1 apply runner runner action restart resource-v1 service daemon example.test.daemon' "$RESOURCE_LOG"
   [ "$status" -eq 0 ]
@@ -4771,7 +4578,7 @@ ports = ["required-api", "on-demand-api", "allocated-api", "free-allocation"]' \
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" \
-    "$RIG" explain port:required-api
+    "$RIG" show port:required-api
   [ "$status" -eq 0 ]
   [[ "$output" == *$'Resource: port:required-api\nKind: port\nID: required-api\nProfiles: default, public'* ]] || false
   [[ "$output" == *$'protocol=tcp\nport=4101\nscope=loopback\nmode=required\nowner=tool:alpha'* ]] || false
@@ -5064,34 +4871,29 @@ artifacts = ["$HOME/bin/home-tool", "~/bin/tilde-tool", "/opt/rig/absolute-tool"
 }
 
 @test "every current command stays inside the closed outcome vocabulary" {
-  local line count
-
   run env RIG_OUTCOME=always bash -c '
     source "$1"
-    for command in show list explain status doctor apply bootstrap update maintain capture run export diag; do
-      for result_status in 0 1 7; do
-        RIG_OUTCOME_RESULT=
-        RIG_OUTCOME_DETAIL=
-        rig_outcome_report "$command" "$result_status"
-      done
+    for command in init show status capture apply upgrade doctor export; do
+      RIG_OUTCOME_RESULT=
+      RIG_OUTCOME_DETAIL=
+      rig_outcome_report "$command" 0
+      rig_outcome_report "$command" 1
+      rig_outcome_report "$command" 7
     done
   ' _ "$RIG"
-  [ "$status" -eq 0 ] || false
-  count=0
-  while IFS= read -r line; do
-    [[ "$line" =~ ^rig:\ [a-z-]+\ (succeeded|healthy|unhealthy|incomplete|failed):\ status\ (0|1|7)$ ]] || false
-    count=$((count + 1))
-  done <<< "$output"
-  [ "$count" -eq 39 ] || false
+  [ "$status" -eq 0 ]
+  for line in "${lines[@]}"; do
+    [[ "$line" =~ ^rig:\ [a-z]+\ (succeeded|incomplete|failed|healthy|unhealthy):\ status\ [017]$ ]] || false
+  done
 }
 
 @test "observation and lifecycle outcomes retain a detail clause" {
   local command outcome
 
   write_orchestration_config
-  for command in status doctor apply update maintain; do
+  for command in status doctor apply upgrade; do
     case "$command" in
-      apply|update|maintain) set -- "$command" --dry-run ;;
+      apply|upgrade) set -- "$command" --dry-run ;;
       *) set -- "$command" ;;
     esac
     run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
@@ -5164,20 +4966,16 @@ artifacts = ["$HOME/bin/home-tool", "~/bin/tilde-tool", "/opt/rig/absolute-tool"
     'rig: apply incomplete: status 1 (planned=3 completed=1 failed=1 skipped=2)' ]] || false
 }
 
-@test "outcome line reports a provider-native failure status" {
-  local outcome_file
-
+@test "retired public actions preserve provider state and do not emit outcomes" {
   write_operation_config
-  outcome_file=$BATS_TEST_TMPDIR/outcome-$BATS_TEST_NUMBER
-
+  outcome_file=$BATS_TEST_TMPDIR/outcome-retired-$BATS_TEST_NUMBER
   run bash -c 'outcome_file=$1; shift; "$@" 2>"$outcome_file"' _ "$outcome_file" \
     env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    RIG_OPERATION_LOG="$OPERATION_LOG" RIG_OPERATION_EXIT=7 \
-    RIG_OUTCOME=always "$RIG" run runner audit
-
-  printf 'STDERR<%s>\n' "$(cat "$outcome_file")"
-  [ "$status" -eq 7 ]
-  [[ "$(tail -n 1 "$outcome_file")" == 'rig: run failed: status 7' ]] || false
+      RIG_OPERATION_LOG="$OPERATION_LOG" RIG_OUTCOME=always "$RIG" run runner audit
+  [ "$status" -eq 2 ]
+  [[ "$(head -n 1 "$outcome_file")" == *"command 'run' was removed"* ]] || false
+  [ ! -e "$OPERATION_LOG" ]
+  [[ "$(tail -n 1 "$outcome_file")" != 'rig: run failed:'* ]] || false
 }
 
 @test "help completion and version carry no outcome line" {

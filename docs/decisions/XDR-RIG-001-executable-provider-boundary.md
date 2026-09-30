@@ -1,7 +1,7 @@
 ---
 id: XDR-RIG-001
 title: 'Executable Provider Boundary'
-date: 2026-09-22
+date: 2026-09-30
 status: current
 decision_type: security
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/xdr
@@ -20,7 +20,7 @@ Publication creates a separate disclosure boundary because useful private config
 
 Rig never sources or evaluates configuration. Built-in adapters are reviewed Rig code with fixed provider identities, supported operations, platform gates, and argument construction. External providers and publishers are explicit executable trust transitions with narrowly allowed operations and deterministic executable resolution. Configuration cannot supply hidden commands or grant built-in capabilities.
 
-Declaration queries and diagnostics invoke no provider code. Status and doctor may invoke only bounded observation. Machine mutation occurs only through explicit apply, bootstrap, update, maintenance, capture, cleanup, or allowed provider-action commands. Network publication occurs only through explicit publish. Each provider-facing mutation completes its required preflight and discloses whether work is declaration-scoped, manifest-scoped, or provider-wide before invocation.
+Declaration queries invoke no provider code. Status and doctor, including verbose diagnostics, may invoke only bounded observation. Apply and upgrade explicitly authorise machine mutation and complete required preflight first. Init creates missing configuration only; capture observes supported inventory and emits additive proposals outside active configuration for deliberate review. Neither operation installs packages. Rig does not expose generic provider-action dispatch, destructive package cleanup or network publication.
 
 Static export is offline and accepts only an explicitly selected public view. Its allow-list excludes provider configuration, installation metadata, machine resources, private ports, commands, arguments, native manifests, local paths, credentials, other profiles, observed state, and unmanaged inventory.
 

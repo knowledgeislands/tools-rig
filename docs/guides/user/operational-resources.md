@@ -82,7 +82,7 @@ profiles = ["workstation"]
 
 Use `schedule.interval = "3600"` instead of `schedule.calendar` for a positive interval in seconds. Calendar entries accept comma-separated decimal pairs for `minute`, `hour`, `day`, `weekday`, and `month`. Declare exactly one schedule form.
 
-A job whose program is `rig update --unattended` keeps every declared manager current on one schedule; [Update without watching](unattended-updates.md) carries that recipe and what the run records.
+A job whose program is `rig upgrade --unattended` keeps every declared manager current on one schedule; [Upgrade without watching](unattended-updates.md) carries that recipe and what the run records.
 
 ## Name a resource so its owner is obvious
 
@@ -164,11 +164,11 @@ When `workstation` is not the configured default, place `profiles = ["workstatio
 
 ```sh
 rig show --profile workstation
-rig explain service:example-daemon
-rig explain scheduled-job:good-morning
-rig explain setting:show-file-extensions
-rig explain dock:primary
-rig explain port:example-api
+rig show service:example-daemon
+rig show scheduled-job:good-morning
+rig show setting:show-file-extensions
+rig show dock:primary
+rig show port:example-api
 rig status --profile workstation
 rig doctor --profile workstation
 rig apply --profile workstation --dry-run
@@ -196,7 +196,7 @@ Dependencies cannot contain conditions, commands, or lifecycle hooks.
 
 ## Apply and retire resources
 
-By default, `rig apply` reconciles the exact selected complete profile after full-plan preflight. For one change, preview `rig apply --target scheduled-job:good-morning --dry-run`, then omit `--dry-run` to reconcile only that job and any missing prerequisites. Repeat `--target` for several exact IDs; it composes with `--scope` by intersection. A port target selects its declared owner for reconciliation but does not materialise the port. A targeted apply never retires unrelated stale resources, and its receipt records only the resources it actually reconciled. `rig bootstrap` may first stage Rig's fixed declared manager prerequisites, then performs the same declared reconciliation. Neither command needs a bootstrap provider or accepts arbitrary setup operations.
+By default, `rig apply` reconciles the exact selected complete profile after full-plan preflight. For one change, preview `rig apply --target scheduled-job:good-morning --dry-run`, then omit `--dry-run` to reconcile only that job and any missing prerequisites. Repeat `--target` for several exact IDs; it composes with `--scope` by intersection. A port target selects its declared owner for reconciliation but does not materialise the port. A targeted apply never retires unrelated stale resources, and its receipt records only the resources it actually reconciled. Apply also stages supported selected manager prerequisites. It needs no bootstrap provider and accepts no arbitrary setup operations.
 
 Rig records only the minimal evidence required to retire a deselected long-lived resource safely. A receipt is not observed state or configuration authority. Removing a service or scheduled job from the selected profile schedules its former native locator for retirement on the next application.
 

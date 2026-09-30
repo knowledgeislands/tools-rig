@@ -24,17 +24,15 @@ _Verify:_ Bats tests invoke two named profiles against the same isolated configu
 
 _Evidence:_ `rig_resolve_profile` accepts an explicit profile independently of the stored default; command tests cover `--profile` parsing.
 
-### RIG-ORCH-018 — Bootstrap profile precedence
+### RIG-ORCH-018 — Declared apply prerequisites
 
-When the selected tool plan uses Homebrew and `[provider.homebrew]` declares `autoupdate-interval`, bootstrap MUST converge Homebrew's native autoupdate job with the bounded declared options before tool reconciliation. Dry-run MUST report the policy without invoking Homebrew. A resources-only bootstrap MUST NOT touch tool-provider policy.
-
-Rig MUST implement bootstrap as a native staged lifecycle over one resolved profile rather than as a provider or synthetic setup tools. `rig bootstrap --profile NAME` MUST select the explicit profile; otherwise bootstrap MUST select `bootstrap-profile` when declared and fall back to `default-profile` when absent. Bootstrap MUST fully preflight configuration, external providers, available built-ins, resources, and the Homebrew manifest before mutation. When a selected Homebrew `mise` tool or mise `node` tool is the declared prerequisite for an unavailable built-in manager, bootstrap MAY defer only that manager's executable check, MUST report the stage, and MUST verify or materialise it before the complete reconciliation pass. No arbitrary or external provider may use deferred readiness.
+Apply MUST preflight the selected plan before mutation and MAY defer only a missing built-in manager with a selected, explicitly required supported prerequisite. Homebrew itself MUST already be available. A declared Homebrew mise prerequisite and a declared mise node prerequisite MAY make later mise and npm work available; Rig MUST recheck availability before dependent dispatch and MUST NOT suppress unrelated preflight failures. Targeted apply MUST NOT expand to unrelated manager declarations. Rig MUST NOT read a Brewfile or manage Homebrew autoupdate policy.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats selects distinct default and bootstrap profiles, proves explicit precedence and default fallback, records manager availability and bounded Homebrew → mise → npm staging before dependent work, and proves no bootstrap provider or setup-tool declaration is required.
+_Verify:_ Isolated Bats fixtures exercise successful, invalid and dry-run behavior without changing the live workstation.
 
-_Evidence:_ `rig_command_bootstrap`, `rig_preflight_apply`, and `rig_bootstrap_preflight_homebrew_manifest` implement native profile selection and complete preflight; `bootstrap selects its declared profile with explicit and default fallbacks` and `bootstrap preflights later providers before manifest mutation` cover precedence, availability, ordering, and failure boundaries.
+_Evidence:_ `rig_apply_provider_prerequisite`, `rig_preflight_apply` and `tests/rig-bootstrap-staging.bats` cover selected closure, staging, rechecks and failures.
 
 ### RIG-ORCH-007 — Profile composition
 
@@ -141,7 +139,7 @@ _Evidence:_ `rig_custom_provider_executable` resolves one explicit or convention
 
 ### RIG-ORCH-011 — Ordered failure boundary
 
-After a work unit fails, Rig MUST suppress only its transitive dependants, identify a blocking tool when one exists, and continue independent work. A resource-local preflight finding MUST fail only that resource, MUST prevent its invocation, and MUST NOT block an independent tool or resource. Configuration, provider trust, executable availability, platform, and shared state-boundary failures MUST remain fatal before `rig apply` and `rig bootstrap` mutation, because those commands converge a dependency-ordered plan. `rig update` and `rig maintain` dispatch independent per-task operations and instead bound an availability finding to its own task under RIG-ORCH-024.
+After a work unit fails, Rig MUST suppress only its transitive dependants, identify a blocking tool when one exists, and continue independent work. A resource-local preflight finding MUST fail only that resource, MUST prevent its invocation, and MUST NOT block an independent tool or resource. Configuration, provider trust, executable availability, platform, and shared state-boundary failures MUST remain fatal before `rig apply` mutation, because those commands converge a dependency-ordered plan. `rig upgrade` dispatch independent per-task operations and instead bound an availability finding to its own task under RIG-ORCH-024.
 
 _Conformance:_ conforming
 
@@ -181,7 +179,7 @@ _Evidence:_ `rig_command_apply` redirects provider stdout to stderr while leavin
 
 ### RIG-ORCH-019 — Provider progress channel
 
-Operational configuration, resolution, planning, preflight, observation, materialisation, lifecycle, and export phases MUST report progress on stderr. With terminal stderr, automatic progress MUST rewrite one ASCII bar for the active phase and terminate it with one truthful phase summary. Every field of that line except the bar MUST hold a width fixed for the whole phase, and the completed count MUST precede the bar, so neither a longer phase name, nor a count that gains a digit, nor a longer item identity moves a column beside it. The bar MUST take its width from the terminal, bounded above so surplus width goes to the item identity instead, and MUST distinguish complete, in-flight, and pending work. With redirected stderr, automatic operational progress, progress forced by `RIG_PROGRESS=always`, and progress explicitly selected by `RIG_PROGRESS=lines` MUST retain stable line-oriented events. Enumerable work MUST retain its declared denominator, MUST leave the completed count unchanged while an item is running, and MUST advance it exactly once only after that item has succeeded, skipped, or failed; the bar MUST NOT imply elapsed-time completion. Consequential work MUST disclose declaration, manifest, or provider-wide scope before invocation. Failure and interruption MUST terminate an active phase truthfully with completed and outcome counts, including signal-compatible exit status. Rig-authored progress MUST use fixed phase terms and validated public identifiers, MUST NOT expose paths, locators, arguments, environment values, titles, observed details, credentials, or native output, and MUST keep deterministic reports and exported data byte-stable on stdout. The transient line MUST stay within the terminal's width, eliding the item detail rather than wrapping, and each redraw MUST be written to that same width so no fragment of a longer line survives beside a shorter one. A phase whose items let provider-native output reach stderr, or that streams one row per item to stdout, MUST NOT draw the transient line at all: it MUST report its start and its truthful summary and leave the per-item narrative to the provider and to the command's own rows. The transient line MUST therefore be reserved for a phase that owns the terminal for its whole duration, because a redrawn line and a writer that does not yield overwrite each other and no later redraw can repair what was already destroyed. Progress explicitly selected by `RIG_PROGRESS=lines` MUST retain its per-item events in such a phase, because whole lines interleave safely. `RIG_PROGRESS=never` MUST suppress progress, and the default `auto` mode MUST keep declaration-only queries quiet.
+Operational configuration, resolution, planning, preflight, observation, materialisation, lifecycle, and export phases MUST report progress on stderr. With terminal stderr, automatic progress MUST rewrite one ASCII bar for the active phase and terminate it with one truthful phase summary. Every field of that line except the bar MUST hold a width fixed for the whole phase, and the completed count MUST precede the bar, so neither a longer phase name, nor a count that gains a digit, nor a longer item identity moves a column beside it. The bar MUST take its width from the terminal, bounded above so surplus width goes to the item identity instead, and MUST distinguish complete, in-flight, and pending work. With redirected stderr, automatic operational progress, progress forced by `RIG_PROGRESS=always`, and progress explicitly selected by `RIG_PROGRESS=lines` MUST retain stable line-oriented events. Enumerable work MUST retain its declared denominator, MUST leave the completed count unchanged while an item is running, and MUST advance it exactly once only after that item has succeeded, skipped, or failed; the bar MUST NOT imply elapsed-time completion. Consequential work MUST disclose declaration scope before invocation. Failure and interruption MUST terminate an active phase truthfully with completed and outcome counts, including signal-compatible exit status. Rig-authored progress MUST use fixed phase terms and validated public identifiers, MUST NOT expose paths, locators, arguments, environment values, titles, observed details, credentials, or native output, and MUST keep deterministic reports and exported data byte-stable on stdout. The transient line MUST stay within the terminal's width, eliding the item detail rather than wrapping, and each redraw MUST be written to that same width so no fragment of a longer line survives beside a shorter one. A phase whose items let provider-native output reach stderr, or that streams one row per item to stdout, MUST NOT draw the transient line at all: it MUST report its start and its truthful summary and leave the per-item narrative to the provider and to the command's own rows. The transient line MUST therefore be reserved for a phase that owns the terminal for its whole duration, because a redrawn line and a writer that does not yield overwrite each other and no later redraw can repair what was already destroyed. Progress explicitly selected by `RIG_PROGRESS=lines` MUST retain its per-item events in such a phase, because whole lines interleave safely. `RIG_PROGRESS=never` MUST suppress progress, and the default `auto` mode MUST keep declaration-only queries quiet.
 
 _Conformance:_ conforming
 
@@ -191,25 +189,13 @@ _Evidence:_ `rig_progress_start`, `rig_progress_begin`, `rig_progress_result`, `
 
 ## Declared provider actions
 
-### RIG-ORCH-012 — Explicit action dispatch
+### RIG-ORCH-012 — ~~Explicit action dispatch~~ (deprecated)
 
-`rig run PROVIDER ACTION` MUST resolve either one built-in operation registered by Rig or one action explicitly declared for an external provider, verify that it supports the active platform, and invoke it with literal arguments. It MUST preserve the provider's native outcome and MUST reject invalid input before invocation. Built-in operations MUST NOT require action declarations.
+The public generic action runner is withdrawn. Native tools own imperative operations; retained internal helpers and validated action metadata do not create a supported CLI entry point.
 
-_Conformance:_ conforming
+### RIG-ORCH-013 — ~~Bounded caller arguments~~ (deprecated)
 
-_Verify:_ Bats tests use recording providers to assert exact operation selection, platform and capability validation, invocation boundaries, exit status, and no invocation after validation failure.
-
-_Evidence:_ `rig_command_run_launchd_action` dispatches registered built-in launchd operations while `rig_command_run_action` and `rig_prepare_operation_invocation` dispatch declared external actions; `built-in launchd observes applies and retires declared resources` and `run dispatches declared observe and mutate operations with literal arguments` cover selection, validation, literal arguments, and native outcomes.
-
-### RIG-ORCH-013 — Bounded caller arguments
-
-`rig run PROVIDER ACTION [-- ARGUMENT...]` MUST accept a caller argument only when it exactly matches one `allowed-arguments` array item, unless the external action explicitly declares `argument-policy = "provider"`. Under provider policy Rig MUST pass literal caller arguments to that one declared external provider, which owns domain validation. Rig MUST append accepted caller arguments literally without shell interpretation. An external action with neither policy nor `allowed-arguments` MUST reject all caller arguments.
-
-_Conformance:_ conforming
-
-_Verify:_ Bats tests cover allowed and rejected arguments containing spaces and shell metacharacters, exact-match behaviour, argument order, and an empty provider-call log for rejected input.
-
-_Evidence:_ `rig_operation_allows_argument` performs literal equality checks before dispatch; `rig_command_run` appends accepted caller arguments without evaluation; `tests/rig.bats` covers rejection and literal boundary preservation.
+The public generic action runner is withdrawn. Native tools own imperative operations; retained internal helpers and validated action metadata do not create a supported CLI entry point.
 
 ## Operational resources
 
@@ -233,15 +219,9 @@ _Verify:_ Recording-provider Bats tests assert exact verbs, identities, repeated
 
 _Evidence:_ `rig_append_resource_fields`, `rig_prepare_resource_invocation`, `rig_observe_resource`, `rig_apply_resource`, and `rig_retire_resource` implement the external protocol; `resource status and dry-run use literal provider records without mutation` and `resource apply records managed identities and retires deleted declarations` compare its literal records and outcomes.
 
-### RIG-ORCH-022 — Resource-aware actions
+### RIG-ORCH-022 — ~~Resource-aware actions~~ (deprecated)
 
-An external action declaring `resource-kinds` MUST use provider argument policy and MUST consume its first caller argument as a qualified selected managed resource. Rig MUST reject an unknown kind, identity, foreign-provider resource, or resource not selected by the default profile. The extension invocation MUST append `resource-v1 KIND ID LOCATOR [FIELD=VALUE ...] --` before remaining literal caller arguments. Built-in resource operations MUST resolve the same qualified identity without requiring an action table or extension payload.
-
-_Conformance:_ conforming
-
-_Verify:_ Bats tests cover both kinds, selected and rejected targets, provider ownership, complete literal declaration payloads, caller arguments after the separator, and unchanged ordinary actions.
-
-_Evidence:_ `rig_action_allows_resource_kind` and `rig_command_run_action` validate a qualified selected resource and append its `resource-v1` payload; `resource-aware actions receive selected declaration before caller arguments` and `run dispatches declared observe and mutate operations with literal arguments` cover both dispatch forms.
+The public generic action runner is withdrawn. Native tools own imperative operations; retained internal helpers and validated action metadata do not create a supported CLI entry point.
 
 ### RIG-ORCH-023 — Built-in macOS resource adapters
 
@@ -253,21 +233,19 @@ _Verify:_ Bats fakes native macOS commands and filesystem surfaces to compare ex
 
 _Evidence:_ `rig_launchd_observe_resource`, `rig_launchd_apply_resource`, `rig_launchd_retire_resource`, `rig_setting_observe`, `rig_setting_apply`, `rig_dock_observe`, `rig_dock_apply`, and `rig_macos_application_inventory` implement the four built-in surfaces; `rig_launchd_render_plist` emits the ownership comment and the associated bundle identifiers; `rig_launchd_unload` waits for the domain to release a label before `rig_launchd_apply_resource` bootstraps its replacement; the built-in launchd test and all four `tests/rig-macos.bats` tests cover reconciliation and inventory without extension dispatch.
 
-### RIG-ORCH-024 — Explicit provider lifecycle
+### RIG-ORCH-024 — Declaration-scoped upgrades
 
-`rig update` MUST advance selected Homebrew, uv, mise, and npm tools through fixed native operations; `rig maintain` MUST perform at most one fixed maintenance work item for each selected provider among those four; and `rig capture PROVIDER` MUST refresh only a declared Homebrew manifest through its fixed native capture operation. Rig MUST derive these capabilities from its built-in registry, MUST NOT accept configuration-defined lifecycle commands or lifecycle capability grants, and MUST report unsupported selected providers without dispatching them.
-
-A lifecycle preflight finding bounded to one selected task — an unavailable provider or Skills CLI executable, an unreadable declared manifest, or a skill that its authority cannot advance — MUST report that task as `unavailable` with its finding detail, MUST prevent only that task's invocation, and MUST NOT prevent an independent task from running; the run MUST complete every other selected task and MUST return a non-zero status. `rig capture PROVIDER` names one explicit target and MUST keep the same finding fatal.
+`rig upgrade` MUST advance selected Homebrew, uv, mise and npm tools and supported Skills CLI skills through fixed native operations. It MUST NOT invoke Homebrew Bundle or provider-wide maintenance. Unavailable executables and unsupported operations MUST remain visible per task, while independent work continues. Native dependencies MAY change as part of a declared provider operation; Rig MUST NOT remove unknown packages or dispatch a second package list.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats selects duplicate and unsupported provider work, compares exact native update, maintenance, and capture invocations, proves an unavailable provider or Skills CLI executable is reported per task while independent work still runs, and proves configuration cannot redirect lifecycle dispatch through an external provider.
+_Verify:_ Isolated Bats fixtures exercise successful, invalid and dry-run behavior without changing the live workstation.
 
-_Evidence:_ `rig_lifecycle_supported`, `rig_collect_lifecycle_tasks`, `rig_execute_lifecycle_task`, and `rig_command_capture` implement the fixed lifecycle registry and deduplicated dispatch, while `rig_lifecycle_unavailable` and `rig_run_lifecycle_tasks` bound a preflight finding to its own task; `tests/rig-lifecycle.bats` covers each supported provider, unsupported reporting, per-task unavailability, and Homebrew manifest capture, and `tests/rig-skills.bats` covers an unavailable Skills CLI.
+_Evidence:_ `rig_collect_lifecycle_tasks`, `rig_execute_lifecycle_task`, `tests/rig-lifecycle.bats` and `tests/rig-skills.bats` cover declaration-scoped dispatch.
 
 ### RIG-ORCH-025 — Artifact lifecycle ownership
 
-Rig MUST treat declared artifacts as observation-only state. `rig apply`, `rig bootstrap`, `rig update`, and `rig maintain` MUST NOT derive or invoke an artifact generator from configuration. Provider lifecycle work MAY create an artifact as a native side effect, but creation, update, and removal remain the native tool's responsibility and are not separate Rig work items.
+Rig MUST treat declared artifacts as observation-only state. `rig apply` and `rig upgrade` MUST NOT derive or invoke an artifact generator from configuration. Provider lifecycle work MAY create an artifact as a native side effect, but creation, update, and removal remain the native tool's responsibility and are not separate Rig work items.
 
 _Conformance:_ conforming
 
@@ -277,7 +255,7 @@ _Evidence:_ `rig_command_apply` and `rig_run_lifecycle_tasks` operate only on pr
 
 ### RIG-ORCH-026 — Complete profiles and safe views
 
-Rig MUST resolve item membership through the selected profile and its explicit inheritance closure, then close tool dependencies transitively. A complete profile MUST be eligible for mutation. A view MUST reject `apply`, `bootstrap`, `update`, `maintain`, and selected-resource mutation; MUST NOT inherit a complete profile; and MUST reject a dependency that has not explicitly opted into the view closure.
+Rig MUST resolve item membership through the selected profile and its explicit inheritance closure, then close tool dependencies transitively. A complete profile MUST be eligible for mutation. A view MUST reject `apply`, `upgrade`, and capture proposals; MUST NOT inherit a complete profile; and MUST reject a dependency that has not explicitly opted into the view closure.
 
 _Conformance:_ conforming
 
@@ -295,15 +273,15 @@ _Verify:_ Bats resolves each mutually exclusive alternative successfully and a c
 
 _Evidence:_ `rig_resource_native_target` and `rig_validate_selected_native_targets` validate only `RIG_SELECTED_RESOURCE_SECTIONS`; `tests/rig-profile-authority.bats` covers locator, setting, and Dock conflicts.
 
-### RIG-ORCH-028 — Provider operation scope disclosure
+### RIG-ORCH-028 — Operation scope disclosure
 
-Every mutating lifecycle report MUST identify work as declaration-scoped, manifest-scoped, or provider-wide before provider execution. Dry-run and live output MUST use the same scope classification.
+Every mutating lifecycle report MUST identify its declaration scope before provider execution. Dry-run and live output MUST use the same classification. Capture MUST identify its output as a proposal rather than applied configuration.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats inspects apply, bootstrap, update, maintain, and capture output before and after provider execution.
+_Verify:_ Isolated Bats fixtures exercise successful, invalid and dry-run behavior without changing the live workstation.
 
-_Evidence:_ `rig_command_apply`, `rig_command_bootstrap`, `rig_run_lifecycle_tasks`, and `rig_command_capture` emit operation scope before mutation; lifecycle and profile-authority Bats assert the stable report prefixes.
+_Evidence:_ `rig_command_apply`, `rig_run_lifecycle_tasks` and `rig_command_capture` implement the scope boundary; lifecycle, adoption and profile-authority tests exercise it.
 
 ### RIG-ORCH-029 — Deterministic platform variant selection
 
@@ -337,11 +315,11 @@ _Evidence:_ `rig_load_listeners`, `rig_print_unmanaged_listeners`, and private-p
 
 ### RIG-ORCH-032 — User-level skill authority lifecycle
 
-Rig MUST materialise full apply and bootstrap plans in tools → skills → resources order and MUST expose `skills` as an explicit scope. Skills CLI operations MUST invoke a deliberately installed `skills` executable directly with literal arguments and bounded JSON parsing, never unqualified `npx`; KI MUST NOT be invoked; local authority MUST canonicalise real non-symlink source and runtime roots, enforce component containment, revalidate immediately before mutation, and create only a missing leaf symlink without replacing a collision; runtime and plugin authorities MUST be observation-only. Only `rig update` MAY advance selected Skills CLI skills. Profile deselection and `rig maintain` MUST NOT update or remove skills.
+Rig MUST materialise full apply plans in tools → skills → resources order and MUST expose `skills` as an explicit scope. Skills CLI operations MUST invoke a deliberately installed `skills` executable directly with literal arguments and bounded JSON parsing, never unqualified `npx`; KI MUST NOT be invoked; local authority MUST canonicalise real non-symlink source and runtime roots, enforce component containment, revalidate immediately before mutation, and create only a missing leaf symlink without replacing a collision; runtime and plugin authorities MUST be observation-only. Only `rig upgrade` MAY advance selected Skills CLI skills. Profile deselection MUST NOT update or remove skills.
 
 _Conformance:_ conforming
 
-_Verify:_ Isolated Bats fakes prove literal CLI arguments, no KI invocation, canonical local containment and collision preservation, tools → skills → resources ordering, explicit update, and absence of removal in apply, bootstrap, update, maintain, and clean.
+_Verify:_ Isolated Bats fakes prove literal CLI arguments, no KI invocation, canonical local containment and collision preservation, tools → skills → resources ordering, explicit update, and absence of removal in apply and upgrade.
 
 _Evidence:_ `rig_preflight_skills`, `rig_apply_skill`, `rig_run_skill_apply`, `rig_collect_lifecycle_tasks`, and `tests/rig-skills.bats` implement and verify the lifecycle.
 
@@ -357,15 +335,15 @@ _Evidence:_ `rig_capture_observation_invocation` keys the command-local snapshot
 
 ### RIG-ORCH-034 — Unattended lifecycle execution
 
-`rig update` and `rig maintain` MUST accept `--unattended`, and no other command may. The flag MUST NOT change target selection, dependency order, dispatch, the per-task outcome vocabulary, or the exit statuses an interactive run returns.
+`rig upgrade` MUST accept `--unattended`, and no other command may. The flag MUST NOT change target selection, dependency order, dispatch, the per-task outcome vocabulary, or the exit statuses an interactive run returns.
 
 An unattended run MUST NOT be able to block on a question. Every provider invocation MUST take its standard input from `/dev/null`, and Rig MUST export `NONINTERACTIVE=1` for the Homebrew adapter, which is Homebrew's own way of stating the same fact. A task that cannot proceed without a person MUST be reported `unavailable` with a detail naming the reason, before its provider is invoked; Rig MUST NOT invent a further outcome for it, and the run MUST return 1 so the remaining independent work is still attempted and still reported.
 
-Rig MUST NOT schedule the run, notify anyone about it, or acquire a runtime dependency in order to do either. A person schedules it by declaring a `scheduled-job` resource whose program is `rig update --unattended`, and a wrapper reads the report under [RIG-STATE-030](state.md#rig-state-030--unattended-last-run-report). Rig MUST report an observed competing auto-update agent it did not declare as doctor information only, and MUST NOT install, modify, or remove it.
+Rig MUST NOT schedule the run, notify anyone about it, or acquire a runtime dependency in order to do either. A person schedules it by declaring a `scheduled-job` resource whose program is `rig upgrade --unattended`, and a wrapper reads the report under [RIG-STATE-030](state.md#rig-state-030--unattended-last-run-report). Rig MUST report an observed competing auto-update agent it did not declare as doctor information only, and MUST NOT install, modify, or remove it.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats asserts the flag's grammar on both commands and its rejection elsewhere, proves a provider reading standard input reports `unavailable` or fails rather than blocking, covers a task needing a person, and asserts the doctor information line leaves the exit status unchanged.
+_Verify:_ Bats asserts the flag's grammar on upgrade and its rejection elsewhere, proves a provider reading standard input reports `unavailable` or fails rather than blocking, covers a task needing a person, and asserts the doctor information line leaves the exit status unchanged.
 
 _Evidence:_ `rig_command_lifecycle`, `rig_lifecycle_requires_person`, `rig_run_lifecycle_tasks`, `rig_execute_lifecycle_task`, and `rig_doctor_competing_autoupdate` implement it; `tests/rig-lifecycle.bats` and `tests/rig.bats` verify it.
 
@@ -398,3 +376,15 @@ _Conformance:_ conforming
 _Verify:_ Bats selects one of two resources and inspects the receipt and provider calls; a tool-only target runs against an intentionally held fixture reconciliation lock.
 
 _Evidence:_ `rig_apply_select_targets` clears stale-resource work, `rig_write_resource_receipt` records the filtered resource plan and carries forward valid existing records, and `tests/rig.bats` verifies the receipt and lock boundary.
+
+### RIG-ORCH-038 — Reviewed Homebrew adoption
+
+Capture MUST use read-only Homebrew inventory for formulae installed on request and installed casks, distinguish declared from unmanaged identities across the whole catalogue, and require explicit selected identities and human-provided category, purpose and rationale for complete proposals. It MUST emit additive TOML on stdout or into a new review file outside active configuration. It MUST NOT overwrite authored files, install software, infer rationale, or remove declarations absent from the current machine. Unsupported providers MUST be rejected explicitly.
+
+Capture MUST permit discovery for legacy central-membership configurations but MUST reject proposals that would mix central and item-owned membership. The diagnostic MUST direct the user to migrate membership or adopt manually, rather than generating invalid configuration.
+
+_Conformance:_ conforming
+
+_Verify:_ Exercise discovery, duplicate and ambiguous identities, unsafe paths, literal metadata, failed inventory and dry-run with inert Homebrew fixtures.
+
+_Evidence:_ `rig_command_capture`, `rig_homebrew_inventory` and `tests/rig-adoption.bats` implement the selective proposal contract.

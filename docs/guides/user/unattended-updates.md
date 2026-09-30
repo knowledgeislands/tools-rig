@@ -1,106 +1,54 @@
-# Update without watching
+# Upgrade without watching
 
-A machine running Rig usually ends up with one manager on a private timer and everything else advanced only when somebody remembers. Homebrew's `brew autoupdate` agent is the common case: it is useful, and it covers exactly one of the managers Rig orchestrates, so uv, mise, npm, chezmoi, and the Skills CLI go unattended while the notification tells you the machine is up to date.
+Use one scheduled `rig upgrade --unattended` to advance software and skills supported by Rig's upgrade providers. ChezMoi application, native housekeeping and unsupported provider lifecycles are not silently included.
 
-One scheduled `rig update --unattended` advances everything the profile declares and records one honest outcome instead.
-
-## Run it by hand first
-
-`--unattended` is accepted by `rig update` and `rig maintain` and by no other command. Try it interactively before scheduling anything:
+## Preview first
 
 ```sh
-rig update --unattended --dry-run
-rig update --unattended
+rig upgrade --unattended --dry-run
 ```
 
-It changes nothing about which targets are selected, the order they run in, or the statuses the command returns. What it changes is what happens when a provider wants a person:
+The flag is accepted only by upgrade. Every native invocation receives standard input from `/dev/null`; Homebrew also receives `NONINTERACTIVE=1`. Known work requiring a person, such as a Mac App Store upgrade, is reported unavailable without invocation. Other native failures remain failures: Rig does not guess that every error is a credential problem. Independent targets continue and findings produce status 1.
 
-- Every provider invocation reads end-of-file rather than your terminal, so nothing can block on a prompt. Rig also exports `NONINTERACTIVE=1` for Homebrew, which is Homebrew's own way of saying the same thing.
-- Work that cannot proceed without a person — a Mac App Store upgrade, for instance — is reported `unavailable` with the reason and is never invoked. The rest of the run still completes, and the command returns 1 so the gap stays visible. Run `rig update` interactively to finish that part.
+After reviewing the plan, run `rig upgrade --unattended`. Use an interactive upgrade for work requiring a person.
 
-## Schedule it as a declared job
+## Declare a schedule
 
-Rig has no scheduler and will not grow one. The job is machine state, so it is a declared resource like any other:
+Rig uses a declared native job rather than implementing a scheduler:
 
 ```toml
-[scheduled-job.rig-update]
-name = "Rig update"
-purpose = "Advance every declared manager on one schedule"
-rationale = "One pass reporting one outcome beats one manager reporting well"
+[scheduled-job.rig-upgrade]
+name = "Rig upgrade"
+purpose = "Advance declared software on one schedule"
+rationale = "One visible report across supported managers"
 provider = "launchd"
-locator = "example.rig-update"
+locator = "example.rig-upgrade"
 platforms = ["macos"]
 desired-state = "enabled"
-program = ["~/.local/bin/rig", "update", "--unattended"]
+program = ["~/.local/bin/rig", "upgrade", "--unattended"]
 schedule.calendar = ["hour=4,minute=0"]
 run-policy = "scheduled-only"
 priority = "background"
-standard-output = "~/Library/Logs/example.rig-update.log"
-standard-error = "~/Library/Logs/example.rig-update.log"
-profiles = ["workstation"]
+standard-output = "~/Library/Logs/example.rig-upgrade.log"
+standard-error = "~/Library/Logs/example.rig-upgrade.log"
 ```
 
-The schedule is a calendar one deliberately. `launchd.plist(5)` drops a `StartInterval` firing the machine sleeps through, while it starts a missed `StartCalendarInterval` job on the next wake and coalesces several missed firings into one run — so a daily calendar recovers from a closed lid where an interval does not. Rig renders either form: `schedule.interval` with `run-policy = "also-at-load"` reproduces an interval agent, including that gap.
+Omitted membership selects the default configuration. Add `--profile NAME` to the program only when another selection is intended. Preview the job with `rig apply --target scheduled-job:rig-upgrade --dry-run`; apply it only after review.
 
-Materialise it with `rig apply`. Add `--profile NAME` to `program` if the scheduled run should select a profile other than the default.
+A calendar schedule can recover missed work after sleep, whereas a native interval schedule has different sleep semantics. Use the schedule appropriate to the machine.
 
-## Read the outcome
+## Read the report
 
-Each unattended run that dispatches work replaces one file:
+Every unattended run that dispatches work atomically replaces `${XDG_STATE_HOME:-$HOME/.local/state}/rig/last-upgrade`, or the same filename below `RIG_STATE_HOME`. A dry run writes nothing.
 
-```sh
-cat "${XDG_STATE_HOME:-$HOME/.local/state}/rig/last-update"
-```
+The tab-separated report starts with `rig-last-run` and version `1`, followed by `action`, `profile`, `platform`, `finished`, `status`, `result`, `detail`, and `summary` records, then the result rows. The action is `upgrade`. Use the status and counts rather than parsing terminal spacing. An unsafe report target is left untouched.
 
-```text
-rig-last-run	1
-action	update
-profile	workstation
-platform	macos
-finished	2026-09-25T04:00:11Z
-status	1
-result	incomplete
-detail	planned=0 completed=11 failed=0 unavailable=1
-summary	planned=0 completed=11 failed=0 unavailable=1 skipped=2
-TARGET	PROVIDER	RESULT	DETAIL
-store-app	homebrew	unavailable	interactive-required
-manifest	homebrew	completed	update
-```
+Rig does not send notifications. A host-owned wrapper can read this report and use the platform's notification tool. Migrating wrappers must change both the command and the former `last-update` path; old reports are not deleted and do not describe new runs.
 
-It is tab-separated text and a stable contract, so a wrapper can read it without parsing terminal output. A dry run writes nothing, because no run happened.
+## Review other timers
 
-Rig does not notify you. A notification on macOS means `osascript` or `terminal-notifier`, and Rig's only runtime dependency is Bash. Notify from the job's own wrapper instead:
+Doctor can report an observed Homebrew autoupdate agent as information, not a health failure. Rig does not install, reconfigure or delete that agent. Choose whether to retain it alongside Rig's schedule or retire it deliberately through Homebrew. Old `autoupdate-interval` and `autoupdate-options` Rig fields are rejected.
 
-```sh
-#!/usr/bin/env bash
-rig update --unattended
-status=$?
-report=${XDG_STATE_HOME:-$HOME/.local/state}/rig/last-update
-[ "$status" -eq 0 ] || osascript -e "display notification \"$(awk -F'\t' '$1 == "detail" { print $2 }' "$report")\" with title \"Rig update\""
-```
+Personal scheduled jobs and wrappers managed by chezmoi must be reviewed in their owning repository. This guide does not imply that changing the Rig executable migrates them.
 
-## Retire the manager's own timer
-
-If you already run `brew autoupdate`, `rig doctor` names it as information once it observes the agent:
-
-```text
-Information:
-  homebrew: autoupdate-agent; owner=homebrew; action=none
-```
-
-That is a statement, not a finding: it does not change the exit status, and Rig will never install, modify, or remove another tool's agent for you. Coexistence is fine — the two will simply both update Homebrew. To retire it, run `brew autoupdate delete` yourself.
-
-Rig can also own that agent instead, if you would rather keep Homebrew on its own timer and declare the fact:
-
-```toml
-[provider.homebrew]
-autoupdate-interval = 86400
-autoupdate-options = ["upgrade"]
-```
-
-A declared interval makes the agent Rig's own, and `rig doctor` stops reporting it as a competing updater.
-
-## Related
-
-- [Choose a command](commands.md) for the wider command surface and what each exit status means.
-- [Manage operational resources and private ports](operational-resources.md) for the scheduled-job declaration in full.
+See [Choose a command](commands.md), [Manage operational resources](operational-resources.md) and [Migrate the command surface](migrating-command-surface.md).

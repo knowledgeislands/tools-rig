@@ -3,15 +3,13 @@
 setup() {
   source "$BATS_TEST_DIRNAME/helpers/isolate.bash"
   rig_test_isolate
-  RIG=$BATS_TEST_DIRNAME/../bin/rig
+  RIG=${RIG_TEST_EXECUTABLE:-$BATS_TEST_DIRNAME/../bin/rig}
   CONFIG_HOME=$BATS_TEST_TMPDIR/config-$BATS_TEST_NUMBER
   TEST_HOME=$BATS_TEST_TMPDIR/home-$BATS_TEST_NUMBER
   FAKE_BIN=$BATS_TEST_TMPDIR/bin-$BATS_TEST_NUMBER
   CALL_LOG=$BATS_TEST_TMPDIR/calls-$BATS_TEST_NUMBER
-  MANIFEST=$BATS_TEST_TMPDIR/Brewfile-$BATS_TEST_NUMBER
   STATE_HOME=$BATS_TEST_TMPDIR/state-$BATS_TEST_NUMBER
   mkdir -p "$CONFIG_HOME" "$TEST_HOME" "$FAKE_BIN"
-  : >"$MANIFEST"
   write_fake_provider brew
   write_fake_provider uv
   write_fake_provider mise
@@ -43,9 +41,6 @@ default-profile = "default"
 name = "Core"
 purpose = "Exercise provider lifecycle"
 
-[provider.homebrew]
-manifest = "$MANIFEST"
-
 [tool.brew-one]
 name = "Brew One"
 category = "core"
@@ -60,7 +55,7 @@ install.platforms = ["any"]
 [tool.brew-two]
 name = "Brew Two"
 category = "core"
-purpose = "Exercise manifest task deduplication"
+purpose = "Exercise declaration-scoped cask upgrades"
 rationale = "The fixture needs a second Homebrew tool"
 platforms = ["any"]
 install.provider = "homebrew"
@@ -106,7 +101,7 @@ requires = ["node"]
 name = "Dotfiles"
 category = "core"
 purpose = "Exercise unsupported lifecycle reporting"
-rationale = "Chezmoi convergence must not imply update support"
+rationale = "Chezmoi convergence must not imply upgrade support"
 platforms = ["any"]
 install.provider = "chezmoi"
 install.kind = "target"
@@ -137,105 +132,57 @@ run_rig() {
   grep -Fqx $'npm\tinstall --global typescript' "$CALL_LOG"
 }
 
-@test "update dry-run deduplicates manifest work and reports unsupported providers" {
-  run run_rig update --dry-run
+@test "upgrade dry-run plans each declared installation and reports unsupported providers" {
+  run run_rig upgrade --dry-run
 
   [ "$status" -eq 0 ]
-  rig_test_report_contains "$output" $'manifest\thomebrew\tplanned\tupdate' || false
-  [ "$(printf '%s\n' "$output" | awk '$1 == "manifest" && $2 == "homebrew" && $3 == "planned" { count++ } END { print count + 0 }')" -eq 1 ]
-  rig_test_report_contains "$output" $'ruff\tuv\tplanned\tupdate' || false
-  rig_test_report_contains "$output" $'node\tmise\tplanned\tupdate' || false
-  rig_test_report_contains "$output" $'typescript\tnpm\tplanned\tupdate' || false
-  rig_test_report_contains "$output" $'dotfiles\tchezmoi\tskipped\tunsupported-update' || false
+  rig_test_report_contains "$output" $'brew-one\thomebrew\tplanned\tupgrade' || false
+  rig_test_report_contains "$output" $'brew-two\thomebrew\tplanned\tupgrade' || false
+  rig_test_report_contains "$output" $'ruff\tuv\tplanned\tupgrade' || false
+  rig_test_report_contains "$output" $'node\tmise\tplanned\tupgrade' || false
+  rig_test_report_contains "$output" $'typescript\tnpm\tplanned\tupgrade' || false
+  rig_test_report_contains "$output" $'dotfiles\tchezmoi\tskipped\tunsupported-upgrade' || false
   [ ! -e "$CALL_LOG" ]
 }
 
-@test "update invokes only fixed built-in lifecycle operations" {
-  run run_rig update
+@test "upgrade invokes only fixed built-in lifecycle operations" {
+  run run_rig upgrade
 
   [ "$status" -eq 0 ]
-  grep -Fqx $'brew\tbundle install --upgrade --file='"$MANIFEST" "$CALL_LOG"
+  grep -Fqx $'brew\tupgrade --formula brew-one' "$CALL_LOG"
+  grep -Fqx $'brew\tupgrade --cask brew-two' "$CALL_LOG"
   grep -Fqx $'uv\ttool upgrade ruff' "$CALL_LOG"
   grep -Fqx $'mise\tupgrade node' "$CALL_LOG"
   grep -Fqx $'npm\tinstall --global typescript' "$CALL_LOG"
-  [ "$(grep -Fc $'brew\tbundle install --upgrade' "$CALL_LOG")" -eq 1 ]
+  [ "$(grep -Fc $'brew\tupgrade' "$CALL_LOG")" -eq 2 ]
+  ! grep -Eq 'bundle|cleanup' "$CALL_LOG" || false
 }
 
-@test "maintain invokes each supported selected provider once" {
-  run run_rig maintain
-
-  [ "$status" -eq 0 ]
-  grep -Fqx $'brew\tcleanup' "$CALL_LOG"
-  grep -Fq $'brew\tbundle cleanup --force --file='"$MANIFEST" "$CALL_LOG"
-  grep -Fqx $'brew\tdoctor' "$CALL_LOG"
-  grep -Fqx $'uv\tcache prune' "$CALL_LOG"
-  grep -Fqx $'mise\treshim' "$CALL_LOG"
-  grep -Fqx $'npm\tcache verify' "$CALL_LOG"
-  rig_test_report_contains "$output" $'chezmoi\tchezmoi\tskipped\tunsupported-maintain' || false
-}
-
-@test "capture previews and refreshes only explicit Homebrew manifest" {
-  run run_rig capture homebrew --dry-run
-
-  [ "$status" -eq 0 ]
-  rig_test_report_contains "$output" $'homebrew\tplanned\tcapture' || false
-  [ ! -e "$CALL_LOG" ]
-
-  run run_rig capture homebrew --dry-run --format json
-  [ "$status" -eq 0 ]
-  printf '%s\n' "$output" | /usr/bin/python3 -m json.tool >/dev/null || false
-  [[ "$output" == *'"command":"capture"'* ]] || false
-  [[ "$output" == *'"platform":"fixture"'* ]] || false
-  [[ "$output" == *'["homebrew","planned","capture"]'* ]] || false
-  [ ! -e "$CALL_LOG" ]
-
-  run run_rig capture homebrew
-
-  [ "$status" -eq 0 ]
-  grep -Fq $'brew\tbundle dump --force --no-describe --file='"$MANIFEST" "$CALL_LOG"
-
-  run run_rig capture uv --dry-run
-
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"provider 'uv' does not support capture"* ]] || false
-}
-
-@test "capture rejects unsafe manifest before provider invocation" {
-  unsafe_target=$BATS_TEST_TMPDIR/manifest-directory-$BATS_TEST_NUMBER
-  mkdir -p "$unsafe_target"
-  sed "s#manifest = .*#manifest = \"$unsafe_target\"#" "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/unsafe.toml"
-  mv "$CONFIG_HOME/unsafe.toml" "$CONFIG_HOME/rig.toml"
-
-  run run_rig capture homebrew
-
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"manifest is not a safe regular-file target"* ]] || false
-  [ ! -e "$CALL_LOG" ]
-}
-
-@test "update reports an unavailable lifecycle executable and still advances the rest" {
+@test "upgrade reports an unavailable lifecycle executable and still advances the rest" {
   printf '%s\n' '' '[provider.uv]' "executable = \"$FAKE_BIN/absent-uv\"" >>"$CONFIG_HOME/rig.toml"
 
-  run run_rig update --dry-run
+  run run_rig upgrade --dry-run
 
   [ "$status" -eq 1 ]
   rig_test_report_contains "$output" $'ruff\tuv\tunavailable\texecutable-unavailable' || false
-  rig_test_report_contains "$output" $'manifest\thomebrew\tplanned\tupdate' || false
-  [[ "$output" == *'Summary: planned=3 completed=0 failed=0 unavailable=1 skipped=1'* ]] || false
+  rig_test_report_contains "$output" $'brew-one\thomebrew\tplanned\tupgrade' || false
+  rig_test_report_contains "$output" $'brew-two\thomebrew\tplanned\tupgrade' || false
+  [[ "$output" == *'Summary: planned=4 completed=0 failed=0 unavailable=1 skipped=1'* ]] || false
   [ ! -e "$CALL_LOG" ]
 
-  run run_rig update
+  run run_rig upgrade
 
   [ "$status" -eq 1 ]
   rig_test_report_contains "$output" $'ruff\tuv\tunavailable\texecutable-unavailable' || false
-  [[ "$output" == *'Summary: planned=0 completed=3 failed=0 unavailable=1 skipped=1'* ]] || false
-  grep -Fqx $'brew\tbundle install --upgrade --file='"$MANIFEST" "$CALL_LOG"
+  [[ "$output" == *'Summary: planned=0 completed=4 failed=0 unavailable=1 skipped=1'* ]] || false
+  grep -Fqx $'brew\tupgrade --formula brew-one' "$CALL_LOG"
+  grep -Fqx $'brew\tupgrade --cask brew-two' "$CALL_LOG"
   grep -Fqx $'mise\tupgrade node' "$CALL_LOG"
   grep -Fqx $'npm\tinstall --global typescript' "$CALL_LOG"
   [ "$(grep -Fc uv "$CALL_LOG")" -eq 0 ]
 }
 
-@test "an unattended update never blocks on a question and states the manager it isolated" {
+@test "an unattended upgrade never blocks on a question and states the manager it isolated" {
   cat >"$FAKE_BIN/uv" <<'SCRIPT'
 #!/usr/bin/env bash
 printf 'uv\t%s\n' "$*" >>"$RIG_TEST_LOG"
@@ -256,52 +203,52 @@ printf 'brew-noninteractive\t%s\n' "${NONINTERACTIVE:-unset}" >>"$RIG_TEST_LOG"
 SCRIPT
   chmod +x "$FAKE_BIN/brew"
 
-  run run_rig update --unattended </dev/null
+  run run_rig upgrade --unattended </dev/null
 
   [ "$status" -eq 1 ] || { printf '%s\n' "$output" >&3; false; }
   grep -Fqx $'uv-stdin\tend-of-file' "$CALL_LOG"
   grep -Fqx $'brew-noninteractive\t1' "$CALL_LOG"
   rig_test_report_contains "$output" $'ruff\tuv\tfailed\texit:3' || false
-  rig_test_report_contains "$output" $'node\tmise\tcompleted\tupdate' || false
+  rig_test_report_contains "$output" $'node\tmise\tcompleted\tupgrade' || false
 }
 
 @test "an unattended run records its outcome where a wrapper can read it" {
-  run run_rig update --unattended </dev/null
+  run run_rig upgrade --unattended </dev/null
 
   [ "$status" -eq 0 ] || { printf '%s\n' "$output" >&3; false; }
-  report=$STATE_HOME/last-update
+  report=$STATE_HOME/last-upgrade
   [ -f "$report" ] || false
   grep -Fqx $'rig-last-run\t1' "$report"
-  grep -Fqx $'action\tupdate' "$report"
+  grep -Fqx $'action\tupgrade' "$report"
   grep -Fqx $'profile\tdefault' "$report"
   grep -Fqx $'platform\tfixture' "$report"
   grep -Fqx $'status\t0' "$report"
   grep -Fqx $'result\tsucceeded' "$report"
-  grep -Fqx $'summary\tplanned=0 completed=4 failed=0 unavailable=0 skipped=1' "$report"
+  grep -Fqx $'summary\tplanned=0 completed=5 failed=0 unavailable=0 skipped=1' "$report"
   grep -Fqx $'TARGET\tPROVIDER\tRESULT\tDETAIL' "$report"
-  grep -Fqx $'ruff\tuv\tcompleted\tupdate' "$report"
-  grep -Fqx $'dotfiles\tchezmoi\tskipped\tunsupported-update' "$report"
+  grep -Fqx $'ruff\tuv\tcompleted\tupgrade' "$report"
+  grep -Fqx $'dotfiles\tchezmoi\tskipped\tunsupported-upgrade' "$report"
   grep -Eq $'^finished\t[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$' "$report"
   [ "$(grep -Fc $'rig-last-run' "$report")" -eq 1 ]
-  ! grep -Fq "$MANIFEST" "$report" || false
+  ! grep -Eq 'bundle|cleanup|manifest' "$report" || false
 }
 
 @test "an unattended dry run records nothing and an unsafe report target is left alone" {
-  run run_rig update --unattended --dry-run </dev/null
+  run run_rig upgrade --unattended --dry-run </dev/null
 
   [ "$status" -eq 0 ]
-  [ ! -e "$STATE_HOME/last-update" ] || false
+  [ ! -e "$STATE_HOME/last-upgrade" ] || false
 
-  mkdir -p "$STATE_HOME/last-update"
+  mkdir -p "$STATE_HOME/last-upgrade"
 
-  run run_rig update --unattended </dev/null
+  run run_rig upgrade --unattended </dev/null
 
   [ "$status" -eq 0 ]
-  [ -d "$STATE_HOME/last-update" ] || false
+  [ -d "$STATE_HOME/last-upgrade" ] || false
   [[ "$output" == *'last-run report target is not a regular file'* ]] || false
 }
 
-@test "an unattended update reports work needing a person as unavailable" {
+@test "an unattended upgrade reports work needing a person as unavailable" {
   cat >"$CONFIG_HOME/rig.toml" <<EOF
 [rig]
 schema = 1
@@ -339,38 +286,38 @@ EOF
 
   write_fake_provider mas
 
-  run run_rig update --unattended </dev/null
+  run run_rig upgrade --unattended </dev/null
 
   [ "$status" -eq 1 ] || { printf '%s\n' "$output" >&3; false; }
   rig_test_report_contains "$output" $'store-app\thomebrew\tunavailable\tinteractive-required' || false
-  rig_test_report_contains "$output" $'ruff\tuv\tcompleted\tupdate' || false
+  rig_test_report_contains "$output" $'ruff\tuv\tcompleted\tupgrade' || false
   [ "$(grep -Fc mas "$CALL_LOG")" -eq 0 ]
   grep -Fqx $'store-app\thomebrew\tunavailable\tinteractive-required' \
-    "$STATE_HOME/last-update"
+    "$STATE_HOME/last-upgrade"
 
-  run run_rig update </dev/null
+  run run_rig upgrade </dev/null
 
   [ "$status" -eq 0 ] || { printf '%s\n' "$output" >&3; false; }
-  rig_test_report_contains "$output" $'store-app\thomebrew\tcompleted\tupdate' || false
+  rig_test_report_contains "$output" $'store-app\thomebrew\tcompleted\tupgrade' || false
   grep -Fqx $'mas\tupgrade 497799835' "$CALL_LOG"
 }
 
-@test "unattended belongs to update and maintain alone" {
-  run run_rig maintain --unattended --dry-run </dev/null
+@test "unattended belongs to upgrade alone" {
+  run run_rig upgrade --unattended --dry-run </dev/null
 
   [ "$status" -eq 0 ]
 
-  run run_rig update --unattended --unattended </dev/null
+  run run_rig upgrade --unattended --unattended </dev/null
 
   [ "$status" -eq 2 ]
-  [[ "$output" == *'usage: rig update [--profile NAME] [--dry-run] [--unattended]'* ]] || false
+  [[ "$output" == *'usage: rig upgrade [--profile NAME] [--dry-run] [--unattended]'* ]] || false
 
   run run_rig apply --unattended </dev/null
 
   [ "$status" -eq 2 ]
 
-  run run_rig update --help </dev/null
+  run run_rig upgrade --help </dev/null
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *'Usage: rig update [--profile NAME] [--dry-run] [--unattended]'* ]] || false
+  [[ "$output" == *'Usage: rig upgrade [--profile NAME] [--dry-run] [--unattended]'* ]] || false
 }

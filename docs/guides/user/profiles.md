@@ -24,7 +24,7 @@ purpose = "Complete everyday machine intent"
 kind = "complete"
 ```
 
-Stay with one profile while it expresses your real setup. Commands such as `show`, `doctor`, `apply`, and `bootstrap` are lifecycle stages, not reasons to create separate profiles.
+Stay with one profile while it expresses your real setup. `--profile` is an optional selection, not a reason to create separate configurations for setup and everyday work.
 
 Use `profiles = []` when an item should remain in the catalogue but belong to no profile. Use a non-empty array when an item belongs only to named profiles:
 
@@ -60,7 +60,7 @@ rig status --profile developer
 rig apply --profile developer --dry-run
 ```
 
-A complete profile is the whole desired Rig intent for one target. Switching complete profiles may retire previously receipted services or scheduled jobs that are absent from the new selection. It does not uninstall packages, remove tool artifacts, reverse settings, replace the Dock, close ports, or remove skills merely because they were deselected. Review retirement rows in the dry-run plan before applying a different complete profile.
+A complete profile selects desired intent for one target. Deselecting an item does not retire it while the catalogue still declares it. Full resource reconciliation can retire receipted services or jobs removed from the catalogue; packages, artifacts, settings, ports and skills are not removed merely because they were deselected. Review dry-run retirement rows before applying.
 
 ## Create a non-appliable public view
 
@@ -90,9 +90,8 @@ A view can be shown, listed, explained, checked, and exported. Mutating commands
 After resolving a complete profile, mutating plans identify the reach of each operation:
 
 - **Declaration** affects one selected tool or resource.
-- **Manifest** may reconcile a complete provider-native manifest.
-- **Provider-wide** affects provider maintenance or policy beyond one declaration.
+- **Native dependencies** remain the provider's responsibility within a declared operation; Rig does not orchestrate a Brewfile or run provider-wide housekeeping.
 
 Rig also checks native conflicts after profile resolution. Conflicting alternatives can coexist in the catalogue, but a profile that selects both fails before provider observation or mutation.
 
-Receipt-backed reconciliation is serialised per platform. If another application owns the target, Rig reports whether the lock owner appears active, stale, or unknown. It does not remove an unverified lock automatically. Use `rig diag` to locate effective state before deciding how to recover.
+Receipt-backed reconciliation is serialised per platform. If another application owns the target, Rig reports whether the lock owner appears active, stale, or unknown. It does not remove an unverified lock automatically. Use `rig doctor --verbose` to locate effective state before deciding how to recover.

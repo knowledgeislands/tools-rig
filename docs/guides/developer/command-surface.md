@@ -1,35 +1,34 @@
 # Maintain Rig's command surface
 
-Rig is authored as ordered Bash 3.2 modules beneath `src/rig/`. `scripts/assemble-rig` concatenates them into the installed `bin/rig`, so source organization has no runtime loading cost. Edit a module, assemble, and verify the generated executable; never patch `bin/rig` directly.
+Rig is authored as ordered Bash 3.2 modules beneath `src/rig/`. `scripts/assemble-rig` produces the standalone `bin/rig`; there is no runtime module loader. Edit authored modules and regenerate the payload.
 
-## Find the owner
+## Module ownership
 
-- `00-runtime.bash` owns shared state, top-level help, JSON primitives, command outcomes, and live progress.
-- `10-configuration.bash` parses and validates the catalogue, then resolves profiles, variants, bindings, and dependencies.
-- `20-orchestration.bash` owns plan primitives and built-in launchd and macOS resource adapters.
-- `21-provider-state.bash` owns operational profile and receipt handling, provider invocation and observation, inventory, and provider application.
-- `22-observation.bash` owns resource, port, skill, and tool observation plus `status` and `doctor` reports.
-- `23-application.bash` owns skill and resource application, `apply`, and `bootstrap`.
-- `30-commands.bash` owns bounded declared actions, environment diagnostics, catalogue queries, and the current table helper.
-- `40-publication-lifecycle.bash` owns public export, provider lifecycle tasks, their last-run report, and manifest capture.
-- `90-main.bash` dispatches commands, selects query or operational progress context, and emits the common outcome.
+- `00-runtime.bash`: shared state, help and option metadata, JSON, outcomes and progress.
+- `10-configuration.bash`: inert parsing, validation, selections, bindings and dependencies.
+- `20-orchestration.bash`: plan primitives, capabilities and built-in resource adapters.
+- `21-provider-state.bash`: native invocation, observations, inventory and receipts.
+- `22-observation.bash`: status and doctor, including verbose diagnostic evidence.
+- `23-application.bash`: apply and declared manager prerequisites.
+- `30-commands.bash`: catalogue query helpers, diagnostic metadata and retained extension validation helpers.
+- `35-adoption.bash`: init, Homebrew discovery and reviewed capture proposals.
+- `40-publication-lifecycle.bash`: export and declaration-scoped upgrades.
+- `90-main.bash`: public dispatch and shared outcome handling.
 
-Trace an operational command from `90-main.bash` through profile resolution in `10-configuration.bash`, its command body, then outcome reporting in `00-runtime.bash`. `rig_get_value` returns through the global `RIG_VALUE`; copy that value before calling another helper that may replace it.
+`rig_get_value` returns through the shared `RIG_VALUE`; preserve it locally before another helper can replace it.
 
-## Keep the commands distinct
+## One purpose per command
 
-- `show` resolves one profile; `list` browses catalogue tools with optional filters; `explain` describes one declared identity. They answer different questions and should keep one identifier vocabulary.
-- `status` compares the selected declaration with observation. `doctor` turns operational problems into findings and next actions. `diag` reports runtime paths and configuration shape even when a normal profile cannot resolve. A fix to unusable configuration belongs in `doctor`, while `diag` remains the lower-level environment view.
-- `apply` reconciles a complete selected profile or a bounded part of it. `bootstrap` prepares a new machine with prerequisite ordering and deferred managers. Their similar flags do not make their execution semantics interchangeable.
-- `update` and `maintain` already share `rig_command_lifecycle`; each delegates native operation details to the selected provider. `capture` refreshes one provider-native manifest, while `run` invokes an explicitly declared action. Neither is a generic shell task runner.
-- `export` produces a public, non-appliable projection. `completion` prints shell integration. `help` and version report on Rig itself.
+Public commands are `init`, `show`, `status`, `capture`, `apply`, `upgrade`, `doctor`, `export`, `completion`, and `help`. `show` covers selected, catalogue and individual views; `status` compares intent and observation; `doctor` diagnoses operational problems, with `--verbose` adding runtime details.
 
-The fourteen named commands above are dispatched in `90-main.bash`; `help` and version are meta commands. When adding or changing a public option, check its parser, command help, Bash and Zsh completion, manual page, user command guide, and tests together.
+Apply makes the machine follow declarations. Capture prepares reviewed additions from supported observed inventory. Init creates configuration only. Upgrade advances selected software rather than refreshing configuration.
 
-## Review overlap before adding a path
+The command cutover is explicit: retired names are rejected with migration advice, not kept as aliases. Internal helper names and the provider ABI's `update` capability are implementation boundaries, not additional public commands. Custom action records remain validated inert metadata; no public generic action dispatcher exposes them.
 
-The confirmed presentation duplication is in two places: command usage and completion options are authored in several command bodies, and state/report commands mix `rig_table_*` with raw tab-separated rows. RIG-CLI-019 owns option descriptions; RIG-CLI-018 owns completed report rendering. `rig_outcome_report` and `rig_progress_*` are already common owners. Keep live progress on stderr and completed reports on stdout.
+## Review and verification
 
-`apply` and `bootstrap` each parse `--profile`, `--scope`, and `--dry-run`; their common syntax deserves a shared option description, while their different prerequisite and application flows should stay explicit. `status` and `doctor` both observe the same plan but differ in their reader-facing result. Shared observation is intentional; duplicated output formatting is not.
+Keep parser, option metadata, help, Bash and Zsh completion, manual, user guide and regression fixtures aligned. Preserve JSON schema and report field meaning; document public command-identifier changes. New adoption code must test exclusive file creation, literal escaping, catalogue deduplication and dry-run purity.
 
-The orchestration source is split at complete function boundaries. The four ordered modules preserve the previous function order and the assembled payload adds only module comments. Keep future ownership by domain, and verify assembly and the full suite after moving any function. Keep the manager-of-managers boundary: providers retain their native manifests, credentials, and execution semantics.
+Provider execution owns resolution and installation state. Rig owns package-selection intent and never orchestrates Brewfiles. ChezMoi retains its native source, templates and execution semantics. No native cleanup is implicitly added to apply or upgrade.
+
+Run the complete local gate after integration. Keep benchmarks separate from concurrent test work. Never verify mutation against the live workstation.

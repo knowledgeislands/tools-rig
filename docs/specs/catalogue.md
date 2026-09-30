@@ -74,7 +74,7 @@ _Conformance:_ conforming
 
 _Verify:_ Bats explains one tool with co-located installation and artifact metadata, then observes artifact health through that tool.
 
-_Evidence:_ `rig_command_explain` reports the owning tool's artifacts; `tests/rig-artifacts.bats` covers ownership and observation.
+_Evidence:_ `rig_command_explain_impl` reports the owning tool's artifacts; `tests/rig-artifacts.bats` covers ownership and observation.
 
 ### RIG-CAT-008 — One identity across platform variants
 

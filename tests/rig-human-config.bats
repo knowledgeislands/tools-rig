@@ -148,7 +148,7 @@ write_resource_graph_config() {
   [[ "$output" == *$'binding=subject:uv'* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
-    "$RIG" explain subject
+    "$RIG" show subject
   [ "$status" -eq 0 ]
   [[ "$output" == *'Installation: homebrew (formula: subject-macos)'* ]] || false
   [[ "$output" == *'Artifacts: ~/private-macos-artifact'* ]] || false
@@ -158,7 +158,7 @@ write_resource_graph_config() {
 @test "diagnostics summarise human model shape without provider work" {
   write_variant_config
 
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" diag
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos bash -c 'source "$1"; rig_load_config && rig_doctor_diagnostics 1 text' _ "$RIG"
 
   [ "$status" -eq 0 ]
   [[ "$output" == *$'  Selection mode: item'* ]] || false

@@ -382,9 +382,7 @@ rig_command_export() {
 
 rig_lifecycle_supported() {
   case "$1:$2" in
-    update:homebrew|update:uv|update:mise|update:npm|update:skills-cli|\
-      maintain:homebrew|maintain:uv|maintain:mise|maintain:npm|\
-      capture:homebrew) return 0 ;;
+    upgrade:homebrew|upgrade:uv|upgrade:mise|upgrade:npm|upgrade:skills-cli) return 0 ;;
   esac
   return 1
 }
@@ -433,21 +431,13 @@ rig_collect_lifecycle_tasks() {
       adapter=$RIG_VALUE
       supported=0
       rig_lifecycle_supported "$action" "$adapter" && supported=1
-      if [ "$action" = maintain ]; then
-        key=$provider
-        label=$provider
-      elif [ "$adapter" = homebrew ] && rig_get_value "provider.$provider" manifest; then
-        key=homebrew:manifest
-        label=manifest
-      else
-        key=$provider:$binding
-        label=$tool
-      fi
+      key=$provider:$binding
+      label=$tool
       rig_lifecycle_add_task "$key" "$label" "$provider" "$binding" "$supported" "$tool"
     fi
     index=$((index + 1))
   done
-  if [ "$action" = update ]; then
+  if [ "$action" = upgrade ]; then
     for skill in "${RIG_SELECTED_SKILLS[@]+"${RIG_SELECTED_SKILLS[@]}"}"; do
       rig_get_value "skill.$skill" authority || return 2
       authority=$RIG_VALUE
@@ -457,13 +447,6 @@ rig_collect_lifecycle_tasks() {
         "$supported" "$skill"
     done
   fi
-}
-
-rig_lifecycle_manifest() {
-  local provider
-
-  provider=$1
-  rig_get_value "provider.$provider" manifest || return 1
 }
 
 rig_lifecycle_executable() {
@@ -476,9 +459,6 @@ rig_lifecycle_executable() {
   kind=tool
   if [ -n "$binding" ] && rig_get_value "$binding" kind; then
     kind=$RIG_VALUE
-  fi
-  if [ "$adapter" = homebrew ] && rig_lifecycle_manifest "$provider"; then
-    kind=formula
   fi
   rig_provider_executable "$provider" "$adapter" "$kind"
 }
@@ -494,7 +474,7 @@ rig_lifecycle_unavailable() {
 }
 
 rig_preflight_lifecycle_task() {
-  local action provider binding adapter executable manifest parent
+  local action provider binding adapter executable
 
   action=$1
   provider=$2
@@ -503,7 +483,7 @@ rig_preflight_lifecycle_task() {
     skill.*)
       rig_preflight_skill "${binding#skill.}" ||
         rig_lifecycle_unavailable "${RIG_SKILL_PREFLIGHT_DETAIL:-preflight-failed}" \
-          "skill '${binding#skill.}' update unavailable: ${RIG_SKILL_PREFLIGHT_DETAIL:-preflight-failed}" || return
+          "skill '${binding#skill.}' upgrade unavailable: ${RIG_SKILL_PREFLIGHT_DETAIL:-preflight-failed}" || return
       rig_provider_executable skills-cli skills-cli skill || return 2
       return 0
       ;;
@@ -517,38 +497,11 @@ rig_preflight_lifecycle_task() {
     rig_lifecycle_unavailable executable-unavailable \
       "provider '$provider' lifecycle executable unavailable: $executable" || return
   RIG_VALUE=$executable
-  if [ "$adapter" = homebrew ] && rig_lifecycle_manifest "$provider"; then
-    manifest=$RIG_VALUE
-    if [ "$action" = capture ]; then
-      if [ -L "$manifest" ] || { [ -e "$manifest" ] && [ ! -f "$manifest" ]; }; then
-        rig_fail "provider '$provider' manifest is not a safe regular-file target: $manifest" || return
-      fi
-      parent=${manifest%/*}
-      [ -n "$parent" ] || parent=/
-      [ -d "$parent" ] && [ -w "$parent" ] ||
-        rig_fail "provider '$provider' manifest directory unavailable: $parent" || return
-    else
-      [ -f "$manifest" ] && [ -r "$manifest" ] ||
-        rig_fail "provider '$provider' manifest is not readable regular file: $manifest" || return
-    fi
-  elif [ "$action" = capture ]; then
-    rig_fail "provider '$provider' does not declare a native manifest" || return
-  fi
-  # Probing for a manifest overwrites RIG_VALUE, so restate the resolved
-  # executable as this function's answer whichever branch ran.
   RIG_VALUE=$executable
 }
 
-rig_lifecycle_homebrew_exclusions() {
-  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--no-go
-  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--no-cargo
-  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--no-uv
-  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--no-krew
-  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--no-npm
-}
-
 rig_execute_lifecycle_task() {
-  local action provider binding executable adapter kind locator manifest normalized
+  local action provider binding executable adapter kind locator normalized
 
   action=$1
   provider=$2
@@ -577,52 +530,23 @@ rig_execute_lifecycle_task() {
   fi
 
   case "$action:$adapter" in
-    update:homebrew)
-      if rig_lifecycle_manifest "$provider"; then
-        manifest=$RIG_VALUE
-        "$executable" bundle install --upgrade "--file=$manifest" 1>&2
-      elif [ "$kind" = mas ]; then
+    upgrade:homebrew)
+      if [ "$kind" = mas ]; then
         "$executable" upgrade "$locator" 1>&2
       else
         "$executable" upgrade "--$kind" "$locator" 1>&2
       fi
       ;;
-    update:uv)
+    upgrade:uv)
       rig_normalize_provider_identity "$adapter" "$kind" "$locator"
       normalized=$RIG_VALUE
       "$executable" tool upgrade "$normalized" 1>&2
       ;;
-    update:mise)
+    upgrade:mise)
       "$executable" upgrade "$locator" 1>&2
       ;;
-    update:npm)
+    upgrade:npm)
       "$executable" install --global "$locator" 1>&2
-      ;;
-    maintain:homebrew)
-      "$executable" cleanup 1>&2 || return
-      if rig_lifecycle_manifest "$provider"; then
-        manifest=$RIG_VALUE
-        RIG_INVOKE_ARGUMENTS=(bundle cleanup --force "--file=$manifest")
-        rig_lifecycle_homebrew_exclusions
-        "$executable" "${RIG_INVOKE_ARGUMENTS[@]}" 1>&2 || return
-      fi
-      "$executable" doctor 1>&2
-      ;;
-    maintain:uv)
-      "$executable" cache prune 1>&2
-      ;;
-    maintain:mise)
-      "$executable" reshim 1>&2
-      ;;
-    maintain:npm)
-      "$executable" cache verify 1>&2
-      ;;
-    capture:homebrew)
-      rig_lifecycle_manifest "$provider" || return 2
-      manifest=$RIG_VALUE
-      RIG_INVOKE_ARGUMENTS=(bundle dump --force --no-describe "--file=$manifest")
-      rig_lifecycle_homebrew_exclusions
-      "$executable" "${RIG_INVOKE_ARGUMENTS[@]}" 1>&2
       ;;
     *) return 2 ;;
   esac
@@ -636,9 +560,6 @@ rig_lifecycle_requires_person() {
   case "$binding" in
     ''|skill.*) return 1 ;;
   esac
-  # A manifest task carries one representative binding for many declarations,
-  # so its kind says nothing about the work the provider will actually do.
-  ! rig_lifecycle_manifest "$provider" || return 1
   rig_get_value "$binding" kind || return 1
   kind=$RIG_VALUE
   # A Mac App Store upgrade needs a person signed in to the App Store, which a
@@ -657,7 +578,7 @@ rig_write_last_run_report() {
   rows=$6
   rig_effective_state_home || return 0
   state_home=$RIG_VALUE
-  target=$state_home/last-update
+  target=$state_home/last-upgrade
   mkdir -p "$state_home" 2>/dev/null || return 0
   [ -d "$state_home" ] || return 0
   if [ -L "$target" ] || { [ -e "$target" ] && [ ! -f "$target" ]; }; then
@@ -665,7 +586,7 @@ rig_write_last_run_report() {
     return 0
   fi
   observed=$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null) || observed=
-  staging=$state_home/.last-update.$$
+  staging=$state_home/.last-upgrade.$$
   {
     printf 'rig-last-run\t1\n'
     printf 'action\t%s\n' "$action"
@@ -741,10 +662,7 @@ rig_run_lifecycle_tasks() {
   rig_progress_finish
 
   printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
-  case "$action" in
-    update) printf 'Operation scopes: declaration, manifest\n' ;;
-    maintain) printf 'Operation scope: provider-wide\n' ;;
-  esac
+  printf 'Operation scope: declaration\n'
   printf 'TARGET\tPROVIDER\tRESULT\tDETAIL\n'
   rows=
   [ "$dry_run" -eq 1 ] || rig_progress_start "$action" "$supported_total" passthrough
@@ -770,13 +688,7 @@ rig_run_lifecycle_tasks() {
       printf '%s\n' "$row"
       planned=$((planned + 1))
     else
-      if [ "$action" = maintain ]; then
-        progress_scope='provider-wide'
-      elif rig_lifecycle_manifest "$provider"; then
-        progress_scope=manifest
-      else
-        progress_scope=declaration
-      fi
+      progress_scope=declaration
       rig_progress_begin "$provider:$label" "$progress_scope"
       # An unattended run must never block on a question, so a provider that
       # asks one reads end-of-file and fails instead of hanging the job.
@@ -881,80 +793,4 @@ rig_command_lifecycle_impl() {
 
 rig_command_lifecycle() {
   rig_buffer_mutation_report "$1" rig_command_lifecycle_impl "$@"
-}
-
-rig_command_capture_impl() {
-  local provider dry_run dry_run_seen adapter executable native_status
-
-  provider=
-  dry_run=0
-  dry_run_seen=0
-  while [ "$#" -gt 0 ]; do
-    case "$1" in
-      -h|--help)
-        [ "$#" -eq 1 ] || { rig_command_syntax_error capture; return; }
-        rig_command_help capture
-        return
-        ;;
-      --dry-run)
-        if [ "$dry_run_seen" -ne 0 ]; then
-          rig_command_syntax_error capture
-          return
-        fi
-        dry_run=1
-        dry_run_seen=1
-        shift
-        ;;
-      *)
-        if [ -n "$provider" ]; then
-          rig_command_syntax_error capture
-          return
-        fi
-        provider=$1
-        shift
-        ;;
-    esac
-  done
-  [ -n "$provider" ] || { rig_command_syntax_error capture; return; }
-  rig_load_config || return
-  rig_current_platform || return
-  RIG_RESOLVED_PROFILE=-
-  RIG_RESOLVED_PLATFORM=$RIG_VALUE
-  rig_provider_exists "$provider" || rig_fail "unknown provider '$provider'" || return
-  rig_provider_adapter "$provider" || return 2
-  adapter=$RIG_VALUE
-  rig_lifecycle_supported capture "$adapter" ||
-    rig_fail "provider '$provider' does not support capture" || return
-  rig_progress_start preflight 1
-  rig_progress_begin "$provider"
-  rig_preflight_lifecycle_task capture "$provider" '' || return
-  rig_progress_result succeeded "$provider"
-  rig_progress_finish
-  executable=$RIG_VALUE
-  printf 'Operation scope: manifest\n'
-  printf 'PROVIDER\tRESULT\tDETAIL\n'
-  if [ "$dry_run" -eq 1 ]; then
-    printf '%s\tplanned\tcapture\n' "$provider"
-    return 0
-  fi
-  rig_progress_start capturing 1 passthrough
-  rig_progress_begin "$provider" manifest
-  rig_execute_lifecycle_task capture "$provider" '' "$executable"
-  native_status=$?
-  if [ "$native_status" -eq 0 ]; then
-    rig_progress_result succeeded "$provider" manifest
-  else
-    rig_progress_result failed "$provider" manifest
-  fi
-  rig_progress_finish
-  if [ "$native_status" -eq 0 ]; then
-    printf '%s\tcompleted\tcapture\n' "$provider"
-  else
-    printf '%s\tfailed\texit:%s\n' "$provider" "$native_status"
-  fi
-  return "$native_status"
-}
-
-rig_command_capture() {
-  rig_buffer_mutation_report capture rig_command_capture_impl "$@"
 }

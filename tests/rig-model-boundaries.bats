@@ -103,7 +103,7 @@ run_diag() {
     '[dock-item.documents]' 'kind = "folder"' 'path = "~/Documents"' 'view = "grid"' \
     'display = "folder"' >"$CONFIG_HOME/rig.toml"
 
-  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" explain dock:main
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" show dock:main
   [ "$status" -eq 0 ]
   [[ "$output" == *$'dock-item.1.id=alpha\ndock-item.1.kind=application\ndock-item.1.path=/Applications/Alpha.app'* ]] || false
   [[ "$output" == *$'dock-item.2.id=documents\ndock-item.2.kind=folder\ndock-item.2.path=~/Documents\ndock-item.2.view=grid\ndock-item.2.display=folder'* ]] || false

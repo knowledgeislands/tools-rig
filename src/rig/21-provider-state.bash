@@ -957,6 +957,11 @@ rig_binding_declares_locator() {
 
   provider=$1
   identity=$2
+  if [ "$provider" = homebrew ]; then
+    case "$identity" in
+      formula:*|cask:*) rig_homebrew_identity_declared "$identity"; return ;;
+    esac
+  fi
   index=0
   while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
     if [ "${RIG_SECTION_TYPES[$index]}" = binding ]; then
@@ -1099,6 +1104,20 @@ rig_inventory_provider() {
       RIG_INVENTORY_DETAIL="exit:$RIG_NATIVE_STATUS"
       return 0
     fi
+  elif [ "$adapter" = homebrew ]; then
+    rig_provider_executable "$provider" homebrew formula || return 2
+    executable=$RIG_VALUE
+    if ! rig_executable_available "$executable"; then
+      RIG_INVENTORY_STATE=unavailable
+      RIG_INVENTORY_DETAIL='executable-unavailable'
+      return 0
+    fi
+    rig_homebrew_inventory "$provider"
+    if [ "$RIG_NATIVE_STATUS" -ne 0 ]; then
+      RIG_INVENTORY_STATE=unknown
+      RIG_INVENTORY_DETAIL="exit:$RIG_NATIVE_STATUS"
+      return 0
+    fi
   elif [ "$adapter" != custom ]; then
     RIG_INVENTORY_STATE=unavailable
     RIG_INVENTORY_DETAIL="unsupported-adapter:$adapter"
@@ -1138,13 +1157,20 @@ rig_inventory_provider() {
 }
 
 rig_collect_unmanaged() {
-  local index provider total
+  local index provider total executable
 
   RIG_UNMANAGED_IDENTITIES=()
   RIG_UNMANAGED_PROVIDERS=()
   RIG_UNMANAGED_DETAILS=()
   RIG_UNMANAGED_PROBLEMS=()
   rig_collect_section_ids provider || RIG_QUERY_ITEMS=()
+  if ! rig_array_contains homebrew "${RIG_QUERY_ITEMS[@]+"${RIG_QUERY_ITEMS[@]}"}"; then
+    rig_provider_executable homebrew homebrew formula || return 2
+    executable=$RIG_VALUE
+    if rig_executable_available "$executable"; then
+      RIG_QUERY_ITEMS[${#RIG_QUERY_ITEMS[@]}]=homebrew
+    fi
+  fi
   if [ "$RIG_RESOLVED_PLATFORM" = macos ]; then
     RIG_QUERY_ITEMS[${#RIG_QUERY_ITEMS[@]}]=macos-applications
   fi
@@ -1175,29 +1201,29 @@ rig_collect_unmanaged() {
   rig_progress_finish
 }
 
-rig_bootstrap_provider_prerequisite() {
-  local adapter index binding provider kind locator
+rig_apply_provider_prerequisite() {
+  local adapter consumer consumer_index index binding provider kind locator prerequisite
 
   adapter=$1
+  consumer=$2
+  rig_plan_index "$consumer" || return 1
+  consumer_index=$RIG_INDEX
   index=0
-  while [ "$index" -lt "${#RIG_PLAN_BINDINGS[@]}" ]; do
+  # Only an earlier entry in this selected dependency plan may provide a
+  # manager. Unselected catalogue declarations never relax preflight.
+  while [ "$index" -lt "$consumer_index" ]; do
     binding=${RIG_PLAN_BINDINGS[$index]}
     provider=${RIG_PLAN_PROVIDERS[$index]}
+    prerequisite=${RIG_PLAN_TOOLS[$index]}
     if [ -n "$binding" ]; then
       rig_get_value "$binding" kind || return 2
       kind=$RIG_VALUE
       rig_get_value "$binding" locator || return 2
       locator=$RIG_VALUE
       case "$adapter:$provider:$kind:$locator" in
-        mise:homebrew:formula:mise)
-          rig_get_value provider.homebrew manifest || return 1
-          RIG_BOOTSTRAP_DEFER_MISE=1
-          return 0
-          ;;
-        npm:mise:tool:node)
-          RIG_BOOTSTRAP_NPM_TOOL_INDEX=$index
-          RIG_BOOTSTRAP_DEFER_NPM=1
-          return 0
+        mise:homebrew:formula:mise|mise:homebrew:formula:homebrew/core/mise|\
+          npm:mise:tool:node|npm:mise:tool:node@*)
+          rig_tool_requires_tool "$consumer" "$prerequisite" && return 0
           ;;
       esac
     fi
@@ -1231,8 +1257,8 @@ rig_preflight_provider() {
   rig_provider_executable "$provider" "$adapter" "$kind" || return 2
   executable=$RIG_VALUE
   if ! rig_executable_available "$executable"; then
-    if [ "${RIG_BOOTSTRAP_ALLOW_DEFERRED_MANAGERS:-0}" -eq 1 ] &&
-      rig_bootstrap_provider_prerequisite "$adapter"; then
+    if [ "${RIG_APPLY_ALLOW_DEFERRED_PROVIDERS:-0}" -eq 1 ] &&
+      rig_apply_provider_prerequisite "$adapter" "$tool"; then
       return 0
     fi
     rig_fail "provider '$provider' executable is unavailable: $executable" || return

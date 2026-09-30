@@ -1,40 +1,24 @@
-# Run external provider actions
+# Use external providers safely
 
-Use an external provider only when host-specific behaviour cannot be expressed through a built-in provider or declarative managed resource. An external executable is an advanced trust boundary, not the normal way to configure Homebrew, launchd, macOS settings, Dock layouts, bootstrap, updates, maintenance, manifest capture, or a workstation.
+Use an external provider when a built-in provider cannot express a tool's observation or application. It is an explicit executable trust boundary, not a generic command runner.
 
-## Declare one bounded action
+## Declare native ownership
 
 ```toml
 [provider.local]
 adapter = "custom"
 executable = "~/.local/libexec/rig-local-provider"
-capabilities = ["observe"]
-
-[action.local.inspect-device]
-mode = "observe"
-description = "Inspect a host-specific attached device"
-platforms = ["macos"]
-arguments = ["summary"]
-allowed-arguments = ["verbose"]
+capabilities = ["observe", "apply"]
 ```
 
-A non-built-in provider requires `adapter = "custom"` and an allow-list of operations Rig may invoke. An explicit executable fixes the trusted target. When it is omitted, Rig resolves only `${RIG_DATA_HOME}/providers/PROVIDER-ID`; it does not search neighbouring files or infer trust.
+Bind a tool or supported resource to this provider in its declaration. Rig invokes the allowed observation during status and doctor, and the allowed application during an explicit apply. A configured executable fixes the trusted target; without it Rig resolves only the exact provider path below its data home.
 
-The action fixes its mode, description, platforms, base arguments, and caller-argument policy. Observation and mutation are distinct capabilities.
+Rig keeps arguments literal and includes a versioned extension-protocol marker. Built-in providers do not receive that protocol. The manual documents the ABI for extension authors.
 
-## Invoke the declared action
+## Keep imperative actions native
 
-```sh
-rig run local inspect-device
-rig run local inspect-device -- verbose
-```
+There is no public `rig run` command. Invoke a component's documented native command for service restart, logs, repair or other imperative operations. Do not mechanically run an extension executable with guessed protocol arguments.
 
-Configured arguments precede caller arguments. By default, every caller argument must exactly match an `allowed-arguments` entry. Use `argument-policy = "provider"` only when the selected extension's own native configuration deliberately owns further validation.
+Existing action records remain validated metadata but have no public action-dispatch entry point. Remove unused records from your personal configuration only after reviewing their consumers. A custom provider's observe/apply bindings remain supported.
 
-Values remain literal throughout dispatch. Rig does not evaluate shell text or infer an undeclared action.
-
-## Understand the boundary
-
-`rig run` is not a general shell escape. Private configuration owns the extension identity and trust decision; the executable owns its native operation and output. Rig validates the bounded declaration, invokes it once, passes output through, and preserves the provider status required by the command contract.
-
-Rig inserts its versioned extension protocol marker when invoking the executable. `rig-provider-v1` is not a command option or configuration value, and built-in providers never receive it. Extension authors can use the protocol reference in `man rig`; ordinary users do not need to reproduce its argument layout.
+Rig configuration owns desired package selection, but does not take ownership of another provider's source files, credentials or templates. ChezMoi remains the owner of its native source and application semantics.

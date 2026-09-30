@@ -118,7 +118,7 @@ _Conformance:_ conforming
 
 _Verify:_ Bats configures selected and unselected recording providers and asserts only selected work receives an apply invocation.
 
-_Evidence:_ `rig_command_apply` traverses only `rig_build_plan` and the selected resource plan; `operational commands honour explicit profiles and ignore unselected providers` and `apply and bootstrap scopes stage tools and resources independently` cover the selection boundary.
+_Evidence:_ `rig_command_apply` traverses only `rig_build_plan` and the selected resource plan; `operational commands honour explicit profiles and ignore unselected providers` and `apply scopes stage tools and resources independently` cover the selection boundary.
 
 ### RIG-STATE-006 — Dry-run plan
 
@@ -150,15 +150,15 @@ _Verify:_ Bats places a shared registry, operation, executable, or receipt failu
 
 _Evidence:_ `rig_preflight_apply`, `rig_preflight_provider`, `rig_preflight_resource`, and `rig_preflight_resource_receipt` classify the complete plan before dispatch; `tests/rig.bats` proves shared failures prevent every mutation and `tests/rig-macos.bats` proves a Dock-local finding is isolated.
 
-### RIG-STATE-016 — Bootstrap materialisation
+### RIG-STATE-016 — Apply prerequisite staging
 
-`rig bootstrap [--profile NAME] [--dry-run]` MUST run Rig's native bootstrap lifecycle without requiring a bootstrap provider or synthetic setup tools. An explicit profile MUST take precedence; otherwise Rig MUST select `[rig] bootstrap-profile` when declared and fall back to `default-profile` when absent. Rig MUST identify required managers and preflight the complete declarative plan. It MAY defer only the executable readiness of selected built-in mise and npm managers when their fixed Homebrew and mise prerequisites are selected, MUST report and complete those stages in dependency order, and MUST then run the same complete reconciliation model as apply. Dry-run MUST describe every stage without invoking a provider or changing the machine.
+Apply MUST include supported selected manager prerequisites in its dependency-ordered plan, disclose them in dry-run and recheck manager availability before dispatch. It MUST preserve the complete preflight and targeted closure boundaries of RIG-ORCH-018 and RIG-ORCH-036 without a separate bootstrap command or configuration profile.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats exercises explicit, configured, and fallback profile selection; missing and present manager availability; complete dry-run; failure isolation; and equivalent reconciliation outcomes without bootstrap provider configuration.
+_Verify:_ Exercise selected and unrelated prerequisites, missing managers, dry-run and failures with isolated executables.
 
-_Evidence:_ `rig_command_bootstrap`, `rig_bootstrap_preflight_homebrew_manifest`, and `rig_command_apply` implement the staged native lifecycle; `bootstrap selects its declared profile with explicit and default fallbacks`, `bootstrap and apply execute the same dependency-ordered provider plan`, and the six `tests/rig-bootstrap-manifest.bats` tests cover selection, preflight, dry-run, reconciliation, and failure outcomes.
+_Evidence:_ `rig_preflight_apply` and `tests/rig-bootstrap-staging.bats` cover the unified setup path.
 
 ### RIG-STATE-017 — Bounded comparison identities
 
@@ -202,13 +202,13 @@ _Evidence:_ `rig_observe_resource_plan`, `rig_print_resource_status`, and the re
 
 ### RIG-STATE-019 — Resource application and retirement
 
-`rig apply` MUST preflight every selected tool, setting, Dock layout, service, scheduled job, stale receipt provider, built-in or extension operation, executable, and receipt target before the first mutation. `rig bootstrap` MUST preserve that boundary except for the explicit built-in manager-readiness stages defined by RIG-ORCH-018, and MUST complete a normal apply preflight after those stages. Both commands MUST apply dependency-ordered tools before dependent managed resources, then perform stale resource retirements. A failed tool MUST suppress dependent resources while independent resources continue. A resource-local preflight finding MUST produce a failed row and MUST NOT block independent selected resources. Any selected resource failure MUST prevent stale retirement and receipt replacement. Dry-run MUST invoke no provider, write no state, and print every desired managed-resource record and pending retirement with its planned, failed, or blocked outcome.
+`rig apply` MUST preflight every selected tool, setting, Dock layout, service, scheduled job, stale receipt provider, built-in or extension operation, executable, and receipt target before the first mutation. Only the bounded selected manager-readiness exceptions in RIG-ORCH-018 MAY defer an executable check; all other preflight checks MUST remain before mutation. Apply MUST apply dependency-ordered tools before dependent managed resources, then perform stale resource retirements. A failed tool MUST suppress dependent resources while independent resources continue. A resource-local preflight finding MUST produce a failed row and MUST NOT block independent selected resources. Any selected resource failure MUST prevent stale retirement and receipt replacement. Dry-run MUST invoke no provider, write no state, and print every desired managed-resource record and pending retirement with its planned, failed, or blocked outcome.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests shared complete-plan rejection without a mutation log, resource-local preflight isolation, a literal complete dry-run, dependency suppression, independent continuation, native failures, retirement withholding, receipt preservation, resource ordering, and apply/bootstrap parity.
+_Verify:_ Bats tests shared complete-plan rejection without a mutation log, resource-local preflight isolation, a literal complete dry-run, dependency suppression, independent continuation, native failures, retirement withholding, receipt preservation, resource ordering, and apply prerequisite parity.
 
-_Evidence:_ `rig_preflight_apply`, `rig_resource_blocker`, `rig_command_apply`, and `rig_command_bootstrap` implement classified preflight, ordered application, and deferred retirement; `tests/rig-macos.bats`, `resource apply preflights every provider before any mutation`, `resource apply failure preserves the previous atomic receipt`, and apply/bootstrap scope and parity tests cover those boundaries.
+_Evidence:_ `rig_preflight_apply`, `rig_resource_blocker`, `rig_command_apply` implement classified preflight, ordered application, and deferred retirement; `tests/rig-macos.bats`, `resource apply preflights every provider before any mutation`, `resource apply failure preserves the previous atomic receipt`, and apply prerequisite scope and parity tests cover those boundaries.
 
 ### RIG-STATE-020 — Reconciliation receipt
 
@@ -222,7 +222,7 @@ _Evidence:_ receipt helpers read a bounded four-field format, compare each row a
 
 ### RIG-STATE-021 — Typed machine-resource state
 
-`rig status` and `rig doctor` MUST compare every selected setting and Dock layout with live built-in provider observations and MUST report non-present state as a finding. `rig apply --dry-run` MUST disclose each proposed defaults value and ordered Dock item without mutation. `rig apply` and `rig bootstrap` MUST apply only the selected declarations after full-plan preflight and MUST NOT depend on a workstation provider, provider-owned policy file, or non-Bash runtime.
+`rig status` and `rig doctor` MUST compare every selected setting and Dock layout with live built-in provider observations and MUST report non-present state as a finding. `rig apply --dry-run` MUST disclose each proposed defaults value and ordered Dock item without mutation. `rig apply` MUST apply only the selected declarations after full-plan preflight and MUST NOT depend on a workstation provider, provider-owned policy file, or non-Bash runtime.
 
 _Conformance:_ conforming
 
@@ -230,15 +230,15 @@ _Verify:_ Bats uses isolated native-command fakes to cover present and drifted s
 
 _Evidence:_ `rig_setting_observe`, `rig_setting_apply`, `rig_dock_observe`, `rig_dock_apply`, `rig_macos_resource_preflight`, and `rig_print_resource_projection` own typed machine state; `typed macOS resources query and dry-run deterministically`, `typed macOS resources observe and apply through native command fakes`, and `typed macOS schema rejects invalid values before invocation` cover that state boundary.
 
-### RIG-STATE-022 — Lifecycle preflight and preview
+### RIG-STATE-022 — Upgrade preflight and preview
 
-`rig update`, `rig maintain`, and `rig capture` MUST provide a non-mutating dry run that reports planned and unsupported work without invoking a provider or writing a manifest. Before a non-dry-run lifecycle mutation, Rig MUST preflight every supported target's executable and required manifest boundary before invoking the first provider. Lifecycle reports MUST be deterministic, MUST keep native diagnostics off the report channel, and MUST report independent completed, failed, unavailable, and skipped outcomes.
+`rig upgrade --dry-run` MUST report planned and unsupported declaration work without provider invocation or state writes. Before live upgrade dispatch, Rig MUST preflight each supported target, bound an unavailable executable to that target, and continue independent work. Reports MUST be deterministic and separate native diagnostics from stdout. Capture dry-run MAY perform read-only discovery but MUST NOT write a proposal file or active configuration.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats records provider calls and manifest content across dry-run, unavailable executable, unsafe manifest, successful, failed, duplicate, and unsupported lifecycle work.
+_Verify:_ Compare native-call logs and state around upgrade and capture dry-runs, unavailable executables and independent failures.
 
-_Evidence:_ `rig_preflight_lifecycle_task` and `rig_run_lifecycle_tasks` implement complete supported-target preflight, stable tabular reports, dry-run isolation, and independent outcomes; `tests/rig-lifecycle.bats` covers the lifecycle state boundary.
+_Evidence:_ Lifecycle and adoption Bats fixtures cover no-mutation preview, operational findings and report channels.
 
 ### RIG-STATE-023 — Generated-artifact state
 
@@ -264,7 +264,7 @@ _Evidence:_ `rig_load_resource_receipt` records only service and scheduled-job r
 
 ### RIG-STATE-025 — Exclusive reconciliation target
 
-Before a live receipt-backed apply or bootstrap reads its per-platform receipt, Rig MUST acquire an exclusive lock for that platform and MUST hold it through receipt replacement or failure cleanup. A concurrent invocation MUST fail before provider mutation with active, stale, or unknown owner detail and MUST NOT remove an unverified existing lock.
+Before a live receipt-backed apply reads its per-platform receipt, Rig MUST acquire an exclusive lock for that platform and MUST hold it through receipt replacement or failure cleanup. A concurrent invocation MUST fail before provider mutation with active, stale, or unknown owner detail and MUST NOT remove an unverified existing lock.
 
 _Conformance:_ conforming
 
@@ -310,7 +310,7 @@ _Evidence:_ `rig_status_totals`, `rig_json_envelope`, `rig_status_json`, `rig_js
 
 ### RIG-STATE-029 — Exit status and stated outcome
 
-Rig MUST own exactly three statuses of its own. `0` MUST mean a healthy observation or successful operation, `1` MUST mean a valid result carrying findings or an operation that completed independent safe work with failures, and `2` MUST mean a rejection before valid work could start. A release MAY add a status; it MUST NOT repurpose one. `rig run` and `rig capture` MUST return the dispatched provider's native status, and a command interrupted by HUP, INT, or TERM MUST return 129, 130, or 143.
+Rig MUST own exactly three statuses of its own. `0` MUST mean a healthy observation or successful operation, `1` MUST mean a valid result carrying findings or an operation that completed independent safe work with failures, and `2` MUST mean a rejection before valid work could start. A release MAY add a status; it MUST NOT repurpose one. A command interrupted by HUP, INT, or TERM MUST return 129, 130, or 143.
 
 A command MUST state its own outcome as the last line it writes to stderr, so a person need not read the status out of the shell. The line MUST have the shape `rig: <command> <result>: status <n>`, optionally followed by a parenthesised detail clause naming the counts or the finding that decided the status. `result` MUST come from the closed vocabulary `succeeded`, `healthy`, `unhealthy`, `incomplete`, `failed`; a release MAY add a value but MUST NOT repurpose one.
 
@@ -324,7 +324,7 @@ _Evidence:_ `rig_outcome_enabled`, `rig_outcome_note`, `rig_outcome_report`, and
 
 ### RIG-STATE-030 — Unattended last-run report
 
-An unattended `rig update` or `rig maintain` that dispatches work MUST record its outcome beneath the effective state home as `last-update`, honouring `RIG_STATE_HOME` and then `${XDG_STATE_HOME:-$HOME/.local/state}/rig`. One file MUST hold the most recent unattended run and MUST be replaced atomically, so a reader never observes a partial report. A dry run MUST NOT write it, because no run happened.
+An unattended `rig upgrade` that dispatches work MUST record its outcome beneath the effective state home as `last-upgrade`, honouring `RIG_STATE_HOME` and then `${XDG_STATE_HOME:-$HOME/.local/state}/rig`. One file MUST hold the most recent unattended run and MUST be replaced atomically, so a reader never observes a partial report. A dry run MUST NOT write it, because no run happened.
 
 The report MUST be UTF-8 tab-separated text. It MUST open with `rig-last-run` and the integer report version, then one `KEY<TAB>VALUE` line each for `action`, `profile`, `platform`, `finished`, `status`, `result`, `detail`, and `summary`, then the `TARGET PROVIDER RESULT DETAIL` header and the same rows the run printed on stdout. `result` and `status` MUST agree with the stated outcome under [RIG-STATE-029](#rig-state-029--exit-status-and-stated-outcome). Rig MAY add a later report version but MUST NOT silently change the meaning of version 1.
 
@@ -350,7 +350,7 @@ _Evidence:_ `rig_collect_unmanaged` always includes the macOS application adapte
 
 Every human-readable table MUST use the shared column renderer. It MUST preserve the full value of an identity column and spend a 120-character line budget on abbreviating other columns first; when the identities alone exceed that budget, preserving the identities takes precedence. Report spacing MUST NOT be treated as a machine interface.
 
-`rig show`, `rig list`, `rig explain`, `rig apply`, `rig bootstrap`, `rig update`, `rig maintain`, and `rig capture` MUST accept `--format text|json`, default to text, and reject another format with status 2 before dispatch. JSON MUST be one parseable object on stdout with the common schema, version, command, profile, platform, and observation-time envelope. The selection, declaration, and result values carried in JSON MUST remain complete even when text abbreviates a prose column. Mutation projections MUST group unabridged result rows by their named columns and retain the full source report; explanation projections MUST retain the full report alongside labelled fields.
+`rig show`, `rig apply`, and `rig upgrade` MUST accept `--format text|json`, default to text, and reject another format with status 2 before dispatch. JSON MUST be one parseable object on stdout with the common schema, version, command, profile, platform, and observation-time envelope. The selection, declaration, and result values carried in JSON MUST remain complete even when text abbreviates a prose column. Mutation projections MUST group unabridged result rows by their named columns and retain the full source report; explanation projections MUST retain the full report alongside labelled fields.
 
 Mutation text reports MUST emit a completed table after its work finishes, so native diagnostics written to stderr cannot divide its rows when a terminal merges the streams. Progress and native diagnostics MUST remain on stderr during execution; buffering stdout MUST NOT change the command's exit status or stated outcome.
 
@@ -359,3 +359,13 @@ _Conformance:_ conforming
 _Verify:_ Bats checks a long identifier in show and status, parses JSON from every listed command, checks full JSON values, and exercises a provider that writes to stderr during apply. The complete test gate checks existing command outcomes and report rows.
 
 _Evidence:_ `rig_table_fit_widths`, `rig_render_mutation_report`, `rig_mutation_json`, `rig_show_json`, and the command wrappers implement the contract; `tests/rig.bats` and `tests/rig-projection.bats` cover it.
+
+### RIG-STATE-034 — Homebrew unmanaged inventory
+
+`rig status --unmanaged` MUST discover supported installed Homebrew formulae and casks when the native manager is available, even without a provider table. It MUST exclude identities already declared anywhere in the catalogue and MUST keep formula and cask namespaces distinct. Failed inventory MUST be an explicit problem rather than an empty successful result. Status without `--unmanaged` MUST NOT perform this inventory.
+
+_Conformance:_ conforming
+
+_Verify:_ Isolated Homebrew fixtures assert inventory argv, declared filtering, missing or failing executables and no implicit inventory for ordinary status.
+
+_Evidence:_ `rig_collect_unmanaged`, `rig_homebrew_inventory` and `tests/rig-adoption.bats` cover the built-in source.

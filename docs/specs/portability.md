@@ -20,7 +20,7 @@ Rig MUST place configuration, data, state, and cache beneath the corresponding X
 
 _Conformance:_ conforming
 
-_Verify:_ `bats tests/rig.bats` invokes `rig diag` with isolated XDG and Rig-specific environment values.
+_Verify:_ `bats tests/rig.bats` invokes `rig doctor --verbose` with isolated XDG and Rig-specific environment values.
 
 _Evidence:_ `tests/rig.bats` covers XDG-derived paths and the precedence of `RIG_CONFIG_HOME`, `RIG_DATA_HOME`, `RIG_STATE_HOME`, and `RIG_CACHE_HOME`.
 
@@ -34,17 +34,15 @@ _Verify:_ Bats installer tests link into isolated default and overridden destina
 
 _Evidence:_ `install.sh` implements the destination contract and `tests/rig.bats` verifies overridden executable and manual destinations.
 
-### RIG-PORT-004 — Local diagnostics
+### RIG-PORT-004 — Verbose doctor diagnostics
 
-`rig diag` MUST report the Rig version, invoked executable, Bash version, active platform, effective configuration, data, state, and cache directories, root configuration file, fragment count, and configuration status. When configuration is valid it MUST also report the schema, default profile, profile-selection mode, and counts for profiles, tools, managed resources, and tool variants.
-
-Diagnostics MUST NOT invoke a provider. The command MUST return status 0 for valid configuration, status 1 for missing or invalid configuration, and status 2 for invalid command syntax.
+`rig doctor --verbose` MUST include the runtime version, invoked executable, Bash version, platform, effective XDG paths, configuration sources and validity, and available model counts. Diagnostic metadata collection MUST NOT itself invoke a provider; doctor MAY perform its ordinary read-only observations. Missing or invalid configuration MUST remain diagnosable and produce health findings rather than prevent independent checks. Invalid syntax MUST return 2.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests compare stable diagnostics for default and overridden paths, linked invocation, valid, missing, and invalid configuration; assert provider non-execution; and cover command help and exit statuses.
+_Verify:_ Run isolated Bats tests for valid, invalid, unavailable and dry-run cases.
 
-_Evidence:_ `tests/rig.bats` covers the exact labelled output, path precedence, invoked symlink paths, fragment counting, validity states, provider non-execution, local help, and removal of `paths`.
+_Evidence:_ `rig_command_doctor`, diagnostic helpers and `tests/rig-doctor-config.bats` plus public CLI fixtures cover paths, validity, JSON and observation.
 
 ### RIG-PORT-005 — Doctor XDG accessibility
 
@@ -100,7 +98,7 @@ _Evidence:_ `scripts/assemble-rig` concatenates the ordered `src/rig/` modules a
 
 ### RIG-PORT-010 — Representative query performance
 
-On the documented reference macOS machine, `rig diag`, `rig show`, and `rig list` SHOULD each complete the deterministic 100-tool, 1,434-line benchmark in no more than two seconds. Automated verification MUST apply an overrideable five-second portable query guard and eight-second fake-provider observation guard so shared or contended runners do not turn the measured macOS target into a flaky correctness test.
+On the documented reference macOS machine, `rig show tool-001`, `rig show`, and `rig show --all` SHOULD each complete the deterministic 100-tool, 1,434-line benchmark in no more than two seconds. Automated verification MUST apply an overrideable five-second portable query guard and eight-second fake-provider observation guard so shared or contended runners do not turn the measured macOS target into a flaky correctness test.
 
 _Conformance:_ conforming
 

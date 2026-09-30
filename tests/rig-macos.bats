@@ -80,7 +80,7 @@ run_rig() {
   [ "$status" -eq 0 ]
   rig_test_report_contains "$output" $'Settings: 1\nID\tNAME\tPROVIDER\tVALUE\ndark-mode\tDark mode\tmacos-defaults\ttrue' || false
   rig_test_report_contains "$output" $'Dock layouts: 1\nID\tNAME\tPROVIDER\tITEMS\nmain\tMain Dock\tmacos-dock\t2' || false
-  run_rig explain setting:dark-mode
+  run_rig show setting:dark-mode
   [ "$status" -eq 0 ]
   [[ "$output" == *'provider=macos-defaults'* ]] || false
   run_rig apply --scope resources --dry-run

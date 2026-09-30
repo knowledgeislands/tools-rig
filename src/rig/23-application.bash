@@ -43,7 +43,7 @@ rig_preflight_skill() {
       rig_provider_executable skills-cli skills-cli skill || return 2
       executable=$RIG_VALUE
       if ! rig_executable_available "$executable"; then
-        if [ "${RIG_BOOTSTRAP_ALLOW_DEFERRED_SKILLS:-0}" -eq 1 ] &&
+        if [ "${RIG_APPLY_ALLOW_DEFERRED_SKILLS:-0}" -eq 1 ] &&
           rig_skill_has_materializer_tool "$skill"; then return 0; fi
         RIG_SKILL_PREFLIGHT_DETAIL='executable-unavailable'
         return 1
@@ -54,7 +54,7 @@ rig_preflight_skill() {
     local)
       rig_local_skill_roots "$skill" || { RIG_SKILL_PREFLIGHT_DETAIL=unsafe-local-boundary; return 1; }
       ;;
-    ki) RIG_SKILL_PREFLIGHT_DETAIL=inventory-unavailable; return 1 ;;
+    ki) RIG_SKILL_PREFLIGHT_DETAIL='inventory-unavailable'; return 1 ;;
     runtime|plugin) RIG_SKILL_PREFLIGHT_DETAIL=observation-only; return 1 ;;
   esac
 }
@@ -209,7 +209,11 @@ rig_run_skill_apply() {
       RIG_SKILL_SKIPPED=$((RIG_SKILL_SKIPPED + 1))
       rig_progress_result skipped "$authority:skill.$skill" declaration
     else
-      rig_apply_skill "$skill"
+      if rig_preflight_skill "$skill"; then
+        rig_apply_skill "$skill"
+      else
+        false
+      fi
       native_status=$?
       if [ "$native_status" -eq 0 ]; then
         RIG_SKILL_RESULTS[$index]=completed
@@ -742,9 +746,18 @@ rig_command_apply_impl() {
       RIG_STALE_RESOURCE_LOCATORS=()
     fi
   fi
+  RIG_APPLY_ALLOW_DEFERRED_PROVIDERS=1
+  RIG_APPLY_ALLOW_DEFERRED_SKILLS=1
   rig_progress_start preflight 1
   rig_progress_begin 'selected plan'
-  rig_preflight_apply "$scope" || return
+  if rig_preflight_apply "$scope"; then
+    native_status=0
+  else
+    native_status=$?
+  fi
+  RIG_APPLY_ALLOW_DEFERRED_PROVIDERS=0
+  RIG_APPLY_ALLOW_DEFERRED_SKILLS=0
+  [ "$native_status" -eq 0 ] || return "$native_status"
   rig_progress_result succeeded 'selected plan'
   rig_progress_finish
   printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
@@ -796,7 +809,13 @@ rig_command_apply_impl() {
       operational_failure=1
       rig_progress_result skipped "$provider:$tool" declaration
     else
-      rig_apply_provider "$tool" "$binding" "$provider"
+      # A deferred prerequisite must have produced the executable before
+      # this consumer can run. Keep independent declarations advancing.
+      if rig_preflight_provider "$tool" "$binding" "$provider"; then
+        rig_apply_provider "$tool" "$binding" "$provider"
+      else
+        false
+      fi
       native_status=$?
       if [ "$native_status" -eq 0 ]; then
         RIG_PLAN_RESULTS[$index]=completed
@@ -936,323 +955,4 @@ rig_command_apply_impl() {
 
 rig_command_apply() {
   rig_buffer_mutation_report apply rig_command_apply_impl "$@"
-}
-
-rig_command_bootstrap() {
-  rig_buffer_mutation_report bootstrap rig_command_bootstrap_impl "$@"
-}
-
-rig_bootstrap_preflight_homebrew_manifest() {
-  local scope index uses_homebrew manifest executable
-
-  scope=$1
-  RIG_BOOTSTRAP_MANIFEST=
-  RIG_BOOTSTRAP_MANIFEST_EXECUTABLE=
-  RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL=
-  RIG_BOOTSTRAP_AUTOUPDATE_OPTIONS=()
-  [ "$scope" != resources ] || return 0
-  uses_homebrew=0
-  index=0
-  while [ "$index" -lt "${#RIG_PLAN_PROVIDERS[@]}" ]; do
-    if [ "${RIG_PLAN_PROVIDERS[$index]}" = homebrew ]; then
-      uses_homebrew=1
-      break
-    fi
-    index=$((index + 1))
-  done
-  [ "$uses_homebrew" -eq 1 ] || return 0
-  manifest=
-  if rig_get_value provider.homebrew manifest; then
-    manifest=$RIG_VALUE
-    [ -f "$manifest" ] && [ -r "$manifest" ] ||
-      rig_fail "provider 'homebrew' manifest is not a readable regular file: $manifest" || return
-  fi
-  if rig_get_value provider.homebrew autoupdate-interval; then
-    RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL=$RIG_VALUE
-    rig_collect_field_values provider.homebrew autoupdate-option || return
-    RIG_BOOTSTRAP_AUTOUPDATE_OPTIONS=("${RIG_QUERY_ITEMS[@]}")
-  fi
-  [ -n "$manifest" ] || [ -n "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL" ] || return 0
-  rig_provider_executable homebrew homebrew formula || return 2
-  executable=$RIG_VALUE
-  rig_executable_available "$executable" ||
-    rig_fail "provider 'homebrew' executable unavailable: $executable" || return
-  RIG_BOOTSTRAP_MANIFEST=$manifest
-  RIG_BOOTSTRAP_MANIFEST_EXECUTABLE=$executable
-}
-
-rig_bootstrap_apply_homebrew_manifest() {
-  local executable manifest
-
-  executable=$RIG_BOOTSTRAP_MANIFEST_EXECUTABLE
-  manifest=$RIG_BOOTSTRAP_MANIFEST
-  [ -n "$manifest" ] || return 0
-  "$executable" bundle "--file=$manifest" 1>&2
-}
-
-rig_bootstrap_apply_homebrew_autoupdate() {
-  local executable option
-
-  executable=$RIG_BOOTSTRAP_MANIFEST_EXECUTABLE
-  [ -n "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL" ] || return 0
-  "$executable" autoupdate delete 1>&2 || return
-  RIG_INVOKE_ARGUMENTS=(autoupdate start "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL")
-  for option in "${RIG_BOOTSTRAP_AUTOUPDATE_OPTIONS[@]}"; do
-    RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--$option
-  done
-  "$executable" "${RIG_INVOKE_ARGUMENTS[@]}" 1>&2
-}
-
-rig_bootstrap_verify_deferred_mise() {
-  local executable
-
-  rig_provider_executable mise mise tool || return 2
-  executable=$RIG_VALUE
-  rig_executable_available "$executable" ||
-    rig_fail "bootstrap prerequisite did not make provider 'mise' available: $executable" || return
-}
-
-rig_bootstrap_apply_npm_prerequisite() {
-  local index tool binding provider executable native_status
-
-  index=$RIG_BOOTSTRAP_NPM_TOOL_INDEX
-  tool=${RIG_PLAN_TOOLS[$index]}
-  binding=${RIG_PLAN_BINDINGS[$index]}
-  provider=${RIG_PLAN_PROVIDERS[$index]}
-  rig_preflight_provider "$tool" "$binding" "$provider" || return
-  rig_apply_provider "$tool" "$binding" "$provider"
-  native_status=$?
-  [ "$native_status" -eq 0 ] || return "$native_status"
-  rig_provider_executable npm npm global || return 2
-  executable=$RIG_VALUE
-  rig_executable_available "$executable" ||
-    rig_fail "bootstrap prerequisite '$tool' did not make provider 'npm' available: $executable" || return
-}
-
-rig_command_bootstrap_impl() {
-  local profile scope dry_run profile_seen scope_seen dry_run_seen native_status manager_total
-  local lock_acquired exit_code
-
-  profile=
-  scope=all
-  dry_run=0
-  RIG_BOOTSTRAP_ALLOW_DEFERRED_MANAGERS=0
-  RIG_BOOTSTRAP_DEFER_MISE=0
-  RIG_BOOTSTRAP_DEFER_NPM=0
-  RIG_BOOTSTRAP_NPM_TOOL_INDEX=
-  profile_seen=0
-  scope_seen=0
-  dry_run_seen=0
-  while [ "$#" -gt 0 ]; do
-    case "$1" in
-      -h|--help)
-        [ "$#" -eq 1 ] || {
-          rig_command_syntax_error bootstrap
-          return
-        }
-      rig_command_help bootstrap
-        return
-        ;;
-      --profile)
-        if [ "$profile_seen" -ne 0 ] || [ "$#" -lt 2 ] || [ -z "$2" ]; then
-        rig_command_syntax_error bootstrap
-          return
-        fi
-        profile=$2
-        profile_seen=1
-        shift 2
-        ;;
-      --scope)
-        if [ "$scope_seen" -ne 0 ] || [ "$#" -lt 2 ]; then
-        rig_command_syntax_error bootstrap
-          return
-        fi
-        case "$2" in tools|skills|resources|all) scope=$2 ;; *)
-          rig_command_syntax_error bootstrap
-          return ;;
-        esac
-        scope_seen=1
-        shift 2
-        ;;
-      --dry-run)
-        [ "$dry_run_seen" -eq 0 ] || {
-          rig_command_syntax_error bootstrap
-          return
-        }
-        dry_run=1
-        dry_run_seen=1
-        shift
-        ;;
-      *) rig_command_syntax_error bootstrap; return ;;
-    esac
-  done
-
-  if [ -z "$profile" ]; then
-    rig_load_config || return
-    if rig_get_value rig bootstrap-profile; then
-      profile=$RIG_VALUE
-    fi
-  fi
-
-  rig_resolve_operational_plan "$profile" defer || return
-  profile=$RIG_RESOLVED_PROFILE
-  [ "$RIG_RESOLVED_PROFILE_KIND" = complete ] ||
-    rig_fail "profile '$profile' is a non-appliable view" || return
-  lock_acquired=0
-  if { [ "$scope" = resources ] || [ "$scope" = all ]; } &&
-    rig_reconciliation_needed "$RIG_RESOLVED_PLATFORM"; then
-    if [ "$dry_run" -eq 0 ]; then
-      rig_acquire_reconciliation_lock "$RIG_RESOLVED_PLATFORM" "$profile" bootstrap || return
-      lock_acquired=$RIG_RECONCILIATION_LOCK_ACQUIRED
-    fi
-    rig_load_resource_receipt "$RIG_RESOLVED_PLATFORM" || return
-  fi
-  case "$scope" in
-    tools)
-      RIG_SELECTED_SKILLS=()
-      RIG_RESOURCE_PLAN_SECTIONS=()
-      RIG_STALE_RESOURCE_PROVIDERS=()
-      RIG_STALE_RESOURCE_KINDS=()
-      RIG_STALE_RESOURCE_IDS=()
-      RIG_STALE_RESOURCE_LOCATORS=()
-      ;;
-    skills)
-      RIG_PLAN_TOOLS=()
-      RIG_PLAN_BINDINGS=()
-      RIG_PLAN_PROVIDERS=()
-      RIG_RESOURCE_PLAN_SECTIONS=()
-      RIG_STALE_RESOURCE_PROVIDERS=()
-      RIG_STALE_RESOURCE_KINDS=()
-      RIG_STALE_RESOURCE_IDS=()
-      RIG_STALE_RESOURCE_LOCATORS=()
-      ;;
-    resources)
-      RIG_SELECTED_SKILLS=()
-      RIG_PLAN_TOOLS=()
-      RIG_PLAN_BINDINGS=()
-      RIG_PLAN_PROVIDERS=()
-      ;;
-  esac
-  RIG_BOOTSTRAP_ALLOW_DEFERRED_MANAGERS=1
-  RIG_BOOTSTRAP_ALLOW_DEFERRED_SKILLS=1
-  rig_progress_start 'bootstrap preflight' 2
-  rig_progress_begin 'selected plan'
-  rig_preflight_apply "$scope"
-  native_status=$?
-  if [ "$native_status" -ne 0 ]; then
-    rig_progress_result failed 'selected plan'
-    rig_progress_finish
-    RIG_BOOTSTRAP_ALLOW_DEFERRED_MANAGERS=0
-    return "$native_status"
-  fi
-  rig_progress_result succeeded 'selected plan'
-  rig_progress_begin 'homebrew policy'
-  if rig_bootstrap_preflight_homebrew_manifest "$scope"; then
-    rig_progress_result succeeded 'homebrew policy'
-  else
-    native_status=$?
-    rig_progress_result failed 'homebrew policy'
-    rig_progress_finish
-    return "$native_status"
-  fi
-  rig_progress_finish
-  if [ -n "$RIG_BOOTSTRAP_MANIFEST" ] || [ -n "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL" ] ||
-    [ "$RIG_BOOTSTRAP_DEFER_MISE" -eq 1 ] || [ "$RIG_BOOTSTRAP_DEFER_NPM" -eq 1 ]; then
-    printf 'Operation scopes: declaration, manifest, provider-wide\n'
-    printf 'MANAGER\tPROVIDER\tRESULT\tDETAIL\tSCOPE\n'
-    if [ "$dry_run" -eq 1 ]; then
-      if [ -n "$RIG_BOOTSTRAP_MANIFEST" ]; then
-        printf 'manifest\thomebrew\tplanned\tbundle:%s\tmanifest\n' "$RIG_BOOTSTRAP_MANIFEST"
-      fi
-      if [ -n "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL" ]; then
-        printf 'autoupdate\thomebrew\tplanned\tinterval:%s\tprovider-wide\n' "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL"
-      fi
-      if [ "$RIG_BOOTSTRAP_DEFER_MISE" -eq 1 ]; then
-        printf 'provider:mise\thomebrew\tplanned\tbootstrap-prerequisite\tdeclaration\n'
-      fi
-      if [ "$RIG_BOOTSTRAP_DEFER_NPM" -eq 1 ]; then
-        printf 'provider:npm\tmise\tplanned\tbootstrap-prerequisite\tdeclaration\n'
-      fi
-      printf '\n'
-    else
-      manager_total=0
-      [ -z "$RIG_BOOTSTRAP_MANIFEST" ] || manager_total=$((manager_total + 1))
-      [ -z "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL" ] || manager_total=$((manager_total + 1))
-      [ "$RIG_BOOTSTRAP_DEFER_MISE" -eq 0 ] || manager_total=$((manager_total + 1))
-      [ "$RIG_BOOTSTRAP_DEFER_NPM" -eq 0 ] || manager_total=$((manager_total + 1))
-      rig_progress_start bootstrapping "$manager_total" passthrough
-      if [ -n "$RIG_BOOTSTRAP_MANIFEST" ]; then
-        rig_progress_begin 'homebrew manifest' manifest
-        rig_bootstrap_apply_homebrew_manifest
-        native_status=$?
-        if [ "$native_status" -ne 0 ]; then
-          rig_progress_result failed 'homebrew manifest' manifest
-          rig_progress_finish
-          printf 'manifest\thomebrew\tfailed\texit:%s\tmanifest\n' "$native_status"
-          return "$native_status"
-        fi
-        rig_progress_result succeeded 'homebrew manifest' manifest
-        printf 'manifest\thomebrew\tcompleted\tbundle:%s\tmanifest\n' "$RIG_BOOTSTRAP_MANIFEST"
-      fi
-      if [ -n "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL" ]; then
-        rig_progress_begin 'homebrew autoupdate' provider-wide
-        rig_bootstrap_apply_homebrew_autoupdate
-        native_status=$?
-        if [ "$native_status" -ne 0 ]; then
-          rig_progress_result failed 'homebrew autoupdate' provider-wide
-          rig_progress_finish
-          printf 'autoupdate\thomebrew\tfailed\texit:%s\tprovider-wide\n' "$native_status"
-          return "$native_status"
-        fi
-        rig_progress_result succeeded 'homebrew autoupdate' provider-wide
-        printf 'autoupdate\thomebrew\tcompleted\tinterval:%s\tprovider-wide\n' "$RIG_BOOTSTRAP_AUTOUPDATE_INTERVAL"
-      fi
-      RIG_BOOTSTRAP_ALLOW_DEFERRED_MANAGERS=0
-      if [ "$RIG_BOOTSTRAP_DEFER_MISE" -eq 1 ]; then
-        rig_progress_begin 'provider mise' declaration
-        if ! rig_bootstrap_verify_deferred_mise; then
-          rig_progress_result failed 'provider mise' declaration
-          rig_progress_finish
-          printf 'provider:mise\thomebrew\tfailed\tunavailable\tdeclaration\n'
-          return 1
-        fi
-        rig_progress_result succeeded 'provider mise' declaration
-        printf 'provider:mise\thomebrew\tcompleted\tavailable\tdeclaration\n'
-      fi
-      if [ "$RIG_BOOTSTRAP_DEFER_NPM" -eq 1 ]; then
-        rig_progress_begin 'provider npm' declaration
-        rig_bootstrap_apply_npm_prerequisite
-        native_status=$?
-        if [ "$native_status" -ne 0 ]; then
-          rig_progress_result failed 'provider npm' declaration
-          rig_progress_finish
-          printf 'provider:npm\tmise\tfailed\texit:%s\tdeclaration\n' "$native_status"
-          return "$native_status"
-        fi
-        rig_progress_result succeeded 'provider npm' declaration
-        printf 'provider:npm\tmise\tcompleted\tavailable\tdeclaration\n'
-      fi
-      rig_progress_finish
-      printf '\n'
-    fi
-  fi
-
-  [ "$dry_run" -eq 1 ] || RIG_BOOTSTRAP_ALLOW_DEFERRED_MANAGERS=0
-  if [ -n "$profile" ]; then
-    if [ "$dry_run" -eq 1 ]; then
-      rig_command_apply_impl --profile "$profile" --scope "$scope" --dry-run
-    else
-      rig_command_apply_impl --profile "$profile" --scope "$scope"
-    fi
-  elif [ "$dry_run" -eq 1 ]; then
-    rig_command_apply_impl --scope "$scope" --dry-run
-  else
-    rig_command_apply_impl --scope "$scope"
-  fi
-  exit_code=$?
-  if [ "$lock_acquired" -eq 1 ]; then
-    rig_release_reconciliation_lock || return
-    trap - EXIT HUP INT TERM
-  fi
-  return "$exit_code"
 }

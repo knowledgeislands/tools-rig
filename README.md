@@ -10,7 +10,7 @@ Rig answers questions such as:
 - What is present, missing, drifted, unavailable, or unknown?
 - Which deliberately public subset can I publish without exposing machine state?
 
-Rig coordinates native systems rather than replacing them. Homebrew, uv, mise, npm, chezmoi, launchd, macOS defaults, and trusted extensions keep their own manifests, resolution rules, credentials, and state.
+Rig configuration owns desired package selection; Homebrew, uv, mise and npm are execution mechanisms, not competing package lists. Rig does not use Homebrew Bundle or require a Brewfile. Native systems retain resolution rules, credentials and installation state; chezmoi retains its source files, templates and application semantics.
 
 ## The model
 
@@ -49,7 +49,9 @@ Follow [Get started with Rig](docs/guides/user/getting-started.md) to write a sm
 
 To preview just one declared change, use `rig apply --target ID --dry-run`; repeat `--target` to select several exact entries.
 
-Use `--format json` with `show`, `list`, `explain`, `status`, `doctor`, `apply`, `bootstrap`, `update`, `maintain`, or `capture` when a script needs complete values rather than a human-readable table.
+Use `rig init` for new configuration, `rig show [ITEM]` to understand intent, `rig status` to compare it with the machine, `rig apply` to reconcile it, and `rig upgrade` to advance declared software. `rig capture` prepares reviewed Homebrew additions; `rig doctor --verbose` diagnoses health and configuration. Export, help and completion remain utilities.
+
+Use `--format json` with `show`, `status`, `doctor`, `apply`, or `upgrade` when a script needs complete values. Capture emits discovery text or additive TOML. Existing users should follow the [command migration guide](docs/guides/user/migrating-command-surface.md); the current checkout makes a breaking cutover without aliases.
 
 The [user-guide journey](docs/guides/user/README.md) then introduces profiles, machine resources, user-level skills, provider boundaries, and publication in stages. Use `man rig` for the exhaustive command and configuration reference.
 

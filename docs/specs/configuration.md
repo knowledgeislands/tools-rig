@@ -66,7 +66,7 @@ _Evidence:_ `rig_toml_array_complete` and `rig_toml_parse_array` decode one basi
 
 ### RIG-CONF-007 — Bounded path expansion
 
-Rig MUST expand documented home forms without shell evaluation. Provider `executable` and `manifest` fields and direct-download `install.destination` fields MUST retain their existing leading `~/` loading contract. Tool-artifact comparison MUST derive an absolute identity from a leading `~/` or `$HOME/` without changing the stored declaration. Typed string settings and Dock paths MUST resolve exact whole-value `~`, `~/...`, `$HOME`, and `$HOME/...` forms; typed string settings MUST additionally resolve exact `file://$HOME` and `file://$HOME/...` forms. Observation, validation, dry-run preflight, and application MUST use the same resolved value. Rig MUST preserve the authored declaration, embedded variables, other variable names, relative paths, unsupported tilde forms, and all other value text literally.
+Rig MUST expand documented home forms without shell evaluation. Provider `executable` fields and direct-download `install.destination` fields MUST retain their existing leading `~/` loading contract. Tool-artifact comparison MUST derive an absolute identity from a leading `~/` or `$HOME/` without changing the stored declaration. Typed string settings and Dock paths MUST resolve exact whole-value `~`, `~/...`, `$HOME`, and `$HOME/...` forms; typed string settings MUST additionally resolve exact `file://$HOME` and `file://$HOME/...` forms. Observation, validation, dry-run preflight, and application MUST use the same resolved value. Rig MUST preserve the authored declaration, embedded variables, other variable names, relative paths, unsupported tilde forms, and all other value text literally.
 
 _Conformance:_ conforming
 
@@ -88,13 +88,13 @@ _Evidence:_ `rig_parse_section_identity` and `rig_valid_id` enforce the table an
 
 ### RIG-CONF-009 — Root fields
 
-The schema 1 `rig` table MUST require `schema` and `default-profile` and MAY contain `bootstrap-profile`. Both profile fields MUST name declared profiles. An omitted `bootstrap-profile` MUST preserve `default-profile` as the bootstrap fallback.
+Schema 1 MUST require `schema` and `default-profile` in `[rig]`; the default MUST name a declared profile. `bootstrap-profile` MUST be rejected with migration guidance, not silently ignored.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests resolve required root fields, accept one optional bootstrap profile, and reject missing, repeated, or unknown references.
+_Verify:_ Run isolated Bats tests for valid, invalid, unavailable and dry-run cases.
 
-_Evidence:_ `rig_validate_model` validates root fields and references; bootstrap selection tests cover explicit, configured, and fallback profiles.
+_Evidence:_ `rig_validate_model` and adoption migration fixtures validate root fields and retirement.
 
 ### RIG-CONF-010 — Catalogue fields
 
@@ -118,15 +118,13 @@ _Evidence:_ `rig_toml_field`, `rig_validate_model`, and `rig_select_profile` res
 
 ### RIG-CONF-012 — Provider fields
 
-The documented built-in configuration includes bounded native policy as well as executable and manifest details. Homebrew MAY declare a positive integer `autoupdate-interval` and an `autoupdate-options` array containing only `upgrade`, `cleanup`, `immediate`, and `sudo`; options MUST require an interval. No other built-in or external provider may declare this policy. Rig MUST translate the values into fixed native arguments and MUST NOT accept arbitrary autoupdate arguments or commands.
-
-Schema 1 MUST resolve built-in provider identities without a provider table. An optional table for a built-in provider MAY contain only its documented `executable`, `manifest`, or `arguments` configuration and MUST NOT redefine its adapter class or supported operations. A provider identity not reserved by Rig MUST have one `[provider.ID]` table requiring `adapter = "custom"` and a non-empty `capabilities` string array and MAY contain string `executable` and an `arguments` string array. When executable is omitted, Rig MUST resolve exactly `${RIG_DATA_HOME}/providers/PROVIDER-ID`; an explicit executable MUST take precedence. Provider tables MUST NOT contain `command`.
+Rig MUST resolve built-in identities without provider tables. Optional built-in tables MAY provide documented executable overrides but MUST NOT redefine adapter or capabilities. Homebrew `manifest`, `autoupdate-interval` and `autoupdate-options` MUST be rejected with migration guidance. A custom provider MUST declare `adapter = "custom"` and non-empty capabilities; executable and literal arguments MAY be supplied. Without an executable Rig MUST resolve only the exact provider path below its data home. Native source ownership, including chezmoi, MUST remain unchanged.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests use built-ins without provider tables, accept documented built-in overrides, require the custom adapter and operation allow-list for external providers, resolve explicit and exact conventional executables, preserve literal arguments, and reject adapter or capability overrides for built-ins.
+_Verify:_ Run isolated Bats tests for valid, invalid, unavailable and dry-run cases.
 
-_Evidence:_ `rig_validate_model`, `rig_builtin_provider_adapter`, and `rig_provider_has_capability` keep reserved built-ins immutable and external providers explicit; `tests/rig-model-boundaries.bats` covers both rejection boundaries.
+_Evidence:_ `rig_validate_model`, `rig_builtin_provider_adapter`, model-boundary and adoption tests enforce native and external trust boundaries.
 
 ### RIG-CONF-013 — Installation fields
 
@@ -144,13 +142,13 @@ Retired with `rig publish`. A `[publication.ID]` table is no longer an accepted 
 
 ### RIG-CONF-015 — Extension action fields
 
-Schema 1 action tables MUST require string `mode` and `description` and MAY contain `platforms`, `arguments`, `allowed-arguments`, and `resource-kinds` string arrays and string `argument-policy`. The provider named by the table identity MUST be an explicitly declared external provider. Mode MUST be `observe` or `mutate`. `argument-policy` defaults to `rig`, MAY be `provider`, and MUST NOT be combined with `allowed-arguments` when set to `provider`. `resource-kinds` accepts only supported managed-resource kinds, requires provider argument policy, and makes the first caller argument a selected qualified resource. Configured and caller arguments MUST retain their literal array boundaries. Built-in provider operations MUST NOT require action tables.
+Schema 1 action tables MUST require string `mode` and `description` and MAY contain `platforms`, `arguments`, `allowed-arguments`, and `resource-kinds` string arrays and string `argument-policy`. The provider named by the table identity MUST be an explicitly declared external provider. Mode MUST be `observe` or `mutate`. `argument-policy` defaults to `rig`, MAY be `provider`, and MUST NOT be combined with `allowed-arguments` when set to `provider`. `resource-kinds` accepts only supported managed-resource kinds, requires provider argument policy, and remains validated resource-selection metadata. Action metadata MUST remain inert; there is no public generic action dispatcher. Built-in provider operations MUST NOT require action tables.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats table tests accept valid external action records; reject malformed identities, missing fields, invalid modes, built-in or unknown providers, and invalid argument policies; preserve configured allow-listed argument boundaries; and exercise built-in operations without action declarations.
 
-_Evidence:_ `rig_validate_action` accepts action tables only for custom providers, while `rig_command_run` dispatches built-in launchd operations directly; `tests/rig.bats` and `tests/rig-model-boundaries.bats` cover both paths.
+_Evidence:_ `rig_validate_action` validates retained custom action metadata; `tests/rig-model-boundaries.bats` and sourceable helper tests cover trust boundaries without exposing a public runner.
 
 ### RIG-CONF-016 — Operational resource fields
 
@@ -243,3 +241,13 @@ _Conformance:_ conforming
 _Verify:_ Bats tests accept each authority/trust pair and reject unknown fields, invalid pairs, invalid sources, invalid runtime identifiers, unresolved required tools, and mixed selection models.
 
 _Evidence:_ `tests/rig-skills.bats` exercises skill schema, trust, source, and profile-selection validation.
+
+### RIG-CONF-025 — Safe initial configuration
+
+`rig init` MUST create a minimal valid default configuration without inspecting or installing software. It MUST refuse existing configuration, fragments and unsafe symlink targets rather than overwrite them. `--dry-run` MUST report the proposal without creating configuration or directories.
+
+_Conformance:_ conforming
+
+_Verify:_ Isolated adoption tests exercise new, existing, fragment-only and symlink targets and parse the generated configuration.
+
+_Evidence:_ `rig_command_init` and `tests/rig-adoption.bats` implement exclusive initialisation.

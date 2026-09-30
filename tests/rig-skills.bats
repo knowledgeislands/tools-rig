@@ -89,14 +89,14 @@ write_skill_config() {
   rig_test_report_contains "$output" $'caveman\tCaveman\tskills-cli\tclaude-code, codex' || false
   [ ! -e "$SKILLS_LOG" ]
 
-  run "$RIG" explain skill:caveman
+  run "$RIG" show skill:caveman
   [ "$status" -eq 0 ]
   [[ "$output" == *'Authority: skills-cli'* ]] || false
   [[ "$output" == *'Profiles: default, public'* ]] || false
   [[ "$output" == *'Public source: https://github.com/JuliusBrussee/caveman'* ]] || false
   [ ! -e "$SKILLS_LOG" ]
 
-  run "$RIG" diag
+  run bash -c 'source "$1"; rig_load_config && rig_doctor_diagnostics 1 text' _ "$RIG"
   [ "$status" -eq 0 ]
   [[ "$output" == *'Skills: 1'* ]] || false
 }
@@ -195,7 +195,7 @@ write_skill_config() {
   grep -F 'add JuliusBrussee/caveman --global --skill caveman --agent claude-code --agent codex --yes --json' "$SKILLS_LOG"
 
   : >"$SKILLS_LOG"
-  run "$RIG" update
+  run "$RIG" upgrade
   [ "$status" -eq 0 ]
   grep -F 'update caveman --global --yes' "$SKILLS_LOG"
   ! grep -E 'remove|rm|clean' "$SKILLS_LOG"
@@ -226,7 +226,7 @@ write_skill_config() {
   : >"$SKILLS_LOG"
   run "$RIG" apply --profile minimal --dry-run
   [ "$status" -eq 0 ]
-  run "$RIG" maintain --profile minimal --dry-run
+  run "$RIG" upgrade --profile minimal --dry-run
   [ "$status" -eq 0 ]
   ! grep -E 'remove|uninstall|delete' "$SKILLS_LOG"
 }
@@ -300,7 +300,7 @@ assert data["profile"]["skills"] == []
   write_skill_config
   printf '%s\n' '[provider.skills-cli]' "executable = \"$BIN/absent-skills\"" >>"$CONFIG_HOME/rig.toml"
 
-  run "$RIG" update
+  run "$RIG" upgrade
 
   [ "$status" -eq 1 ]
   rig_test_report_contains "$output" $'skill:caveman\tskills-cli\tunavailable\texecutable-unavailable' || false

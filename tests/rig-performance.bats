@@ -30,9 +30,9 @@ output_has_table_row() {
   run env RIG_BENCHMARK_BUDGET_SECONDS=5 "$BATS_TEST_DIRNAME/../scripts/benchmark-rig"
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"diag:"*"budget 5s"* ]] || false
+  [[ "$output" == *"show-item:"*"budget 5s"* ]] || false
   [[ "$output" == *"show:"*"budget 5s"* ]] || false
-  [[ "$output" == *"list:"*"budget 5s"* ]] || false
+  [[ "$output" == *"show-all:"*"budget 5s"* ]] || false
   [[ "$output" == *"status:"*"budget 8s"* ]] || false
 }
 

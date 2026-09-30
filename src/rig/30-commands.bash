@@ -421,17 +421,14 @@ rig_count_config_fragments() {
   RIG_COUNT=$count
 }
 
-rig_command_diag() {
+rig_doctor_diagnostics() {
   local platform root_file root_display fragment_count config_status schema default_profile exit_code
   local index key profiles tools skills resources ports variants variant rest
+  local format config_loaded
   local -a seen_variants
 
-  if [ "$#" -eq 1 ]; then
-    case "$1" in
-      -h|--help) rig_command_help diag; return ;;
-    esac
-  fi
-  [ "$#" -eq 0 ] || rig_command_syntax_error diag || return
+  config_loaded=$1
+  format=${2:-text}
 
   rig_effective_paths || return 1
   rig_diagnostic_platform
@@ -454,7 +451,7 @@ rig_command_diag() {
   seen_variants=()
   exit_code=1
   if [ -e "$root_file" ] || [ "$fragment_count" -gt 0 ]; then
-    if rig_load_config 2>/dev/null; then
+    if [ "$config_loaded" -eq 1 ]; then
       config_status=valid
       rig_get_value rig schema || return 1
       schema=$RIG_VALUE
@@ -492,6 +489,32 @@ rig_command_diag() {
     fi
   fi
 
+  if [ "$format" = json ]; then
+    printf '{"runtime":'
+    rig_json_field '{' version "$RIG_VERSION"
+    rig_json_field ',' executable "$RIG_INVOKED_PATH"
+    rig_json_field ',' bash_version "$BASH_VERSION"
+    rig_json_field ',' platform "$platform"
+    printf '},"paths":'
+    rig_json_field '{' config "$RIG_DIAG_CONFIG_HOME"
+    rig_json_field ',' data "$RIG_DIAG_DATA_HOME"
+    rig_json_field ',' state "$RIG_DIAG_STATE_HOME"
+    rig_json_field ',' cache "$RIG_DIAG_CACHE_HOME"
+    printf '},"configuration":'
+    rig_json_field '{' root "$root_file"
+    rig_json_field ',' status "$config_status"
+    printf ',"fragment_count":%s' "$fragment_count"
+    if [ "$config_status" = valid ]; then
+      rig_json_field ',' schema "$schema"
+      rig_json_field ',' default_profile "$default_profile"
+      rig_json_field ',' selection_mode "$RIG_PROFILE_SELECTION_MODE"
+      printf ',"profiles":%s,"tools":%s,"skills":%s,"resources":%s,"ports":%s,"variants":%s' \
+        "$profiles" "$tools" "$skills" "$resources" "$ports" "$variants"
+    fi
+    printf '}}'
+    return 0
+  fi
+
   printf 'Runtime:\n  Rig version: %s\n  Executable: %s\n  Bash version: %s\n  Platform: %s\n' \
     "$RIG_VERSION" "$RIG_INVOKED_PATH" "$BASH_VERSION" "$platform"
   printf 'Paths:\n  Config home: %s\n  Data home: %s\n  State home: %s\n  Cache home: %s\n' \
@@ -504,7 +527,7 @@ rig_command_diag() {
     printf '  Profiles: %s\n  Tools: %s\n  Skills: %s\n  Managed resources: %s\n  Ports: %s\n  Tool variants: %s\n' \
       "$profiles" "$tools" "$skills" "$resources" "$ports" "$variants"
   fi
-  return "$exit_code"
+  return 0
 }
 
 rig_sort_query_items() {
@@ -1485,8 +1508,14 @@ rig_show_json() {
 }
 
 rig_command_show() {
-  local profile platform format profile_seen format_seen
+  local profile platform format profile_seen format_seen category category_seen all item
+  local -a catalogue_args
 
+  category=
+  category_seen=0
+  all=0
+  item=
+  catalogue_args=()
   profile=
   format=text
   profile_seen=0
@@ -1496,6 +1525,13 @@ rig_command_show() {
       -h|--help)
         [ "$#" -eq 1 ] || rig_command_syntax_error show || return
         rig_command_help show; return ;;
+      --all)
+        [ "$all" -eq 0 ] || rig_command_syntax_error show || return
+        all=1; shift ;;
+      --category)
+        [ "$category_seen" -eq 0 ] && [ "$#" -ge 2 ] && [ -n "$2" ] ||
+          rig_command_syntax_error show || return
+        category=$2; category_seen=1; shift 2 ;;
       --profile)
         [ "$profile_seen" -eq 0 ] && [ "$#" -ge 2 ] && [ -n "$2" ] ||
           rig_command_syntax_error show || return
@@ -1505,9 +1541,33 @@ rig_command_show() {
           rig_command_syntax_error show || return
         case "$2" in text|json) format=$2 ;; *) rig_command_syntax_error show || return ;; esac
         format_seen=1; shift 2 ;;
-      *) rig_command_syntax_error show || return ;;
+      -*) rig_command_syntax_error show || return ;;
+      *)
+        [ -z "$item" ] && [ -n "$1" ] || rig_command_syntax_error show || return
+        item=$1; shift ;;
     esac
   done
+
+  if [ -n "$item" ]; then
+    [ "$all" -eq 0 ] && [ "$category_seen" -eq 0 ] && [ "$profile_seen" -eq 0 ] ||
+      rig_command_syntax_error show || return
+    rig_show_item "$item" --format "$format"
+    return
+  fi
+  [ "$all" -eq 0 ] || [ "$profile_seen" -eq 0 ] || rig_command_syntax_error show || return
+  if [ "$all" -eq 1 ] || [ "$category_seen" -eq 1 ]; then
+    [ "$all" -eq 0 ] || catalogue_args[${#catalogue_args[@]}]=--all
+    if [ "$category_seen" -eq 1 ]; then
+      catalogue_args[${#catalogue_args[@]}]=--category
+      catalogue_args[${#catalogue_args[@]}]=$category
+    fi
+    if [ "$profile_seen" -eq 1 ]; then
+      catalogue_args[${#catalogue_args[@]}]=--profile
+      catalogue_args[${#catalogue_args[@]}]=$profile
+    fi
+    rig_show_catalogue "${catalogue_args[@]+"${catalogue_args[@]}"}" --format "$format"
+    return
+  fi
 
   rig_load_config || return
   rig_current_platform || return
@@ -1530,30 +1590,32 @@ rig_command_show() {
 }
 
 rig_list_select() {
-  local category profile platform category_seen profile_seen tool index declared_category
+  local category profile platform category_seen profile_seen tool index declared_category all
   local -a tools
 
+  all=0
   category=
   profile=
   category_seen=0
   profile_seen=0
   while [ "$#" -gt 0 ]; do
     case "$1" in
+      --all) all=1; shift ;;
       --category)
         [ "$category_seen" -eq 0 ] && [ "$#" -ge 2 ] && [ -n "$2" ] ||
-          rig_command_syntax_error list || return
+          rig_command_syntax_error show || return
         category=$2
         category_seen=1
         shift 2
         ;;
       --profile)
         [ "$profile_seen" -eq 0 ] && [ "$#" -ge 2 ] && [ -n "$2" ] ||
-          rig_command_syntax_error list || return
+          rig_command_syntax_error show || return
         profile=$2
         profile_seen=1
         shift 2
         ;;
-      *) rig_command_syntax_error list || return ;;
+      *) rig_command_syntax_error show || return ;;
     esac
   done
 
@@ -1562,9 +1624,10 @@ rig_list_select() {
     rig_valid_id "$category" && rig_section_index "category.$category" ||
       rig_fail "unknown category '$category'" || return
   fi
-  if [ -n "$profile" ]; then
-    rig_current_platform || return
-    platform=$RIG_VALUE
+  rig_current_platform || return
+  platform=$RIG_VALUE
+  RIG_RESOLVED_PLATFORM=$platform
+  if [ "$all" -eq 0 ]; then
     rig_resolve_profile "$profile" "$platform" || return
     tools=("${RIG_SELECTED_TOOLS[@]+"${RIG_SELECTED_TOOLS[@]}"}")
   else
@@ -1746,10 +1809,10 @@ rig_command_explain_impl() {
 
   if [ "$#" -eq 1 ]; then
     case "$1" in
-      -h|--help) rig_command_help explain; return ;;
+      -h|--help) rig_command_help show; return ;;
     esac
   fi
-  [ "$#" -eq 1 ] || rig_command_syntax_error explain || return
+  [ "$#" -eq 1 ] || rig_command_syntax_error show || return
   tool=$1
   rig_load_config || return
   case "$tool" in
@@ -1819,7 +1882,7 @@ rig_render_list_report() {
   rig_table_print
 }
 
-rig_command_list() {
+rig_show_catalogue() {
   local format format_seen id name category purpose separator
   local -a args
 
@@ -1829,8 +1892,8 @@ rig_command_list() {
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --format)
-        [ "$format_seen" -eq 0 ] && [ "$#" -ge 2 ] || rig_command_syntax_error list || return
-        case "$2" in text|json) format=$2 ;; *) rig_command_syntax_error list || return ;; esac
+        [ "$format_seen" -eq 0 ] && [ "$#" -ge 2 ] || rig_command_syntax_error show || return
+        case "$2" in text|json) format=$2 ;; *) rig_command_syntax_error show || return ;; esac
         format_seen=1
         shift 2 ;;
       *)
@@ -1840,8 +1903,8 @@ rig_command_list() {
   done
   case "${args[0]-}" in
     -h|--help)
-      [ "${#args[@]}" -eq 1 ] || rig_command_syntax_error list || return
-      rig_command_help list
+      [ "${#args[@]}" -eq 1 ] || rig_command_syntax_error show || return
+      rig_command_help show
       return ;;
   esac
   rig_list_select "${args[@]+"${args[@]}"}" || return
@@ -1849,7 +1912,7 @@ rig_command_list() {
     rig_render_list_report
     return
   fi
-  rig_json_envelope list
+  rig_json_envelope show
   printf ',"tools":['
   separator=
   for id in "${RIG_LIST_TOOLS[@]+"${RIG_LIST_TOOLS[@]}"}"; do
@@ -1866,7 +1929,7 @@ rig_command_list() {
   printf ']}\n'
 }
 
-rig_command_explain() {
+rig_show_item() {
   local format format_seen report status line label value separator target
   local -a args
 
@@ -1875,8 +1938,8 @@ rig_command_explain() {
   args=()
   while [ "$#" -gt 0 ]; do
     if [ "$1" = --format ]; then
-      [ "$format_seen" -eq 0 ] && [ "$#" -ge 2 ] || rig_command_syntax_error explain || return
-      case "$2" in text|json) format=$2 ;; *) rig_command_syntax_error explain || return ;; esac
+      [ "$format_seen" -eq 0 ] && [ "$#" -ge 2 ] || rig_command_syntax_error show || return
+      case "$2" in text|json) format=$2 ;; *) rig_command_syntax_error show || return ;; esac
       format_seen=1
       shift 2
     else
@@ -1886,8 +1949,8 @@ rig_command_explain() {
   done
   case "${args[0]-}" in
     -h|--help)
-      [ "${#args[@]}" -eq 1 ] || rig_command_syntax_error explain || return
-      rig_command_help explain
+      [ "${#args[@]}" -eq 1 ] || rig_command_syntax_error show || return
+      rig_command_help show
       return ;;
   esac
   if [ "$format" = text ]; then
@@ -1898,7 +1961,7 @@ rig_command_explain() {
   [ "$status" -eq 0 ] || return "$status"
   report=$RIG_CAPTURED_REPORT
   target=${args[0]-}
-  rig_json_envelope explain
+  rig_json_envelope show
   rig_json_field ',' target "$target"
   printf ',"fields":['
   separator=

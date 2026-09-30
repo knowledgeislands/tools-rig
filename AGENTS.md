@@ -6,7 +6,7 @@ Rig is one standalone command-line tool. The runtime entry point is `bin/rig`; k
 
 Rig is the declarative description and manager of a person's working setup. Its catalogue owns tool identity, category, purpose, rationale, relationships, and supported platforms; profiles select catalogue subsets; providers materialise them; state compares the selection with provider observations.
 
-Rig's manager-of-managers model belongs beneath that catalogue. It owns profile resolution, provider selection, dependency ordering, capability checks, action dispatch, and outcome reporting. Homebrew, uv, chezmoi, downloads, custom executables, and publishers retain their native manifests, resolution, execution semantics, credentials, deployment, and state.
+Rig's manager-of-managers model belongs beneath that catalogue. It owns package-selection intent, profile resolution, provider selection, dependency ordering, capability checks and outcome reporting. Homebrew, uv, downloads and custom executables retain native resolution, execution semantics, credentials and installation state; Rig does not orchestrate Brewfiles or Homebrew Bundle. ChezMoi retains its native source, templates and application semantics. Imperative operations and provider housekeeping belong to native tools, not a generic Rig runner.
 
 Do not embed a workstation's personal catalogue, package list, profile, publication, or machine-specific path in the executable. Portable behaviour belongs here; a person's choices belong in their Rig configuration. A published rig is a derived public projection, never the authority for private configuration or observed machine state.
 

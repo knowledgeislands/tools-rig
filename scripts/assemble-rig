@@ -20,6 +20,7 @@ assemble() {
     22-observation.bash \
     23-application.bash \
     30-commands.bash \
+    35-adoption.bash \
     40-publication-lifecycle.bash \
     90-main.bash; do
     [ -f "$rig_root/src/rig/$module" ] || {

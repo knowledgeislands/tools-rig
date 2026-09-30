@@ -1,7 +1,7 @@
 ---
 id: ADR-RIG-006
 title: 'Declarative Operational Resources'
-date: 2026-09-22
+date: 2026-09-30
 status: current
 decision_type: architecture
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/adr
@@ -14,13 +14,13 @@ decision_depends_on: [PDR-RIG-001, ADR-RIG-003, ADR-RIG-005, XDR-RIG-001]
 
 Services, scheduled jobs, stable machine settings, and semantic workstation layouts are part of a person's selected setup. Hiding them in provider-local registries prevents Rig from explaining, observing, previewing, or reconciling a complete profile. Treating a whole workstation as one provider creates the same problem: aggregation belongs to the profile, while each native manager owns only its domain.
 
-Long-lived resources also need a safe response to deselection. Once a declaration leaves the resolved profile, the native manager still needs enough former identity to retire it without turning Rig's state into a competing configuration source.
+Long-lived resources need a safe response to deletion from the catalogue. Native managers need enough former identity to retire a removed declaration without treating an alternative selection as deletion or turning Rig state into a competing configuration source.
 
 ## Decision
 
 Rig models services, scheduled jobs, typed machine settings, and semantic layouts as first-class managed resources. They use the same profile membership and dependency model as catalogue tools, while retaining explicit native ownership. A complete profile therefore describes the workstation shape that Rig can explain and reconcile.
 
-Built-in resource adapters own supported native operations. External resource providers remain possible only through the explicit executable boundary. Rig performs complete-plan preflight, orders resource dependencies, and keeps minimal per-platform reconciliation receipts solely for safe deselection and retirement. The declaration remains the source of desired state; native providers remain the source of observation.
+Built-in resource adapters own supported native operations. External resource providers remain possible only through the explicit executable boundary. Rig performs complete-plan preflight, orders resource dependencies, and keeps minimal per-platform reconciliation receipts solely for safe catalogue-scoped retirement. The declaration remains the source of desired state; native providers remain the source of observation.
 
 Private TCP ports are related operational declarations, but are observation-only. They describe an expected number, bind scope, mode, and qualified owner. Rig may compare that intent with listeners; it never opens, reserves, closes, kills, or publishes a socket.
 

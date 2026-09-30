@@ -1,4 +1,4 @@
-.TH RIG 1 "2026-09-22" "Knowledge Islands" "User Commands"
+.TH RIG 1 "2026-09-30" "Knowledge Islands" "User Commands"
 .SH NAME
 \&
 .PP
@@ -6,17 +6,14 @@ rig \- describe and manage a personal working setup
 .SH SYNOPSIS
 \&
 .br
+.B rig init
+.RI [ \-\-dry-run ]
+.br
 .B rig show
+.RI [ ITEM ]
 .RI [ \-\-profile " NAME" ]
-.RI [ \-\-format " text|json" ]
-.br
-.B rig list
+.RI [ \-\-all ]
 .RI [ \-\-category " ID" ]
-.RI [ \-\-profile " NAME" ]
-.RI [ \-\-format " text|json" ]
-.br
-.B rig explain
-.I TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID
 .RI [ \-\-format " text|json" ]
 .br
 .B rig status
@@ -25,9 +22,15 @@ rig \- describe and manage a personal working setup
 .RI [ \-\-unmanaged ]
 .RI [ \-\-format " text|json" ]
 .br
-.B rig doctor
+.B rig capture
+.RI [ ITEM... ]
+.RI [ \-\-provider " homebrew" ]
 .RI [ \-\-profile " NAME" ]
-.RI [ \-\-format " text|json" ]
+.RI [ \-\-dry-run ]
+.RI [ \-\-output " PATH" ]
+.RI [ \-\-category " ID" ]
+.RI [ \-\-purpose " TEXT" ]
+.RI [ \-\-rationale " TEXT" ]
 .br
 .B rig apply
 .RI [ \-\-profile " NAME" ]
@@ -36,37 +39,21 @@ rig \- describe and manage a personal working setup
 .RI [ \-\-dry-run ]
 .RI [ \-\-format " text|json" ]
 .br
-.B rig bootstrap
-.RI [ \-\-profile " NAME" ]
-.RI [ \-\-scope " tools|skills|resources|all" ]
-.RI [ \-\-dry-run ]
-.RI [ \-\-format " text|json" ]
-.br
-.B rig update
+.B rig upgrade
 .RI [ \-\-profile " NAME" ]
 .RI [ \-\-dry-run ]
 .RI [ \-\-unattended ]
 .RI [ \-\-format " text|json" ]
 .br
-.B rig maintain
+.B rig doctor
 .RI [ \-\-profile " NAME" ]
-.RI [ \-\-dry-run ]
-.RI [ \-\-unattended ]
+.RI [ \-\-verbose ]
 .RI [ \-\-format " text|json" ]
-.br
-.BI "rig capture " PROVIDER
-.RI [ \-\-dry-run ]
-.RI [ \-\-format " text|json" ]
-.br
-.BI "rig run " PROVIDER " " ACTION
-.RI [ \-\- " ARGUMENT..." ]
 .br
 .BI "rig export \-\-profile " NAME
 .BI " \-\-output " DIRECTORY
 .RI [ \-\-title " TEXT" ]
 .RI [ \-\-base-url " URL" ]
-.br
-.B rig diag
 .br
 .BI "rig completion " bash|zsh
 .br
@@ -78,63 +65,62 @@ rig \- describe and manage a personal working setup
 .SH DESCRIPTION
 \&
 .PP
-Rig describes the tools and managed resources that make up a person's working
-setup, explains why they belong, and compares the selected setup with the
-current machine. Managed resources include services, scheduled jobs, typed
-macOS settings, and semantic Dock layouts.
+Rig describes a person's tools, user-level skills, and managed resources,
+explains why they belong, and compares selected intent with the machine.
+Managed resources include services, scheduled jobs, typed macOS settings,
+and semantic Dock layouts. Profiles select declarations for machines, roles,
+or contexts. Built-in providers materialise them; explicit external providers
+extend the built-in set.
 .PP
-The catalogue records tool meaning and user-level skill intent. Skills retain
-reviewed provenance and native authority without copying instruction content.
-Managed resources record declarative machine intent. Profiles select tools,
-skills, and resources for machines, roles, or
-contexts. Rig chooses its built-in integration from each declaration's
-provider identity; explicitly declared external providers extend that built-in
-set. State compares resolved intent with native observations.
+Rig configuration owns package intent. Homebrew, uv, mise, npm, and other
+providers retain native resolution, execution, credentials, and observed
+state. ChezMoi retains its native source, templates, and configuration
+authority. No Brewfile is required or used by Rig.
 .PP
-Catalogue queries and diagnostics parse inert configuration and do not invoke
-provider code. Status and doctor invoke observation capabilities.
-Apply, bootstrap, update, maintain, and capture cross the explicit mutation
-boundary only after complete preflight.
-Run crosses an explicit provider-action trust boundary after resolving either
-a built-in operation or a declared external-provider action. Export writes
-public data and crosses no network boundary at all.
-Package and configuration systems retain authority over their native
-manifests, resolution, configuration, and state.
+Show parses inert configuration without invoking providers. Status and doctor
+observe native state. Apply reconciles selected declarations after preflight;
+upgrade advances selected supported tools. Init creates configuration.
+Capture discovers supported installations and prepares additive declarations
+for review; it never automatically adopts observed state. Export writes public
+data without invoking a network command.
 .SH USER WORKFLOW
 \&
 .PP
-Declare a catalogue and one or more profiles. Use
-.BR "rig show" ,
-.BR "rig list" ,
-and
-.B rig explain
-to understand the declaration without invoking providers.
+Use
+.B rig init
+to create a minimal default configuration without discovering or installing
+software. Add meaningful categories and declarations.
+.B rig show
+describes the selected setup;
+.B rig show \-\-all
+browses the catalogue; and
+.BI "rig show " ITEM
+explains a declaration.
 .PP
 Use
-.B rig diag
-to inspect Rig itself,
 .B rig doctor
-for a concise health assessment, and
+for health,
+.B rig doctor \-\-verbose
+for runtime/configuration diagnostics, and
 .B rig status
-for the complete expected-versus-observed comparison.
+to compare intent with observations.
+.B \-\-unmanaged
+includes supported inventory beyond the catalogue.
+.PP
+For software installed outside Rig, discover it with
+.BR "rig capture" ,
+select an observed identity, supply its category, purpose, and rationale,
+then review the proposed TOML before manually adopting it.
+Capture does not infer why a tool belongs or remove intent absent from this
+machine.
 .PP
 Review
 .B rig apply \-\-dry-run
-before allowing native-system changes. Use
-.B rig apply
-or
-.B rig bootstrap
-only when the complete plan is expected, or select
-.BR "\-\-scope tools" " or " "\-\-scope resources"
-for one part of reconciliation. Use
-.BR "rig update" ,
-.BR "rig maintain" ,
-and
-.B rig capture
-only as explicit, dry-run-first lifecycle transitions outside reconciliation.
-Public sharing follows the separate offline
-.B rig export
-boundary; Rig hands over data and never deploys it.
+before native changes. Apply handles initial setup and later reconciliation,
+including declared prerequisites. Use
+.B rig upgrade
+to advance selected tools, and native providers for housekeeping, logs,
+restarts, and other imperative actions.
 .SH INSTALLATION
 \&
 .PP
@@ -175,50 +161,48 @@ Without either form, the installer discovers the latest GitHub release.
 .SH COMMANDS
 \&
 .TP
+.B rig init
+Create minimal schema-1 configuration and a complete default profile at
+.IR RIG_CONFIG_HOME/rig.toml ,
+using the XDG default when the override is absent. Existing root configuration,
+fragments, and symlinked configuration targets are refused.
+.B \-\-dry-run
+prints the target and content without creating directories or files.
+.TP
 .B rig show
-Describe the resolved default profile with aligned tool and concise managed
-resource tables.
+Describe the default resolved profile with tools, skills, and resources.
+.BI "\-\-profile " NAME
+selects a named profile without changing the default.
 .TP
-.BI "rig show \-\-profile " NAME
-Describe the named resolved profile with aligned tool and operational-resource
-tables without changing the configured default.
+.B rig show \-\-all
+Browse all catalogue tools in deterministic order.
+.BI "\-\-category " ID
+filters tools by category, optionally combined with
+.B \-\-profile
+to restrict them to that profile.
+The
+.B \-\-all
+and
+.B \-\-profile
+options are mutually exclusive.
 .TP
-.B rig list
-List every declared catalogue tool in deterministic order.
-.TP
-.BI "rig list \-\-category " ID
-Narrow the list to tools in the declared category.
-.TP
-.BI "rig list \-\-profile " NAME
-Narrow the list to tools selected by the resolved profile.
-The category and profile filters may be combined.
-.TP
-.BI "rig explain " TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID
-Show a tool's identity and installation metadata, a user-level skill's
-meaning, authority, source, trust, runtime projections, and profile
-membership, or a qualified operational
-resource's purpose, rationale, native ownership, desired values, policies,
-tool dependencies, and profile membership. Dock explanations include ordered
-item details. Tool explanations include declared artifacts and show each
-relationship endpoint as its identifier followed by its display name in
-parentheses. Port explanations
-include TCP number, bind scope, mode, qualified owner, purpose, rationale, and
-profile membership.
+.BI "rig show " TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID
+Explain identity, purpose, rationale, installation metadata, relationships,
+native authority, and profile membership as applicable. Dock explanations
+include ordered items; ports include TCP number, bind scope, mode, and owner.
+Item explanations accept only the format option, not profile/category/all
+selection options.
 .PP
 .BR show ,
-.BR list ,
-.BR explain ,
 .BR apply ,
-.BR bootstrap ,
-.BR update ,
-.BR maintain ,
 and
-.B capture
+.B upgrade
 accept
 .BI "\-\-format " text|json .
-Text is the default. JSON keeps complete values even when a text column is
-abbreviated. Mutation JSON groups unabridged result rows by their named
-columns; progress and provider diagnostics remain on standard error.
+JSON retains full values when text columns abbreviate them. Mutation JSON
+groups complete rows by named columns; diagnostics remain on stderr.
+Capture instead prints human discovery or reviewable TOML, without a format
+option.
 .TP
 .B rig status
 Compare every tool, user-level skill, and operational resource in the
@@ -274,6 +258,10 @@ must be explicitly allowed. Unmanaged rows are informational and do not make
 the result unhealthy. Reverse reconciliation answers the opposite question to
 the tool table: not whether declared software is installed, but whether
 installed software was ever declared.
+Homebrew inventory covers formulae installed on request and installed casks;
+dependency-only formulae are excluded. Matching uses declared provider
+identities across all profiles, rather than only the current selection.
+The macOS application scanner remains an additional read-only source.
 .TP
 .BI "rig status \-\-format " text|json
 Select the rendering. The default
@@ -372,8 +360,8 @@ resource from being invoked. Shared configuration, trust, executable,
 platform, and receipt-boundary failures stop the plan before mutation. The
 atomic resource receipt advances only after the complete resource plan
 succeeds, and stale retirement is withheld after any selected resource
-failure. The report identifies declaration, manifest, and provider-wide
-operation scope before execution. Receipt-backed work acquires one exclusive
+failure. The report identifies declaration scope before execution.
+Receipt-backed work acquires one exclusive
 platform lock before reading the receipt. A profile whose kind is
 .B view
 is non-appliable and is rejected before mutation.
@@ -383,13 +371,20 @@ fails with status 2 before dispatch. A targeted run does not retire unrelated
 stale resources, records only reconciled resources in its receipt, and labels
 requested versus dependency-included rows. A port target selects its declared
 owner; Rig never materialises the port itself.
+.PP
+Apply also stages selected declarations that explicitly provide missing native
+managers. Required Homebrew-to-mise and mise-to-Node/npm prerequisites must be
+in the selected dependency closure; Rig does not infer unselected tools.
+Configuration, trust, and shared safety checks complete before the first
+mutation, and downstream executable availability is rechecked after each
+prerequisite stage. It does not use a Brewfile or configure Homebrew autoupdate.
 .TP
 .BI "rig apply \-\-profile " NAME
 Apply a named resolved profile without changing the configured default.
 .TP
 .B rig apply \-\-dry-run
 Perform complete preflight and print planned or resource-local failed work
-without invoking a provider.
+without invoking a provider mutation.
 .TP
 .BI "rig apply \-\-target " ID
 Reconcile one selected tool ID, or a qualified
@@ -414,93 +409,78 @@ managed resources and their stale receipts, or all three. The default is
 .BR all .
 The scope changes execution, not profile resolution or declaration ownership.
 .TP
-.B rig bootstrap
-Run Rig's native bootstrap lifecycle for the configured bootstrap profile.
-Rig fully preflights configuration, external providers, resources, and
-available built-ins. When selected Homebrew and mise tools are the fixed
-prerequisites for missing mise or npm managers, Rig reports and completes
-those bounded stages before a normal apply preflight. Bootstrap is not a
-provider and requires no synthetic setup tools.
-An explicit
-.BI "\-\-profile " NAME
-takes precedence over
-.BR bootstrap-profile ;
-when that field is absent, bootstrap uses
-.BR default-profile .
+.B rig upgrade
+Advance selected tools and user-level skills through fixed Homebrew, uv, mise,
+npm, and Skills CLI native operations, deduplicated by selected installation.
+.B \-\-profile
+selects a complete profile.
+Unsupported providers are skipped; unavailable executables produce unavailable
+rows while independent work continues, returning 1.
+Runtime, plugin, KI, and local skill authorities are not advanced.
 .B \-\-dry-run
-prints the shared plan without invoking a provider.
-The
-.B \-\-scope
-option has the same values and meaning as for
-.BR "rig apply" .
-.TP
-.B rig update
-.RI [ \-\-profile " NAME" ]
-.RI [ \-\-dry-run ]
-.RI [ \-\-unattended ]
-Advance tools and user-level skills selected by the resolved default or named
-profile through fixed Homebrew, uv, mise, npm, and Skills CLI native
-operations. A Homebrew provider with a
-manifest is updated once through that manifest; other update work is
-deduplicated by selected installation. Unsupported selected providers are
-reported as skipped and are not invoked. A selected target whose provider
-executable, Skills CLI executable, or declared manifest is unavailable is
-reported as unavailable with its preflight detail, is not invoked, and does
-not prevent independent update work; the run then returns 1. Skill update
-invokes the deliberately
-installed Skills CLI directly; runtime, plugin, KI, and local authorities are
-not advanced. No lifecycle command removes a skill. Dry run performs the same
-resolution
-and preflight without provider mutation.
+performs resolution and preflight without provider mutation.
+Unknown packages and skills are never removed.
 .RS
 .PP
 .B \-\-unattended
-states that nobody is watching the run. Every provider invocation takes its
-standard input from
+states that nobody is watching. Provider stdin comes from
 .IR /dev/null ,
-.B NONINTERACTIVE=1
-is exported for the Homebrew adapter, and a task that cannot proceed without a
-person is reported unavailable with the reason before its provider is invoked,
-leaving the remaining independent work to complete and the run to return 1. The
-flag changes no selection, order, dispatch, outcome vocabulary, or exit status.
-Unless the run is a dry run it also writes the report described under
-.IR ${XDG_STATE_HOME:-$HOME/.local/state}/rig/last-update
-in
+Homebrew receives
+.BR NONINTERACTIVE=1 ,
+and tasks needing a person are unavailable before invocation. Independent work
+continues. A non-dry run writes the
+.I last-upgrade
+report described under
 .BR FILES .
 .RE
 .TP
-.B rig maintain
-.RI [ \-\-profile " NAME" ]
-.RI [ \-\-dry-run ]
-.RI [ \-\-unattended ]
-Run one bounded native maintenance work item for each supported provider
-selected by the resolved profile. Homebrew performs cleanup, optional
-manifest cleanup, and doctor; uv prunes its cache; mise rebuilds shims; npm
-verifies its cache. Unsupported selected providers are reported as skipped and
-a provider whose executable is unavailable is reported as unavailable without
-blocking the others.
-Dry run performs the same resolution and preflight without provider mutation.
-.B \-\-unattended
-has the same meaning as for
-.BR "rig update" ,
-though a scheduled run is normally
-.BR "rig update" :
-maintenance is the operation most likely to want a person.
+.B rig capture
+Discover Homebrew formulae explicitly installed on request and all installed
+casks. Dependency-only formulae are excluded; casks do not claim equivalent
+installation-reason filtering. Discovery is read-only and reports declared,
+unmanaged, or ambiguous-declaration identities.
+.B \-\-provider
+currently accepts only
+.BR homebrew ,
+also the default.
 .TP
-.BI "rig capture " PROVIDER
-.RI [ \-\-dry-run ]
-Refresh the named provider's declared native manifest through a fixed built-in
-capture operation. The current capture target is Homebrew. Rig requires a
-declared safe regular-file manifest target and a writable parent, excludes
-language-manager package domains from the generated Brewfile, and refuses
-external or unsupported providers. Dry run validates and reports the capture
-without writing the manifest.
-.TP
-.BI "rig run " PROVIDER " " ACTION " [\-\- " ARGUMENT... "]"
-Invoke one built-in provider operation or one explicitly declared external
-provider action. External actions use their declared observation or mutation
-operation. Configured arguments precede accepted caller arguments. Rig passes
-provider output through and preserves its native exit status.
+.BI "rig capture " ITEM...
+Select an unambiguous locator or qualified
+.B formula:LOCATOR
+or
+.B cask:LOCATOR
+from installed inventory. Absent or ambiguous selections fail before writing.
+Proposals require an existing
+.B \-\-category
+and explicit
+.B \-\-purpose
+and
+.BR \-\-rationale .
+Without all three, capture only describes the selected inventory.
+.B \-\-profile
+sets proposed membership, defaulting to the configured default complete
+profile. Central membership lists must first be converted to item-owned
+membership, or adoption performed manually; discovery remains available.
+.RS
+.PP
+Complete metadata produces additive TOML on stdout.
+.BI "\-\-output " PATH
+creates a new review file outside active configuration and its fragment
+directory, including symlink aliases; its parent must exist.
+Existing files and symlinks are never overwritten.
+.B \-\-dry-run
+prints the proposal without writing that file, while still performing
+read-only native discovery.
+.PP
+Review and deliberately copy the fragment into
+.I conf.d
+to adopt it. Capture never writes active configuration, changes native
+manifests, installs software, or removes declarations absent on this machine.
+It deduplicates provider identities across all profiles. Ambiguous tap aliases
+and generated tool-ID collisions require manual resolution. Human purpose,
+rationale, category, and profile intent are not inferred.
+Settings and other providers are outside this initial capture capability.
+.RE
 .TP
 .BI "rig export \-\-profile " NAME " \-\-output " DIRECTORY
 Generate a deterministic, versioned
@@ -529,12 +509,13 @@ Rig accepts none of these from configuration: they belong to the site that
 consumes the export.
 .RE
 .TP
-.B rig diag
-Print a non-mutating diagnostic snapshot containing Rig and Bash versions,
-the invoked executable, active platform, effective XDG directories, root
-configuration and fragment count, configuration validity, schema, default
-profile, selection mode, and declaration counts when available. No provider is
-invoked.
+.B rig doctor \-\-verbose
+Include runtime/configuration evidence with normal health checks: Rig and Bash
+versions, invoked executable, platform, XDG directories, root configuration,
+fragment count, validity, schema, default profile, selection mode, and
+declaration counts. JSON embeds the snapshot as
+.B diagnostics
+while retaining ordinary findings and exit status.
 .TP
 .BI "rig completion " bash|zsh
 Print completion source for the selected shell. With
@@ -551,6 +532,55 @@ for detailed command syntax. The optional
 and
 .B \-\-help
 forms produce the same output.
+.SH MIGRATION
+\&
+.PP
+The reduced surface has no compatibility aliases. Replace
+.B list
+with
+.BR "show \-\-all" ,
+.BI "explain " ITEM
+with
+.BI "show " ITEM ,
+.B diag
+with
+.BR "doctor \-\-verbose" ,
+.B bootstrap
+with
+.BR apply ,
+and
+.B update
+with
+.BR upgrade .
+The old
+.B run
+and
+.B maintain
+commands have no generic replacement: use native providers for imperative
+actions and housekeeping.
+.PP
+Remove
+.B [rig] bootstrap-profile
+and use
+.B apply \-\-profile NAME
+with explicit prerequisites. Remove Homebrew
+.BR manifest ,
+.BR autoupdate-interval ,
+and
+.B autoupdate-options
+from Rig configuration. Declare selected package installations in Rig; retain
+or retire any independently used Brewfile through its owner's workflow.
+The old manifest-snapshot capture is replaced by reviewed Rig declaration
+proposals.
+.PP
+Review existing scheduler commands and switch intended upgrade jobs to
+.BR "rig upgrade \-\-unattended" .
+Rig writes new outcomes to
+.I last-upgrade
+and does not delete an existing
+.I last-update
+report. No migration automatically changes chezmoi source, templates, or
+host-owned schedules.
 .SH SHELL COMPLETION
 \&
 .PP
@@ -655,11 +685,9 @@ line-oriented events when it is redirected; declaration-only queries remain
 quiet. The bar is not a duration estimate.
 Enumerable phases report a running item without advancing the completed count,
 then advance once on a succeeded, skipped, or failed outcome. Consequential
-work names declaration, manifest, or provider-wide scope before invocation.
+work names its declaration scope before invocation.
 Failure and interruption terminate the active phase explicitly. A phase that
-lets provider-native output reach the terminal, such as applying,
-bootstrapping, updating, maintaining, capturing, or
-.BR "rig run" ,
+lets provider-native output reach the terminal, such as applying or upgrading,
 reports only its start and its summary, because a redrawn bar and a provider
 writing to the same line overwrite each other;
 .B lines
@@ -733,8 +761,7 @@ with
 .B schema
 and
 .B default-profile
-fields, plus optional
-.BR bootstrap-profile ;
+fields;
 .B [category.ID]
 with
 .B name
@@ -986,23 +1013,19 @@ configuration. The built-in identities are
 .BR macos-defaults ,
 and
 .BR macos-dock .
-Where documented, a built-in provider table may override only its native
-.BR executable ,
+Where documented, a built-in provider table may override its native
+.B executable
+and literal
+.BR arguments ;
+it cannot declare an adapter or capabilities.
+Homebrew
 .BR manifest ,
-literal
-.BR arguments ,
-or bounded native policy; it cannot declare an adapter or capabilities.
-Homebrew accepts a positive integer
-.B autoupdate-interval
+.BR autoupdate-interval ,
 and
 .B autoupdate-options
-containing only
-.BR upgrade ,
-.BR cleanup ,
-.BR immediate ,
-and
-.BR sudo .
-Bootstrap applies that policy only when its selected tool plan uses Homebrew.
+are retired and rejected with migration advice. Declare package installations
+in Rig and schedule selected upgrades explicitly. ChezMoi retains its native
+source and templates.
 .PP
 An identity not built into Rig is an external provider. Its
 .B [provider.ID]
@@ -1105,10 +1128,10 @@ selected qualified resource before any caller arguments. The mode is exactly
 .B observe
 or
 .BR mutate .
-Only the executable
-external-provider boundary dispatches declared actions. Built-in operations do
-not need action declarations. Argument policy defaults to Rig's exact
-allowlist; value
+These action declarations retain schema validation for existing extension
+configuration, but there is no public Rig action-dispatch command.
+Use the native executable for imperative operations.
+Argument policy defaults to Rig's exact allowlist; value
 .B provider
 delegates validation to that external provider.
 .PP
@@ -1170,11 +1193,9 @@ table omits
 .I ${XDG_STATE_HOME:-$HOME/.local/state}/rig
 Default state directory.
 .TP
-.I ${XDG_STATE_HOME:-$HOME/.local/state}/rig/last-update
+.I ${XDG_STATE_HOME:-$HOME/.local/state}/rig/last-upgrade
 Report of the most recent unattended
-.B rig update
-or
-.B rig maintain
+.B rig upgrade
 that dispatched work, replaced atomically and never written by a dry run. The
 UTF-8 tab-separated text opens with
 .B rig-last-run
@@ -1320,62 +1341,53 @@ replacement, and removes failed temporary files.
 .SS PROVIDER LIFECYCLE
 \&
 .PP
-Provider lifecycle capabilities are fixed in Rig's built-in registry.
-Configuration selects tools and may supply documented native details such as
-a Homebrew manifest path, but cannot define lifecycle commands or grant
-update, maintenance, or capture capabilities. External providers are not
-invoked by these lifecycle commands.
+Built-in lifecycle capabilities are fixed by Rig. Package selection comes
+from Rig declarations; no provider-native package manifest is read or
+overwritten. External providers are not invoked by the upgrade command.
+The internal capability remains named
+.B update
+even though the public verb is
+.BR upgrade .
 .PP
-.B rig update
-uses
-.BR "brew bundle install --upgrade" ,
+Selected upgrades use
 .BR "brew upgrade" ,
 .BR "mas upgrade" ,
 .BR "uv tool upgrade" ,
 .BR "mise upgrade" ,
 or
-.BR "npm install --global"
-according to the selected declaration and manifest configuration.
-.B rig maintain
-uses fixed
-.BR "brew cleanup" ,
-.BR "brew bundle cleanup" ,
-.BR "brew doctor" ,
-.BR "uv cache prune" ,
-.BR "mise reshim" ,
-and
-.BR "npm cache verify"
-operations once per selected provider.
-.B rig capture
-uses
-.B brew bundle dump
-only for a declared Homebrew manifest.
+.BR "npm install --global" .
+Unsupported selected providers are report-only skips. Housekeeping belongs
+to the native tools; apply and upgrade do not perform Bundle cleanup or delete
+unknown software.
 .PP
-Each command preflights every supported target before the first mutation,
-keeps native diagnostics on stderr, and emits a deterministic report on
-stdout. Unsupported selected providers are report-only skips. The
-.B \-\-dry-run
-form invokes no provider and writes no manifest.
+Homebrew capture inventory uses
+.B brew list \-\-formula \-\-installed-on-request \-\-full-name
+and
+.BR "brew list \-\-cask \-\-full-name" .
+It prepares reviewed Rig declarations rather than a Brewfile snapshot.
+.PP
+Apply and upgrade preflight their supported work before mutation and keep
+native diagnostics on stderr. Capture is read-only except for explicitly
+creating a new review file outside active configuration.
 .SS DECLARATION LIFECYCLE
 \&
 .TS
 allbox tab(|);
 l l l.
 Declaration|Selected lifecycle|Deselection
-Tool|Observe, apply, update, maintain|No automatic removal
-Skill|Observe, apply, update where supported|No automatic removal
+Tool|Observe, apply, upgrade|No automatic removal
+Skill|Observe, apply, upgrade where supported|No automatic removal
 Service or scheduled job|Observe, apply, receipt-backed retire|No retirement; deleting the declaration retires it
 Setting or Dock layout|Observe and apply|No automatic reversal
 Private port|Observe only|No mutation
 .TE
 .PP
 Complete profiles may enter the mutating lifecycle. Views remain available for
-queries and export but are rejected before mutation. Provider work is
-classified before execution as declaration-scoped, manifest-scoped, or
-provider-wide. Declaration-scoped work affects one selected declaration;
-manifest-scoped work changes one declared native manifest; provider-wide work
-invokes a bounded native operation whose effect may extend beyond one declared
-item. Dry-run reports the same classification without invoking the provider.
+queries and export but are rejected before mutation. Apply and upgrade report
+selected declaration scope. Native execution may affect dependencies according
+to provider semantics; Rig never widens selection to a whole Brewfile or uses
+provider cleanup as part of reconciliation. Dry-run reports planned work
+without provider mutation.
 .SS BUILT-IN MACOS RESOURCES
 \&
 .PP
@@ -1389,24 +1401,9 @@ loads or unloads the resolved user domain as declared, and removes stale
 managed property lists during retirement. Other platforms report these
 resources unavailable without mutation.
 .PP
-Launchd exposes fixed operations through
-.BR "rig run launchd" :
-.B status
-for a selected service or scheduled job,
-.B logs
-for either resource with optional
-.BR \-\-follow ,
-.B restart
-for either resource, and
-.B run
-for a selected scheduled job. Pass the qualified resource after the command's
-.B \-\-
-separator, for example:
-.PP
-.nf
-rig run launchd logs -- service:example-daemon
-rig run launchd run -- scheduled-job:good-morning
-.fi
+Use native launchctl and log tools for imperative status, restart, run, and log
+operations. Rig's public surface owns declarative reconciliation rather than a
+generic provider action dispatcher.
 .PP
 The built-in
 .B macos-defaults
@@ -1462,34 +1459,9 @@ EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 retire-resource PROVIDER ID K
 Each scalar is one ordered
 .I key=value
 argument and each array value repeats its key in declaration order. Providers
-receive complete resolved fields and do not parse Rig TOML. Resource-aware
-actions append
-.B "resource-v1 KIND ID LOCATOR [FIELD=VALUE ...] --"
-before remaining caller arguments.
-.PP
-For a declared external-provider action, Rig fixes
-.I KIND
-to
-.B action
-and
-.I LOCATOR
-to the declared action identity:
-.PP
-.nf
-EXECUTABLE [PROVIDER_ARGUMENT ...] rig-provider-v1 VERB PROVIDER PROVIDER action ACTION
-    [ACTION_ARGUMENT ...] [CALLER_ARGUMENT ...]
-.fi
-.PP
-The action declaration authorises that exact provider/action pair. Each caller
-argument must
-exactly match one
-.B allowed-arguments
-array item before invocation unless
-.B argument-policy
-is
-.BR provider .
-In that case the provider validates its native domain. Provider stdout and
-stderr pass through and the native exit status is preserved.
+receive complete resolved fields and do not parse Rig TOML.
+Existing action declarations remain validated, but no public command dispatches
+them; use native tools directly for imperative work.
 .PP
 Reverse reconciliation uses a separate fixed protocol that names no tool,
 because it enumerates a provider's whole domain rather than observing one
@@ -1560,46 +1532,30 @@ to inspect the checked-out artifacts without changing installed paths.
 .SH EXIT STATUS
 \&
 .PP
-Rig owns the statuses 0, 1, and 2 below. They are a public interface: a caller
-may branch on them. A future release may add a status, but never repurposes
-one. Commands that dispatch to a provider return that provider's native status
-instead, and an interrupted command returns a signal status.
-.B rig run
-returns the selected action provider's native status, including values
-outside the Rig-owned statuses below.
-.B rig capture
-returns the selected built-in provider's native status after successful
-preflight.
+Rig owns the following statuses. Interrupted commands return signal statuses.
 .TP
 .B 0
-Healthy status or doctor result, or successful apply, bootstrap, update,
-maintain, or capture, including neutral catalogue-only rows and unsupported
+Healthy status or doctor result, successful init, capture, apply, upgrade,
+query, or export, including neutral catalogue-only rows and unsupported
 lifecycle skips.
 .TP
 .B 1
-Valid unhealthy observation or doctor finding, including a configuration
-that doctor cannot load; resource-local preflight
-finding, unavailable lifecycle target, provider runtime failure, dependency
-suppression, or diagnostic finding. For
-.B rig diag
-this means configuration is missing or invalid.
+Unhealthy observation or doctor finding; unavailable target, provider runtime
+failure, dependency suppression, or failed native capture inventory.
+Doctor also returns 1 when it cannot load configuration.
 .TP
 .B 2
-Invalid command syntax, unknown query identity, invalid configuration,
-resolution failure, or shared apply, bootstrap, or capture preflight safety
-failure.
+Invalid syntax, unknown identity, invalid configuration, resolution failure,
+unsafe output path, missing capture intent metadata for an output request,
+or shared preflight safety failure.
 .TP
 .B 129, 130, 143
-A command interrupted by HUP, INT, or TERM.
-.TP
-.B other
-The native status of the provider a pass-through command dispatched to.
+Interrupted by HUP, INT, or TERM.
 .PP
 Unless
 .B RIG_OUTCOME
-suppresses it, a command states its own outcome and the status that says so on
-the last line it writes to stderr, so the status need not be read out of the
-shell.
+suppresses it, the command reports its outcome and exit status on its final
+stderr line.
 .SH SEE ALSO
 \&
 .BR bash (1),

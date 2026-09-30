@@ -98,7 +98,7 @@ rig_listener_scope() {
   address=${endpoint%:*}
   case "$address" in
     127.*|localhost|'[::1]'|::1) RIG_VALUE=loopback ;;
-    *) RIG_VALUE=all-interfaces ;;
+    *) RIG_VALUE='all-interfaces' ;;
   esac
   RIG_LISTENER_NUMBER=$port
 }
@@ -270,7 +270,7 @@ rig_observe_ports() {
     while [ "$listener_index" -lt "${#RIG_LISTENER_PORTS[@]}" ]; do
       if [ "${RIG_LISTENER_PORTS[$listener_index]}" = "$number" ]; then
         found=$((found + 1))
-        [ "${RIG_LISTENER_SCOPES[$listener_index]}" != all-interfaces ] || actual_scope=all-interfaces
+        [ "${RIG_LISTENER_SCOPES[$listener_index]}" != all-interfaces ] || actual_scope='all-interfaces'
         observed_command=${RIG_LISTENER_COMMANDS[$listener_index]}
         observed_argv=${RIG_LISTENER_ARGVS[$listener_index]}
         if rig_owner_matches_listener "$observed_argv" "$observed_command" "$expected_identity" "$expected_command"; then
@@ -507,7 +507,7 @@ rig_skills_cli_load_inventory() {
   [ "$RIG_SKILLS_INVENTORY_LOADED" -eq 0 ] || return 0
   RIG_SKILLS_INVENTORY_LOADED=1
   RIG_SKILLS_INVENTORY_STATUS=unavailable
-  RIG_SKILLS_INVENTORY_DETAIL=inventory-unavailable
+  RIG_SKILLS_INVENTORY_DETAIL='inventory-unavailable'
   rig_provider_executable skills-cli skills-cli skill || return 0
   executable=$RIG_VALUE
   rig_executable_available "$executable" || { RIG_SKILLS_INVENTORY_DETAIL='executable-unavailable'; return 0; }
@@ -601,7 +601,7 @@ rig_observe_skill() {
   case "$authority" in
     ki)
       RIG_OBSERVATION=unavailable
-      RIG_OBSERVATION_DETAIL=inventory-unavailable
+      RIG_OBSERVATION_DETAIL='inventory-unavailable'
       return 0
       ;;
     skills-cli)
@@ -1358,24 +1358,31 @@ rig_doctor_native_availability() {
 rig_command_doctor() {
   local profile findings incompatible xdg_findings tool_findings resource_findings port_findings skill_findings
   local index section_name state detail port owner action skill authority format information config_finding config_loaded
+  local verbose profile_seen format_seen
 
   profile=
   format=text
+  verbose=0
+  profile_seen=0
+  format_seen=0
   while [ "$#" -gt 0 ]; do
     case "$1" in
       -h|--help)
+        [ "$#" -eq 1 ] || rig_command_syntax_error doctor || return
         rig_command_help doctor
         return
         ;;
       --profile)
-        if [ "$#" -lt 2 ] || [ -z "$2" ]; then
+        if [ "$profile_seen" -eq 1 ] || [ "$#" -lt 2 ] || [ -z "$2" ]; then
           rig_command_syntax_error doctor
           return
         fi
         profile=$2
+        profile_seen=1
         shift 2
         ;;
       --format)
+        [ "$format_seen" -eq 0 ] || rig_command_syntax_error doctor || return
         case "${2:-}" in
           text|json) format=$2 ;;
           *)
@@ -1383,7 +1390,13 @@ rig_command_doctor() {
             return
             ;;
         esac
+        format_seen=1
         shift 2
+        ;;
+      --verbose)
+        [ "$verbose" -eq 0 ] || rig_command_syntax_error doctor || return
+        verbose=1
+        shift
         ;;
       *)
         rig_command_syntax_error doctor
@@ -1406,7 +1419,7 @@ rig_command_doctor() {
   else
     config_finding="  ${RIG_CAPTURED_ERROR:-configuration could not be loaded}; owner=configuration; action=correct-configuration"
     RIG_RESOLVED_PROFILE=${profile:--}
-    rig_current_platform || return
+    rig_diagnostic_platform
     RIG_RESOLVED_PLATFORM=$RIG_VALUE
   fi
   rig_effective_paths || return 2
@@ -1534,6 +1547,10 @@ rig_command_doctor() {
     rig_json_lines "$skill_findings"
     printf '},"information":'
     rig_json_lines "$information"
+    if [ "$verbose" -eq 1 ]; then
+      printf ',"diagnostics":'
+      rig_doctor_diagnostics "$config_loaded" json || return
+    fi
     printf '}\n'
     [ "$findings" -eq 0 ]
     return
@@ -1564,6 +1581,9 @@ rig_command_doctor() {
   fi
   printf 'Summary: findings=%s present=%s catalogue-only=%s incompatible-platform=%s\n' \
     "$findings" "$RIG_DOCTOR_PRESENT" "$RIG_DOCTOR_CATALOGUE_ONLY" "$incompatible"
+  if [ "$verbose" -eq 1 ]; then
+    rig_doctor_diagnostics "$config_loaded" text || return
+  fi
   if [ "$findings" -eq 0 ]; then
     rig_outcome_note healthy "findings=0 present=$RIG_DOCTOR_PRESENT"
   else

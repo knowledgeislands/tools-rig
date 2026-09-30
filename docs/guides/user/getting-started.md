@@ -2,6 +2,8 @@
 
 This guide takes you from no Rig installation to a readable catalogue, a machine assessment, and a safe preview. It deliberately stops before applying changes.
 
+The simplified commands below belong to the current development checkout and have not been published by this change. The immutable installer in the next section installs the older release contract. To follow the new `init`, `show`, `capture` and `upgrade` workflow now, use the linked checkout installation described below; do not expect those commands from the older release.
+
 ## Install the public preview
 
 Install the latest immutable release, currently `v0.3.0`:
@@ -31,7 +33,7 @@ For a local checkout, use `./install.sh --link`. It links the executable and man
 
 ## Create a small catalogue
 
-Create `${XDG_CONFIG_HOME:-$HOME/.config}/rig/rig.toml` with one category, one tool, and one complete profile:
+Run `rig init --dry-run`, then `rig init` to create a minimal `${XDG_CONFIG_HOME:-$HOME/.config}/rig/rig.toml`. Init refuses existing configuration and does not install software. Extend the file with a category and tool so the complete configuration resembles this:
 
 ```toml
 [rig]
@@ -68,10 +70,10 @@ The Homebrew installation metadata identifies the native owner. Homebrew remains
 Start with Rig's local diagnostics:
 
 ```sh
-rig diag
+rig doctor --verbose
 ```
 
-Diagnostics show the running version, executable, platform, XDG paths, configuration sources, selected profile mode, and model counts. They do not invoke providers.
+Verbose doctor shows the running version, executable, platform, XDG paths, configuration sources, selection mode and model counts, alongside read-only health observations. Findings may return status 1; no machine changes are made.
 
 If Rig cannot find your file, compare the reported configuration home with the path you created. If parsing fails, Rig reports the source and problem without evaluating the file as shell code.
 
@@ -81,11 +83,11 @@ Use the declaration queries:
 
 ```sh
 rig show
-rig list --category navigation
-rig explain mgit
+rig show --all --category navigation
+rig show mgit
 ```
 
-`show` is the best overview: it resolves the selected profile and groups its contents into readable tables. `list` browses tool identities. `explain` answers why one declaration belongs and how it is materialised. These commands parse configuration but do not observe or change the machine.
+Bare `show` gives the selected setup. `show --all` browses catalogue tools; `show mgit` explains one declaration. These forms parse configuration but do not observe or change the machine.
 
 ## Check the machine
 
@@ -110,7 +112,7 @@ rig apply --dry-run
 
 Dry run resolves the complete profile, validates trust and platform boundaries, preflights the plan, and reports mutation scope. It invokes no provider mutation and writes no reconciliation receipt.
 
-When the plan matches your intent, `rig apply` is the corresponding mutating command. Before taking that step, read [Choose a Rig command](commands.md) so the distinction between reconciliation, bootstrap, update, maintenance, and capture is clear.
+When the plan matches your intent, `rig apply` makes the machine follow it, including supported declared prerequisites. Read [Choose a Rig command](commands.md) for the distinction between apply, upgrade and reviewed capture.
 
 ## Enable shell completion
 

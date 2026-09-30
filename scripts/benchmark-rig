@@ -53,6 +53,7 @@ benchmark_command() {
   command_name=$1
   command_budget=$2
   config_home=$3
+  shift 3
   SECONDS=0
   started=$SECONDS
   env HOME="$benchmark_root/home" \
@@ -60,7 +61,7 @@ benchmark_command() {
     RIG_STATE_HOME="$benchmark_root/state" \
     RIG_PLATFORM=macos \
     RIG_PROGRESS=never \
-    "$rig_executable" "$command_name" >/dev/null || return
+    "$rig_executable" "$@" >/dev/null || return
   elapsed=$((SECONDS - started))
   printf '%s: %ss (budget %ss)\n' "$command_name" "$elapsed" "$command_budget"
   [ "$elapsed" -le "$command_budget" ] || {
@@ -69,7 +70,7 @@ benchmark_command() {
   }
 }
 
-benchmark_command diag "$budget" "$benchmark_root/query-config" || exit
-benchmark_command show "$budget" "$benchmark_root/query-config" || exit
-benchmark_command list "$budget" "$benchmark_root/query-config" || exit
-benchmark_command status "$observation_budget" "$benchmark_root/observation-config" || exit
+benchmark_command show-item "$budget" "$benchmark_root/query-config" show tool-001 || exit
+benchmark_command show "$budget" "$benchmark_root/query-config" show || exit
+benchmark_command show-all "$budget" "$benchmark_root/query-config" show --all || exit
+benchmark_command status "$observation_budget" "$benchmark_root/observation-config" status || exit

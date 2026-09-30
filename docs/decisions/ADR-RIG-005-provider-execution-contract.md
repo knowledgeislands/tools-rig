@@ -1,7 +1,7 @@
 ---
 id: ADR-RIG-005
 title: 'Provider Execution Contract'
-date: 2026-09-22
+date: 2026-09-30
 status: current
 decision_type: architecture
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/adr
@@ -20,7 +20,7 @@ Provider work must preserve native argument boundaries, distinguish observation 
 
 Rig owns orchestration; providers own their native domains. Rig resolves a complete profile, validates the full plan, detects conflicting native targets, orders dependencies, selects supported operations, reports progress and outcomes, and isolates failures from independent work. Tools run before user-level skills, and managed resources run after the tools or resources on which they depend.
 
-Rig contains a fixed registry for built-in providers and supported lifecycle operations. Ordinary configuration names a stable provider identity and any bounded native policy, but cannot grant capabilities or supply arbitrary lifecycle commands. Bootstrap, apply, update, maintenance, manifest capture, and cache cleanup are native Rig lifecycles rather than generic task-runner entries.
+Rig contains a fixed registry for built-in providers and supported lifecycle operations. Ordinary configuration names a stable provider identity and any bounded native policy, but cannot grant capabilities or supply arbitrary lifecycle commands. Apply includes supported declared manager prerequisites; upgrade dispatches selected declarations without Homebrew Bundle. Rig does not expose a generic action runner or provider-wide housekeeping. Capture is read-only discovery followed by reviewed additive configuration proposals, not a provider-native manifest snapshot.
 
 An external provider is an explicitly trusted executable with an operation allow-list. Rig invokes it through a versioned, argument-safe protocol; built-in providers do not use that protocol. Providers return bounded observations to Rig's public state vocabulary, while their native output and state remain provider-owned.
 
@@ -32,7 +32,7 @@ The exact operation matrix, extension ABI, lifecycle ordering, progress contract
 
 People declare intent and ownership rather than adapter mechanics. Built-in integrations can provide typed validation and useful diagnostics while remaining compatible with Bash 3.2. Extension authors receive a small language-neutral boundary, but must opt into each operation and handle their own native semantics.
 
-Provider-wide work remains visible before execution. Profile deselection does not imply package or generated-artifact removal unless a resource type has an explicit, receipt-backed retirement contract.
+Native dependency effects remain provider-owned, while Rig identifies the declaration being applied or upgraded. Profile deselection does not imply package or generated-artifact removal unless a resource type has an explicit, receipt-backed retirement contract.
 
 ## References
 

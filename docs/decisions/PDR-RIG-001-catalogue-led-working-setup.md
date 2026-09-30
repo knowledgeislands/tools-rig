@@ -1,7 +1,7 @@
 ---
 id: PDR-RIG-001
 title: 'Catalogue-led Working Setup'
-date: 2026-09-22
+date: 2026-09-30
 status: current
 decision_type: product
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/pdr
@@ -22,7 +22,7 @@ Rig is the declarative description and manager of a person's working setup. Its 
 
 Declarations state the profiles to which they belong. Omitted membership means the configured default profile; explicit empty membership means no profile. A complete profile represents appliable intent, while a view represents a deliberately bounded, non-appliable perspective such as a public rig.
 
-Rig's manager-of-managers model sits beneath the catalogue. Rig resolves profiles, orders dependencies, selects native providers, checks trust and capability boundaries, compares expected with observed state, and reports outcomes. It provides an explicit lifecycle for convergence, bootstrap, updates, maintenance, capture, publication, and Rig-owned cache cleanup. Native systems retain authority over their manifests, credentials, resolution, configuration, caches, and state.
+Rig's manager-of-managers model sits beneath the catalogue. Rig resolves profiles, orders dependencies, selects native providers, checks trust and capability boundaries, compares expected with observed state, and reports outcomes. Rig configuration is the authority for desired package selection; Homebrew, uv and other managers execute that intent without a competing Brewfile. Init creates configuration, show explains intent, status compares reality, capture prepares additive reviewed declarations, apply reconciles including prerequisites, upgrade advances selected software, and doctor diagnoses health. Native tools retain imperative operations, housekeeping, credentials, resolution and installation state. ChezMoi retains its native source, templates and application semantics.
 
 Rig may derive an explicitly selected public view as static data for a personal site. The private catalogue remains authoritative; publication never becomes a source of local configuration or observed machine state.
 
@@ -30,7 +30,7 @@ Rig may derive an explicitly selected public view as static data for a personal 
 
 Ordinary configuration describes personal intent and native ownership rather than Rig's dispatch machinery. Catalogue queries remain useful even where no materialisation is requested.
 
-Portable schema, lifecycle, built-in adapters, state comparison, queries, and publication behaviour belong in Rig. Personal choices, host-specific values, provider-native manifests, and credentials remain in private configuration and their native systems. External extensions remain possible through an explicit executable trust boundary.
+Portable schema, lifecycle, built-in adapters, state comparison, queries, and publication behaviour belong in Rig. Personal choices and host-specific values remain in private Rig configuration; provider execution state, credentials and chezmoi source remain native. Capture never invents purpose or rationale, overwrites active configuration, or removes declarations absent from a particular machine. External extensions remain possible through an explicit executable trust boundary.
 
 ## References
 

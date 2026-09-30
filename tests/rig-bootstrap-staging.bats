@@ -3,20 +3,18 @@
 setup() {
   source "$BATS_TEST_DIRNAME/helpers/isolate.bash"
   rig_test_isolate
-  RIG=$BATS_TEST_DIRNAME/../bin/rig
+  RIG=${RIG_TEST_EXECUTABLE:-$BATS_TEST_DIRNAME/../bin/rig}
   CONFIG_HOME=$BATS_TEST_TMPDIR/config
   TEST_HOME=$BATS_TEST_TMPDIR/home
   FAKE_BIN=$BATS_TEST_TMPDIR/bin
   CALL_LOG=$BATS_TEST_TMPDIR/calls
-  MANIFEST=$BATS_TEST_TMPDIR/Brewfile
   mkdir -p "$CONFIG_HOME" "$TEST_HOME" "$FAKE_BIN"
-  : >"$MANIFEST"
 
   cat >"$FAKE_BIN/brew" <<'SCRIPT'
 #!/usr/bin/env bash
 printf 'brew\t%s\n' "$*" >>"$RIG_TEST_LOG"
 case "$1" in
-  bundle)
+  install)
     cp "$FAKE_BIN/mise.ready" "$FAKE_BIN/mise"
     chmod +x "$FAKE_BIN/mise"
     ;;
@@ -47,11 +45,10 @@ SCRIPT
 [rig]
 schema = 1
 default-profile = "default"
-bootstrap-profile = "default"
 
 [category.core]
 name = "Core"
-purpose = "Exercise staged manager bootstrap"
+purpose = "Exercise declared prerequisite ordering"
 
 [tool.mise]
 name = "mise"
@@ -93,7 +90,6 @@ tools = ["mise", "node", "typescript"]
 
 [provider.homebrew]
 executable = "$FAKE_BIN/brew"
-manifest = "$MANIFEST"
 
 [provider.mise]
 executable = "$FAKE_BIN/mise"
@@ -113,24 +109,117 @@ run_rig() {
     "$RIG" "$@"
 }
 
-@test "bootstrap dry-run plans missing built-in manager prerequisites without mutation" {
-  run_rig bootstrap --dry-run
+@test "apply dry-run plans declared manager prerequisites without mutation" {
+  run_rig apply --dry-run
 
-  [ "$status" -eq 0 ]
-  rig_test_report_contains "$output" $'provider:mise\thomebrew\tplanned\tbootstrap-prerequisite' || false
-  rig_test_report_contains "$output" $'provider:npm\tmise\tplanned\tbootstrap-prerequisite' || false
+  [ "$status" -eq 0 ] || { printf '%s\n' "$output" >&3; false; }
+  rig_test_report_contains "$output" $'mise\thomebrew\tplanned\t-' || false
+  rig_test_report_contains "$output" $'node\tmise\tplanned\t-' || false
+  rig_test_report_contains "$output" $'typescript\tnpm\tplanned\t-' || false
   [ ! -e "$CALL_LOG" ]
   [ ! -e "$FAKE_BIN/mise" ]
   [ ! -e "$FAKE_BIN/npm" ]
 }
 
-@test "bootstrap stages Homebrew then mise then npm global tools" {
-  run_rig bootstrap
+@test "apply installs declared managers once before their consumers without Bundle" {
+  run_rig apply
+
+  [ "$status" -eq 0 ] || { printf '%s\n' "$output" >&3; false; }
+  [ "$(sed -n '1p' "$CALL_LOG")" = $'brew\tinstall --formula mise' ]
+  [ "$(sed -n '2p' "$CALL_LOG")" = $'mise\tinstall node' ]
+  [ "$(sed -n '3p' "$CALL_LOG")" = $'npm\tinstall --global typescript' ]
+  [ "$(wc -l <"$CALL_LOG" | tr -d ' ')" -eq 3 ]
+  ! grep -Fq bundle "$CALL_LOG" || false
+}
+
+@test "apply refuses a missing manager without an explicit selected prerequisite" {
+  sed '/requires = \["mise"\]/d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/without-dependency"
+  mv "$CONFIG_HOME/without-dependency" "$CONFIG_HOME/rig.toml"
+
+  run_rig apply --dry-run
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"provider 'mise' executable is unavailable"* ]] || false
+  [ ! -e "$CALL_LOG" ]
+}
+
+@test "targeted apply includes only absent declared prerequisites" {
+  run_rig apply --target typescript
+
+  [ "$status" -eq 0 ] || { printf '%s\n' "$output" >&3; false; }
+  grep -Fqx $'brew\tinstall --formula mise' "$CALL_LOG"
+  grep -Fqx $'mise\tinstall node' "$CALL_LOG"
+  grep -Fqx $'npm\tinstall --global typescript' "$CALL_LOG"
+  rig_test_report_contains "$output" $'mise\thomebrew\tcompleted\t-\tdependency' || false
+  rig_test_report_contains "$output" $'typescript\tnpm\tcompleted\t-\ttarget' || false
+}
+
+@test "failed declared manager blocks consumers before they execute" {
+  cat >"$FAKE_BIN/brew" <<'SCRIPT'
+#!/usr/bin/env bash
+printf 'brew\t%s\n' "$*" >>"$RIG_TEST_LOG"
+exit 3
+SCRIPT
+  chmod +x "$FAKE_BIN/brew"
+
+  run_rig apply
+
+  [ "$status" -eq 1 ]
+  rig_test_report_contains "$output" $'mise\thomebrew\tfailed\texit:3' || false
+  rig_test_report_contains "$output" $'node\tmise\tskipped\tblocked-by:mise' || false
+  rig_test_report_contains "$output" $'typescript\tnpm\tskipped\tblocked-by:node' || false
+  [ "$(wc -l <"$CALL_LOG" | tr -d ' ')" -eq 1 ]
+  [ ! -e "$FAKE_BIN/mise" ]
+  [ ! -e "$FAKE_BIN/npm" ]
+}
+
+@test "successful prerequisite must make its manager executable available" {
+  cat >"$FAKE_BIN/brew" <<'SCRIPT'
+#!/usr/bin/env bash
+printf 'brew\t%s\n' "$*" >>"$RIG_TEST_LOG"
+exit 0
+SCRIPT
+  chmod +x "$FAKE_BIN/brew"
+
+  run_rig apply
+
+  [ "$status" -eq 1 ]
+  rig_test_report_contains "$output" $'mise\thomebrew\tcompleted\t-' || false
+  rig_test_report_contains "$output" $'node\tmise\tfailed\texit:1' || false
+  [ "$(wc -l <"$CALL_LOG" | tr -d ' ')" -eq 1 ]
+  [ ! -e "$FAKE_BIN/npm" ]
+}
+
+@test "apply preflights unrelated missing executables before manager mutation" {
+  sed 's/install.provider = "npm"/install.provider = "uv"/; s/install.kind = "global"/install.kind = "tool"/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/unavailable-provider"
+  mv "$CONFIG_HOME/unavailable-provider" "$CONFIG_HOME/rig.toml"
+
+  run_rig apply
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"provider 'uv' executable is unavailable"* ]] || false
+  [ ! -e "$CALL_LOG" ]
+}
+
+@test "failed apply does not defer missing managers in a later sourceable preflight" {
+  sed 's/install.provider = "npm"/install.provider = "uv"/; s/install.kind = "global"/install.kind = "tool"/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/unavailable-provider"
+  mv "$CONFIG_HOME/unavailable-provider" "$CONFIG_HOME/rig.toml"
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=fixture \
+    RIG_TEST_LOG="$CALL_LOG" FAKE_BIN="$FAKE_BIN" bash -c '
+      source "$1"
+      rig_command_apply_impl --dry-run >/dev/null 2>&1
+      printf "apply-status=%s\n" "$?"
+      printf "deferred-providers=%s deferred-skills=%s\n" "$RIG_APPLY_ALLOW_DEFERRED_PROVIDERS" "$RIG_APPLY_ALLOW_DEFERRED_SKILLS"
+      rig_plan_index node || exit
+      index=$RIG_INDEX
+      rig_preflight_provider node "${RIG_PLAN_BINDINGS[$index]}" "${RIG_PLAN_PROVIDERS[$index]}" >/dev/null 2>&1
+      printf "later-preflight-status=%s\n" "$?"
+    ' _ "$RIG"
 
   [ "$status" -eq 0 ]
-  [ "$(sed -n '1p' "$CALL_LOG")" = $'brew\tbundle --file='"$MANIFEST" ]
-  [ "$(sed -n '2p' "$CALL_LOG")" = $'mise\tinstall node' ]
-  grep -Fqx $'npm\tinstall --global typescript' "$CALL_LOG"
-  rig_test_report_contains "$output" $'provider:mise\thomebrew\tcompleted\tavailable' || false
-  rig_test_report_contains "$output" $'provider:npm\tmise\tcompleted\tavailable' || false
+  [[ "$output" == *'apply-status=2'* ]] || false
+  [[ "$output" == *'deferred-providers=0 deferred-skills=0'* ]] || false
+  [[ "$output" == *'later-preflight-status=2'* ]] || false
+  [ ! -e "$CALL_LOG" ]
 }
