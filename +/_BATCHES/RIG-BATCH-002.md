@@ -20,3 +20,4 @@ policy: safe-local-v1
 | Item | Result | Baseline | Result commit | Exception |
 | --- | --- | --- | --- | --- |
 | RIG-CLI-019 | awaiting-review | `d3ecdbe678e4f3f37486d6afbc0e45aa4f4dd9b1` | `f1d0744b7b2885bcad46b4f2cf95a5e786cb1e3b` | None |
+| RIG-CLI-016 | awaiting-review | `40a85cd9f285a01ed42375f2b0a6a39e81f65f13` | `7b2509573bf17c6a95d3ad4021bcee051b0cc32b` | None |

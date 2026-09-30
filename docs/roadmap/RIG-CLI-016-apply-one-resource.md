@@ -4,12 +4,12 @@ area: CLI
 title: Apply one resource
 theme: cli
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 40a85cd9f285a01ed42375f2b0a6a39e81f65f13
 created_at: 2026-09-26T10:00:00Z
-updated_at: 2026-09-30T10:20:23Z
+updated_at: 2026-09-30T12:18:56Z
 ---
 
 ## Goal
@@ -40,14 +40,14 @@ Two facts constrain where the filter can sit. The reconciliation lock is acquire
 
 ## Steps
 
-- [ ] Add a repeatable `--target ID` option to `rig apply`, accepting the identifiers `rig status` already prints for tools, and the `kind:id` forms for skills, resources, and ports, so the selector's vocabulary is the one the reader already has.
-- [ ] Reject an unknown target with status 2 before any dispatch, naming the identifier and the profile, so a typo cannot silently apply nothing and report success.
-- [ ] Apply the target filter after full profile resolution, in the same place `--scope` narrows, and make `--target` and `--scope` compose by intersection rather than conflict.
-- [ ] Walk the declared dependencies of each selected target and include any prerequisite that is not already `present`, so dispatch never runs a target whose prerequisite is absent.
-- [ ] Report every entry included by dependency rather than by request as its own row, so the report says plainly that Rig applied more than was asked for and why.
-- [ ] Skip the reconciliation lock and the resource receipt load when the resolved selection contains no resource, so a tool-only `--target` run does not serialise against an unrelated resource apply.
-- [ ] Regenerate completions for the new option and update `man/rig.1`, `docs/guides/user/commands.md`, `docs/guides/user/operational-resources.md`, and the README apply summary.
-- [ ] Add Bats coverage for a single `--target` dispatching one entry, repeated `--target` dispatching exactly those entries, an unknown target rejected at status 2 with no provider call logged, a target whose prerequisite is missing pulling that prerequisite in and reporting it, `--target` composing with `--scope`, and a tool-only selection taking no reconciliation lock.
+- [x] Add a repeatable `--target ID` option to `rig apply`, accepting the identifiers `rig status` already prints for tools, and the `kind:id` forms for skills, resources, and ports, so the selector's vocabulary is the one the reader already has.
+- [x] Reject an unknown target with status 2 before any dispatch, naming the identifier and the profile, so a typo cannot silently apply nothing and report success.
+- [x] Apply the target filter after full profile resolution, in the same place `--scope` narrows, and make `--target` and `--scope` compose by intersection rather than conflict.
+- [x] Walk the declared dependencies of each selected target and include any prerequisite that is not already `present`, so dispatch never runs a target whose prerequisite is absent.
+- [x] Report every entry included by dependency rather than by request as its own row, so the report says plainly that Rig applied more than was asked for and why.
+- [x] Skip the reconciliation lock and the resource receipt load when the resolved selection contains no resource, so a tool-only `--target` run does not serialise against an unrelated resource apply.
+- [x] Regenerate completions for the new option and update `man/rig.1`, `docs/guides/user/commands.md`, `docs/guides/user/operational-resources.md`, and the README apply summary.
+- [x] Add Bats coverage for a single `--target` dispatching one entry, repeated `--target` dispatching exactly those entries, an unknown target rejected at status 2 with no provider call logged, a target whose prerequisite is missing pulling that prerequisite in and reporting it, `--target` composing with `--scope`, and a tool-only selection taking no reconciliation lock.
 
 ## Files touched
 
@@ -92,6 +92,32 @@ None on the selector itself. The dependency-closure choice — include a missing
 ### Roadmap
 
 No new follow-on work. The unreproducible single failure the record describes — one failure in a forty-three-resource pass that a second run did not reproduce, with the failing target never identified — becomes diagnosable rather than fixed by this item; if it recurs under a narrow `--target` run it is worth its own record with the evidence that run produces.
+
+## Review
+
+### Delivered
+
+From baseline `40a85cd9f285a01ed42375f2b0a6a39e81f65f13`, `rig apply` accepts repeatable exact `--target ID` selectors. It narrows the fully resolved plan before preflight and dispatch, includes only not-present prerequisites, and labels target and dependency rows separately.
+
+### Change Summary
+
+Added target parsing and selection helpers in `src/rig/23-application.bash`, the shared option row in `src/rig/00-runtime.bash`, and regenerated `bin/rig`. Narrow resource runs suppress unrelated retirement, write only their reconciled declarations to the receipt, and preserve existing declared receipt entries. A tool-only run bypasses resource lock and receipt loading. Updated the manual, guides, README, changelog, and orchestration specifications.
+
+### Verification
+
+Isolated Bats cases cover single and repeated tool targets, unknown rejection before provider calls, present and missing tool/resource prerequisites, resource dispatch and receipt preservation, scope intersection and excluded-prerequisite rejection, tool-only lock avoidance, and port-owner selection. The full Bats suite, ShellCheck, Bash syntax, assembly check, benchmark, native-provider smoke test, repository audit, and man-page lint passed. No apply was run against the live workstation.
+
+### Outstanding concerns
+
+The port selector reconciles its selected owner; the port itself remains observational. A known target outside `--scope` yields an empty intersection, whereas a selected target with a missing prerequisite outside that scope fails before dispatch. Both cases are documented and tested. Report layout consolidation remains in the later output batch.
+
+### Post-change review
+
+The selector does not change provider semantics or partial-profile resolution. A narrow run cannot silently retire unrelated resources, claim unapplied ones in the receipt, or acquire a resource lock for tool-only work. Missing prerequisites are visible rather than quietly widening dispatch.
+
+### Mini recap
+
+Focused apply is delivered for acceptance review. Further report unification can use the target/dependency scope labels without changing selection behavior.
 
 ## Discussion
 
