@@ -4,12 +4,12 @@ area: CLI
 title: Describe every option
 theme: cli
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: d3ecdbe678e4f3f37486d6afbc0e45aa4f4dd9b1
 created_at: 2026-09-26T13:00:00Z
-updated_at: 2026-09-30T10:20:23Z
+updated_at: 2026-09-30T11:31:28Z
 ---
 
 ## Goal
@@ -45,13 +45,13 @@ Completion is generated in the same file, from hand-written option lists rather 
 
 ## Steps
 
-- [ ] Add one authored option table per command — identifier, argument placeholder, and a one-line description — as data in `src/rig/00-runtime.bash`, replacing the seven scattered copies of each usage string with a single lookup.
-- [ ] Generate each command's `--help` output from that table: the usage line, one line per option, an exit-status note where the command's statuses are meaningful, and one worked example.
-- [ ] Generate the Bash and Zsh completion option lists from the same table, so a flag that is not described is a flag that does not complete, and delete the duplicated hand-written lists.
-- [ ] Generate each `syntax_error` usage string from the same table, so a rejection and its help can no longer disagree.
-- [ ] Move the two operational notes out of `print_help` into the per-command help for `update` and `maintain`, and leave top-level help as a command list.
-- [ ] Add the destructive warning to `rig apply` help — that it reconciles rather than verifies, and will restart applications mid-run — as a description line, without adding a prompt or changing the default.
-- [ ] Add Bats coverage asserting that every option accepted by every command appears in that command's `--help` with a description, and that the completion option lists match the help exactly.
+- [x] Add one authored option table per command — identifier, argument placeholder, and a one-line description — as data in `src/rig/00-runtime.bash`, replacing the seven scattered copies of each usage string with a single lookup.
+- [x] Generate each command's `--help` output from that table: the usage line, one line per option, an exit-status note where the command's statuses are meaningful, and one worked example.
+- [x] Generate the Bash and Zsh completion option lists from the same table, so a flag that is not described is a flag that does not complete, and delete the duplicated hand-written lists.
+- [x] Generate each `syntax_error` usage string from the same table, so a rejection and its help can no longer disagree.
+- [x] Move the two operational notes out of `print_help` into the per-command help for `update` and `maintain`, and leave top-level help as a command list.
+- [x] Add the destructive warning to `rig apply` help — that it reconciles rather than verifies, and will restart applications mid-run — as a description line, without adding a prompt or changing the default.
+- [x] Add Bats coverage asserting that every option accepted by every command appears in that command's `--help` with a description, and that the completion option lists match the help exactly.
 
 ## Files touched
 
@@ -96,6 +96,32 @@ None on the help text itself. If the `rig apply` warning is judged insufficient 
 ### Roadmap
 
 No new follow-on work. Generating help, completion, and rejection text from one table removes the drift risk the record names, so no follow-on alignment item is needed.
+
+## Review
+
+### Delivered
+
+From baseline `d3ecdbe678e4f3f37486d6afbc0e45aa4f4dd9b1`, each command's option inventory now drives local help, usage errors, Bash completion, and Zsh completion. Top-level help remains a command map.
+
+### Change Summary
+
+Added shared option rows, usage, help, examples, completion generators, and syntax-error helpers in `src/rig/00-runtime.bash`. Replaced command-local usage literals across authored modules and regenerated `bin/rig`. Added a warning to `apply` help and moved the operational progress note to `update` and `maintain` help. Updated Bats assertions for the expanded help contract.
+
+### Verification
+
+All fourteen command help paths returned successfully; generated Bash and Zsh completions parsed. The option-alignment Bats case and full Bats suite passed. ShellCheck, Bash syntax, assembly check, benchmark, native-provider smoke test, repository audit, and man-page lint passed.
+
+### Outstanding concerns
+
+The manual remains hand-authored and is not generated from the compact option table. Its fuller explanatory content is intentionally outside the runtime metadata.
+
+### Post-change review
+
+The public flags and command behavior are unchanged. One shared row supplies each option description and completion entry, and the repeated `apply` usage strings are gone. The warning does not add a prompt or alter noninteractive callers.
+
+### Mini recap
+
+The command-help consolidation is delivered for acceptance review. RIG-CLI-016 can add `--target` to the shared table during the same batch.
 
 ## Discussion
 
