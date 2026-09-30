@@ -18,6 +18,7 @@
 # own tree, launchd in a domain no machine owns. An explicit override on a
 # single invocation still wins, so a test that stubs one of them itself is
 # unaffected.
+# The focused guard in tests/rig.bats asserts these default boundaries.
 rig_test_isolate() {
   local stub
 

@@ -4,12 +4,12 @@ area: CORE
 title: Isolate state in tests
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 2fe4ca00b43b4e74a68e32046ae52765bc4bfc97
 created_at: 2026-09-25T15:00:00Z
-updated_at: 2026-09-30T09:39:54Z
+updated_at: 2026-09-30T10:29:31Z
 ---
 
 ## Goal
@@ -30,9 +30,9 @@ All thirteen Bats files call `rig_test_isolate` first in `setup`. The helper cre
 
 ## Steps
 
-- [ ] Add a focused test proving the helper's unqualified state path is beneath `BATS_TEST_TMPDIR` and its default destructive command overrides point to the test stubs.
-- [ ] Run the suite with an inherited hostile XDG state home and assert the helper still chooses only its temporary state path.
-- [ ] Keep the existing explicit per-invocation overrides and document that the helper, rather than repeated XDG exports, owns default containment.
+- [x] Add a focused test proving the helper's unqualified state path is beneath `BATS_TEST_TMPDIR` and its default destructive command overrides point to the test stubs.
+- [x] Run the suite with an inherited hostile XDG state home and assert the helper still chooses only its temporary state path.
+- [x] Keep the existing explicit per-invocation overrides and document that the helper, rather than repeated XDG exports, owns default containment.
 
 ## Files touched
 
@@ -63,6 +63,32 @@ Update the existing note to name the helper as the containment owner and the foc
 ### Roadmap
 
 Remove the duplicate isolation guard from [RIG-CORE-033](RIG-CORE-033-make-tests-machine-independent.md).
+
+## Review
+
+### Delivered
+
+From baseline `2fe4ca00b43b4e74a68e32046ae52765bc4bfc97`, the suite has a focused guard for the default state path and destructive adapter overrides. Existing per-invocation test overrides remain intact.
+
+### Change Summary
+
+Added the guard to `tests/rig.bats` and recorded its role in `tests/helpers/isolate.bash` and `AGENTS.md`. The old per-file XDG export plan remains superseded by the already delivered shared helper.
+
+### Verification
+
+The focused Bats guard passed. The full Bats suite passed with an inherited `XDG_STATE_HOME` set to a temporary read-only directory; the exact temporary directory was restored and removed after the run. Repository and source gates are recorded with the delivery commit.
+
+### Outstanding concerns
+
+Provider executables and platform selection are not yet machine independent; [RIG-CORE-033](RIG-CORE-033-make-tests-machine-independent.md) owns those separate gaps.
+
+### Post-change review
+
+The test now fails if the helper stops isolating default state or any of the four destructive adapter overrides. It exercises the current containment design without reproducing a destructive defect on the workstation.
+
+### Mini recap
+
+The missing isolation proof is delivered for acceptance review. The provider fixture conversion remains the next test-harness item; no additional state-isolation mechanism is needed.
 
 ## Discussion
 

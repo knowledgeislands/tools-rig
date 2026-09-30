@@ -15,6 +15,21 @@ setup() {
   source "$BATS_TEST_DIRNAME/helpers/toml-parser.bash"
 }
 
+@test "test isolation contains default state and destructive adapters" {
+  [ "$HOME" = "$BATS_TEST_TMPDIR/isolated-home" ] || false
+  [ -z "${XDG_STATE_HOME+x}" ] || false
+  [ -z "${RIG_STATE_HOME+x}" ] || false
+  [ "$RIG_LAUNCHCTL" = "$BATS_TEST_TMPDIR/isolated-launchctl" ] || false
+  [ "$RIG_DEFAULTS" = "$BATS_TEST_TMPDIR/isolated-defaults" ] || false
+  [ "$RIG_DOCKUTIL" = "$BATS_TEST_TMPDIR/isolated-dockutil" ] || false
+  [ "$RIG_KILLALL" = "$BATS_TEST_TMPDIR/isolated-killall" ] || false
+  [ "$RIG_LAUNCHD_DOMAIN" = gui/rig-test ] || false
+
+  run "$RIG" diag
+  [ "$status" -eq 1 ] || false
+  [[ "$output" == *"State home: $BATS_TEST_TMPDIR/isolated-home/.local/state/rig"* ]] || false
+}
+
 output_has_table_row() {
   local expected
 
