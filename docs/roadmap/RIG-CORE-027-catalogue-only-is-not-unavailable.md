@@ -4,12 +4,12 @@ area: CORE
 title: Catalogue-only is not unavailable
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 8b35359326ba8d2a1e861ad3162b3dd56f667d9b
 created_at: 2026-09-26T13:00:00Z
-updated_at: 2026-09-30T13:31:00Z
+updated_at: 2026-09-30T13:50:00Z
 ---
 
 ## Goal
@@ -48,12 +48,12 @@ The distinction already exists inside the model and is collapsed only at the poi
 
 ## Steps
 
-- [ ] Add a `catalogue-only` value to the state vocabulary emitted by `rig status` for tool rows whose plan result is `neutral`, set where the table row is built rather than where the observation is made, so provider observation semantics are untouched.
-- [ ] Stop counting those rows into `RIG_STATUS_UNAVAILABLE` in `rig_status_totals`, leaving `RIG_STATUS_CATALOGUE_ONLY` as their only count, so `unavailable` again names faults only.
-- [ ] Widen the `STATE` column from 12 to the width `catalogue-only` needs, and confirm no other state token is truncated by the change.
-- [ ] Mirror the same split in `rig_status_json` so the JSON summary object's `unavailable` and `catalogue_only` counts stop overlapping, keeping the projection complete.
-- [ ] Add Bats coverage for a profile declaring one catalogue-only tool and one genuinely unobservable tool: assert the two rows carry different state tokens, that the summary counts each once, and that a profile whose only non-present rows are catalogue-only exits 0.
-- [ ] Update `man/rig.1` and `docs/guides/user/commands.md` where they enumerate the status state vocabulary.
+- [x] Give neutral tool rows a `catalogue-only` status presentation without changing provider observations.
+- [x] Count neutral rows only under `RIG_STATUS_CATALOGUE_ONLY`, leaving unavailable for faults.
+- [x] Widen the tool `STATE` column to fit `catalogue-only` without truncation.
+- [x] Mirror the state and non-overlapping counts in JSON.
+- [x] Cover neutral-only healthy status and a neutral row beside genuinely unavailable provider observations in Bats.
+- [x] Update the manual, user guide, and state Specification.
 
 ## Files touched
 
@@ -95,6 +95,32 @@ None. Catalogue-only declaration already has its meaning recorded; this changes 
 ### Roadmap
 
 No new follow-on work. Closing this narrows RIG-CLI-017 without changing its scope.
+
+## Review
+
+### Delivered
+
+From baseline `8b35359326ba8d2a1e861ad3162b3dd56f667d9b`, status reports catalogue-only tools as an explicit neutral state and no longer includes them in the unavailable count.
+
+### Change Summary
+
+One presentation helper maps a neutral plan result to the text and JSON status state without changing provider observation. Totals count the sixth display state separately, and the tool table allows its full token. The Specification, manual, guide, and assertions were aligned.
+
+### Verification
+
+Focused neutral and unavailable-provider cases and the complete Bats suite passed. Repository audit, ShellCheck, Bash syntax, assembly check, benchmark, native-provider smoke test, man lint, and diff check passed.
+
+### Outstanding concerns
+
+The new token is a status presentation state, not a sixth provider observation response. Existing JSON consumers that enumerate status states should recognise `catalogue-only`.
+
+### Post-change review
+
+The neutral-only fixture still exits 0. A missing provider makes bound tools unavailable while the neutral tool remains catalogue-only; text and JSON summaries agree.
+
+### Mini recap
+
+The misleading double count and fault-looking neutral row are removed for acceptance review.
 
 ## Discussion
 
