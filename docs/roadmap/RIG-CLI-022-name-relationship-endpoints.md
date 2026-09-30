@@ -4,12 +4,12 @@ area: CLI
 title: Name relationship endpoints
 theme: cli
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 8b35359326ba8d2a1e861ad3162b3dd56f667d9b
 created_at: 2026-09-30T09:10:00Z
-updated_at: 2026-09-30T13:29:00Z
+updated_at: 2026-09-30T13:56:48Z
 ---
 
 ## Goal
@@ -34,10 +34,10 @@ The case surfaced under `DOTFILES-UE-061`, which typed two displacements as `alt
 
 ## Steps
 
-- [ ] Resolve each `requires`, `related`, and `alternatives` tool identifier to `identifier (Display Name)` in `rig explain`, preserving declaration order and repeated-value behaviour.
-- [ ] Keep unknown references rejected by configuration validation rather than inventing a display fallback, and leave the structured export unchanged.
-- [ ] Add focused Bats cases for all three relationship fields, including a display name containing punctuation and an empty relationship field.
-- [ ] Update the user command guide and manual examples that show `rig explain` relationships.
+- [x] Resolve `requires`, `related`, and `alternatives` endpoints to `identifier (Display Name)` in `rig explain` while preserving declaration order.
+- [x] Keep configuration validation and structured export unchanged.
+- [x] Cover all three relationship fields, punctuation, ordered multiple endpoints, and an empty relationship in Bats.
+- [x] Update the user command guide, manual, and query Specification.
 
 ## Files touched
 
@@ -68,6 +68,32 @@ Align the manual and user command guide with the displayed relationship examples
 ### Roadmap
 
 No follow-up expected; shared report rendering remains a separate item.
+
+## Review
+
+### Delivered
+
+From baseline `8b35359326ba8d2a1e861ad3162b3dd56f667d9b`, `rig explain` names tool relationship endpoints while retaining their stable identifiers.
+
+### Change Summary
+
+An explain-only join helper resolves each relationship identifier to its declared name. The three text fields use it; no export code or schema changed. The query Specification, manual, guide, and fixture assertions now describe the display shape.
+
+### Verification
+
+Focused explain tests and the complete Bats suite passed. Repository audit, ShellCheck, Bash syntax, assembly check, native-provider smoke test, man lint, and diff check passed. The benchmark passed when rerun alone; one concurrent run exceeded its status budget under full-suite load.
+
+### Outstanding concerns
+
+The text remains a human display; consumers needing stable structured relationships should use export. This change does not alter non-tool explanation fields.
+
+### Post-change review
+
+The output preserves ID-first category-style formatting and declaration order, including two related endpoints; punctuation in a display name survives unchanged. Empty relationships remain `none`.
+
+### Mini recap
+
+Named relationship endpoints are delivered for acceptance review ahead of shared report rendering.
 
 ## Discussion
 
