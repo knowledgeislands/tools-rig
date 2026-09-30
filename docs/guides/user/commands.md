@@ -9,7 +9,7 @@ Rig's commands follow a deliberate progression from understanding declared inten
 - `rig explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID`
 - `rig status [--profile NAME] [--problems] [--unmanaged] [--format text|json]`
 - `rig doctor [--profile NAME] [--format text|json]`
-- `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]`
+- `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID]... [--dry-run]`
 - `rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]`
 - `rig update [--profile NAME] [--dry-run] [--unattended]`
 - `rig maintain [--profile NAME] [--dry-run] [--unattended]`
@@ -70,7 +70,7 @@ rig apply --dry-run
 rig bootstrap --dry-run
 ```
 
-- `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]` reconciles an operable complete profile in tools → skills → resources order.
+- `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID]... [--dry-run]` reconciles an operable complete profile in tools → skills → resources order. Repeat an exact `--target` to select several entries; unknown IDs fail before dispatch. Missing prerequisites join the bounded plan and have separate dependency rows.
 - `rig bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]` runs Rig's bounded new-machine lifecycle, stages supported declared manager prerequisites where needed, and then materialises the selected bootstrap profile.
 
 Bootstrap is a lifecycle stage, not a provider or a reason to create another profile. It can stage only Rig's fixed Homebrew → mise → npm prerequisite chain when the selected declarations require it; configuration cannot supply arbitrary setup commands.

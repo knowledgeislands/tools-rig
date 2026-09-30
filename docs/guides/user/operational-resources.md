@@ -196,7 +196,7 @@ Dependencies cannot contain conditions, commands, or lifecycle hooks.
 
 ## Apply and retire resources
 
-`rig apply` reconciles the exact selected complete profile after full-plan preflight. `rig bootstrap` may first stage Rig's fixed declared manager prerequisites, then performs the same declared reconciliation. Neither command needs a bootstrap provider or accepts arbitrary setup operations.
+By default, `rig apply` reconciles the exact selected complete profile after full-plan preflight. For one change, preview `rig apply --target scheduled-job:good-morning --dry-run`, then omit `--dry-run` to reconcile only that job and any missing prerequisites. Repeat `--target` for several exact IDs; it composes with `--scope` by intersection. A port target selects its declared owner for reconciliation but does not materialise the port. A targeted apply never retires unrelated stale resources, and its receipt records only the resources it actually reconciled. `rig bootstrap` may first stage Rig's fixed declared manager prerequisites, then performs the same declared reconciliation. Neither command needs a bootstrap provider or accepts arbitrary setup operations.
 
 Rig records only the minimal evidence required to retire a deselected long-lived resource safely. A receipt is not observed state or configuration authority. Removing a service or scheduled job from the selected profile schedules its former native locator for retirement on the next application.
 

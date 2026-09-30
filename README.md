@@ -47,6 +47,8 @@ The final version identifies the selected release candidate.
 
 Follow [Get started with Rig](docs/guides/user/getting-started.md) to write a small human-readable configuration, inspect it, check the machine, and preview the first application.
 
+To preview just one declared change, use `rig apply --target ID --dry-run`; repeat `--target` to select several exact entries.
+
 The [user-guide journey](docs/guides/user/README.md) then introduces profiles, machine resources, user-level skills, provider boundaries, and publication in stages. Use `man rig` for the exhaustive command and configuration reference.
 
 ## Documentation

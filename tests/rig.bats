@@ -33,6 +33,145 @@ setup() {
   [[ "$output" == *"State home: $BATS_TEST_TMPDIR/isolated-home/.local/state/rig"* ]] || false
 }
 
+@test "apply target selects exact tools and rejects unknown entries before dispatch" {
+  write_orchestration_config
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply --target independent
+  [ "$status" -eq 0 ] || false
+  [[ "$output" == *$'independent\trunner\tcompleted\t-\ttarget'* ]] || false
+  grep -Fqx 'CALL=apply:independent:present' "$ORCHESTRATION_LOG" || false
+  ! grep -Fq 'CALL=apply:app:' "$ORCHESTRATION_LOG" || false
+  ! grep -Fq 'CALL=apply:base:' "$ORCHESTRATION_LOG" || false
+
+  : >"$ORCHESTRATION_LOG"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply --target app --target independent --dry-run
+  [ "$status" -eq 0 ] || false
+  [[ "$output" == *$'app\trunner\tplanned\t-\ttarget'* ]] || false
+  [[ "$output" == *$'independent\trunner\tplanned\t-\ttarget'* ]] || false
+  [[ "$output" != *$'base\trunner\tplanned'* ]] || false
+  ! grep -Fq 'CALL=apply:' "$ORCHESTRATION_LOG" || false
+
+  : >"$ORCHESTRATION_LOG"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply --target absent
+  [ "$status" -eq 2 ] || false
+  [[ "$output" == *"unknown target 'absent' in profile 'default'"* ]] || false
+  [ ! -s "$ORCHESTRATION_LOG" ] || false
+}
+
+@test "apply target includes an absent prerequisite as its own row" {
+  local rewritten
+  write_orchestration_config
+  rewritten=$BATS_TEST_TMPDIR/target-config
+  awk '
+    /^\[tool.base\]$/ { in_base = 1; print; next }
+    /^\[/ { in_base = 0 }
+    in_base && $0 == "install.locator = \"present\"" {
+      print "install.locator = \"missing\""
+      next
+    }
+    { print }
+  ' "$CONFIG_HOME/rig.toml" >"$rewritten"
+  mv "$rewritten" "$CONFIG_HOME/rig.toml"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" apply --target app
+  [ "$status" -eq 0 ] || false
+  [[ "$output" == *$'base\trunner\tcompleted\t-\tdependency'* ]] || false
+  [[ "$output" == *$'app\trunner\tcompleted\t-\ttarget'* ]] || false
+  [ "$(grep -Fc 'CALL=apply:base:missing' "$ORCHESTRATION_LOG")" -eq 1 ] || false
+  [ "$(grep -Fc 'CALL=apply:app:present' "$ORCHESTRATION_LOG")" -eq 1 ] || false
+}
+
+@test "tool-only target never takes the resource reconciliation lock" {
+  local state_home
+  write_resource_fixture
+  state_home=$BATS_TEST_TMPDIR/target-state
+  mkdir -p "$state_home/reconciliation/macos.lock"
+  printf 'pid=%s profile=default command=other\n' "$$" >"$state_home/reconciliation/macos.lock/owner"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$state_home" \
+    RIG_PLATFORM=macos RESOURCE_LOG="$RESOURCE_LOG" "$RIG" apply --target base
+  [ "$status" -eq 0 ] || false
+  [[ "$output" == *$'base\t-\tskipped\tcatalogue-only\ttarget'* ]] || false
+  [ ! -s "$RESOURCE_LOG" ] || false
+  [ -d "$state_home/reconciliation/macos.lock" ] || false
+}
+
+@test "resource target applies one resource and records only its receipt" {
+  local state_home
+  write_resource_fixture
+  state_home=$BATS_TEST_TMPDIR/target-state
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$state_home" \
+    RIG_PLATFORM=macos RESOURCE_LOG="$RESOURCE_LOG" "$RIG" apply --target scheduled-job:morning
+  [ "$status" -eq 0 ] || false
+  [[ "$output" == *$'morning\tscheduled-job\trunner\tcompleted'* ]] || false
+  [[ "$output" != *$'daemon\tservice\trunner\tcompleted'* ]] || false
+  grep -Fq 'apply-resource' "$RESOURCE_LOG" || false
+  ! grep -Fq 'daemon' "$RESOURCE_LOG" || false
+  grep -Fq $'runner\tscheduled-job\tmorning\texample.test.morning' \
+    "$state_home/resources/macos.tsv" || false
+  ! grep -Fq $'runner\tservice\tdaemon\t' "$state_home/resources/macos.tsv" || false
+}
+
+@test "resource target brings in a missing resource prerequisite first" {
+  local rewritten
+  write_resource_fixture
+  rewritten=$BATS_TEST_TMPDIR/target-resource-config
+  awk '
+    $0 == "requires = [\"base\"]" { next }
+    /^\[scheduled-job.morning\]$/ {
+      print
+      print "depends-on = [\"service:daemon\"]"
+      next
+    }
+    { print }
+  ' "$CONFIG_HOME/rig.toml" >"$rewritten"
+  mv "$rewritten" "$CONFIG_HOME/rig.toml"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RESOURCE_LOG="$RESOURCE_LOG" RESOURCE_MISSING_ID=daemon \
+    "$RIG" apply --target scheduled-job:morning
+  [ "$status" -eq 0 ] || false
+  [[ "$output" == *$'daemon\tservice\trunner\tcompleted\treconciled:example.test.daemon\tdependency'* ]] || false
+  [[ "$output" == *$'morning\tscheduled-job\trunner\tcompleted\treconciled:example.test.morning\ttarget'* ]] || false
+  [ "$(grep -Fc 'apply-resource' "$RESOURCE_LOG")" -eq 2 ] || false
+}
+
+@test "targeted resource receipt keeps earlier declared resources" {
+  local state_home
+  write_resource_fixture
+  state_home=$BATS_TEST_TMPDIR/target-state
+  mkdir -p "$state_home/resources"
+  printf '%s\t%s\t%s\t%s\n' runner service daemon example.test.daemon \
+    >"$state_home/resources/macos.tsv"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$state_home" \
+    RIG_PLATFORM=macos RESOURCE_LOG="$RESOURCE_LOG" "$RIG" apply --target scheduled-job:morning
+  [ "$status" -eq 0 ] || false
+  [[ "$output" != *$'daemon\tservice\trunner\tcompleted'* ]] || false
+  grep -Fq $'runner\tservice\tdaemon\texample.test.daemon' \
+    "$state_home/resources/macos.tsv" || false
+  grep -Fq $'runner\tscheduled-job\tmorning\texample.test.morning' \
+    "$state_home/resources/macos.tsv" || false
+  [ "$(grep -Fc 'apply-resource' "$RESOURCE_LOG")" -eq 1 ] || false
+}
+
+@test "apply target and scope compose by intersection" {
+  write_resource_fixture
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RESOURCE_LOG="$RESOURCE_LOG" "$RIG" apply --target scheduled-job:morning --scope tools --dry-run
+  [ "$status" -eq 0 ] || false
+  [[ "$output" != *$'morning\tscheduled-job\trunner\tplanned'* ]] || false
+  [ ! -s "$RESOURCE_LOG" ] || false
+}
+
+@test "port target names its observational boundary and selected owner" {
+  write_port_fixture
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    "$RIG" apply --target port:required-api --dry-run
+  [ "$status" -eq 0 ] || false
+  [[ "$output" == *'Target port:required-api: observational-only; reconciling its owner'* ]] || false
+  [[ "$output" == *$'alpha\t-\tskipped\tcatalogue-only\ttarget'* ]] || false
+}
+
 output_has_table_row() {
   local expected
 
@@ -415,7 +554,7 @@ write_query_config() {
     'explain TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID' \
     'status [--profile NAME] [--problems] [--unmanaged] [--format text|json]' \
     'doctor [--profile NAME] [--format text|json]' \
-    'apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]' \
+    'apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID]... [--dry-run]' \
     'bootstrap [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]' \
     'update [--profile NAME] [--dry-run] [--unattended]' \
     'maintain [--profile NAME] [--dry-run] [--unattended]' \
@@ -532,7 +671,7 @@ write_query_config() {
   [[ "$output" == *'explain) COMPREPLY=($(compgen -W "-h --help"'* ]] || false
   [[ "$output" == *'status) COMPREPLY=($(compgen -W "-h --help --profile --problems --unmanaged --format text json"'* ]] || false
   [[ "$output" == *'doctor) COMPREPLY=($(compgen -W "-h --help --profile --format text json"'* ]] || false
-  [[ "$output" == *'apply) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all"'* ]] || false
+  [[ "$output" == *'apply) COMPREPLY=($(compgen -W "-h --help --profile --scope --target --dry-run tools skills resources all"'* ]] || false
   [[ "$output" == *'bootstrap) COMPREPLY=($(compgen -W "-h --help --profile --scope --dry-run tools skills resources all"'* ]] || false
   [[ "$output" == *'update) COMPREPLY=($(compgen -W "-h --help --profile --dry-run --unattended"'* ]] || false
   [[ "$output" == *'maintain) COMPREPLY=($(compgen -W "-h --help --profile --dry-run --unattended"'* ]] || false
@@ -580,7 +719,8 @@ write_query_config() {
       explain|run|diag|completion) expected= ;;
       status) expected='--profile --problems --unmanaged --format' ;;
       doctor) expected='--profile --format' ;;
-      apply|bootstrap) expected='--profile --scope --dry-run' ;;
+      apply) expected='--profile --scope --target --dry-run' ;;
+      bootstrap) expected='--profile --scope --dry-run' ;;
       update|maintain) expected='--profile --dry-run --unattended' ;;
       capture) expected='--dry-run' ;;
       export) expected='--profile --output --title --base-url' ;;
@@ -667,7 +807,7 @@ write_query_config() {
   [[ "$output" == *"explain:--help"* ]] || false
   [[ "$output" == *"status:--help --profile"* ]] || false
   [[ "$output" == *"doctor:--help --profile"* ]] || false
-  [[ "$output" == *"apply:--help --profile --scope --dry-run"* ]] || false
+  [[ "$output" == *"apply:--help --profile --scope --target --dry-run"* ]] || false
   [[ "$output" == *"bootstrap:--help --profile --scope --dry-run"* ]] || false
   [[ "$output" == *"update:--help --profile --dry-run --unattended"* ]] || false
   [[ "$output" == *"maintain:--help --profile --dry-run --unattended"* ]] || false
@@ -2720,7 +2860,7 @@ bootstrap-profile = "absent"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.t
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --help
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]"* ]] || false
+  [[ "$output" == *"Usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID] [--dry-run]"* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" bootstrap --help
   [ "$status" -eq 0 ]
@@ -2728,7 +2868,7 @@ bootstrap-profile = "absent"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.t
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --dry-run --dry-run
   [ "$status" -eq 2 ]
-  [[ "$output" == *'usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--dry-run]'* ]] || false
+  [[ "$output" == *'usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID] [--dry-run]'* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" bootstrap --profile
   [ "$status" -eq 2 ]
@@ -3650,7 +3790,7 @@ write_resource_fixture() {
     'printf "%s\n" "$*" >>"$log"' \
     'if [ "${RESOURCE_FAIL_ID:-}" = "${4:-}" ] && [ "$2" = apply-resource ]; then exit 9; fi' \
     'case "$2" in' \
-    '  observe-resource) printf "%s\n" present ;;' \
+    '  observe-resource) if [ "${RESOURCE_MISSING_ID:-}" = "${4:-}" ]; then printf "%s\n" missing; else printf "%s\n" present; fi ;;' \
     '  *) exit 0 ;;' \
     'esac' >"$RESOURCE_PROVIDER"
   chmod +x "$RESOURCE_PROVIDER"

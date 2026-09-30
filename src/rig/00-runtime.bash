@@ -114,6 +114,8 @@ RIG_RECONCILIATION_LOCK_ACQUIRED=0
 RIG_BOOTSTRAP_ALLOW_DEFERRED_SKILLS=0
 RIG_LISTENER_OBSERVATION_AVAILABLE=0
 RIG_UNATTENDED=0
+RIG_APPLY_TARGETS=()
+RIG_APPLY_DIRECT=()
 
 print_help() {
   printf '%s\n' \
@@ -154,7 +156,8 @@ rig_command_options() {
     explain|run|diag|completion) ;;
     status) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--problems||Show only entries needing attention.||' '--unmanaged||Include observed items not declared by an installation.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
     doctor) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
-    apply|bootstrap) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--scope|SCOPE|Restrict to tools, skills, resources, or all.|tools skills resources all|' '--dry-run||Print the plan without invoking providers.||' ;;
+    apply) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--scope|SCOPE|Restrict to tools, skills, resources, or all.|tools skills resources all|' '--target|ID|Apply one selected entry; repeat for several targets.||' '--dry-run||Print the plan without invoking providers.||' ;;
+    bootstrap) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--scope|SCOPE|Restrict to tools, skills, resources, or all.|tools skills resources all|' '--dry-run||Print the plan without invoking providers.||' ;;
     update|maintain) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--dry-run||Print the plan without invoking providers.||' '--unattended||Record an outcome when nobody is watching.||' ;;
     capture) printf '%s\n' '--dry-run||Print the plan without invoking the provider.||' ;;
     export) printf '%s\n' '--profile|NAME|Select the view profile to export.|profile name|required' '--output|DIRECTORY|Write the public data tree here.|directory|required' '--title|TEXT|Set the exported document title.|title|' '--base-url|URL|Set the published document canonical URL.|url|' ;;

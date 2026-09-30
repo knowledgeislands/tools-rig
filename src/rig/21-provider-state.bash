@@ -317,7 +317,9 @@ rig_write_resource_receipt() {
   mkdir -p "$directory" || { umask "$old_umask"; return 1; }
   temporary=$(mktemp "$directory/.resources.XXXXXX") || { umask "$old_umask"; return 1; }
   written=()
-  for section_name in "${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}"; do
+  # A targeted apply must record only resources it actually reconciled; the
+  # selected profile can contain other resources that this invocation skipped.
+  for section_name in "${RIG_RESOURCE_PLAN_SECTIONS[@]+"${RIG_RESOURCE_PLAN_SECTIONS[@]}"}"; do
     rig_section_index "$section_name" || { rm -f "$temporary"; umask "$old_umask"; return 2; }
     section_index=$RIG_INDEX
     kind=${RIG_SECTION_TYPES[$section_index]}

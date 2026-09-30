@@ -368,3 +368,33 @@ _Conformance:_ conforming
 _Verify:_ Bats asserts the flag's grammar on both commands and its rejection elsewhere, proves a provider reading standard input reports `unavailable` or fails rather than blocking, covers a task needing a person, and asserts the doctor information line leaves the exit status unchanged.
 
 _Evidence:_ `rig_command_lifecycle`, `rig_lifecycle_requires_person`, `rig_run_lifecycle_tasks`, `rig_execute_lifecycle_task`, and `rig_doctor_competing_autoupdate` implement it; `tests/rig-lifecycle.bats` and `tests/rig.bats` verify it.
+
+### RIG-ORCH-035 — Exact apply targets
+
+`rig apply` MUST accept repeatable exact `--target ID` selectors for entries in its resolved complete profile and MUST reject an unknown selector with exit status 2 before provider dispatch. A selector and `--scope` MUST compose by intersection. A `port:ID` selector MUST select its declared owner for reconciliation within the owner's scope; the port itself remains observational and MUST NOT be materialised.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats selects one and several tools, rejects a typo with an empty provider log, intersects a resource target with tools scope, and selects a private port's owner without port mutation.
+
+_Evidence:_ `rig_apply_select_targets` filters the fully resolved plan; `tests/rig.bats` covers exact selection, unknown rejection, scope intersection, and the port boundary.
+
+### RIG-ORCH-036 — Target prerequisite closure
+
+A targeted apply MUST include each transitive declared prerequisite that is not observed `present`, preserve dependency-first dispatch, and identify requested and dependency-included entries separately in its report. An already-present prerequisite MUST NOT be dispatched merely because its dependant was selected.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats supplies present and missing tool and resource prerequisites, asserts dispatch order and target/dependency rows, and checks that present prerequisites are absent from the targeted plan.
+
+_Evidence:_ `rig_apply_mark_dependencies` observes and closes tool and resource requirements; targeted tool and resource tests in `tests/rig.bats` verify the resulting rows and calls.
+
+### RIG-ORCH-037 — Narrow reconciliation state boundary
+
+A targeted apply MUST NOT retire unselected stale resources or record un-applied declarations as reconciled. It MUST NOT acquire the resource reconciliation lock when its filtered plan contains no resource work.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats selects one of two resources and inspects the receipt and provider calls; a tool-only target runs against an intentionally held fixture reconciliation lock.
+
+_Evidence:_ `rig_apply_select_targets` clears stale-resource work, `rig_write_resource_receipt` records the filtered resource plan and carries forward valid existing records, and `tests/rig.bats` verifies the receipt and lock boundary.
