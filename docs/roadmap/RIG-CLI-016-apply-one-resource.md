@@ -22,6 +22,8 @@ Somebody who has declared one new thing can materialise that one thing, without 
 
 That was safe only because `rig status` was read first and showed forty-two of the forty-three already `present`, so the one material change was the new agent. Checking beforehand is a procedural habit standing in for a missing selector, and the habit is what fails: the wider the blast radius of a one-line declaration, the more likely somebody applies without looking.
 
+The same shape recurred on 2026-09-29 under `DOTFILES-UE-060`: repairing two drifted `defaults` keys through the declared interface meant `rig apply --scope resources` reconciling forty-five resources, nine of them the launchd estate that the RIG-CORE-031 and RIG-CORE-032 incidents unloaded, each checked by hand in the dry-run first because there was no narrower route.
+
 The workaround costs time as well as safety. Reconciling forty-three resources to install one is the slowest way to get there, and a failure anywhere in the pass obscures whether the intended change landed — the first `--scope resources` run reported one failure that a second run did not reproduce, and the failing target was never identified because the output covered everything.
 
 ## Boundary
