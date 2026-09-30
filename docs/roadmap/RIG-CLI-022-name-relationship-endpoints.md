@@ -3,13 +3,13 @@ id: RIG-CLI-022
 area: CLI
 title: Name relationship endpoints
 theme: cli
-horizon: soon
-status: draft
+horizon: now
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-30T09:10:00Z
-updated_at: 2026-09-30T09:39:54Z
+updated_at: 2026-09-30T13:29:00Z
 ---
 
 ## Goal
@@ -32,9 +32,42 @@ The case surfaced under `DOTFILES-UE-061`, which typed two displacements as `alt
 
 `rig_command_explain` in `src/rig/30-commands.bash` joins the collected identifiers for all three relationship kinds with `rig_join_query_items` and prints them as-is at `:1467`. The category line at `:1466` prints `identifier (Display Name)`, which is the precedent.
 
-## Shaping
+## Steps
 
-Use `identifier (Display Name)` for relationship endpoints, matching the existing Category line. Promote this after the command-surface audit confirms that `rig explain` remains a distinct query and before the shared report-rendering change, so the text representation has one reviewed owner. No export schema change is needed.
+- [ ] Resolve each `requires`, `related`, and `alternatives` tool identifier to `identifier (Display Name)` in `rig explain`, preserving declaration order and repeated-value behaviour.
+- [ ] Keep unknown references rejected by configuration validation rather than inventing a display fallback, and leave the structured export unchanged.
+- [ ] Add focused Bats cases for all three relationship fields, including a display name containing punctuation and an empty relationship field.
+- [ ] Update the user command guide and manual examples that show `rig explain` relationships.
+
+## Files touched
+
+`src/rig/30-commands.bash`, generated `bin/rig`, `tests/rig.bats`, and `man/rig.1` or `docs/guides/user/commands.md` where the old examples appear.
+
+## Verify
+
+The focused explain tests must show stable identifiers and exact display names for all three relationship kinds while `rig export` remains byte-identical. Run ShellCheck, assembly check, full Bats suite, and man lint.
+
+## Dependencies / blocks
+
+The command-surface audit [RIG-CORE-037](RIG-CORE-037-audit-rig-surface-and-structure.md) is awaiting review and confirms `rig explain` remains a distinct query. Implement before [RIG-CLI-018](RIG-CLI-018-one-report-renderer.md) so the shared renderer receives the settled text shape.
+
+## Documentation impact
+
+### Decision Records
+
+None; the existing category display convention supplies the choice.
+
+### Specifications
+
+Update the explain text contract if it enumerates relationship rendering; do not change export schema 2.
+
+### Guides
+
+Align the manual and user command guide with the displayed relationship examples.
+
+### Roadmap
+
+No follow-up expected; shared report rendering remains a separate item.
 
 ## Discussion
 
