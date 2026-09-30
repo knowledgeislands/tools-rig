@@ -4,12 +4,12 @@ area: CORE
 title: Resolve mutators absolutely
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 89132f4f00722a891ddf0f8e40544ebe839b2749
 created_at: 2026-09-30T09:10:00Z
-updated_at: 2026-09-30T09:50:25Z
+updated_at: 2026-09-30T10:34:58Z
 ---
 
 ## Goal
@@ -36,10 +36,10 @@ If `PATH` resolution is kept for any of the three, the reason is written into th
 
 ## Steps
 
-- [ ] Default `defaults` and `killall` to their macOS system paths, retaining their explicit overrides.
-- [ ] Keep `dockutil` resolved through `PATH` because its Homebrew installation prefix is not fixed; document that deliberate distinction beside the helper.
-- [ ] Cover the default values and explicit overrides in isolated tests without invoking any live mutator.
-- [ ] Reassemble `bin/rig` and update the developer safety note if its description of bare-name resolution has changed.
+- [x] Default `defaults` and `killall` to their macOS system paths, retaining their explicit overrides.
+- [x] Keep `dockutil` resolved through `PATH` because its Homebrew installation prefix is not fixed; document that deliberate distinction beside the helper.
+- [x] Cover the default values and explicit overrides in isolated tests without invoking any live mutator.
+- [x] Reassemble `bin/rig` and update the developer safety note if its description of bare-name resolution has changed.
 
 ## Files touched
 
@@ -70,6 +70,32 @@ The developer safety note must describe the final resolution rules.
 ### Roadmap
 
 Record any distinct lookup hazard found during implementation separately.
+
+## Review
+
+### Delivered
+
+From baseline `89132f4f00722a891ddf0f8e40544ebe839b2749`, `defaults` and `killall` select their macOS system paths by default, while `dockutil` still selects from `PATH`. All three retain explicit override variables.
+
+### Change Summary
+
+Updated the three command helpers in `src/rig/20-orchestration.bash`, regenerated `bin/rig`, corrected the test-helper explanation, and added a direct lookup test in `tests/rig-macos.bats`. No live mutator was invoked for verification.
+
+### Verification
+
+The focused default-and-override Bats test passed. The full repository gate and byte-identical assembly check are recorded with the delivery commit.
+
+### Outstanding concerns
+
+`dockutil` intentionally remains discoverable through `PATH`; its installation prefix varies. The explicit override remains the containment route in tests.
+
+### Post-change review
+
+Lookup now follows the fixed versus variable executable locations without changing any resource operation or runtime dependency. The test inspects resolved command values only.
+
+### Mini recap
+
+The runtime lookup decision is delivered for acceptance review. Provider fixtures remain owned by RIG-CORE-033.
 
 ## Discussion
 

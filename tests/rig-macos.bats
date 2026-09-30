@@ -55,6 +55,26 @@ run_rig() {
     MACOS_LOG="$MACOS_LOG" DEFAULTS_STATE="$DEFAULTS_STATE" DOCK_STATE="$DOCK_STATE" "$RIG" "$@"
 }
 
+@test "macOS mutator lookup uses system defaults and explicit overrides" {
+  run env -u RIG_DEFAULTS -u RIG_DOCKUTIL -u RIG_KILLALL bash -c '
+    source "$1"
+    rig_macos_defaults_command; printf "%s\n" "$RIG_VALUE"
+    rig_macos_dockutil_command; printf "%s\n" "$RIG_VALUE"
+    rig_macos_killall_command; printf "%s\n" "$RIG_VALUE"
+  ' _ "$BATS_TEST_DIRNAME/../src/rig/20-orchestration.bash"
+  [ "$status" -eq 0 ] || false
+  [ "$output" = $'/usr/bin/defaults\ndockutil\n/usr/bin/killall' ] || false
+
+  run bash -c '
+    source "$1"
+    rig_macos_defaults_command; printf "%s\n" "$RIG_VALUE"
+    rig_macos_dockutil_command; printf "%s\n" "$RIG_VALUE"
+    rig_macos_killall_command; printf "%s\n" "$RIG_VALUE"
+  ' _ "$BATS_TEST_DIRNAME/../src/rig/20-orchestration.bash"
+  [ "$status" -eq 0 ] || false
+  [ "$output" = "$(printf '%s\n%s\n%s' "$RIG_DEFAULTS" "$RIG_DOCKUTIL" "$RIG_KILLALL")" ] || false
+}
+
 @test "typed macOS resources query and dry-run deterministically" {
   run_rig show
   [ "$status" -eq 0 ]

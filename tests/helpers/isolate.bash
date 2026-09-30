@@ -7,10 +7,10 @@
 # that forgets one override therefore reconciles the machine it is testing on,
 # and an apply retires the resources it finds there.
 #
-# The macOS mutators are the same hazard by a different route: defaults,
-# dockutil, and killall resolve as bare command names, so an invocation that
-# names no override rewrites the runner's own preferences and Dock and signals
-# its processes.
+# The macOS mutators are the same hazard by a different route: defaults and
+# killall default to absolute system paths, while dockutil resolves on PATH.
+# An invocation that names no override can rewrite the runner's preferences
+# and Dock and signal its processes.
 #
 # Call rig_test_isolate as the first statement of every setup. It removes the
 # inherited base directories, moves HOME into the test's own tree, and points
@@ -45,8 +45,8 @@ rig_test_isolate() {
   export RIG_LAUNCHCTL=$stub
   export RIG_LAUNCHD_DOMAIN=gui/rig-test
 
-  # The macOS mutators resolve as bare command names, so an invocation that
-  # names no override reaches the runner's real preferences, Dock, and
+  # The macOS mutators reach real preferences, Dock, and processes without
+  # these explicit overrides. An invocation that names none reaches the runner's
   # processes. Moving HOME above does not contain defaults: it reaches the user
   # domain through cfprefsd rather than through $HOME, so a run under a
   # sandboxed HOME writes the real domain using the sandboxed path as its

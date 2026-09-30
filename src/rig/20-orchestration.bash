@@ -772,15 +772,16 @@ rig_launchd_preflight_retirement() {
 }
 
 rig_macos_defaults_command() {
-  RIG_VALUE=${RIG_DEFAULTS:-defaults}
+  RIG_VALUE=${RIG_DEFAULTS:-/usr/bin/defaults}
 }
 
 rig_macos_dockutil_command() {
+  # Homebrew installs dockutil beneath its own prefix, so PATH is its default.
   RIG_VALUE=${RIG_DOCKUTIL:-dockutil}
 }
 
 rig_macos_killall_command() {
-  RIG_VALUE=${RIG_KILLALL:-killall}
+  RIG_VALUE=${RIG_KILLALL:-/usr/bin/killall}
 }
 
 rig_setting_observe() {

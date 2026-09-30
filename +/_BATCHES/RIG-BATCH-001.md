@@ -17,3 +17,6 @@ policy: safe-local-v1
 ## Run ledger
 
 <!-- ki-batch-run: RIG-BATCH-001-RUN-001 0d8b3caebc3501128d4dddf6bb9fda107e2d87f07b51e1193b733afb7a749544 -->
+| Item | Result | Baseline | Result commit | Exception |
+| --- | --- | --- | --- | --- |
+| RIG-CORE-025 | awaiting-review | `2fe4ca00b43b4e74a68e32046ae52765bc4bfc97` | `89132f4f00722a891ddf0f8e40544ebe839b2749` | None |
