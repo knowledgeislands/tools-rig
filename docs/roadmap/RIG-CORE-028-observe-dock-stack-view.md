@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-27T08:13:24Z
-updated_at: 2026-09-30T09:50:25Z
+updated_at: 2026-09-30T20:07:25Z
 ---
 
 ## Goal
@@ -53,7 +53,7 @@ Use fixture plists and stubs; assert the observed state and detail for view, dis
 
 ## Dependencies / blocks
 
-No build-order dependency. The machine-independent test fixture work in [RIG-CORE-033](RIG-CORE-033-make-tests-machine-independent.md) can make the macOS cases easier to run on Linux.
+No build-order dependency. The delivered machine-independent test fixtures can make the macOS cases easier to run on Linux.
 
 ## Documentation impact
 
@@ -85,4 +85,4 @@ Keep any broader partial-comparison audit distinct from this Dock fix.
 
 ### Relationship to the catalogue-only work
 
-`RIG-CORE-027` is also about a status token that says something other than what a reader takes from it, but its subject is a neutral row counted as a fault. This is the inverse: a fault counted as agreement. They are separate records and neither depends on the other.
+The delivered catalogue-only status change corrected a neutral row counted as a fault. This is the inverse: a fault counted as agreement. The two changes are independent.

@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-30T07:40:30Z
-updated_at: 2026-09-30T09:39:54Z
+updated_at: 2026-09-30T20:07:25Z
 ---
 
 ## Goal
@@ -18,7 +18,7 @@ While Rig performs a long operation in an interactive terminal, the display give
 
 ## Context
 
-Rig currently has an in-place progress bar on terminal stderr and line events when progress is forced. The user wants to settle the whole command surface and internal structure first, then design the running display as part of the final output wave. The existing [report renderer item](RIG-CLI-018-one-report-renderer.md) owns completed tables and machine-readable report projections; [redirected progress](RIG-CLI-021-report-progress-when-redirected.md) owns non-terminal stderr behaviour. This item owns the interactive live experience and should be reconciled with both before implementation.
+Rig currently has an in-place progress bar on terminal stderr and automatic line events when stderr is redirected. The command-surface and structural work is delivered. [The report contract](../specs/state.md) now covers completed tables and machine-readable projections, while [the progress contract](../specs/orchestration.md) covers non-terminal stderr. This item owns the interactive live experience and must preserve both contracts.
 
 ## Boundary
 

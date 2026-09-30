@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-27T15:59:32Z
-updated_at: 2026-09-30T09:39:54Z
+updated_at: 2026-09-30T20:07:25Z
 ---
 
 ## Goal
@@ -62,4 +62,4 @@ Decide whether repair observation needs its own declared target, how upgrade gat
 
 ### Related work
 
-RIG-CORE-024 owns generic needs-person detection; RIG-CLI-016 owns narrowly targeted application. Neither is a build-order dependency for this design, and this item must not duplicate their delivery. DOTFILES-UE-049 owns the host reconciler's absence-versus-invisibility defect, while DOTFILES-UE-051 owns its App Store detection problem. Local Paperclip repair protection remains unfinished host work; capturing this Rig item does not complete or transfer it.
+RIG-CORE-024 owns generic needs-person detection; narrowly targeted application is already delivered. Neither is a build-order dependency for this design, and this item must not duplicate their delivery. DOTFILES-UE-049 owns the host reconciler's absence-versus-invisibility defect, while DOTFILES-UE-051 owns its App Store detection problem. Local Paperclip repair protection remains unfinished host work; capturing this Rig item does not complete or transfer it.

@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-30T00:00:00Z
-updated_at: 2026-09-30T10:20:23Z
+updated_at: 2026-09-30T20:07:25Z
 ---
 
 ## Goal
@@ -28,7 +28,7 @@ The iWork three have since been moved to catalogue-only, Zoom's receipt was repa
 
 This is Rig's portable observation and reporting model. It does not decide how any one workstation declares Zoom or iWork, which is the host configuration's business, nor does it make `rig doctor` run providers' mutating paths to find out whether they would fail — a read-only command stays read-only.
 
-It is not [RIG-CORE-024](RIG-CORE-024-widen-needs-person-detection.md), which predicts a needs-person outcome before invocation, and not [RIG-CLI-015](RIG-CLI-015-close-outcome-contract-gaps.md), which is the outcome line. It may reuse `last-update`'s report shape, and planning should say whether it does.
+It is not [RIG-CORE-024](RIG-CORE-024-widen-needs-person-detection.md), which predicts a needs-person outcome before invocation, and not the already delivered outcome-line contract. It may reuse `last-update`'s report shape, and planning should say whether it does.
 
 ## Current state
 

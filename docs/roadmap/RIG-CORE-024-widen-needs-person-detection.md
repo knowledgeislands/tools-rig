@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-25T15:00:00Z
-updated_at: 2026-09-30T13:22:00Z
+updated_at: 2026-09-30T20:07:25Z
 ---
 
 ## Goal
@@ -80,7 +80,7 @@ The workstation run is weak evidence on its own and must not be read as the proo
 
 ## Dependencies / blocks
 
-Nothing blocks this and it blocks nothing. It is independent of the output work and of [RIG-CLI-016](RIG-CLI-016-apply-one-resource.md), touching lifecycle preflight rather than apply. It has a cross-repository consequence rather than a dependency: once the signal is honest, this workstation's chezmoi source can retire its `HOMEBREW_BUNDLE_MAS_SKIP` wrapper, which that repository owns and which this item must not change.
+Nothing blocks this and it blocks nothing. It is independent of output rendering and the already delivered targeted-apply feature, touching lifecycle preflight rather than apply. It has a cross-repository consequence rather than a dependency: once the signal is honest, this workstation's chezmoi source can retire its `HOMEBREW_BUNDLE_MAS_SKIP` wrapper, which that repository owns and which this item must not change.
 
 ## Documentation impact
 
