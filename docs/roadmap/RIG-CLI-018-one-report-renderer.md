@@ -3,13 +3,13 @@ id: RIG-CLI-018
 area: CLI
 title: One report renderer
 theme: cli
-horizon: next
+horizon: now
 status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-26T13:00:00Z
-updated_at: 2026-09-30T10:20:23Z
+updated_at: 2026-09-30T14:02:00Z
 ---
 
 ## Goal
