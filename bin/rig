@@ -4502,6 +4502,184 @@ rig_dock_normalize_path() {
   RIG_VALUE=$result
 }
 
+rig_dock_reset_snapshot() {
+  RIG_DOCK_SNAPSHOT_LOADED=0
+  RIG_DOCK_SNAPSHOT_VALID=0
+  RIG_DOCK_SNAPSHOT=
+  RIG_DOCK_SNAPSHOT_COUNT=0
+}
+
+rig_dock_reset_snapshot
+
+rig_dock_snapshot_value() {
+  local command value
+
+  command=${RIG_PLUTIL:-/usr/bin/plutil}
+  # Suppress plutil's formatting newline and keep a sentinel until after command
+  # substitution, so a literal trailing newline remains invalid path evidence.
+  value=$("$command" -extract "$1" raw -expect "$2" -n -o - - <<< "$RIG_DOCK_SNAPSHOT" 2>/dev/null && printf '.') || return 1
+  RIG_VALUE=${value%.}
+}
+
+rig_dock_load_snapshot() {
+  local command plutil snapshot count
+
+  if [ "$RIG_DOCK_SNAPSHOT_LOADED" -ne 0 ]; then
+    [ "$RIG_DOCK_SNAPSHOT_VALID" -eq 1 ]
+    return
+  fi
+  RIG_DOCK_SNAPSHOT_LOADED=1
+  rig_macos_defaults_command; command=$RIG_VALUE
+  plutil=${RIG_PLUTIL:-/usr/bin/plutil}
+  rig_executable_available "$command" && rig_executable_available "$plutil" || return 1
+  # Convert before capturing text: defaults may export a binary plist. Pipefail
+  # stays inside the subshell and no temporary file or persistent state is used.
+  snapshot=$(
+    set -o pipefail
+    "$command" export com.apple.dock - 2>/dev/null |
+      "$plutil" -convert xml1 -o - - 2>/dev/null
+  ) || return 1
+  RIG_DOCK_SNAPSHOT=$snapshot
+  rig_dock_snapshot_value persistent-others array || return 1
+  count=$RIG_VALUE
+  case "$count" in ''|*[!0-9]*) return 1 ;; esac
+  # Native arrays cannot approach this bound on a useful Dock; reject malformed
+  # evidence rather than permit an unbounded extraction loop.
+  [ "${#count}" -le 5 ] && [ "$count" -le 65536 ] || return 1
+  RIG_DOCK_SNAPSHOT_COUNT=$count
+  RIG_DOCK_SNAPSHOT_VALID=1
+}
+
+rig_dock_native_path() {
+  local value url_type remainder hex
+
+  value=$1
+  url_type=$2
+  case "$url_type" in
+    0) case "$value" in /*) ;; *) return 1 ;; esac ;;
+    15)
+      case "$value" in
+        file://localhost/*) value=/${value#file://localhost/} ;;
+        file:///*) value=${value#file://} ;;
+        *) return 1 ;;
+      esac
+      # Only a local, well-formed URL is usable evidence. A percent-encoded
+      # percent is deliberately decoded once, not recursively.
+      case "$value" in *\?*|*\#*) return 1 ;; esac
+      remainder=$value
+      while [ "${remainder#*%}" != "$remainder" ]; do
+        remainder=${remainder#*%}
+        hex=${remainder:0:2}
+        case "$hex" in
+          00|0[Aa]|0[Dd]|09) return 1 ;;
+          [0-9A-Fa-f][0-9A-Fa-f]) remainder=${remainder:2} ;;
+          *) return 1 ;;
+        esac
+      done
+      rig_dock_normalize_path "$value"
+      value=$RIG_VALUE
+      ;;
+    *) return 1 ;;
+  esac
+  case "$value" in *$'\n'*|*$'\r'*|*$'\t'*) return 1 ;; esac
+  [ "$value" = / ] || value=${value%/}
+  RIG_VALUE=$value
+}
+
+rig_dock_find_folder() {
+  local expected index tile_type path url_type matches uncertain
+
+  expected=$1
+  index=0
+  matches=0
+  uncertain=0
+  RIG_DOCK_MATCH_INDEX=
+  while [ "$index" -lt "$RIG_DOCK_SNAPSHOT_COUNT" ]; do
+    if ! rig_dock_snapshot_value "persistent-others.$index.tile-type" string; then
+      uncertain=1
+    else
+      tile_type=$RIG_VALUE
+      case "$tile_type" in
+        directory-tile)
+          if rig_dock_snapshot_value "persistent-others.$index.tile-data.file-data._CFURLString" string; then
+            path=$RIG_VALUE
+            if rig_dock_snapshot_value "persistent-others.$index.tile-data.file-data._CFURLStringType" integer; then
+              url_type=$RIG_VALUE
+              if rig_dock_native_path "$path" "$url_type"; then
+                if [ "$RIG_VALUE" = "$expected" ]; then
+                  matches=$((matches + 1))
+                  RIG_DOCK_MATCH_INDEX=$index
+                fi
+              else uncertain=1; fi
+            else uncertain=1; fi
+          else uncertain=1; fi
+          ;;
+        file-tile|url-tile|spacer-tile|small-spacer-tile|recents-tile) ;;
+        *) uncertain=1 ;;
+      esac
+    fi
+    index=$((index + 1))
+  done
+  [ "$matches" -eq 1 ] && [ "$uncertain" -eq 0 ]
+}
+
+rig_dock_observe_attributes() {
+  local section_name section_index field_index field_end item item_section kind path view display
+  local matched observed view_drift display_drift unavailable
+
+  section_name=$1
+  view_drift=''; display_drift=''; unavailable=''
+  rig_section_index "$section_name" || return 2
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = item ]; then
+      item=${RIG_FIELD_VALUES[$field_index]}
+      item_section=dock-item.$item
+      rig_get_value "$item_section" kind || return 2; kind=$RIG_VALUE
+      view=''; display=''
+      if rig_get_value "$item_section" view; then view=$RIG_VALUE; fi
+      if rig_get_value "$item_section" display; then display=$RIG_VALUE; fi
+      if [ "$kind" = folder ] && { [ -n "$view" ] || [ -n "$display" ]; }; then
+        rig_get_value "$item_section" path || return 2
+        rig_expand_home_value "$RIG_VALUE" || return
+        path=$RIG_VALUE
+        [ "$path" = / ] || path=${path%/}
+        matched=0
+        if rig_dock_load_snapshot && rig_dock_find_folder "$path"; then matched=1; fi
+        if [ -n "$view" ]; then
+          observed=
+          if [ "$matched" -eq 1 ] && rig_dock_snapshot_value "persistent-others.$RIG_DOCK_MATCH_INDEX.tile-data.showas" integer; then
+            case "$RIG_VALUE" in 0) observed=auto ;; 1) observed=fan ;; 2) observed=grid ;; 3) observed=list ;; esac
+          fi
+          if [ -z "$observed" ]; then
+            [ -n "$unavailable" ] || unavailable="view-unobservable:$item"
+          elif [ "$observed" != "$view" ]; then
+            [ -n "$view_drift" ] || view_drift="view:$item"
+          fi
+        fi
+        if [ -n "$display" ]; then
+          observed=
+          if [ "$matched" -eq 1 ] && rig_dock_snapshot_value "persistent-others.$RIG_DOCK_MATCH_INDEX.tile-data.displayas" integer; then
+            case "$RIG_VALUE" in 0) observed=stack ;; 1) observed=folder ;; esac
+          fi
+          if [ -z "$observed" ]; then
+            [ -n "$unavailable" ] || unavailable="display-unobservable:$item"
+          elif [ "$observed" != "$display" ]; then
+            [ -n "$display_drift" ] || display_drift="display:$item"
+          fi
+        fi
+      fi
+    fi
+    field_index=$((field_index + 1))
+  done
+  if [ -n "$view_drift" ]; then RIG_OBSERVATION=drifted; RIG_OBSERVATION_DETAIL=$view_drift
+  elif [ -n "$display_drift" ]; then RIG_OBSERVATION=drifted; RIG_OBSERVATION_DETAIL=$display_drift
+  elif [ -n "$unavailable" ]; then RIG_OBSERVATION=unknown; RIG_OBSERVATION_DETAIL=$unavailable
+  else RIG_OBSERVATION=present; RIG_OBSERVATION_DETAIL=-; fi
+}
+
 rig_dock_observe() {
   local section_name command output native_status expected actual line path
 
@@ -4525,8 +4703,7 @@ rig_dock_observe() {
     if [ -n "$actual" ]; then actual=$actual$'\n'$path; else actual=$path; fi
   done <<< "$output"
   if [ "$actual" = "$expected" ]; then
-    RIG_OBSERVATION=present
-    RIG_OBSERVATION_DETAIL=-
+    rig_dock_observe_attributes "$section_name"
   else
     RIG_OBSERVATION=drifted
     RIG_OBSERVATION_DETAIL=order
@@ -6965,12 +7142,13 @@ rig_status_json() {
 
   unmanaged_requested=$1
   rig_json_envelope status
-  [ "$RIG_STATUS_UNHEALTHY" -eq 0 ] && healthy=true || healthy=false
+  if [ "$RIG_STATUS_UNHEALTHY" -eq 0 ] && rig_history_healthy; then healthy=true; else healthy=false; fi
   printf ',"healthy":%s' "$healthy"
   printf ',"summary":{"present":%s,"missing":%s,"drifted":%s,"unavailable":%s,"unknown":%s,"catalogue_only":%s,"unhealthy":%s}' \
     "$RIG_STATUS_PRESENT" "$RIG_STATUS_MISSING" "$RIG_STATUS_DRIFTED" \
     "$RIG_STATUS_UNAVAILABLE" "$RIG_STATUS_UNKNOWN" "$RIG_STATUS_CATALOGUE_ONLY" \
     "$RIG_STATUS_UNHEALTHY"
+  printf ',"historical_failure_count":%s' "${#RIG_APPLY_FAILURE_KEYS[@]}"
 
   printf ',"tools":['
   index=0
@@ -7084,8 +7262,9 @@ rig_status_json() {
   else
     printf ',"unmanaged":null,"unmanaged_problems":null'
   fi
+  rig_history_json
   printf '}\n'
-  [ "$RIG_STATUS_UNHEALTHY" -eq 0 ]
+  [ "$RIG_STATUS_UNHEALTHY" -eq 0 ] && rig_history_healthy
 }
 
 rig_command_status() {
@@ -7151,16 +7330,21 @@ rig_command_status() {
     rig_collect_unmanaged || return
   fi
   rig_status_totals
-  if [ "$RIG_STATUS_UNHEALTHY" -eq 0 ]; then
+  rig_history_project || return
+  if [ "$RIG_STATUS_UNHEALTHY" -eq 0 ] && rig_history_healthy; then
     rig_outcome_note healthy "present=$RIG_STATUS_PRESENT"
   else
-    rig_outcome_note unhealthy "unhealthy=$RIG_STATUS_UNHEALTHY present=$RIG_STATUS_PRESENT"
+    rig_outcome_note unhealthy "unhealthy=$RIG_STATUS_UNHEALTHY present=$RIG_STATUS_PRESENT historical=${#RIG_APPLY_FAILURE_KEYS[@]} history-unavailable=${RIG_APPLY_HISTORY_UNAVAILABLE:-no}"
   fi
   if [ "$format" = json ]; then
     rig_status_json "$unmanaged_requested"
     return
   fi
   rig_print_status_verdict
+  if ! rig_history_healthy; then
+    printf 'Historical attention: failures=%s history-unavailable=%s (separate from current observations)\n' \
+      "${#RIG_APPLY_FAILURE_KEYS[@]}" "${RIG_APPLY_HISTORY_UNAVAILABLE:-no}"
+  fi
   printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   rig_table_reset
   rig_table_add_column TOOL 28 end keep
@@ -7221,7 +7405,8 @@ rig_command_status() {
     rig_print_unmanaged_listeners || return
     rig_print_unmanaged_skills || return
   fi
-  [ "$RIG_STATUS_UNHEALTHY" -eq 0 ]
+  rig_history_print || return
+  [ "$RIG_STATUS_UNHEALTHY" -eq 0 ] && rig_history_healthy
 }
 
 rig_doctor_path_finding() {
@@ -7591,6 +7776,15 @@ rig_command_doctor() {
   if [ -n "$xdg_findings" ]; then
     while IFS= read -r _; do findings=$((findings + 1)); done <<< "$xdg_findings"
   fi
+  RIG_APPLY_FAILURE_KEYS=(); RIG_APPLY_FAILURE_TIMES=(); RIG_APPLY_FAILURE_STATUSES=(); RIG_APPLY_FAILURE_AGES=()
+  RIG_APPLY_HISTORY_UNAVAILABLE=
+  if [ "$config_loaded" -eq 1 ]; then
+    rig_history_project || return
+    findings=$((findings + ${#RIG_APPLY_FAILURE_KEYS[@]}))
+  elif ! rig_history_load "$RIG_RESOLVED_PLATFORM"; then
+    RIG_APPLY_HISTORY_UNAVAILABLE=$RIG_HISTORY_ERROR
+  fi
+  [ -z "$RIG_APPLY_HISTORY_UNAVAILABLE" ] || findings=$((findings + 1))
 
   if [ "$format" = json ]; then
     rig_json_envelope doctor
@@ -7598,6 +7792,7 @@ rig_command_doctor() {
     printf ',"healthy":%s' "$state"
     printf ',"summary":{"findings":%s,"present":%s,"catalogue_only":%s,"incompatible_platform":%s}' \
       "$findings" "$RIG_DOCTOR_PRESENT" "$RIG_DOCTOR_CATALOGUE_ONLY" "$incompatible"
+    printf ',"historical_failure_count":%s' "${#RIG_APPLY_FAILURE_KEYS[@]}"
     printf ',"findings":{"configuration":'
     rig_json_lines "$config_finding"
     printf ',"xdg":'
@@ -7616,6 +7811,7 @@ rig_command_doctor() {
       printf ',"diagnostics":'
       rig_doctor_diagnostics "$config_loaded" json || return
     fi
+    rig_history_json
     printf '}\n'
     [ "$findings" -eq 0 ]
     return
@@ -7644,6 +7840,7 @@ rig_command_doctor() {
   if [ -n "$information" ]; then
     printf 'Information:\n%s\n' "$information"
   fi
+  rig_history_print || return
   printf 'Summary: findings=%s present=%s catalogue-only=%s incompatible-platform=%s\n' \
     "$findings" "$RIG_DOCTOR_PRESENT" "$RIG_DOCTOR_CATALOGUE_ONLY" "$incompatible"
   if [ "$verbose" -eq 1 ]; then
@@ -7868,11 +8065,13 @@ rig_run_skill_apply() {
       rig_progress_result skipped "$authority:skill.$skill" declaration
     else
       if rig_preflight_skill "$skill"; then
+        rig_history_begin "skill:$skill" "$authority"
         rig_apply_skill "$skill"
+        native_status=$?
+        rig_history_complete "skill:$skill" "$authority" "$native_status"
       else
-        false
+        native_status=1
       fi
-      native_status=$?
       if [ "$native_status" -eq 0 ]; then
         RIG_SKILL_RESULTS[$index]=completed
         RIG_SKILL_DETAILS[$index]=-
@@ -8416,6 +8615,7 @@ rig_command_apply_impl() {
   RIG_APPLY_ALLOW_DEFERRED_PROVIDERS=0
   RIG_APPLY_ALLOW_DEFERRED_SKILLS=0
   [ "$native_status" -eq 0 ] || return "$native_status"
+  rig_history_prepare "$RIG_RESOLVED_PLATFORM" || return
   rig_progress_result succeeded 'selected plan'
   rig_progress_finish
   printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
@@ -8470,11 +8670,13 @@ rig_command_apply_impl() {
       # A deferred prerequisite must have produced the executable before
       # this consumer can run. Keep independent declarations advancing.
       if rig_preflight_provider "$tool" "$binding" "$provider"; then
+        rig_history_begin "tool:$tool" "$provider"
         rig_apply_provider "$tool" "$binding" "$provider"
+        native_status=$?
+        rig_history_complete "tool:$tool" "$provider" "$native_status"
       else
-        false
+        native_status=1
       fi
-      native_status=$?
       if [ "$native_status" -eq 0 ]; then
         RIG_PLAN_RESULTS[$index]=completed
         RIG_PLAN_DETAILS[$index]=-
@@ -8535,8 +8737,10 @@ rig_command_apply_impl() {
       operational_failure=1
       rig_progress_result skipped "$provider:$kind.$id" declaration
     else
+      rig_history_begin "$kind:$id" "$provider"
       rig_apply_resource "$section_name"
       native_status=$?
+      rig_history_complete "$kind:$id" "$provider" "$native_status"
       if [ "$native_status" -eq 0 ]; then
         RIG_RESOURCE_PLAN_RESULTS[$index]=completed
         RIG_RESOURCE_PLAN_DETAILS[$index]=reconciled:$locator
@@ -8613,6 +8817,346 @@ rig_command_apply_impl() {
 
 rig_command_apply() {
   rig_buffer_mutation_report apply rig_command_apply_impl "$@"
+}
+# rig-module: 25-apply-history
+# shellcheck shell=bash
+# Shared history and projection arrays are consumed across authored modules.
+# shellcheck disable=SC2004,SC2034
+
+rig_history_error() {
+  RIG_HISTORY_ERROR=$1
+  return 1
+}
+
+rig_history_number() {
+  case "$1" in ''|*[!0-9]*|0[0-9]*) return 1 ;; esac
+  [ "${#1}" -le 10 ] && [ "$1" -le 2147483647 ]
+}
+
+rig_history_target_valid() {
+  case "$1" in tool:*|skill:*|service:*|scheduled-job:*|setting:*|dock:*) ;; *) return 1 ;; esac
+  rig_valid_id "${1#*:}"
+}
+
+rig_history_epoch() {
+  local stamp year month day hour minute second leap limit days index
+  local -a months
+  stamp=$1
+  [[ "$stamp" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || return 1
+  year=$((10#${stamp:0:4})); month=$((10#${stamp:5:2})); day=$((10#${stamp:8:2}))
+  hour=$((10#${stamp:11:2})); minute=$((10#${stamp:14:2})); second=$((10#${stamp:17:2}))
+  [ "$year" -ge 1970 ] && [ "$month" -ge 1 ] && [ "$month" -le 12 ] &&
+    [ "$day" -ge 1 ] && [ "$hour" -le 23 ] && [ "$minute" -le 59 ] && [ "$second" -le 59 ] || return 1
+  leap=0
+  if [ "$((year % 4))" -eq 0 ] && { [ "$((year % 100))" -ne 0 ] || [ "$((year % 400))" -eq 0 ]; }; then leap=1; fi
+  months=(31 "$((28 + leap))" 31 30 31 30 31 31 30 31 30 31)
+  limit=${months[$((month - 1))]}
+  [ "$day" -le "$limit" ] || return 1
+  days=$((365 * (year - 1970) + (year - 1) / 4 - 1969 / 4 - (year - 1) / 100 + 1969 / 100 + (year - 1) / 400 - 1969 / 400 + day - 1))
+  index=0
+  while [ "$index" -lt "$((month - 1))" ]; do days=$((days + months[index])); index=$((index + 1)); done
+  RIG_HISTORY_EPOCH=$((days * 86400 + hour * 3600 + minute * 60 + second))
+}
+
+rig_history_paths() {
+  local platform state_home
+  platform=$1
+  rig_valid_id "$platform" || { rig_history_error invalid-platform; return; }
+  rig_effective_state_home || { rig_history_error state-home-unavailable; return; }
+  state_home=$RIG_VALUE
+  # Ancestors of the configured XDG boundary remain user-selected. Refuse
+  # aliases of a symlink at the state home itself, as well as our owned subtree.
+  while :; do
+    case "$state_home" in /) state_home=; break ;; */) state_home=${state_home%/} ;; */.) state_home=${state_home%/.} ;; *) break ;; esac
+  done
+  [ -n "$state_home" ] || { rig_history_error unsafe-state-home; return; }
+  if [ -L "$state_home" ] || { [ -e "$state_home" ] && [ ! -d "$state_home" ]; }; then
+    rig_history_error unsafe-state-home; return
+  fi
+  if [ -d "$state_home" ] && { [ ! -r "$state_home" ] || [ ! -x "$state_home" ]; }; then
+    rig_history_error inaccessible-state-home; return
+  fi
+  RIG_HISTORY_DIRECTORY=$state_home/apply-history
+  RIG_HISTORY_FILE=$RIG_HISTORY_DIRECTORY/$platform.tsv
+  RIG_HISTORY_LOCK=$RIG_HISTORY_DIRECTORY/$platform.lock
+  if [ -L "$RIG_HISTORY_DIRECTORY" ] || { [ -e "$RIG_HISTORY_DIRECTORY" ] && [ ! -d "$RIG_HISTORY_DIRECTORY" ]; }; then
+    rig_history_error unsafe-history-directory; return
+  fi
+  if [ -d "$RIG_HISTORY_DIRECTORY" ] && { [ ! -r "$RIG_HISTORY_DIRECTORY" ] || [ ! -x "$RIG_HISTORY_DIRECTORY" ]; }; then
+    rig_history_error inaccessible-history-directory; return
+  fi
+  if [ -L "$RIG_HISTORY_FILE" ] || { [ -e "$RIG_HISTORY_FILE" ] && [ ! -f "$RIG_HISTORY_FILE" ]; }; then
+    rig_history_error unsafe-history-file; return
+  fi
+}
+
+rig_history_load() {
+  local platform bytes parsed_bytes line header target provider token recorded status extra key previous tokens canonical
+  local LC_ALL=C
+  platform=$1
+  RIG_HISTORY_ERROR=
+  RIG_HISTORY_LAST_TOKEN=0
+  RIG_HISTORY_KEYS=(); RIG_HISTORY_TOKENS=(); RIG_HISTORY_TIMES=(); RIG_HISTORY_STATUSES=()
+  rig_history_paths "$platform" || return
+  [ -e "$RIG_HISTORY_FILE" ] || return 0
+  [ -r "$RIG_HISTORY_FILE" ] || { rig_history_error unreadable-history; return; }
+  bytes=$(wc -c <"$RIG_HISTORY_FILE" 2>/dev/null) || { rig_history_error unreadable-history; return; }
+  bytes=${bytes//[[:space:]]/}
+  case "$bytes" in ''|*[!0-9]*) rig_history_error unreadable-history; return ;; esac
+  [ "$bytes" -le 4194304 ] || { rig_history_error history-byte-limit; return; }
+  header=0; previous=; tokens=$'\n'; parsed_bytes=0
+  # Canonical ledgers end every record with LF. Byte accounting also detects
+  # NUL bytes silently discarded by Bash read; corrupted evidence is not repaired.
+  while IFS= read -r line; do
+    parsed_bytes=$((parsed_bytes + ${#line} + 1))
+    if [ "$header" -eq 0 ]; then
+      case "$line" in $'rig-apply-history\t1\t'*) token=${line#$'rig-apply-history\t1\t'} ;; *) rig_history_error invalid-history-header; return ;; esac
+      rig_history_number "$token" || { rig_history_error invalid-history-token; return; }
+      RIG_HISTORY_LAST_TOKEN=$token; header=1; continue
+    fi
+    [ "${#RIG_HISTORY_KEYS[@]}" -lt 4096 ] || { rig_history_error history-row-limit; return; }
+    IFS=$'\t' read -r target provider token recorded status extra <<< "$line"
+    canonical=$target$'\t'$provider$'\t'$token$'\t'$recorded$'\t'$status
+    if ! { [ "$line" = "$canonical" ] && [ -z "$extra" ] && rig_history_target_valid "$target" && rig_valid_id "$provider"; }; then
+      rig_history_error invalid-history-row; return
+    fi
+    rig_history_number "$token" && [ "$token" -gt 0 ] && [ "$token" -le "$RIG_HISTORY_LAST_TOKEN" ] ||
+      { rig_history_error invalid-history-token; return; }
+    rig_history_number "$status" && [ "$status" -le 255 ] || { rig_history_error invalid-history-exit-status; return; }
+    rig_history_epoch "$recorded" || { rig_history_error invalid-history-time; return; }
+    key=$target$'\t'$provider
+    if [ -n "$previous" ] && [[ "$key" < "$previous" || "$key" = "$previous" ]]; then
+      rig_history_error duplicate-or-unordered-history-key; return
+    fi
+    case "$tokens" in *$'\n'"$token"$'\n'*) rig_history_error duplicate-history-token; return ;; esac
+    tokens=$tokens$token$'\n'; previous=$key
+    RIG_HISTORY_KEYS[${#RIG_HISTORY_KEYS[@]}]=$key
+    RIG_HISTORY_TOKENS[${#RIG_HISTORY_TOKENS[@]}]=$token
+    RIG_HISTORY_TIMES[${#RIG_HISTORY_TIMES[@]}]=$recorded
+    RIG_HISTORY_STATUSES[${#RIG_HISTORY_STATUSES[@]}]=$status
+  done <"$RIG_HISTORY_FILE"
+  [ "$parsed_bytes" -eq "$bytes" ] || { rig_history_error invalid-history-bytes; return; }
+  [ "$header" -eq 1 ] || { rig_history_error invalid-history-header; return; }
+}
+
+rig_history_prepare() {
+  local platform index section kind id provider key
+  platform=$1
+  RIG_HISTORY_DECLARED_KEYS=$'\n'
+  index=0
+  while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+    section=${RIG_SECTION_NAMES[$index]}; kind=${RIG_SECTION_TYPES[$index]}; id=${RIG_SECTION_IDS[$index]}
+    key=
+    case "$kind" in
+      binding)
+        if rig_tool_supports_platform "$id" "$platform" && rig_binding_supports_platform "$index" "$platform"; then
+          key=tool:$id$'\t'${RIG_SECTION_SECONDARY_IDS[$index]}
+        fi ;;
+      skill)
+        if rig_skill_supports_platform "$id" "$platform"; then
+          rig_get_value "$section" authority || return 2; key=skill:$id$'\t'$RIG_VALUE
+        fi ;;
+      service|scheduled-job|setting|dock)
+        if rig_resource_supports_platform "$section" "$platform"; then
+          rig_get_value "$section" provider || return 2; provider=$RIG_VALUE; key=$kind:$id$'\t'$provider
+        fi ;;
+    esac
+    [ -z "$key" ] || RIG_HISTORY_DECLARED_KEYS=$RIG_HISTORY_DECLARED_KEYS$key$'\n'
+    index=$((index + 1))
+  done
+}
+
+rig_history_warning() {
+  printf 'rig: warning: apply history unavailable (%s); provider outcome is unchanged\n' "${RIG_HISTORY_ERROR:-persistence-failed}" >&2
+}
+
+# Transaction-local array changes intentionally remain in this short subshell.
+# shellcheck disable=SC2030
+rig_history_transaction() (
+  local operation target provider attempt recorded native_status platform tries key index inserted bytes
+  local -a keys tokens times statuses
+  local -a RIG_HISTORY_KEYS RIG_HISTORY_TOKENS RIG_HISTORY_TIMES RIG_HISTORY_STATUSES
+  local LC_ALL=C
+  operation=$1; target=$2; provider=$3; attempt=${4:-}; recorded=${5:-}; native_status=${6:-}
+  platform=$RIG_RESOLVED_PLATFORM
+  # Cleanup state is subshell-global: EXIT runs after function locals unwind.
+  owner=$$:$RANDOM:$RANDOM; temporary=; held=0
+  umask 077
+  rig_history_paths "$platform" || { rig_history_warning; exit 1; }
+  mkdir -p -- "$RIG_HISTORY_DIRECTORY" 2>/dev/null || { RIG_HISTORY_ERROR=history-directory-unavailable; rig_history_warning; exit 1; }
+  rig_history_paths "$platform" || { rig_history_warning; exit 1; }
+  tries=0
+  while ! mkdir -- "$RIG_HISTORY_LOCK" 2>/dev/null; do
+    tries=$((tries + 1))
+    # A contending owner may remove its directory between mkdir and this check.
+    # Retry that normal release race; other non-directory obstructions time out.
+    if [ "$tries" -ge 20 ] || [ -L "$RIG_HISTORY_LOCK" ]; then
+      RIG_HISTORY_ERROR=history-lock-unavailable; rig_history_warning; exit 1
+    fi
+    sleep 0.05
+  done
+  held=1
+  # Traps exist only in this short transaction subshell, not in the apply run.
+  trap 'if [ -n "$temporary" ] && [ -f "$temporary" ] && [ ! -L "$temporary" ]; then rm -f -- "$temporary"; fi; if [ "$held" -eq 1 ] && [ ! -L "$RIG_HISTORY_LOCK" ] && [ -d "$RIG_HISTORY_LOCK" ]; then if [ -f "$RIG_HISTORY_LOCK/owner" ] && [ ! -L "$RIG_HISTORY_LOCK/owner" ] && [ "$(<"$RIG_HISTORY_LOCK/owner")" = "$owner" ]; then rm -f -- "$RIG_HISTORY_LOCK/owner"; rmdir -- "$RIG_HISTORY_LOCK" 2>/dev/null || true; elif [ ! -e "$RIG_HISTORY_LOCK/owner" ] && [ ! -L "$RIG_HISTORY_LOCK/owner" ]; then rmdir -- "$RIG_HISTORY_LOCK" 2>/dev/null || true; fi; fi' EXIT
+  trap 'exit 129' HUP
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  (set -C; printf '%s\n' "$owner" >"$RIG_HISTORY_LOCK/owner") || { RIG_HISTORY_ERROR=history-lock-owner-unavailable; rig_history_warning; exit 1; }
+  rig_history_load "$platform" || { rig_history_warning; exit 1; }
+  key=$target$'\t'$provider
+  case "$RIG_HISTORY_DECLARED_KEYS" in *$'\n'"$key"$'\n'*) ;; *) RIG_HISTORY_ERROR=undeclared-history-target; rig_history_warning; exit 1 ;; esac
+  keys=(); tokens=(); times=(); statuses=(); inserted=0; index=0
+  if [ "$operation" = reserve ]; then
+    [ "$RIG_HISTORY_LAST_TOKEN" -lt 2147483647 ] || { RIG_HISTORY_ERROR=history-token-exhausted; rig_history_warning; exit 1; }
+    RIG_HISTORY_LAST_TOKEN=$((RIG_HISTORY_LAST_TOKEN + 1)); attempt=$RIG_HISTORY_LAST_TOKEN
+  else
+    rig_history_number "$attempt" && [ "$attempt" -gt 0 ] && [ "$attempt" -le "$RIG_HISTORY_LAST_TOKEN" ] &&
+      rig_history_epoch "$recorded" && rig_history_number "$native_status" && [ "$native_status" -le 255 ] ||
+      { RIG_HISTORY_ERROR=invalid-history-completion; rig_history_warning; exit 1; }
+  fi
+  while [ "$index" -lt "${#RIG_HISTORY_KEYS[@]}" ]; do
+    case "$RIG_HISTORY_DECLARED_KEYS" in *$'\n'"${RIG_HISTORY_KEYS[$index]}"$'\n'*) ;; *) index=$((index + 1)); continue ;; esac
+    if [ "$operation" = complete ] && [ "$inserted" -eq 0 ]; then
+      if [ "${RIG_HISTORY_KEYS[$index]}" = "$key" ]; then
+        if [ "$attempt" -gt "${RIG_HISTORY_TOKENS[$index]}" ]; then
+          RIG_HISTORY_TOKENS[$index]=$attempt; RIG_HISTORY_TIMES[$index]=$recorded; RIG_HISTORY_STATUSES[$index]=$native_status
+        fi
+        inserted=1
+      elif [[ "$key" < "${RIG_HISTORY_KEYS[$index]}" ]]; then
+        keys[${#keys[@]}]=$key; tokens[${#tokens[@]}]=$attempt; times[${#times[@]}]=$recorded; statuses[${#statuses[@]}]=$native_status
+        inserted=1
+      fi
+    fi
+    keys[${#keys[@]}]=${RIG_HISTORY_KEYS[$index]}; tokens[${#tokens[@]}]=${RIG_HISTORY_TOKENS[$index]}
+    times[${#times[@]}]=${RIG_HISTORY_TIMES[$index]}; statuses[${#statuses[@]}]=${RIG_HISTORY_STATUSES[$index]}
+    index=$((index + 1))
+  done
+  if [ "$operation" = complete ] && [ "$inserted" -eq 0 ]; then
+    keys[${#keys[@]}]=$key; tokens[${#tokens[@]}]=$attempt; times[${#times[@]}]=$recorded; statuses[${#statuses[@]}]=$native_status
+  fi
+  [ "${#keys[@]}" -le 4096 ] || { RIG_HISTORY_ERROR=history-row-limit; rig_history_warning; exit 1; }
+  temporary=$(mktemp "$RIG_HISTORY_DIRECTORY/.${platform}.XXXXXX") || { RIG_HISTORY_ERROR=history-staging-unavailable; rig_history_warning; exit 1; }
+  [ -f "$temporary" ] && [ ! -L "$temporary" ] || { RIG_HISTORY_ERROR=unsafe-history-staging; rig_history_warning; exit 1; }
+  {
+    printf 'rig-apply-history\t1\t%s\n' "$RIG_HISTORY_LAST_TOKEN" || {
+      RIG_HISTORY_ERROR=history-staging-write-failed; rig_history_warning; exit 1;
+    }
+    index=0
+    while [ "$index" -lt "${#keys[@]}" ]; do
+      printf '%s\t%s\t%s\t%s\n' "${keys[$index]}" "${tokens[$index]}" "${times[$index]}" "${statuses[$index]}" || {
+        RIG_HISTORY_ERROR=history-staging-write-failed; rig_history_warning; exit 1;
+      }
+      index=$((index + 1))
+    done
+  } >"$temporary" || { RIG_HISTORY_ERROR=history-staging-write-failed; rig_history_warning; exit 1; }
+  bytes=$(wc -c <"$temporary") || { RIG_HISTORY_ERROR=history-staging-read-failed; rig_history_warning; exit 1; }
+  [ "$bytes" -le 4194304 ] || { RIG_HISTORY_ERROR=history-byte-limit; rig_history_warning; exit 1; }
+  rig_history_paths "$platform" || { rig_history_warning; exit 1; }
+  [ -f "$temporary" ] && [ ! -L "$temporary" ] || { RIG_HISTORY_ERROR=unsafe-history-staging; rig_history_warning; exit 1; }
+  [ ! -L "$RIG_HISTORY_LOCK/owner" ] && [ "$(<"$RIG_HISTORY_LOCK/owner")" = "$owner" ] ||
+    { RIG_HISTORY_ERROR=history-lock-ownership-changed; rig_history_warning; exit 1; }
+  mv -f -- "$temporary" "$RIG_HISTORY_FILE" || { RIG_HISTORY_ERROR=history-replacement-failed; rig_history_warning; exit 1; }
+  temporary=
+  [ "$operation" != reserve ] || printf '%s\n' "$attempt"
+)
+
+rig_history_begin() {
+  RIG_HISTORY_ATTEMPT=
+  if RIG_HISTORY_ATTEMPT=$(rig_history_transaction reserve "$1" "$2"); then :; else RIG_HISTORY_ATTEMPT=; fi
+  return 0
+}
+
+rig_history_complete() {
+  local target provider status recorded
+  target=$1; provider=$2; status=$3
+  [ -n "${RIG_HISTORY_ATTEMPT:-}" ] || return 0
+  recorded=$(date -u +%Y-%m-%dT%H:%M:%SZ) || { RIG_HISTORY_ERROR=completion-time-unavailable; rig_history_warning; return 0; }
+  rig_history_transaction complete "$target" "$provider" "$RIG_HISTORY_ATTEMPT" "$recorded" "$status" || true
+  RIG_HISTORY_ATTEMPT=
+}
+
+# This projection reloads the ledger; it does not consume transaction-local copies.
+# shellcheck disable=SC2031
+rig_history_project() {
+  local selected index key section provider now age
+  RIG_APPLY_FAILURE_KEYS=(); RIG_APPLY_FAILURE_TIMES=(); RIG_APPLY_FAILURE_STATUSES=(); RIG_APPLY_FAILURE_AGES=()
+  RIG_APPLY_HISTORY_UNAVAILABLE=
+  if ! rig_history_load "$RIG_RESOLVED_PLATFORM"; then RIG_APPLY_HISTORY_UNAVAILABLE=$RIG_HISTORY_ERROR; return 0; fi
+  selected=$'\n'
+  index=0
+  while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
+    selected=${selected}tool:${RIG_PLAN_TOOLS[$index]}$'\t'${RIG_PLAN_PROVIDERS[$index]}$'\n'
+    index=$((index + 1))
+  done
+  for section in "${RIG_SELECTED_SKILLS[@]+"${RIG_SELECTED_SKILLS[@]}"}"; do
+    rig_get_value "skill.$section" authority || return 2
+    selected=${selected}skill:$section$'\t'$RIG_VALUE$'\n'
+  done
+  for section in "${RIG_RESOURCE_PLAN_SECTIONS[@]+"${RIG_RESOURCE_PLAN_SECTIONS[@]}"}"; do
+    rig_get_value "$section" provider || return 2; provider=$RIG_VALUE
+    selected=$selected${section/./:}$'\t'$provider$'\n'
+  done
+  now=$(date -u +%s) || { RIG_APPLY_HISTORY_UNAVAILABLE='current-time-unavailable'; return 0; }
+  case "$now" in ''|*[!0-9]*) RIG_APPLY_HISTORY_UNAVAILABLE='current-time-unavailable'; return 0 ;; esac
+  index=0
+  while [ "$index" -lt "${#RIG_HISTORY_KEYS[@]}" ]; do
+    key=${RIG_HISTORY_KEYS[$index]}
+    if [ "${RIG_HISTORY_STATUSES[$index]}" -ne 0 ]; then
+      case "$selected" in *$'\n'"$key"$'\n'*)
+        rig_history_epoch "${RIG_HISTORY_TIMES[$index]}" || return 2
+        if [ "$RIG_HISTORY_EPOCH" -gt "$now" ]; then age=clock-discrepancy; else age=$((now - RIG_HISTORY_EPOCH)); fi
+        RIG_APPLY_FAILURE_KEYS[${#RIG_APPLY_FAILURE_KEYS[@]}]=$key
+        RIG_APPLY_FAILURE_TIMES[${#RIG_APPLY_FAILURE_TIMES[@]}]=${RIG_HISTORY_TIMES[$index]}
+        RIG_APPLY_FAILURE_STATUSES[${#RIG_APPLY_FAILURE_STATUSES[@]}]=${RIG_HISTORY_STATUSES[$index]}
+        RIG_APPLY_FAILURE_AGES[${#RIG_APPLY_FAILURE_AGES[@]}]=$age
+        ;;
+      esac
+    fi
+    index=$((index + 1))
+  done
+}
+
+rig_history_healthy() {
+  [ "${#RIG_APPLY_FAILURE_KEYS[@]}" -eq 0 ] && [ -z "$RIG_APPLY_HISTORY_UNAVAILABLE" ]
+}
+
+rig_history_json() {
+  local index separator key age
+  printf ',"apply_failures":['
+  index=0; separator=
+  while [ "$index" -lt "${#RIG_APPLY_FAILURE_KEYS[@]}" ]; do
+    key=${RIG_APPLY_FAILURE_KEYS[$index]}; age=${RIG_APPLY_FAILURE_AGES[$index]}
+    rig_json_field "$separator{" target "${key%%$'\t'*}"
+    rig_json_field ',' provider "${key#*$'\t'}"
+    rig_json_field ',' recorded_at "${RIG_APPLY_FAILURE_TIMES[$index]}"
+    if [ "$age" = clock-discrepancy ]; then printf ',"age_seconds":null,"clock_discrepancy":true'; else printf ',"age_seconds":%s,"clock_discrepancy":false' "$age"; fi
+    printf ',"native_exit_status":%s' "${RIG_APPLY_FAILURE_STATUSES[$index]}"
+    rig_json_field ',' detail last-recorded-attempt/declaration-may-have-changed
+    printf '}'; separator=,; index=$((index + 1))
+  done
+  printf '],"apply_history_unavailable":'
+  if [ -n "$RIG_APPLY_HISTORY_UNAVAILABLE" ]; then rig_json_escape "$RIG_APPLY_HISTORY_UNAVAILABLE"; printf '"%s"' "$RIG_VALUE"; else printf null; fi
+}
+
+rig_history_print() {
+  local index key age
+  if [ -n "$RIG_APPLY_HISTORY_UNAVAILABLE" ]; then printf '\nApply history unavailable: %s\n' "$RIG_APPLY_HISTORY_UNAVAILABLE"; fi
+  [ "${#RIG_APPLY_FAILURE_KEYS[@]}" -gt 0 ] || return 0
+  printf '\nHistorical apply failures: %s (last recorded attempts; declarations may have changed)\n' "${#RIG_APPLY_FAILURE_KEYS[@]}"
+  rig_table_reset
+  rig_table_add_column TARGET 28 end keep
+  rig_table_add_column PROVIDER 18 end keep
+  rig_table_add_column RECORDED-UTC 20 end keep
+  rig_table_add_column AGE 18 end keep
+  rig_table_add_column EXIT 4 end keep
+  index=0
+  while [ "$index" -lt "${#RIG_APPLY_FAILURE_KEYS[@]}" ]; do
+    key=${RIG_APPLY_FAILURE_KEYS[$index]}; age=${RIG_APPLY_FAILURE_AGES[$index]}
+    [ "$age" = clock-discrepancy ] || age=${age}s
+    rig_table_add_row "${key%%$'\t'*}" "${key#*$'\t'}" "${RIG_APPLY_FAILURE_TIMES[$index]}" "$age" "${RIG_APPLY_FAILURE_STATUSES[$index]}" || return 2
+    index=$((index + 1))
+  done
+  rig_table_print
 }
 # rig-module: 30-commands
 # shellcheck shell=bash
@@ -11662,8 +12206,8 @@ rig_run_lifecycle_tasks() {
     else
       progress_scope=declaration
       rig_progress_begin "$provider:$label" "$progress_scope"
-      # An unattended run must never block on a question, so a provider that
-      # asks one reads end-of-file and fails instead of hanging the job.
+      # Standard-input questions receive EOF in an unattended invocation.
+      # Native programs may still use a terminal or another authentication surface.
       if [ "$RIG_UNATTENDED" -eq 1 ]; then
         rig_execute_lifecycle_task "$action" "$provider" "$binding" "$executable" </dev/null
       else
@@ -11777,6 +12321,7 @@ main() {
   set -u
   RIG_INVOKED_PATH=$0
   command_name=${1:-help}
+  rig_dock_reset_snapshot
   case "$command_name" in
     init|status|doctor|apply|upgrade|capture|export)
       RIG_PROGRESS_CONTEXT=operational

@@ -3729,7 +3729,9 @@ write_inventory_config() {
 
 @test "custom provider default executable covers every trust-boundary invocation" {
   local data_home
+  RIG=${RIG_TEST_EXECUTABLE:-$RIG}
   data_home=$BATS_TEST_TMPDIR/rig-data-$BATS_TEST_NUMBER
+  export RIG_STATE_HOME=$BATS_TEST_TMPDIR/rig-state-$BATS_TEST_NUMBER
   mkdir -p "$data_home/providers"
 
   write_orchestration_config

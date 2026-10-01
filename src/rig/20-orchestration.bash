@@ -881,6 +881,184 @@ rig_dock_normalize_path() {
   RIG_VALUE=$result
 }
 
+rig_dock_reset_snapshot() {
+  RIG_DOCK_SNAPSHOT_LOADED=0
+  RIG_DOCK_SNAPSHOT_VALID=0
+  RIG_DOCK_SNAPSHOT=
+  RIG_DOCK_SNAPSHOT_COUNT=0
+}
+
+rig_dock_reset_snapshot
+
+rig_dock_snapshot_value() {
+  local command value
+
+  command=${RIG_PLUTIL:-/usr/bin/plutil}
+  # Suppress plutil's formatting newline and keep a sentinel until after command
+  # substitution, so a literal trailing newline remains invalid path evidence.
+  value=$("$command" -extract "$1" raw -expect "$2" -n -o - - <<< "$RIG_DOCK_SNAPSHOT" 2>/dev/null && printf '.') || return 1
+  RIG_VALUE=${value%.}
+}
+
+rig_dock_load_snapshot() {
+  local command plutil snapshot count
+
+  if [ "$RIG_DOCK_SNAPSHOT_LOADED" -ne 0 ]; then
+    [ "$RIG_DOCK_SNAPSHOT_VALID" -eq 1 ]
+    return
+  fi
+  RIG_DOCK_SNAPSHOT_LOADED=1
+  rig_macos_defaults_command; command=$RIG_VALUE
+  plutil=${RIG_PLUTIL:-/usr/bin/plutil}
+  rig_executable_available "$command" && rig_executable_available "$plutil" || return 1
+  # Convert before capturing text: defaults may export a binary plist. Pipefail
+  # stays inside the subshell and no temporary file or persistent state is used.
+  snapshot=$(
+    set -o pipefail
+    "$command" export com.apple.dock - 2>/dev/null |
+      "$plutil" -convert xml1 -o - - 2>/dev/null
+  ) || return 1
+  RIG_DOCK_SNAPSHOT=$snapshot
+  rig_dock_snapshot_value persistent-others array || return 1
+  count=$RIG_VALUE
+  case "$count" in ''|*[!0-9]*) return 1 ;; esac
+  # Native arrays cannot approach this bound on a useful Dock; reject malformed
+  # evidence rather than permit an unbounded extraction loop.
+  [ "${#count}" -le 5 ] && [ "$count" -le 65536 ] || return 1
+  RIG_DOCK_SNAPSHOT_COUNT=$count
+  RIG_DOCK_SNAPSHOT_VALID=1
+}
+
+rig_dock_native_path() {
+  local value url_type remainder hex
+
+  value=$1
+  url_type=$2
+  case "$url_type" in
+    0) case "$value" in /*) ;; *) return 1 ;; esac ;;
+    15)
+      case "$value" in
+        file://localhost/*) value=/${value#file://localhost/} ;;
+        file:///*) value=${value#file://} ;;
+        *) return 1 ;;
+      esac
+      # Only a local, well-formed URL is usable evidence. A percent-encoded
+      # percent is deliberately decoded once, not recursively.
+      case "$value" in *\?*|*\#*) return 1 ;; esac
+      remainder=$value
+      while [ "${remainder#*%}" != "$remainder" ]; do
+        remainder=${remainder#*%}
+        hex=${remainder:0:2}
+        case "$hex" in
+          00|0[Aa]|0[Dd]|09) return 1 ;;
+          [0-9A-Fa-f][0-9A-Fa-f]) remainder=${remainder:2} ;;
+          *) return 1 ;;
+        esac
+      done
+      rig_dock_normalize_path "$value"
+      value=$RIG_VALUE
+      ;;
+    *) return 1 ;;
+  esac
+  case "$value" in *$'\n'*|*$'\r'*|*$'\t'*) return 1 ;; esac
+  [ "$value" = / ] || value=${value%/}
+  RIG_VALUE=$value
+}
+
+rig_dock_find_folder() {
+  local expected index tile_type path url_type matches uncertain
+
+  expected=$1
+  index=0
+  matches=0
+  uncertain=0
+  RIG_DOCK_MATCH_INDEX=
+  while [ "$index" -lt "$RIG_DOCK_SNAPSHOT_COUNT" ]; do
+    if ! rig_dock_snapshot_value "persistent-others.$index.tile-type" string; then
+      uncertain=1
+    else
+      tile_type=$RIG_VALUE
+      case "$tile_type" in
+        directory-tile)
+          if rig_dock_snapshot_value "persistent-others.$index.tile-data.file-data._CFURLString" string; then
+            path=$RIG_VALUE
+            if rig_dock_snapshot_value "persistent-others.$index.tile-data.file-data._CFURLStringType" integer; then
+              url_type=$RIG_VALUE
+              if rig_dock_native_path "$path" "$url_type"; then
+                if [ "$RIG_VALUE" = "$expected" ]; then
+                  matches=$((matches + 1))
+                  RIG_DOCK_MATCH_INDEX=$index
+                fi
+              else uncertain=1; fi
+            else uncertain=1; fi
+          else uncertain=1; fi
+          ;;
+        file-tile|url-tile|spacer-tile|small-spacer-tile|recents-tile) ;;
+        *) uncertain=1 ;;
+      esac
+    fi
+    index=$((index + 1))
+  done
+  [ "$matches" -eq 1 ] && [ "$uncertain" -eq 0 ]
+}
+
+rig_dock_observe_attributes() {
+  local section_name section_index field_index field_end item item_section kind path view display
+  local matched observed view_drift display_drift unavailable
+
+  section_name=$1
+  view_drift=''; display_drift=''; unavailable=''
+  rig_section_index "$section_name" || return 2
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = item ]; then
+      item=${RIG_FIELD_VALUES[$field_index]}
+      item_section=dock-item.$item
+      rig_get_value "$item_section" kind || return 2; kind=$RIG_VALUE
+      view=''; display=''
+      if rig_get_value "$item_section" view; then view=$RIG_VALUE; fi
+      if rig_get_value "$item_section" display; then display=$RIG_VALUE; fi
+      if [ "$kind" = folder ] && { [ -n "$view" ] || [ -n "$display" ]; }; then
+        rig_get_value "$item_section" path || return 2
+        rig_expand_home_value "$RIG_VALUE" || return
+        path=$RIG_VALUE
+        [ "$path" = / ] || path=${path%/}
+        matched=0
+        if rig_dock_load_snapshot && rig_dock_find_folder "$path"; then matched=1; fi
+        if [ -n "$view" ]; then
+          observed=
+          if [ "$matched" -eq 1 ] && rig_dock_snapshot_value "persistent-others.$RIG_DOCK_MATCH_INDEX.tile-data.showas" integer; then
+            case "$RIG_VALUE" in 0) observed=auto ;; 1) observed=fan ;; 2) observed=grid ;; 3) observed=list ;; esac
+          fi
+          if [ -z "$observed" ]; then
+            [ -n "$unavailable" ] || unavailable="view-unobservable:$item"
+          elif [ "$observed" != "$view" ]; then
+            [ -n "$view_drift" ] || view_drift="view:$item"
+          fi
+        fi
+        if [ -n "$display" ]; then
+          observed=
+          if [ "$matched" -eq 1 ] && rig_dock_snapshot_value "persistent-others.$RIG_DOCK_MATCH_INDEX.tile-data.displayas" integer; then
+            case "$RIG_VALUE" in 0) observed=stack ;; 1) observed=folder ;; esac
+          fi
+          if [ -z "$observed" ]; then
+            [ -n "$unavailable" ] || unavailable="display-unobservable:$item"
+          elif [ "$observed" != "$display" ]; then
+            [ -n "$display_drift" ] || display_drift="display:$item"
+          fi
+        fi
+      fi
+    fi
+    field_index=$((field_index + 1))
+  done
+  if [ -n "$view_drift" ]; then RIG_OBSERVATION=drifted; RIG_OBSERVATION_DETAIL=$view_drift
+  elif [ -n "$display_drift" ]; then RIG_OBSERVATION=drifted; RIG_OBSERVATION_DETAIL=$display_drift
+  elif [ -n "$unavailable" ]; then RIG_OBSERVATION=unknown; RIG_OBSERVATION_DETAIL=$unavailable
+  else RIG_OBSERVATION=present; RIG_OBSERVATION_DETAIL=-; fi
+}
+
 rig_dock_observe() {
   local section_name command output native_status expected actual line path
 
@@ -904,8 +1082,7 @@ rig_dock_observe() {
     if [ -n "$actual" ]; then actual=$actual$'\n'$path; else actual=$path; fi
   done <<< "$output"
   if [ "$actual" = "$expected" ]; then
-    RIG_OBSERVATION=present
-    RIG_OBSERVATION_DETAIL=-
+    rig_dock_observe_attributes "$section_name"
   else
     RIG_OBSERVATION=drifted
     RIG_OBSERVATION_DETAIL=order

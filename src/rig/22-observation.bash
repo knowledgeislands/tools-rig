@@ -900,12 +900,13 @@ rig_status_json() {
 
   unmanaged_requested=$1
   rig_json_envelope status
-  [ "$RIG_STATUS_UNHEALTHY" -eq 0 ] && healthy=true || healthy=false
+  if [ "$RIG_STATUS_UNHEALTHY" -eq 0 ] && rig_history_healthy; then healthy=true; else healthy=false; fi
   printf ',"healthy":%s' "$healthy"
   printf ',"summary":{"present":%s,"missing":%s,"drifted":%s,"unavailable":%s,"unknown":%s,"catalogue_only":%s,"unhealthy":%s}' \
     "$RIG_STATUS_PRESENT" "$RIG_STATUS_MISSING" "$RIG_STATUS_DRIFTED" \
     "$RIG_STATUS_UNAVAILABLE" "$RIG_STATUS_UNKNOWN" "$RIG_STATUS_CATALOGUE_ONLY" \
     "$RIG_STATUS_UNHEALTHY"
+  printf ',"historical_failure_count":%s' "${#RIG_APPLY_FAILURE_KEYS[@]}"
 
   printf ',"tools":['
   index=0
@@ -1019,8 +1020,9 @@ rig_status_json() {
   else
     printf ',"unmanaged":null,"unmanaged_problems":null'
   fi
+  rig_history_json
   printf '}\n'
-  [ "$RIG_STATUS_UNHEALTHY" -eq 0 ]
+  [ "$RIG_STATUS_UNHEALTHY" -eq 0 ] && rig_history_healthy
 }
 
 rig_command_status() {
@@ -1086,16 +1088,21 @@ rig_command_status() {
     rig_collect_unmanaged || return
   fi
   rig_status_totals
-  if [ "$RIG_STATUS_UNHEALTHY" -eq 0 ]; then
+  rig_history_project || return
+  if [ "$RIG_STATUS_UNHEALTHY" -eq 0 ] && rig_history_healthy; then
     rig_outcome_note healthy "present=$RIG_STATUS_PRESENT"
   else
-    rig_outcome_note unhealthy "unhealthy=$RIG_STATUS_UNHEALTHY present=$RIG_STATUS_PRESENT"
+    rig_outcome_note unhealthy "unhealthy=$RIG_STATUS_UNHEALTHY present=$RIG_STATUS_PRESENT historical=${#RIG_APPLY_FAILURE_KEYS[@]} history-unavailable=${RIG_APPLY_HISTORY_UNAVAILABLE:-no}"
   fi
   if [ "$format" = json ]; then
     rig_status_json "$unmanaged_requested"
     return
   fi
   rig_print_status_verdict
+  if ! rig_history_healthy; then
+    printf 'Historical attention: failures=%s history-unavailable=%s (separate from current observations)\n' \
+      "${#RIG_APPLY_FAILURE_KEYS[@]}" "${RIG_APPLY_HISTORY_UNAVAILABLE:-no}"
+  fi
   printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   rig_table_reset
   rig_table_add_column TOOL 28 end keep
@@ -1156,7 +1163,8 @@ rig_command_status() {
     rig_print_unmanaged_listeners || return
     rig_print_unmanaged_skills || return
   fi
-  [ "$RIG_STATUS_UNHEALTHY" -eq 0 ]
+  rig_history_print || return
+  [ "$RIG_STATUS_UNHEALTHY" -eq 0 ] && rig_history_healthy
 }
 
 rig_doctor_path_finding() {
@@ -1526,6 +1534,15 @@ rig_command_doctor() {
   if [ -n "$xdg_findings" ]; then
     while IFS= read -r _; do findings=$((findings + 1)); done <<< "$xdg_findings"
   fi
+  RIG_APPLY_FAILURE_KEYS=(); RIG_APPLY_FAILURE_TIMES=(); RIG_APPLY_FAILURE_STATUSES=(); RIG_APPLY_FAILURE_AGES=()
+  RIG_APPLY_HISTORY_UNAVAILABLE=
+  if [ "$config_loaded" -eq 1 ]; then
+    rig_history_project || return
+    findings=$((findings + ${#RIG_APPLY_FAILURE_KEYS[@]}))
+  elif ! rig_history_load "$RIG_RESOLVED_PLATFORM"; then
+    RIG_APPLY_HISTORY_UNAVAILABLE=$RIG_HISTORY_ERROR
+  fi
+  [ -z "$RIG_APPLY_HISTORY_UNAVAILABLE" ] || findings=$((findings + 1))
 
   if [ "$format" = json ]; then
     rig_json_envelope doctor
@@ -1533,6 +1550,7 @@ rig_command_doctor() {
     printf ',"healthy":%s' "$state"
     printf ',"summary":{"findings":%s,"present":%s,"catalogue_only":%s,"incompatible_platform":%s}' \
       "$findings" "$RIG_DOCTOR_PRESENT" "$RIG_DOCTOR_CATALOGUE_ONLY" "$incompatible"
+    printf ',"historical_failure_count":%s' "${#RIG_APPLY_FAILURE_KEYS[@]}"
     printf ',"findings":{"configuration":'
     rig_json_lines "$config_finding"
     printf ',"xdg":'
@@ -1551,6 +1569,7 @@ rig_command_doctor() {
       printf ',"diagnostics":'
       rig_doctor_diagnostics "$config_loaded" json || return
     fi
+    rig_history_json
     printf '}\n'
     [ "$findings" -eq 0 ]
     return
@@ -1579,6 +1598,7 @@ rig_command_doctor() {
   if [ -n "$information" ]; then
     printf 'Information:\n%s\n' "$information"
   fi
+  rig_history_print || return
   printf 'Summary: findings=%s present=%s catalogue-only=%s incompatible-platform=%s\n' \
     "$findings" "$RIG_DOCTOR_PRESENT" "$RIG_DOCTOR_CATALOGUE_ONLY" "$incompatible"
   if [ "$verbose" -eq 1 ]; then

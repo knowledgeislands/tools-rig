@@ -1,15 +1,15 @@
 ---
 id: RIG-CORE-028
 area: CORE
-title: Observe Dock stack view
+title: Observe Dock folder attributes
 theme: orchestration
 horizon: next
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 43a73df5b346bc41512911644534bff46596f74c
 created_at: 2026-09-27T08:13:24Z
-updated_at: 2026-10-01T04:08:36Z
+updated_at: 2026-10-01T06:09:25Z
 ---
 
 ## Goal
@@ -38,12 +38,12 @@ Dock observation compares declared paths and order only. Apply passes declared `
 
 ## Steps
 
-- [ ] Preserve dockutil path/order comparison, then read one defaults export of com.apple.dock only when paths agree and folder view/display attributes are explicitly declared.
-- [ ] Use native plutil typed extraction to inspect persistent-others folder tiles, matching normalized file URLs to declared paths without another parser or runtime dependency.
-- [ ] Compare declared view and display independently; keep drift precedence of order, then view, then display. Omitted attributes remain unconstrained.
-- [ ] When no declared mismatch is established, report unknown for unreadable or malformed snapshots, missing or duplicate matching tiles, missing typed fields and unsupported encodings; never infer present from incomplete evidence.
-- [ ] Cover supported encodings, matching/mismatching attributes, escaped paths, omitted declarations and unavailable evidence with isolated XML/binary plist fixtures. Assert no defaults write, Dock restart or dockutil mutation occurs.
-- [ ] Run the full repository gate and record the observation contract before the final display batch.
+- [x] Preserve dockutil path/order comparison, then read one defaults export of com.apple.dock only when paths agree and folder view/display attributes are explicitly declared.
+- [x] Use native plutil typed extraction to inspect persistent-others folder tiles, matching normalized file URLs to declared paths without another parser or runtime dependency.
+- [x] Compare declared view and display independently; keep drift precedence of order, then view, then display. Omitted attributes remain unconstrained.
+- [x] When no declared mismatch is established, report unknown for unreadable or malformed snapshots, missing or duplicate matching tiles, missing typed fields and unsupported encodings; never infer present from incomplete evidence.
+- [x] Cover supported encodings, matching/mismatching attributes, escaped paths, omitted declarations and unavailable evidence with isolated XML/binary plist fixtures. Assert no defaults write, Dock restart or dockutil mutation occurs.
+- [x] Run the full repository gate and record the observation contract before the final display batch.
 
 ## Files touched
 
@@ -78,6 +78,32 @@ Update Dock guidance if the source imposes a user-visible limitation.
 ### Roadmap
 
 Keep any broader partial-comparison audit distinct from this Dock fix.
+
+## Review
+
+### Delivered
+
+Implemented declared Dock folder view/display observation from immutable baseline `43a73df5b346bc41512911644534bff46596f74c` under RIG-BATCH-009. Paths and order retain precedence; omitted attributes remain unconstrained, while incomplete evidence is unknown rather than agreement. The existing Dock apply body is unchanged.
+
+### Change Summary
+
+Added typed native snapshot helpers in `src/rig/20-orchestration.bash`, a command-entry cache reset in `src/rig/90-main.bash`, focused Dock tests and a fixture-only portable plutil helper. Updated existing macOS fixtures, the state specification, operational-resource guide, manual, Unreleased notes and assembled executable. No runtime parser dependency was introduced.
+
+### Verification
+
+All 25 focused Dock/macOS tests passed, including 16 new observation cases. Independent disposable native-plutil checks confirmed XML/binary conversion, typed values and control-character preservation. The full local gate passed: repository audit, ShellCheck, Bash syntax, assembly check, benchmark, six read-only native-provider probes, all 353 Bats tests with stdin from /dev/null, and manual lint.
+
+### Outstanding concerns
+
+None within the approved scope. Existing dockutil path/order normalization is preserved; this item does not redesign unrelated path semantics or the live display.
+
+### Post-change review
+
+A separate worker reviewed native evidence semantics and ran the focused tests. Review found and fixed command-substitution stripping of trailing newlines, with a regression proving malformed paths cannot falsely match. Tests cover one snapshot per command, repeated sourced commands, all encodings, omitted fields, duplicate matches, full-path rather than label matching, proven-mismatch precedence and absent native mutation. The coordinator integrated documentation and the command-entry reset.
+
+### Mini recap
+
+Status and doctor now expose declared Dock attribute drift before apply. The accepted behavior and evidence are retained in RIG-STATE-036 and the operational guide. This item is awaiting human acceptance; live-display work remains separate.
 
 ## Discussion
 

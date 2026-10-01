@@ -1,15 +1,15 @@
 ---
 id: RIG-CORE-024
 area: CORE
-title: Harden unattended upgrade contract
+title: Verify unattended upgrade guarantees
 theme: orchestration
 horizon: next
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 43a73df5b346bc41512911644534bff46596f74c
 created_at: 2026-09-25T15:00:00Z
-updated_at: 2026-10-01T04:07:40Z
+updated_at: 2026-10-01T06:09:25Z
 ---
 
 ## Goal
@@ -34,11 +34,11 @@ Closing stdin prevents stdin questions from waiting for input. It does not guara
 
 ## Steps
 
-- [ ] Reconcile the unattended specification, manual, guide, lifecycle source comment and stdin-test title with declaration-scoped upgrades. Replace the unprovable never-blocks claim with the specific stdin-EOF guarantee; regenerate the executable for the comment change.
-- [ ] Preserve the existing App Store exclusion and ordinary failure semantics without introducing a protocol or schema extension.
-- [ ] Add an isolated mixed Homebrew fixture with a skipped App Store entry, failed cask upgrade and successful formula upgrade; assert independent outcomes, exit status, persisted rows, stdin handling and noninteractive environment.
-- [ ] Prove the fixture never dispatches Bundle, cleanup or the excluded App Store operation; retain interactive and dry-run coverage.
-- [ ] Run the full repository gate and record a review packet stating both the proven contract and its native-program limitation.
+- [x] Reconcile the unattended specification, manual, guide, lifecycle source comment and stdin-test title with declaration-scoped upgrades. Replace the unprovable never-blocks claim with the specific stdin-EOF guarantee; regenerate the executable for the comment change.
+- [x] Preserve the existing App Store exclusion and ordinary failure semantics without introducing a protocol or schema extension.
+- [x] Add an isolated mixed Homebrew fixture with a skipped App Store entry, failed cask upgrade and successful formula upgrade; assert independent outcomes, exit status, persisted rows, stdin handling and noninteractive environment.
+- [x] Prove the fixture never dispatches Bundle, cleanup or the excluded App Store operation; retain interactive and dry-run coverage.
+- [x] Run the full repository gate and record a review packet stating both the proven contract and its native-program limitation.
 
 ## Files touched
 
@@ -73,6 +73,32 @@ Explain native interaction limits and investigation of failures. Remove obsolete
 ### Roadmap
 
 This narrowed item replaces the mixed-manifest implementation plan. A future explicit interactivity declaration would need a separately evidenced product decision.
+
+## Review
+
+### Delivered
+
+Implemented the narrowed unattended-upgrade contract from immutable baseline `43a73df5b346bc41512911644534bff46596f74c` under RIG-BATCH-009. This is regression coverage and accurate documentation, not a new needs-person classifier, provider protocol or runtime behavior change. The delivery commit carrying this packet also integrates the independently scoped Dock and history work.
+
+### Change Summary
+
+Updated lifecycle source commentary, `tests/rig-lifecycle.bats`, the orchestration specification, unattended and command guides, manual and Unreleased notes. The assembled executable includes the corrected commentary. The title now describes the approved narrowed scope while preserving the issue identity.
+
+### Verification
+
+All 12 focused lifecycle tests passed. The full local gate passed: repository audit, ShellCheck, Bash syntax, deterministic assembly check, benchmark, six read-only native-provider probes, all 353 Bats tests with stdin from /dev/null, and manual lint. Bats ran on Bash 3.2 with an explicitly selected Python test interpreter.
+
+### Outstanding concerns
+
+None within the approved scope. Standard-input EOF and Homebrew's noninteractive flag do not control a native program's terminal, graphical authentication or credential helper; this limitation is now explicit. Host scheduling and chezmoi migration remain outside this delivery.
+
+### Post-change review
+
+The coordinator independently reviewed the worker's source, tests and documentation. Mixed Homebrew results preserve excluded App Store, failed cask and successful formula rows in the same report; assertions prove caller input cannot reach unattended invocations, independent work continues, interactive invocation remains available and dry runs preserve prior state. No live upgrade or workstation mutation was used.
+
+### Mini recap
+
+Unattended behavior is understood and regression-protected without widening the command surface. Specifications and guides retain the bounded contract. This item is awaiting human acceptance, not automatically done or eligible for pruning.
 
 ## Discussion
 

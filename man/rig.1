@@ -210,6 +210,28 @@ resolved default profile
 with its selected native observation. Catalogue-only tools have their own
 neutral state rather than counting as unavailable; stale resource receipts
 are pending retirement.
+Selected historical apply failures appear separately from these current
+observations, with their completion time, age and native exit status. An
+installed tool may remain present while its last completed apply failed.
+History findings contribute exit status 1 without changing native state
+counters; they remain visible with
+.BR \-\-problems .
+JSON includes a separate
+.B apply_failures
+array and historical count. Doctor reports the same evidence.
+Same-provider declaration changes retain historical evidence, not a claim
+about the changed declaration. A later successful apply clears the matching
+failure; unrelated applies do not. Missing history is neutral. Damaged,
+unreadable or unsafe history is an unavailable-history finding, and future
+timestamps are clock discrepancies rather than negative ages.
+When running without
+.BR HOME ,
+set
+.B RIG_STATE_HOME
+or
+.B XDG_STATE_HOME
+explicitly; an unresolved history location is unavailable evidence, not
+missing history.
 The report opens with a verdict line naming how many entries need attention
 and the sections holding them, and every section closes with its own summary
 counters.
@@ -427,8 +449,12 @@ states that nobody is watching. Provider stdin comes from
 .IR /dev/null ,
 Homebrew receives
 .BR NONINTERACTIVE=1 ,
-and tasks needing a person are unavailable before invocation. Independent work
-continues. A non-dry run writes the
+and selected App Store upgrades are unavailable with
+.B interactive-required
+before invocation. Other native failures retain their exit detail while
+independent work continues. Native programs may still interact through a
+terminal, graphical authentication, or credential helper; this flag is not a
+timeout or process supervisor. A non-dry run writes the
 .I last-upgrade
 report described under
 .BR FILES .
@@ -1221,6 +1247,19 @@ and locator; it is not observed state or declaration authority. A row survives
 a run that did not select it, and becomes retirement work only once the
 catalogue stops declaring it for the platform.
 .TP
+.I ${XDG_STATE_HOME:-$HOME/.local/state}/rig/apply-history/PLATFORM.tsv
+Bounded versioned apply-outcome ledger keyed by qualified declared target and
+provider or skill authority. Each completed attempt stores an ordering token,
+UTC completion time and native exit status, never arguments, locators or
+provider output. Internal successful records prevent an older concurrent
+failure from replacing a newer completed success. Short write locks never
+span native execution. Each completed result is published immediately;
+interrupted in-flight work publishes nothing. Dry runs and read-only commands
+do not write, prune or repair history. Removed declarations are pruned only
+on real history writes; profile deselection alone does not remove evidence.
+The ledger is limited to 4 MiB and 4096 rows, with no age-based expiry.
+Persistence warnings do not rewrite provider outcomes or apply exit status.
+.TP
 .I ${XDG_STATE_HOME:-$HOME/.local/state}/rig/reconciliation/PLATFORM.lock
 Exclusive live reconciliation lock. Rig acquires it before reading a receipt
 and holds it through provider work and atomic receipt replacement. Existing
@@ -1409,7 +1448,13 @@ The built-in
 .B macos-defaults
 integration observes and applies typed settings. The built-in
 .B macos-dock
-integration observes and applies a declared semantic Dock order. Native macOS
+integration observes and applies a declared semantic Dock order and explicitly
+declared folder view and display attributes. Unspecified attributes remain
+unconstrained. Observation compares full paths, never item labels, using one
+native Dock snapshot when attribute evidence is needed. Proven order, view
+and display mismatches take precedence in that order; incomplete attribute
+evidence is unknown, not agreement. Observation never rewrites defaults or
+restarts the Dock. Native macOS
 application inventory is read-only. These integrations require neither
 provider tables nor external executables and remain unavailable without
 mutation on other platforms.

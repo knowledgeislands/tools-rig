@@ -118,6 +118,76 @@ run_rig() {
     RIG_PLATFORM=fixture RIG_TEST_LOG="$CALL_LOG" PATH="$FAKE_BIN:$PATH" "$RIG" "$@"
 }
 
+write_mixed_homebrew_fixture() {
+  unset NONINTERACTIVE
+  cat >"$CONFIG_HOME/rig.toml" <<'EOF'
+[rig]
+schema = 1
+default-profile = "default"
+
+[category.core]
+name = "Core"
+purpose = "Exercise independent Homebrew upgrade results"
+
+[tool.cask-failure]
+name = "Cask Failure"
+category = "core"
+purpose = "Exercise a native cask failure"
+rationale = "The failure must remain distinct from known interactivity"
+platforms = ["any"]
+install.provider = "homebrew"
+install.kind = "cask"
+install.locator = "failing-cask"
+
+[tool.formula-success]
+name = "Formula Success"
+category = "core"
+purpose = "Exercise an independent formula after the failed cask"
+rationale = "One native failure must not mask the next declaration"
+platforms = ["any"]
+install.provider = "homebrew"
+install.kind = "formula"
+install.locator = "ready-formula"
+
+[tool.store-app]
+name = "Store App"
+category = "core"
+purpose = "Exercise the conservative App Store exclusion"
+rationale = "Unattended runs leave App Store interaction to a person"
+platforms = ["any"]
+install.provider = "homebrew"
+install.kind = "mas"
+install.locator = "497799835"
+
+[profile.default]
+tools = ["store-app", "formula-success", "cask-failure"]
+EOF
+  cat >"$FAKE_BIN/brew" <<'SCRIPT'
+#!/usr/bin/env bash
+printf 'brew\t%s\n' "$*" >>"$RIG_TEST_LOG"
+printf 'brew-noninteractive\t%s\n' "${NONINTERACTIVE:-unset}" >>"$RIG_TEST_LOG"
+if IFS= read -r answer; then
+  printf 'brew-stdin\t%s\n' "$answer" >>"$RIG_TEST_LOG"
+else
+  printf 'brew-stdin\tend-of-file\n' >>"$RIG_TEST_LOG"
+fi
+case "$*" in
+  'upgrade --cask failing-cask') exit 7 ;;
+  'upgrade --formula ready-formula') exit 0 ;;
+  *) exit 99 ;;
+esac
+SCRIPT
+  cat >"$FAKE_BIN/mas" <<'SCRIPT'
+#!/usr/bin/env bash
+printf 'mas\t%s\n' "$*" >>"$RIG_TEST_LOG"
+case "$*" in
+  'upgrade 497799835') exit 0 ;;
+  *) exit 99 ;;
+esac
+SCRIPT
+  chmod +x "$FAKE_BIN/brew" "$FAKE_BIN/mas"
+}
+
 @test "mise and npm are implicit built-in installation providers" {
   run run_rig apply --dry-run
 
@@ -182,7 +252,7 @@ run_rig() {
   [ "$(grep -Fc uv "$CALL_LOG")" -eq 0 ]
 }
 
-@test "an unattended upgrade never blocks on a question and states the manager it isolated" {
+@test "an unattended upgrade gives native stdin EOF and retains the resulting failure" {
   cat >"$FAKE_BIN/uv" <<'SCRIPT'
 #!/usr/bin/env bash
 printf 'uv\t%s\n' "$*" >>"$RIG_TEST_LOG"
@@ -300,6 +370,67 @@ EOF
   [ "$status" -eq 0 ] || { printf '%s\n' "$output" >&3; false; }
   rig_test_report_contains "$output" $'store-app\thomebrew\tcompleted\tupgrade' || false
   grep -Fqx $'mas\tupgrade 497799835' "$CALL_LOG"
+}
+
+@test "mixed unattended Homebrew outcomes remain independent and persist every row" {
+  write_mixed_homebrew_fixture
+
+  run run_rig upgrade --unattended <<< 'caller input must not reach native upgrades'
+
+  [ "$status" -eq 1 ] || { printf '%s\n' "$output" >&3; false; }
+  rig_test_report_contains "$output" $'cask-failure\thomebrew\tfailed\texit:7' || false
+  rig_test_report_contains "$output" $'formula-success\thomebrew\tcompleted\tupgrade' || false
+  rig_test_report_contains "$output" $'store-app\thomebrew\tunavailable\tinteractive-required' || false
+  [[ "$output" == *'Summary: planned=0 completed=1 failed=1 unavailable=1 skipped=0'* ]] || false
+  [ "$(grep -c $'^brew\tupgrade' "$CALL_LOG")" -eq 2 ] || false
+  [ "$(grep -Fc $'brew-stdin\tend-of-file' "$CALL_LOG")" -eq 2 ] || false
+  [ "$(grep -Fc $'brew-noninteractive\t1' "$CALL_LOG")" -eq 2 ] || false
+  [ "$(grep $'^brew\tupgrade' "$CALL_LOG")" = $'brew\tupgrade --cask failing-cask\nbrew\tupgrade --formula ready-formula' ] || false
+  ! grep -Eq 'bundle|cleanup|^mas' "$CALL_LOG" || false
+  ! grep -Fq 'caller input' "$CALL_LOG" || false
+
+  report=$STATE_HOME/last-upgrade
+  [ -f "$report" ] || false
+  grep -Fqx $'status\t1' "$report"
+  grep -Fqx $'result\tincomplete' "$report"
+  grep -Fqx $'summary\tplanned=0 completed=1 failed=1 unavailable=1 skipped=0' "$report"
+  grep -Fqx $'cask-failure\thomebrew\tfailed\texit:7' "$report"
+  grep -Fqx $'formula-success\thomebrew\tcompleted\tupgrade' "$report"
+  grep -Fqx $'store-app\thomebrew\tunavailable\tinteractive-required' "$report"
+  [ "$(grep -Ec '^(cask-failure|formula-success|store-app)' "$report")" -eq 3 ] || false
+  ! grep -Eq 'bundle|cleanup|manifest' "$report" || false
+}
+
+@test "mixed unattended dry-run invokes nothing and preserves the prior report" {
+  write_mixed_homebrew_fixture
+  mkdir -p "$STATE_HOME"
+  printf '%s\n' 'previous report remains authoritative' >"$STATE_HOME/last-upgrade"
+
+  run run_rig upgrade --unattended --dry-run <<< 'unused caller input'
+
+  [ "$status" -eq 1 ] || { printf '%s\n' "$output" >&3; false; }
+  rig_test_report_contains "$output" $'cask-failure\thomebrew\tplanned\tupgrade' || false
+  rig_test_report_contains "$output" $'formula-success\thomebrew\tplanned\tupgrade' || false
+  rig_test_report_contains "$output" $'store-app\thomebrew\tunavailable\tinteractive-required' || false
+  [[ "$output" == *'Summary: planned=2 completed=0 failed=0 unavailable=1 skipped=0'* ]] || false
+  [ ! -e "$CALL_LOG" ] || false
+  [ "$(cat "$STATE_HOME/last-upgrade")" = 'previous report remains authoritative' ] || false
+}
+
+@test "mixed interactive upgrade dispatches the App Store target and retains native failure" {
+  write_mixed_homebrew_fixture
+
+  run run_rig upgrade <<< 'interactive caller input'
+
+  [ "$status" -eq 1 ] || { printf '%s\n' "$output" >&3; false; }
+  rig_test_report_contains "$output" $'cask-failure\thomebrew\tfailed\texit:7' || false
+  rig_test_report_contains "$output" $'formula-success\thomebrew\tcompleted\tupgrade' || false
+  rig_test_report_contains "$output" $'store-app\thomebrew\tcompleted\tupgrade' || false
+  grep -Fqx $'mas\tupgrade 497799835' "$CALL_LOG"
+  grep -Fqx $'brew-stdin\tinteractive caller input' "$CALL_LOG"
+  [ "$(grep -Fc $'brew-noninteractive\tunset' "$CALL_LOG")" -eq 2 ] || false
+  ! grep -Eq 'bundle|cleanup' "$CALL_LOG" || false
+  [ ! -e "$STATE_HOME/last-upgrade" ] || false
 }
 
 @test "unattended belongs to upgrade alone" {

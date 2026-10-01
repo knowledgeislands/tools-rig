@@ -8,9 +8,13 @@ Use one scheduled `rig upgrade --unattended` to advance software and skills supp
 rig upgrade --unattended --dry-run
 ```
 
-The flag is accepted only by upgrade. Every native invocation receives standard input from `/dev/null`; Homebrew also receives `NONINTERACTIVE=1`. Known work requiring a person, such as a Mac App Store upgrade, is reported unavailable without invocation. Other native failures remain failures: Rig does not guess that every error is a credential problem. Independent targets continue and findings produce status 1.
+The flag is accepted only by upgrade. Every native upgrade invocation receives standard input from `/dev/null`; Homebrew also receives `NONINTERACTIVE=1`. Selected Mac App Store upgrades are reported unavailable with `interactive-required` before invocation. Other native failures retain their native exit detail while independent targets continue. A failed cask therefore does not hide a successful formula or an excluded App Store app; each has its own result row, and unfinished work produces status 1.
+
+EOF prevents a question on standard input from waiting for an answer. A native program can still use a controlling terminal, graphical authentication or a credential helper, so the flag does not guarantee that a run finishes within a time limit. Rig does not supervise native processes or infer that every failure is a credential problem.
 
 After reviewing the plan, run `rig upgrade --unattended`. Use an interactive upgrade for work requiring a person.
+
+For a failed row, inspect its `exit:N` detail and the native diagnostics before deciding what to retry. Follow the native tool's sign-in or privilege procedure when it asks for one; an ordinary failure alone is not evidence that every cask needs an interactive run.
 
 ## Declare a schedule
 
@@ -41,7 +45,7 @@ A calendar schedule can recover missed work after sleep, whereas a native interv
 
 Every unattended run that dispatches work atomically replaces `${XDG_STATE_HOME:-$HOME/.local/state}/rig/last-upgrade`, or the same filename below `RIG_STATE_HOME`. A dry run writes nothing.
 
-The tab-separated report starts with `rig-last-run` and version `1`, followed by `action`, `profile`, `platform`, `finished`, `status`, `result`, `detail`, and `summary` records, then the result rows. The action is `upgrade`. Use the status and counts rather than parsing terminal spacing. An unsafe report target is left untouched.
+The tab-separated report starts with `rig-last-run` and version `1`, followed by `action`, `profile`, `platform`, `finished`, `status`, `result`, `detail`, and `summary` records, then the result rows. The action is `upgrade`. Each target retains its own result, including `unavailable` with `interactive-required`, `failed` with `exit:N`, or `completed` with `upgrade`. Use the status, counts and rows rather than parsing terminal spacing. An unsafe report target is left untouched.
 
 Rig does not send notifications. A host-owned wrapper can read this report and use the platform's notification tool. Migrating wrappers must change both the command and the former `last-update` path; old reports are not deleted and do not describe new runs.
 

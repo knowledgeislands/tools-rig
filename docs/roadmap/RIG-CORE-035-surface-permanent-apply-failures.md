@@ -1,15 +1,15 @@
 ---
 id: RIG-CORE-035
 area: CORE
-title: Surface permanent apply failures
+title: Surface historical apply failures
 theme: orchestration
 horizon: next
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 43a73df5b346bc41512911644534bff46596f74c
 created_at: 2026-09-30T00:00:00Z
-updated_at: 2026-10-01T04:07:40Z
+updated_at: 2026-10-01T06:10:08Z
 ---
 
 ## Goal
@@ -32,13 +32,13 @@ Apply prints per-target outcomes and an aggregate result, but those rows are not
 
 ## Steps
 
-- [ ] Specify one bounded versioned outcome ledger per platform under Rig state, keyed by qualified target and provider/authority. Store only the latest completed outcome, its ordering token, UTC completion time and native exit status; retain successes internally as ordering watermarks and display only failures.
-- [ ] Reserve a monotonically increasing attempt token under a short state lock immediately before each real dispatch. Publish completed results immediately, replacing a target only with a greater token. A successful result clears its visible failure but retains the watermark. Do not allocate attempts for skipped, rejected or dry-run work.
-- [ ] Add safe atomic merge/replacement with a short state-write lock so concurrent tool-only applies cannot overwrite unrelated outcomes; define same-target attempt ordering so an older failed attempt cannot replace a later successful result. Refuse unsafe paths and preserve previous valid evidence on failure.
-- [ ] Show selected unresolved failures as explicitly historical findings in doctor and a separate status section, including problems-only and JSON projections. Preserve current native state and expose recorded time/age; historical health findings contribute to the documented finding exit status.
-- [ ] Treat missing history as neutral and corrupt or unreadable history as unavailable evidence. Make persistence failures visible separately without rewriting the provider's actual result.
-- [ ] Cover failure, repeated failure, later success, targeted preservation, provider/platform separation, changed declarations, interrupted runs, unsafe state, concurrent writers and read-only follow-up.
-- [ ] Align state specifications and guides, run the full gate and prepare the review packet.
+- [x] Specify one bounded versioned outcome ledger per platform under Rig state, keyed by qualified target and provider/authority. Store only the latest completed outcome, its ordering token, UTC completion time and native exit status; retain successes internally as ordering watermarks and display only failures.
+- [x] Reserve a monotonically increasing attempt token under a short state lock immediately before each real dispatch. Publish completed results immediately, replacing a target only with a greater token. A successful result clears its visible failure but retains the watermark. Do not allocate attempts for skipped, rejected or dry-run work.
+- [x] Add safe atomic merge/replacement with a short state-write lock so concurrent tool-only applies cannot overwrite unrelated outcomes; define same-target attempt ordering so an older failed attempt cannot replace a later successful result. Refuse unsafe paths and preserve previous valid evidence on failure.
+- [x] Show selected unresolved failures as explicitly historical findings in doctor and a separate status section, including problems-only and JSON projections. Preserve current native state and expose recorded time/age; historical health findings contribute to the documented finding exit status.
+- [x] Treat missing history as neutral and corrupt or unreadable history as unavailable evidence. Make persistence failures visible separately without rewriting the provider's actual result.
+- [x] Cover failure, repeated failure, later success, targeted preservation, provider/platform separation, changed declarations, interrupted runs, unsafe state, concurrent writers and read-only follow-up.
+- [x] Align state specifications and guides, run the full gate and prepare the review packet.
 
 ## Files touched
 
@@ -73,6 +73,32 @@ Explain how to inspect a past failed attempt, why an installed tool can also hav
 ### Roadmap
 
 No provider materialisability capability or repair framework is included. Retain those as separate concerns only if later evidence justifies them.
+
+## Review
+
+### Delivered
+
+Implemented durable last-completed apply evidence from immutable baseline `43a73df5b346bc41512911644534bff46596f74c` under RIG-BATCH-009. Historical failures remain separate from current machine observations. Newest-started completed attempts win; success watermarks prevent older concurrent failures from resurfacing. No event database, native output capture, automatic repair or permanent-failure classification was introduced.
+
+### Change Summary
+
+Factored persistence and shared projection into `src/rig/25-apply-history.bash`, added dispatch hooks in the application module and health projections in the observation module, and registered the module in deterministic assembly. Added `tests/rig-apply-history.bats` and aligned the state specification, command guide, manual and Unreleased notes. The title now accurately describes historical evidence.
+
+### Verification
+
+The 23 focused history cases cover the original complete run plus deterministic lock-handoff and unresolved-state regressions. The full local gate passed: repository audit, ShellCheck of authored and assembled code, Bash syntax, deterministic assembly, benchmark, six read-only native-provider probes, all 353 Bats tests with stdin from /dev/null, and manual lint. Tests cover every dispatched kind, provider/platform/profile separation, changed declarations, no attempts for rejected or skipped work, parallel disjoint writes, reversed completion, newer in-flight work, interruption, 4 MiB and 4096-row bounds, corruption, permissions, privacy, atomic replacement and byte-preserving reads.
+
+### Outstanding concerns
+
+None within the approved scope. The configured state home's ancestors remain user-selected trusted paths; the owned state/history boundary rejects unsafe or inaccessible paths but does not defend against adversarial same-user replacement of trusted ancestors. A history-write warning does not change the provider's real outcome. Stale foreign locks are not automatically removed.
+
+### Post-change review
+
+Two independent reviewers checked transaction safety and dispatch/projection integration. Review and verification found and fixed hidden-NUL acceptance, EXIT-trap local lifetime, inaccessible directories being mistaken for absent history, and a lock disappearing between failed acquisition and inspection. Each has regression coverage. The legacy no-HOME provider-default fixture now supplies explicit isolated state; a separate regression proves unresolved state is unavailable, not missing history, while explicit state restores healthy read-only behavior. Initial fixture failures were traced to invalid schedule syntax and an already-present dependency correctly not being dispatched; corrected fixtures exercise the intended contracts. Assembled-code lint findings were resolved with quoted literals and narrowly documented annotations for intentional subshell-local copies. No live apply was used.
+
+### Mini recap
+
+An installed target can now truthfully have a separate historical failure finding; later matching success clears it, unrelated work does not, and read-only commands never repair state. RIG-STATE-035 and the inspection guide retain the contract. This item is awaiting human acceptance; presentation and release remain separate records.
 
 ## Discussion
 

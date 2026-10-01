@@ -690,8 +690,8 @@ rig_run_lifecycle_tasks() {
     else
       progress_scope=declaration
       rig_progress_begin "$provider:$label" "$progress_scope"
-      # An unattended run must never block on a question, so a provider that
-      # asks one reads end-of-file and fails instead of hanging the job.
+      # Standard-input questions receive EOF in an unattended invocation.
+      # Native programs may still use a terminal or another authentication surface.
       if [ "$RIG_UNATTENDED" -eq 1 ]; then
         rig_execute_lifecycle_task "$action" "$provider" "$binding" "$executable" </dev/null
       else

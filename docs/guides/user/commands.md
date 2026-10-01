@@ -39,6 +39,12 @@ Use `--format json` for complete values. Human-readable tables may abbreviate pr
 
 Neither command repairs anything. A catalogue-only tool is neutral, not an installation failure. The JSON state envelope and exit status describe the same result as the text report. Verbose diagnostic metadata includes local paths and must be reviewed before sharing.
 
+Both commands also show selected historical apply failures separately from live observations. A tool can be present now while its last completed apply failed. The historical finding includes the attempt's completion time, age and native exit status; it is not proof that the current declaration will fail again. Same-provider declaration edits retain that caveat. Use the native diagnostic output from the original attempt to investigate, review `rig apply --target ID --dry-run`, and retry deliberately when appropriate. A later successful apply clears that target's visible failure; applying an unrelated target does not. `--problems` retains these findings and JSON carries them in `apply_failures`, separate from native state counts.
+
+History is local per-platform evidence beneath Rig's state directory, not configuration or a package database. Read-only commands never clear or repair it. Missing history is neutral; damaged, inaccessible or unsafe history is an unavailable-history finding. Future completion times are reported as clock discrepancies. If an apply cannot save history, Rig warns separately without changing the provider's actual result. Successful ordering records remain internal; neither success nor failure history retains arguments, locators or provider output.
+
+If you intentionally run without `HOME`, set `RIG_STATE_HOME` or `XDG_STATE_HOME` explicitly as well as any configuration/data overrides. An unresolved state location is unavailable evidence, not proof that no history exists.
+
 ## Make the machine follow intent
 
 Preview with `rig apply --dry-run`, then use `rig apply` when the plan is right. It handles supported declared manager prerequisites and reconciles tools, skills and resources in dependency order. Homebrew itself must already be available when required; this is not an arbitrary empty-machine installer.
@@ -51,7 +57,7 @@ Apply does not remove unknown software or silently perform provider housekeeping
 
 `rig upgrade` advances selected software and skills through supported native providers. It does not execute a Brewfile or upgrade an undeclared package list. Native dependency resolution still belongs to the package manager.
 
-Preview with `--dry-run`. Unavailable managers and independent failures are reported per target rather than hiding the rest of the run. `--unattended` prevents prompts and records the outcome in `last-upgrade`; known work requiring a person is skipped with an explicit finding. See [Upgrade without watching](unattended-updates.md).
+Preview with `--dry-run`. Unavailable managers and independent failures are reported per target rather than hiding the rest of the run. `--unattended` supplies EOF on provider stdin, sets Homebrew's noninteractive flag and records the outcome in `last-upgrade`; selected App Store upgrades are excluded before invocation. It cannot prevent native terminal or graphical authentication. See [Upgrade without watching](unattended-updates.md).
 
 Run cache cleanup, service restarts, logs and other imperative operations with the owning native tool. Rig has no generic `run` or catch-all `maintain` command.
 

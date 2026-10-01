@@ -1,14 +1,18 @@
 #!/usr/bin/env bats
 
+load 'helpers/isolate.bash'
+
 setup() {
-  source "$BATS_TEST_DIRNAME/helpers/isolate.bash"
   rig_test_isolate
-  RIG=$BATS_TEST_DIRNAME/../bin/rig
+  export RIG_TEST_PYTHON=${RIG_TEST_PYTHON:-/usr/bin/python3}
+  RIG=${RIG_TEST_EXECUTABLE:-$BATS_TEST_DIRNAME/../bin/rig}
   CONFIG_HOME=$BATS_TEST_TMPDIR/config
   TEST_HOME=$BATS_TEST_TMPDIR/home
   MACOS_LOG=$BATS_TEST_TMPDIR/native.log
   DEFAULTS_STATE=$BATS_TEST_TMPDIR/defaults.state
   DOCK_STATE=$BATS_TEST_TMPDIR/dock.state
+  DOCK_SNAPSHOT=$BATS_TEST_TMPDIR/dock.plist
+  PLUTIL_FAKE=$BATS_TEST_TMPDIR/dock-plutil
   DEFAULTS_FAKE=$BATS_TEST_TMPDIR/defaults
   DOCKUTIL_FAKE=$BATS_TEST_TMPDIR/dockutil
   KILLALL_FAKE=$BATS_TEST_TMPDIR/killall
@@ -16,13 +20,16 @@ setup() {
   printf '%s\n' '#!/usr/bin/env bash' \
     'printf "defaults" >>"$MACOS_LOG"' \
     'for argument in "$@"; do printf " <%s>" "$argument" >>"$MACOS_LOG"; done; printf "\n" >>"$MACOS_LOG"' \
-    'case "$1" in read) [ -f "$DEFAULTS_STATE" ] || exit 1; cat "$DEFAULTS_STATE" ;; write) printf "%s\n" "$5" >"$DEFAULTS_STATE" ;; esac' >"$DEFAULTS_FAKE"
+    'case "$1" in read) [ -f "$DEFAULTS_STATE" ] || exit 1; cat "$DEFAULTS_STATE" ;; export) cat "$DOCK_SNAPSHOT" ;; write) printf "%s\n" "$5" >"$DEFAULTS_STATE" ;; esac' >"$DEFAULTS_FAKE"
   printf '%s\n' '#!/usr/bin/env bash' \
     'printf "dockutil" >>"$MACOS_LOG"' \
     'for argument in "$@"; do printf " <%s>" "$argument" >>"$MACOS_LOG"; done; printf "\n" >>"$MACOS_LOG"' \
     '[ "$1" != --list ] || { [ ! -f "$DOCK_STATE" ] || cat "$DOCK_STATE"; }' >"$DOCKUTIL_FAKE"
   printf '%s\n' '#!/usr/bin/env bash' 'printf "killall <%s>\n" "$1" >>"$MACOS_LOG"' >"$KILLALL_FAKE"
-  chmod +x "$DEFAULTS_FAKE" "$DOCKUTIL_FAKE" "$KILLALL_FAKE"
+  printf '%s\n' '#!/usr/bin/env bash' 'exec "$RIG_TEST_PYTHON" "$DOCK_PLUTIL_HELPER" "$@"' >"$PLUTIL_FAKE"
+  chmod +x "$DEFAULTS_FAKE" "$DOCKUTIL_FAKE" "$KILLALL_FAKE" "$PLUTIL_FAKE"
+  printf '{"persistent-others":[{"tile-type":"directory-tile","tile-data":{"file-data":{"_CFURLString":"%s/Documents","_CFURLStringType":0},"showas":2,"displayas":1}}]}' "$TEST_HOME" |
+    "$RIG_TEST_PYTHON" "$BATS_TEST_DIRNAME/helpers/dock-plutil.py" --fixture >"$DOCK_SNAPSHOT"
   printf '%s\n' \
     '[rig]' 'schema = 1' 'default-profile = "default"' \
     '[profile.default]' 'settings = ["dark-mode"]' 'docks = ["main"]' \
@@ -52,6 +59,7 @@ run_rig() {
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" \
     RIG_DEFAULTS="$DEFAULTS_FAKE" RIG_DOCKUTIL="$DOCKUTIL_FAKE" RIG_KILLALL="$KILLALL_FAKE" \
+    RIG_PLUTIL="$PLUTIL_FAKE" DOCK_PLUTIL_HELPER="$BATS_TEST_DIRNAME/helpers/dock-plutil.py" DOCK_SNAPSHOT="$DOCK_SNAPSHOT" \
     MACOS_LOG="$MACOS_LOG" DEFAULTS_STATE="$DEFAULTS_STATE" DOCK_STATE="$DOCK_STATE" "$RIG" "$@"
 }
 

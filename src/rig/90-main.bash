@@ -9,6 +9,7 @@ main() {
   set -u
   RIG_INVOKED_PATH=$0
   command_name=${1:-help}
+  rig_dock_reset_snapshot
   case "$command_name" in
     init|status|doctor|apply|upgrade|capture|export)
       RIG_PROGRESS_CONTEXT=operational

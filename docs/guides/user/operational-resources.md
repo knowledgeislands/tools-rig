@@ -149,6 +149,8 @@ profiles = ["workstation"]
 
 Rig validates resolved item paths before replacing a selected Dock layout. The same exact whole-value home forms are available for Dock paths; other text remains literal.
 
+Status and doctor compare paths and order, then any folder `view` and `display` values you explicitly declared. An omitted attribute is not constrained. A manually changed declared view or display is drift, with a detail naming the item; inaccessible or ambiguous native evidence is unknown, not agreement. Observation reads one shared native Dock snapshot when needed and never changes the Dock. Check the reported difference and your intended declaration before applying a replacement layout.
+
 ## Select and inspect the workstation
 
 A workstation is a complete profile, not a provider:

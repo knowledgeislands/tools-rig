@@ -210,11 +210,13 @@ rig_run_skill_apply() {
       rig_progress_result skipped "$authority:skill.$skill" declaration
     else
       if rig_preflight_skill "$skill"; then
+        rig_history_begin "skill:$skill" "$authority"
         rig_apply_skill "$skill"
+        native_status=$?
+        rig_history_complete "skill:$skill" "$authority" "$native_status"
       else
-        false
+        native_status=1
       fi
-      native_status=$?
       if [ "$native_status" -eq 0 ]; then
         RIG_SKILL_RESULTS[$index]=completed
         RIG_SKILL_DETAILS[$index]=-
@@ -758,6 +760,7 @@ rig_command_apply_impl() {
   RIG_APPLY_ALLOW_DEFERRED_PROVIDERS=0
   RIG_APPLY_ALLOW_DEFERRED_SKILLS=0
   [ "$native_status" -eq 0 ] || return "$native_status"
+  rig_history_prepare "$RIG_RESOLVED_PLATFORM" || return
   rig_progress_result succeeded 'selected plan'
   rig_progress_finish
   printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
@@ -812,11 +815,13 @@ rig_command_apply_impl() {
       # A deferred prerequisite must have produced the executable before
       # this consumer can run. Keep independent declarations advancing.
       if rig_preflight_provider "$tool" "$binding" "$provider"; then
+        rig_history_begin "tool:$tool" "$provider"
         rig_apply_provider "$tool" "$binding" "$provider"
+        native_status=$?
+        rig_history_complete "tool:$tool" "$provider" "$native_status"
       else
-        false
+        native_status=1
       fi
-      native_status=$?
       if [ "$native_status" -eq 0 ]; then
         RIG_PLAN_RESULTS[$index]=completed
         RIG_PLAN_DETAILS[$index]=-
@@ -877,8 +882,10 @@ rig_command_apply_impl() {
       operational_failure=1
       rig_progress_result skipped "$provider:$kind.$id" declaration
     else
+      rig_history_begin "$kind:$id" "$provider"
       rig_apply_resource "$section_name"
       native_status=$?
+      rig_history_complete "$kind:$id" "$provider" "$native_status"
       if [ "$native_status" -eq 0 ]; then
         RIG_RESOURCE_PLAN_RESULTS[$index]=completed
         RIG_RESOURCE_PLAN_DETAILS[$index]=reconciled:$locator

@@ -369,3 +369,33 @@ _Conformance:_ conforming
 _Verify:_ Isolated Homebrew fixtures assert inventory argv, declared filtering, missing or failing executables and no implicit inventory for ordinary status.
 
 _Evidence:_ `rig_collect_unmanaged`, `rig_homebrew_inventory` and `tests/rig-adoption.bats` cover the built-in source.
+
+### RIG-STATE-035 — Historical apply outcomes
+
+Rig MUST retain a bounded versioned ledger per platform beneath `${RIG_STATE_HOME}/apply-history`, keyed by qualified declared target and provider or skill authority. It MUST store only the latest completed attempt's ordering token, UTC completion time and native exit status, without locators, arguments, output or secrets. Successful results MUST remain internal ordering watermarks, not a public success log. Ports have no apply dispatch; retired resources no longer declared in the catalogue MUST NOT acquire historical rows.
+
+Immediately before an actual selected dispatch, Rig MUST reserve a monotonically increasing token under a short lock. It MUST publish each completed result atomically and replace a matching result only with a greater token. The lock MUST NOT span native work. An older attempt completing late MUST NOT overwrite a newer completed success or failure. Skipped, preflight-rejected, dry-run and interrupted in-flight work MUST NOT publish completed outcomes; already published results MUST survive interruption.
+
+Retention MUST cover currently declared target/provider pairs across all profiles on the platform, with no age-based expiry. Real history writes MAY prune removed pairs; read-only commands MUST NOT prune or repair anything. Same-provider declaration edits MUST preserve explicitly historical evidence with a declaration-change caveat; replacement providers MUST NOT inherit it. The ledger MUST be limited to 4 MiB and 4096 rows, reject duplicate identities or invalid tokens, refuse unsafe paths, and preserve previous valid evidence when publication fails. Lock contention MUST be bounded and MUST NOT remove an unverified existing lock. Persistence failure MUST warn separately without changing the actual provider outcome or apply exit status.
+
+The ledger MUST use canonical LF-terminated records and reject hidden discarded bytes rather than silently normalise damaged evidence. Configured state-home ancestors retain the existing user-selected XDG trust boundary; the state home and owned history subtree MUST reject symlinks, non-directory parents and inaccessible directories. This is not protection against an adversarial same-user replacement of trusted ancestors.
+
+Status and doctor MUST project selected failures separately from current observations, preserving native state vocabulary and counters. Text MUST identify the evidence as historical; JSON MUST include `apply_failures` with qualified target, provider or authority, recorded time, age and native exit status, plus `historical_failure_count` and a nullable `apply_history_unavailable` reason. Historical findings MUST remain visible with `--problems` and contribute health exit status 1. Missing history MUST be neutral; malformed, unreadable or unsafe existing history MUST produce a separate unavailable-history finding and exit 1. Future timestamps MUST report clock discrepancy, never negative age.
+
+_Conformance:_ conforming
+
+_Verify:_ Isolated provider fixtures exercise completed failure and recovery, provider/platform/profile boundaries, independent and reversed concurrent completion, interruption, unsafe and corrupt state, bounds, privacy, clock discrepancy, and byte-preserving read-only and dry-run commands.
+
+_Evidence:_ `src/rig/25-apply-history.bash` owns storage and shared projection; `src/rig/23-application.bash` brackets actual dispatches and `src/rig/22-observation.bash` adds historical health evidence. The 23 cases in `tests/rig-apply-history.bats` cover all dispatched target kinds and the persistence, ordering, filtering, privacy and read-only boundaries; the complete local gate passes with 353 Bats tests.
+
+### RIG-STATE-036 — Dock folder attributes
+
+Dock observation MUST compare declared paths and order before explicitly declared folder `view` and `display` attributes. When paths agree and attribute evidence is needed, Rig MUST read at most one `defaults export com.apple.dock -` snapshot per command and interpret it through native typed `plutil` extraction. Matching MUST use complete normalised paths, never labels, and distinguish raw paths from file URLs with exactly one URL-decoding pass. Binary and XML property lists MUST be supported without a new runtime parser dependency.
+
+Declared view values map to native values `auto=0`, `fan=1`, `grid=2`, `list=3`; display values map to `stack=0`, `folder=1`. Omitted attributes MUST remain unconstrained. Proven differences MUST take precedence in order, then view, then display, with item-qualified details. Missing, ambiguous, duplicate, malformed or unreadable attribute evidence MUST yield `unknown` only when no declared mismatch has been proven. Observation MUST NOT apply a layout, write defaults or restart the Dock.
+
+_Conformance:_ conforming
+
+_Verify:_ Isolated Dock fixtures cover every declared attribute, omitted attributes, raw and encoded paths, binary/XML snapshots, ambiguity, missing tools and data, mismatch precedence, one snapshot per command, sourced command reuse and zero native mutation.
+
+_Evidence:_ `rig_dock_observe_attributes`, typed snapshot helpers in `src/rig/20-orchestration.bash` and the command-entry reset in `src/rig/90-main.bash` implement the comparison. `tests/rig-dock-observation.bats` and `tests/rig-macos.bats` verify the boundary; disposable native-plutil fixtures independently confirm typed extraction and control-character preservation. The Dock apply body is unchanged.
