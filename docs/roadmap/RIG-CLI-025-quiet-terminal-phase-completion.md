@@ -1,0 +1,81 @@
+---
+id: RIG-CLI-025
+area: CLI
+title: Quiet terminal phase completion
+theme: cli
+horizon: now
+status: ready
+blocks: []
+blocked_by: []
+baseline_ref: null
+created_at: 2026-10-01T21:48:03Z
+updated_at: 2026-10-01T21:48:03Z
+---
+
+## Goal
+
+Routine configuration work disappears cleanly from the interactive display rather than leaving verbose success summaries and growing blank gaps. Failures, interruption, native diagnostics and noninteractive logs remain visible and truthful.
+
+## Context
+
+Acceptance use of the adaptive footer exposed four configuration phase summaries before a retired Brewfile binding error. The user approved both a source-owned chezmoi migration and a Rig presentation refinement, with delegation. The footer's end helper currently prints a durable summary for every phase; each new phase also reserves two more rows. An isolated screen-model check showed that suppressing summaries alone still accumulates blank space.
+
+## Boundary
+
+Refine the existing adaptive footer, not the public command surface or provider protocol. Preserve Bash 3.2, stdout bytes, exit status, plain/redirected progress and native terminal ownership. No cursor-position queries, child PTY, new dependency, native-output filtering, unsafe erasure or removal of protective native partial-line separators. ChezMoi changes belong to that repository's existing formula migration record; no live apply, publication, release, acceptance or pruning belongs here.
+
+## Current state
+
+The existing display implementation is committed and awaiting human review in the [live display record](RIG-CLI-023-design-live-operational-display.md). Its code is available, so acceptance is not a build dependency. This is a separately approved refinement, not silent acceptance or reopening of that delivery. The complete current baseline gate passed with 375 Bats tests before implementation.
+
+## Steps
+
+- [ ] Suppress durable summaries only for complete, failure-free phases that still qualify for the interactive footer; keep failures, interruption, incomplete counts, failed-item outcomes and line/fallback summaries.
+- [ ] Introduce an explicitly scoped owned configuration group around the four configuration phases, reusing one footer reservation. Guarantee cleanup and original status on every loader return; do not leak grouping into later resolution, native work or report output.
+- [ ] Add isolated terminal regressions for successful skips, adverse outcomes, consecutive-phase fixed spacing, early errors, zero work, display-mode changes and resize/fallback. Retain native partial-line, signal, privacy and stdout-equivalence coverage.
+- [ ] Align the guide, manual, specification and changelog; regenerate the single executable once worker edits are complete.
+- [ ] Review terminal ownership independently and run the complete local gate, retaining acceptance evidence and a canonical review packet.
+
+## Files touched
+
+`src/rig/00-runtime.bash`, `src/rig/10-configuration.bash`, `tests/rig-progress.bats`, `tests/helpers/tty-progress.py`, affected assertions in `tests/rig.bats`, generated `bin/rig`, `docs/specs/orchestration.md`, `docs/guides/user/commands.md`, `man/rig.1`, `CHANGELOG.md` and this record. No provider execution changes or new flags are expected.
+
+## Verify
+
+Run the complete AGENTS.md gate with Bats stdin redirected from `/dev/null` and the existing test-only Python override when needed. Compare one versus several successful configuration phases in the bounded screen fixture to prove spacing does not grow per phase. Preserve a diagnostic sentinel, full terminal margins, signal-compatible status and exact line-mode summaries. The ten-command output-contract suite must remain green. Use only isolated fake-provider fixtures, never a live apply.
+
+## Dependencies / blocks
+
+The adaptive renderer exists. ChezMoi migration can proceed independently with a stable copy of the executable and its own reviewed source/apply boundary. Release remains separate. User approval in the current conversation covers both corrections and delegation; no additional runtime design is implied.
+
+## Delegation
+
+The renderer worker owns the two authored modules, terminal helper and progress tests plus affected existing Bats assertions. The coordinator owns documentation, roadmap, assembly, Git and the aggregate gate. A read-only independent reviewer checks cleanup, grouping, counters, mode transitions, native boundaries and the final diff. Shared primary checkout, disjoint path ownership and no worker Git writes. Do not regenerate the shared executable while another test run is reading it; use a private payload for focused tests. Return touched paths, exact checks, findings and limitations. Stop for unsafe native cursor assumptions, external dependencies or a broader rendering contract. The coordinator integrates only after the worker freezes its candidate.
+
+## Documentation impact
+
+### Decision Records
+
+No new provider or terminal authority decision: retain the established native handoff boundary.
+
+### Specifications
+
+Refine RIG-ORCH-019 to distinguish transient successful terminal phases from durable adverse outcomes and unchanged plain logs.
+
+### Guides
+
+Explain the quieter terminal completion policy and unchanged explicit line mode; preserve the documented conservative native and resize limits.
+
+### Roadmap
+
+Leave the original display record awaiting acceptance and the release record unexecuted. This follow-up ends at its own awaiting-review boundary.
+
+## Discussion
+
+### Quiet success, durable failure
+
+Successful footer state is transient; repeating it as a permanent log defeats the compact display. A phase containing failures, an incomplete denominator or interruption must remain legible after cleanup. Plain output is a log rather than a frame, so its existing events and summaries remain unchanged. Re-evaluate terminal eligibility at phase end so a lost or resized terminal does not silently lose its summary.
+
+### Bounded row ownership
+
+The configuration loader is a proven contiguous block of Rig-owned work with no native terminal writer. Reuse a single reservation only inside this explicit group, and close it on every return. Do not generalise deferred cleanup to arbitrary phases. One conservative initial separation may remain; the requirement is to remove repeated phase-by-phase gaps without guessing the cursor position or erasing opaque native diagnostics.
