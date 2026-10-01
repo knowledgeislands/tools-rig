@@ -4,12 +4,12 @@ area: CLI
 title: Simplify intent command surface
 theme: cli
 horizon: now
-status: in-progress
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: 47e993b452492ea4afd6d69343223669279d02da
 created_at: 2026-09-30T21:35:00Z
-updated_at: 2026-09-30T21:58:02Z
+updated_at: 2026-10-01T04:07:40Z
 ---
 
 ## Goal
@@ -26,7 +26,7 @@ Deliver only this CLI and package-authority cutover. Do not change the live work
 
 ## Current state
 
-Fifteen public verbs overlap. Bootstrap calls apply after manager prerequisites; capture dumps a Brewfile rather than editing Rig intent; package inventory does not cover Homebrew. Bundle cleanup can remove software outside Rig declarations. Authored Bash modules and isolated provider fixtures support a coordinated breaking cutover.
+At the immutable implementation baseline, fifteen public verbs overlapped. Bootstrap calls apply after manager prerequisites; capture dumps a Brewfile rather than editing Rig intent; package inventory does not cover Homebrew. Bundle cleanup can remove software outside Rig declarations. Authored Bash modules and isolated provider fixtures support a coordinated breaking cutover.
 
 ## Steps
 
@@ -35,7 +35,7 @@ Fifteen public verbs overlap. Bootstrap calls apply after manager prerequisites;
 - [x] Add non-overwriting init and selective Homebrew capture with read-only discovery, explicit human metadata, global declaration deduplication and reviewable additive TOML proposals.
 - [x] Consolidate show/list/explain into show with selected, catalogue and item views; fold diag into doctor verbose; rename update to upgrade; retire bootstrap, run and maintain without aliases.
 - [x] Align specifications, decisions, help, completion, manual, guides, examples and test fixtures; document migration without changing chezmoi.
-- [ ] Independently review the integrated change, run the full repository gate and commit a complete acceptance packet. Implementation review and Rig checks are complete; final readiness is held by the external Agora audit failure described below.
+- [x] Independently review the integrated change, run the full repository gate and commit a complete acceptance packet. The external audit blocker is resolved and the full gate was rechecked on 2026-10-01.
 
 ## Files touched
 
@@ -75,7 +75,7 @@ This record owns the approved cutover. The existing display and unresolved produ
 
 ### Delivered
 
-Implemented the approved ten-command breaking cutover, Rig-owned Homebrew package intent, declared prerequisite staging, safe configuration initialization and reviewed Homebrew adoption. The implementation and this review packet are recorded together against baseline `47e993b452492ea4afd6d69343223669279d02da`; the batch ledger records the resulting delivery commit separately.
+Implemented the approved ten-command breaking cutover, Rig-owned Homebrew package intent, declared prerequisite staging, safe configuration initialization and reviewed Homebrew adoption. The implementation and this review packet are recorded together against baseline `47e993b452492ea4afd6d69343223669279d02da`; the implementation is committed as `7d00cde00ac31dd200e4cbdf2d9a2a301af88d89`, and the batch ledger records its delivery and closeout evidence.
 
 ### Change Summary
 
@@ -85,23 +85,23 @@ Removed Bundle, autoupdate and catch-all maintenance execution; consolidated inf
 
 Rig verification passed on 2026-09-30: ShellCheck, Bash syntax checks, deterministic assembly check, benchmarks, read-only native-provider smoke, all 311 Bats tests and manual lint. The final Bats and manual-lint recheck returned exit status zero; `RIG_TEST_PYTHON=/opt/homebrew/opt/python@3.14/bin/python3.14` enabled both optional TOML parser assertions, with no skipped tests. Tests ran with stdin redirected from `/dev/null` and isolated host command stubs.
 
-Repository audit passed before implementation and during the aggregate gate, but the final documentation recheck failed with four Agora findings: the unchanged member declaration is now interpreted as an invalid owner declaration, and the linked skill's generated rubric no longer matches its catalogue. Read-only inspection confirmed uncommitted Agora skill, standard and validator changes in the external `ki-agentic-harness` checkout; neither `.ki.toml` nor the linked skill was changed by this delivery. The other twenty selected skill audits pass. The required overall audit is therefore currently failing, not waived.
+The September 30 final documentation recheck was temporarily blocked by the external Agora governance transition. The owning change is now committed as `6501841bbac5139194341940f0c14b655a9b33e8`, removing retired member declarations. On 2026-10-01 the clean committed tree passed all twenty repository audits and the complete local runtime gate again: ShellCheck, Bash syntax, assembly, benchmarks, read-only native smoke, all 311 Bats tests without skips, and manual lint. The Bats/manual command returned exit status zero. No external governance file was repaired by this closeout.
 
 Benchmark observations were two seconds each for item, selected and whole-catalogue queries against a five-second ceiling, and six seconds for state observation against an eight-second ceiling. Native smoke covered Homebrew, uv, mise, npm, chezmoi and mas without mutation. Focused regressions cover failed preflight cleanup, targeted manager closure, retired configuration and commands, capture deduplication, ambiguous identities, central membership, native inventory failures, exclusive output creation and active-configuration path aliases.
 
 ### Outstanding concerns
 
-Formal readiness is blocked by the external Agora governance transition, not by a failing Rig test. Leave this record in-progress and the batch parked until the shared governance owner settles that change and the required repository audit passes. Do not repair another repository, bypass its validator or silently migrate Rig's membership declaration under this CLI authority.
+No implementation or verification blocker remains within CLI-024's approved scope. Human acceptance is the remaining lifecycle decision; the earlier batch permits awaiting-review, not automatic acceptance.
 
 Capture deliberately covers Homebrew formulae installed on request and installed casks only; proposals require manual review and adoption. Central-selection configurations support discovery but reject full proposals with migration guidance rather than mixing membership models. This is a breaking, unreleased cutover: host configuration and scheduled wrappers must be migrated before using it against the workstation. Chezmoi changes, release, human acceptance and pruning remain outside this delivery. The live operational display remains with RIG-CLI-023.
 
 ### Post-change review
 
-Workers independently reviewed other implementation lanes. Review found and corrected central-membership proposal handling, operational capture failure exit status, and deferred-provider flags surviving a failed sourced apply preflight. Regression tests cover each finding. The coordinator integrated documentation and assembly, reviewed staged paths and ran the aggregate gate. No live apply or upgrade was used; no workstation configuration or chezmoi source was changed.
+Workers independently reviewed other implementation lanes. Review found and corrected central-membership proposal handling, operational capture failure exit status, and deferred-provider flags surviving a failed sourced apply preflight. Regression tests cover each finding. The coordinator integrated documentation and assembly, reviewed staged paths and ran the aggregate gate. No live apply or upgrade was used; no workstation configuration or chezmoi source was edited. A later read-only check established that the installed command is a development symlink to this checkout, so the executable cutover is already visible locally. This does not mean the old host configuration or scheduled wrapper is compatible: its separate migration is an explicit release precondition recorded in RIG-DIST-009.
 
 ### Mini recap
 
-The agreed command and package-authority simplification is implemented and independently reviewed, with reproducible Rig verification and an explicit migration route. The final readiness transition remains parked on the external Agora audit; repeat that gate after its owner resolves the governance transition, then complete the final step and advance to awaiting-review. Unrelated roadmap work remains unchanged. Nothing was pushed, tagged or released.
+The agreed command and package-authority simplification is implemented and independently reviewed, with reproducible Rig verification and an explicit migration route. The external audit blocker is resolved, every step is complete, and the record is awaiting explicit acceptance. Reliability, display, source migration and release work are separate records and are not evidence of an incomplete CLI-024 implementation. Nothing was pushed, tagged or released.
 
 ## Discussion
 

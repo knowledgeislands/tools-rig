@@ -4,12 +4,12 @@ area: CORE
 title: Surface permanent apply failures
 theme: orchestration
 horizon: next
-status: draft
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-30T00:00:00Z
-updated_at: 2026-09-30T22:28:16Z
+updated_at: 2026-10-01T04:07:40Z
 ---
 
 ## Goal
@@ -32,8 +32,8 @@ Apply prints per-target outcomes and an aggregate result, but those rows are not
 
 ## Steps
 
-- [ ] Specify one bounded versioned failure ledger per platform under Rig state, keyed by qualified target and provider, carrying the last actual failed attempt's UTC time and native exit status without native output, arguments or credentials.
-- [ ] Record actual dispatch failures and clear a target only after its later successful dispatch. Leave unrelated, skipped, unselected, preflight-rejected and dry-run targets untouched.
+- [ ] Specify one bounded versioned outcome ledger per platform under Rig state, keyed by qualified target and provider/authority. Store only the latest completed outcome, its ordering token, UTC completion time and native exit status; retain successes internally as ordering watermarks and display only failures.
+- [ ] Reserve a monotonically increasing attempt token under a short state lock immediately before each real dispatch. Publish completed results immediately, replacing a target only with a greater token. A successful result clears its visible failure but retains the watermark. Do not allocate attempts for skipped, rejected or dry-run work.
 - [ ] Add safe atomic merge/replacement with a short state-write lock so concurrent tool-only applies cannot overwrite unrelated outcomes; define same-target attempt ordering so an older failed attempt cannot replace a later successful result. Refuse unsafe paths and preserve previous valid evidence on failure.
 - [ ] Show selected unresolved failures as explicitly historical findings in doctor and a separate status section, including problems-only and JSON projections. Preserve current native state and expose recorded time/age; historical health findings contribute to the documented finding exit status.
 - [ ] Treat missing history as neutral and corrupt or unreadable history as unavailable evidence. Make persistence failures visible separately without rewriting the provider's actual result.
@@ -46,7 +46,7 @@ The apply and observation modules, a focused authored history helper if factorin
 
 ## Verify
 
-Use recording provider stubs and isolated state homes. Prove live observation remains present while historical failure is visible; a later successful attempt clears only the matching target. Dry runs and read-only checks must not change ledger bytes or invoke mutation. Exercise malformed files, symlinks, failed writes and parallel disjoint-target merges. Run the complete AGENTS.md gate with Bats stdin redirected from /dev/null.
+Use recording provider stubs and isolated state homes. Prove live observation remains present while historical failure is visible; a later successful attempt clears only the matching target. Dry runs and read-only checks must not change ledger bytes or invoke mutation. Exercise malformed files, symlinks, failed writes, bounds, changed declarations, clock discrepancy and parallel disjoint-target merges. Force same-target attempts to complete in reverse order and prove a late older failure cannot overwrite a newer successful watermark; interrupt after an earlier completed target and prove its evidence survives. Run the complete AGENTS.md gate with Bats stdin redirected from /dev/null.
 
 ## Dependencies / blocks
 
@@ -76,14 +76,26 @@ No provider materialisability capability or repair framework is included. Retain
 
 ## Discussion
 
+### Readiness
+
+Prepared for Ready under the user's 2026-10-01 request. Scope, implementation boundary and verification are fixed below; this planning transition does not start implementation or authorise live-machine changes.
+
 ### Last attempted result, not permanence
 
 Use the latest actual failure and its timestamp, not a consecutive-failure threshold or an event log. Repeated failure updates that evidence; a matching success clears it. The stable title is historical, not a claim that Rig can prove permanence. This keeps the chosen reliability benefit small and understandable.
 
+### Locked evidence and concurrency contract
+
+Use newest-started completed attempt ordering, not wall-clock comparison. An older invocation finishing late cannot overwrite a newer completed success or failure. Native operations remain concurrent; hold the history lock only to allocate a token or atomically merge a result, never while invoking a provider. An interrupted in-flight attempt publishes no outcome; all previously completed and published targets survive. Contention or unsafe/corrupt state must not hang indefinitely or overwrite another owner's lock.
+
+Keep at most one outcome per currently declared target/provider pair, across all profiles, per platform. Prune removed pairs only on a real history write; read-only commands never prune. Successful watermarks are internal concurrency evidence, not a public success log. Apply no age-based expiry. Cap the file at 4 MiB and 4096 rows, reject duplicates and invalid tokens, and preserve the previous file with an explicit warning if a bound or safe publication check fails. Store no locators, arguments, provider output or secrets.
+
+Selected failures appear in a separate historical section and JSON apply_failures array with qualified target, provider/authority, recorded UTC time, read-only age and native exit status. Preserve native rows/counts and add a separate historical count. Historical failures remain visible under problems-only filtering and contribute to health exit status 1; missing history is neutral. Malformed, unreadable or unsafe existing history produces a separate unavailable-history finding and exit 1. Future timestamps expose clock discrepancy rather than a negative age. Failure to write history warns separately and does not change the already-observed provider outcome or mutation exit status.
+
 ### Scope and stale evidence
 
-Select historical findings using the current target/provider/platform identity and label them as past execution evidence. A configuration change is not proof of recovery, but neither should an old provider's failure be attributed to its replacement. Deleted or no-longer-selected targets must not contaminate an unrelated status result. Decide retention and changed-binding presentation explicitly in the specification.
+Match history by selected qualified target, provider/authority and platform. Same-provider declaration edits retain the historical finding with a last-recorded-attempt/declaration-may-have-changed label; provider replacement does not inherit its predecessor's failure. Deleted or unselected targets do not contaminate unrelated status. A matching successful real attempt clears the failure; a declaration edit alone is not proof of recovery.
 
 ### Interrupted writes and concurrency
 
-Persist completed attempts safely without turning a failed ledger write into a fictional provider failure. Leave previous valid evidence intact when publication cannot complete. Interrupted operations must not be presented as successful; document whether only completed attempt evidence survives. A whole-run report that overwrites unrelated targeted results is not an acceptable shortcut.
+Persist completed attempts safely without turning a failed ledger write into a fictional provider failure. Leave previous valid evidence intact when publication cannot complete. Interrupted in-flight operations publish no completed outcome; completed results already published survive. A whole-run report that overwrites unrelated targeted results is not an acceptable shortcut.

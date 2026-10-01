@@ -4,12 +4,12 @@ area: CORE
 title: Observe Dock stack view
 theme: orchestration
 horizon: next
-status: draft
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-27T08:13:24Z
-updated_at: 2026-09-30T22:25:21Z
+updated_at: 2026-10-01T04:08:36Z
 ---
 
 ## Goal
@@ -41,7 +41,7 @@ Dock observation compares declared paths and order only. Apply passes declared `
 - [ ] Preserve dockutil path/order comparison, then read one defaults export of com.apple.dock only when paths agree and folder view/display attributes are explicitly declared.
 - [ ] Use native plutil typed extraction to inspect persistent-others folder tiles, matching normalized file URLs to declared paths without another parser or runtime dependency.
 - [ ] Compare declared view and display independently; keep drift precedence of order, then view, then display. Omitted attributes remain unconstrained.
-- [ ] Report unknown for unreadable or malformed snapshots, missing or duplicate matching tiles, missing typed fields and unsupported encodings; never infer present from incomplete evidence.
+- [ ] When no declared mismatch is established, report unknown for unreadable or malformed snapshots, missing or duplicate matching tiles, missing typed fields and unsupported encodings; never infer present from incomplete evidence.
 - [ ] Cover supported encodings, matching/mismatching attributes, escaped paths, omitted declarations and unavailable evidence with isolated XML/binary plist fixtures. Assert no defaults write, Dock restart or dockutil mutation occurs.
 - [ ] Run the full repository gate and record the observation contract before the final display batch.
 
@@ -51,11 +51,15 @@ Dock observation compares declared paths and order only. Apply passes declared `
 
 ## Verify
 
-Use fixture plists and stubs; assert the observed state and detail for view, display, order, and unavailable evidence. Run ShellCheck, assembly check, Bats, and native-provider smoke without applying to a live Dock.
+Use fixture plists and explicit defaults/plutil/dockutil stubs on every platform. Assert state/detail for view, display, order, unsupported encodings, duplicate matches, raw paths, escaped file URLs and unavailable evidence. Verify one snapshot at most and no defaults writes, Dock restart or dockutil mutation. Run the entire AGENTS.md gate with Bats stdin redirected from /dev/null; never apply to a live Dock.
 
 ## Dependencies / blocks
 
 No build-order dependency. The delivered machine-independent test fixtures can make the macOS cases easier to run on Linux.
+
+## Delegation
+
+One worker owns the macOS observation helper and focused fixtures; an independent reviewer checks typed evidence, URL matching and the no-mutation boundary. The coordinator owns specifications, assembly, shared-source integration and the complete gate. Do not concurrently edit the same source module from another lane.
 
 ## Documentation impact
 
@@ -77,9 +81,19 @@ Keep any broader partial-comparison audit distinct from this Dock fix.
 
 ## Discussion
 
+### Readiness
+
+Prepared for Ready under the user's 2026-10-01 request. Scope, implementation boundary and verification are fixed below; this planning transition does not start implementation or authorise live-machine changes.
+
 ### Where the comparison should live
 
 `rig_dock_expected_paths` returns paths because that is what its name promises and what the order check needs. Widening it in place would make the order comparison harder to read. A separate expected-triple builder, or an extra comparison pass keyed by path, both keep the order finding intact. The detail token matters as much as the state: `order` and a new value such as `view` are different findings, and collapsing both into bare `drifted` would lose the distinction that makes the row actionable.
+
+### Locked observation contract
+
+Take at most one read-only defaults-export snapshot per command when explicitly declared folder attributes require it. Respect the native file URL type: raw paths remain raw and file URLs receive exactly one decoding pass. Compare expanded full paths, never labels or basenames. Duplicate matches, malformed field types and unsupported encodings are unavailable evidence, not a guessed match.
+
+Preserve order drift first, then a proven view mismatch, then a proven display mismatch. If no mismatch is proved but a declared attribute cannot be observed, return unknown with an item-qualified detail. Use details such as view:documents and display-unobservable:documents. Omitted attributes impose no expectation. Fixture tests must cover mixed incomplete and mismatching evidence, not only one folder at a time.
 
 ### Reading native evidence
 

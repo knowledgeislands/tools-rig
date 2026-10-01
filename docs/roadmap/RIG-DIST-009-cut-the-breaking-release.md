@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-25T15:00:00Z
-updated_at: 2026-09-30T22:25:21Z
+updated_at: 2026-10-01T04:07:40Z
 ---
 
 ## Goal
@@ -34,18 +34,18 @@ The CLI cutover is committed locally, not pushed by this delivery. Its latest su
 
 ## Steps
 
-- [ ] Confirm delivery and review of failure history, Dock observation, narrowed unattended handling and the agreed live display; record repair-lifecycle deferral explicitly.
-- [ ] Recheck local and remote release state and select the exact next 0.x version. Keep 0.4.0 as the existing candidate, not a claim that a tag exists.
+- [ ] Identify the final full candidate commit containing RIG-CLI-024, RIG-CORE-035, RIG-CORE-028, RIG-CORE-024 and the agreed RIG-CLI-023 implementation. Review its complete diff from the actual latest immutable release; explicitly exclude RIG-CORE-030.
+- [ ] Obtain explicit selection of the planned version 0.4.0 and verify that its local and remote tag are absent. If occupied or rejected, stop for a new version decision rather than incrementing automatically.
 - [ ] Verify the website export consumer's current invocation and the reviewed chezmoi migration plan, including package-intent coverage and wrapper/report compatibility; coordinate deployment order without applying another repository's changes here.
 - [ ] Reconcile the unpublished 0.3.0 changelog material and Unreleased changes into accurate release notes, clearly identifying all breaking command and configuration migrations.
 - [ ] Set the selected authored runtime version, regenerate bin/rig, and align README, manual and immutable installer examples with the intended tag.
-- [ ] Run the complete local gate and the release guide's isolated installation/export checks; verify the final candidate on the supported CI platforms before publication.
-- [ ] Review the exact candidate commit, migration evidence and publication scope, then create and publish the selected annotated tag and GitHub release under the user's conditional release instruction.
-- [ ] Verify the immutable installer and clean-install version/manual, then hand the exact version and URL to the tap and website owners through their own workflows.
+- [ ] Run the complete local gate and disposable installation/export checks, review the exact candidate ref and push scope under the conditional publication instruction, then push only the intended candidate ref and wait for Linux, macOS, shell-lint and manual CI on that full commit.
+- [ ] Recheck migration evidence and publication scope, create and push the annotated v0.4.0 tag at that exact verified candidate, wait for tag/version CI, and only then publish the GitHub release. Never move a published tag to repair a failed candidate.
+- [ ] Verify the immutable installer in disposable executable and manual directories without replacing the user's installation. Prepare the exact version, commit and immutable URLs for downstream owners; sending handoffs or changing their repositories requires separately scoped authority.
 
 ## Files touched
 
-The authored runtime version, generated executable, changelog, README, getting-started guide, manual and this record. No feature implementation or cross-repository edits belong in this release unit.
+The authored runtime version, generated executable, changelog, README, getting-started guide, manual, release guide and this record. Align the release guide with disposable verification and the explicit CI/tag/publication sequence; no feature implementation or cross-repository edits belong in this unit.
 
 ## Verify
 
@@ -72,6 +72,10 @@ Align immutable installation examples, the breaking-migration guide and the actu
 ### Roadmap
 
 Retain the repair investigation in Waiting for. Close this item only after publication and immutable-install verification, not merely after preparing release notes.
+
+## Readiness gate
+
+The execution plan is complete, but this record remains draft: the finishing implementations, exact version approval and essential consumer-compatibility evidence are not yet available. Ready is not a promise to discover those decisions during publication. Re-evaluate after the named implementations exist and a reviewed rollout order is recorded. CLI-024's acceptance status is not a missing build dependency because its code already exists. Downstream tap/website deployment consumes the published release and need not precede it; incompatible current consumers still need a safe coordinated transition.
 
 ## Discussion
 

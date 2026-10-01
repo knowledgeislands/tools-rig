@@ -4,12 +4,12 @@ area: CORE
 title: Harden unattended upgrade contract
 theme: orchestration
 horizon: next
-status: draft
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-25T15:00:00Z
-updated_at: 2026-09-30T22:25:21Z
+updated_at: 2026-10-01T04:07:40Z
 ---
 
 ## Goal
@@ -34,7 +34,7 @@ Closing stdin prevents stdin questions from waiting for input. It does not guara
 
 ## Steps
 
-- [ ] Reconcile the unattended specification, manual and guide with declaration-scoped upgrades and distinguish stdin containment from a guarantee against all native interaction.
+- [ ] Reconcile the unattended specification, manual, guide, lifecycle source comment and stdin-test title with declaration-scoped upgrades. Replace the unprovable never-blocks claim with the specific stdin-EOF guarantee; regenerate the executable for the comment change.
 - [ ] Preserve the existing App Store exclusion and ordinary failure semantics without introducing a protocol or schema extension.
 - [ ] Add an isolated mixed Homebrew fixture with a skipped App Store entry, failed cask upgrade and successful formula upgrade; assert independent outcomes, exit status, persisted rows, stdin handling and noninteractive environment.
 - [ ] Prove the fixture never dispatches Bundle, cleanup or the excluded App Store operation; retain interactive and dry-run coverage.
@@ -42,11 +42,11 @@ Closing stdin prevents stdin questions from waiting for input. It does not guara
 
 ## Files touched
 
-Lifecycle tests, the orchestration specification, unattended-upgrade guide and manual. Touch the lifecycle source module only if the isolated regression exposes a deviation from the preserved contract; regenerate the executable for any source change.
+`tests/rig-lifecycle.bats`, `docs/specs/orchestration.md`, `docs/guides/user/unattended-updates.md`, `man/rig.1`, the inaccurate unattended comment in `src/rig/40-publication-lifecycle.bash`, and generated `bin/rig`. Runtime behavior changes are limited to a demonstrated deviation from the preserved contract.
 
 ## Verify
 
-Use inert provider stubs and isolated state homes. Assert the App Store target is not invoked, the cask's nonzero exit remains an ordinary failure, and the independent formula succeeds. Check the persisted report and exit status 1. Run the complete AGENTS.md gate, with Bats stdin redirected from /dev/null. No live scheduled or interactive upgrade is a verification step.
+Use inert provider stubs and isolated state homes. Assert the App Store target is not invoked and reports unavailable/interactive-required, the cask reports failed/exit:N, and the independent formula reports completed/upgrade. All three rows must persist in last-upgrade with aggregate exit 1. Interactive mode permits the App Store operation; dry-run changes no state or packages. Run the complete AGENTS.md gate, with Bats stdin redirected from /dev/null. No live scheduled or interactive upgrade is a verification step.
 
 ## Dependencies / blocks
 
@@ -75,6 +75,10 @@ Explain native interaction limits and investigation of failures. Remove obsolete
 This narrowed item replaces the mixed-manifest implementation plan. A future explicit interactivity declaration would need a separately evidenced product decision.
 
 ## Discussion
+
+### Readiness
+
+Prepared for Ready under the user's 2026-10-01 request. Scope, implementation boundary and verification are fixed below; this planning transition does not start implementation or authorise live-machine changes.
 
 ### Why the original design was withdrawn
 

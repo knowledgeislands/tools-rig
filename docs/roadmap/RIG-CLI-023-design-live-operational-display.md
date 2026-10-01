@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-30T07:40:30Z
-updated_at: 2026-09-30T22:28:16Z
+updated_at: 2026-10-01T04:07:40Z
 ---
 
 ## Goal
@@ -71,7 +71,17 @@ Show the agreed interactive layout and how to select line-oriented or suppressed
 
 This is the last feature batch before the new 0.x release. Broader terminal mediation is not silently admitted if the compact panel proves insufficient.
 
+## Readiness gate
+
+The record remains draft until the user selects yielding versus always-visible native-output behavior. The bounded yielding proposal below is fully specified; it is not silently approved by preparation. If an always-visible region is selected, return to terminal-mediation design before Ready rather than implementing the smaller contract under the same promise.
+
 ## Discussion
+
+### Bounded yielding proposal
+
+Use two lines: operation, selected configuration, phase and completed/total count; then the active qualified target and outcome counts. Update only on real events. Clear owned panel lines before native output, emit a durable task header and redraw after the provider returns. Do not capture, buffer or reinterpret native diagnostics. Clear the owned panel before final stdout reports and during interruption; retain signal exit status.
+
+Use line output for redirected stderr, TERM=dumb and widths too small to render safely. Preserve explicit lines and never progress controls. No alternate screen, background animation, permanent scroll region or tmux dependency. PTY fixtures cover shrinking/resizing, output without a final newline, diagnostic sentinels, interruption and separately captured byte-identical stdout text/JSON. Present isolated examples of all ten commands for acceptance, but do not turn informational queries into operations.
 
 ### Layout and fallback
 
