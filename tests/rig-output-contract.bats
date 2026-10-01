@@ -114,6 +114,39 @@ finally:
 ' "$CONTRACT_TTY_STDERR" "$CONTRACT_WRAPPER" "$RIG" "$@"
 }
 
+assert_terminal_outcome() {
+  "$CONTRACT_PYTHON" - "$BATS_TEST_DIRNAME/helpers/tty-progress.py" \
+    "$CONTRACT_BASE_STDERR" "$CONTRACT_TTY_STDERR" "$1" "$2" <<'PY'
+import importlib.util
+import re
+import sys
+from pathlib import Path
+
+sys.dont_write_bytecode = True
+spec = importlib.util.spec_from_file_location("rig_terminal_fixture", sys.argv[1])
+fixture = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(fixture)
+baseline = Path(sys.argv[2]).read_bytes()
+terminal = Path(sys.argv[3]).read_bytes()
+pattern = (rb"rig: " + re.escape(sys.argv[4].encode()) + rb" [a-z-]+: status "
+           + re.escape(sys.argv[5].encode()) + rb"(?: \([^\r\n]*\))?\n\Z")
+match = re.search(pattern, baseline)
+assert match is not None, "baseline lacks the exact final outcome and status"
+outcome = match.group(0)
+# Quiet cleanup may put CUP immediately before the outcome, with no preceding
+# LF. Require the unchanged outcome bytes at the tail, then prove their visible
+# placement instead of mistaking a raw newline boundary for a terminal row.
+assert terminal.endswith(outcome[:-1] + b"\r\n"), "terminal has changed or trailing outcome output"
+screen = fixture.Screen(24, 100)
+screen.feed(terminal)
+expected = fixture.Screen(24, 100)
+expected.feed(outcome[:-1] + b"\r\n")
+visible = ["".join(row).rstrip() for row in screen.cells if "".join(row).strip()]
+expected_rows = ["".join(row).rstrip() for row in expected.cells if "".join(row).strip()]
+assert visible[-len(expected_rows):] == expected_rows, "outcome is not the final visible output"
+PY
+}
+
 compare_command() {
   local expected code command last
   expected=$1
@@ -167,8 +200,7 @@ compare_command() {
         # stderr. Preserve that boundary, but require the outcome to be last.
         [[ "$last" == *"rig: $command "*": status $expected" ||
           "$last" == *"rig: $command "*": status $expected ("*")" ]] || false
-        last=$(tr -d '\r' <"$CONTRACT_TTY_STDERR" | tail -n 1)
-        [[ "$last" == "rig: $command "*": status $expected"* ]] || {
+        assert_terminal_outcome "$command" "$expected" || {
           cat "$CONTRACT_TTY_STDERR" >&3; false;
         }
       fi

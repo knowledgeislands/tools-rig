@@ -2184,7 +2184,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [[ "$output" == *'active: waiting | ok=1 skip=0 fail=0'* ]] || false
   [[ "$output" == *'active: waiting | ok=1 skip=1 fail=0'* ]] || false
   [[ "$output" == *$'\033[1;22r'* ]] || false
-  [[ "$output" == *'applying finished completed=2/2 succeeded=1 skipped=1 failed=0'* ]] || false
+  [[ "$output" != *'applying finished completed='* ]] || false
   [[ "$output" != *'[declaration]'* ]] || false
 
   run bash -c '
@@ -2266,7 +2266,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [[ "$output" == *'applying | 0/2'* ]] || false
   [[ "$output" == *'Warning: Already installed alpha'* ]] || false
   [[ "$output" == *'alpha'$'\t''runner'$'\t''completed'* ]] || false
-  [[ "$output" == *'applying finished completed=2/2 succeeded=1 skipped=1 failed=0'* ]] || false
+  [[ "$output" != *'applying finished completed='* ]] || false
   [[ "$output" != *'[----------------]'* ]] || false
   [[ "$output" == *'alpha [declaration] running'* ]] || false
 

@@ -2036,6 +2036,17 @@ rig_validate_model() {
 }
 
 rig_load_config() {
+  local status
+  # These four phases have no native writer or successful report output.
+  # Dynamic scope keeps the opt-in local, including every early return.
+  local RIG_PROGRESS_GROUP=owned
+  if rig_load_config_owned; then status=0
+  else status=$?; rig_progress_fail; fi
+  rig_progress_cleanup
+  return "$status"
+}
+
+rig_load_config_owned() {
   local config_home root_file fragment source_count source_index
   local -a sources
   local LC_ALL=C

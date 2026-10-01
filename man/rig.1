@@ -715,6 +715,10 @@ eight rows or sixty columns use line events. Counts are not a duration estimate.
 Enumerable phases report a running item without advancing the completed count,
 then advance once on a succeeded, skipped, or failed outcome. Consequential
 work names its declaration scope before invocation.
+Complete, failure-free footer phases leave no permanent success summary,
+including phases with skipped work. The configuration phases share one footer
+reservation instead of accumulating blank rows. Failed, interrupted, incomplete
+and failed-item phases retain their summaries, as do line-output phases.
 Failure and interruption terminate the active phase explicitly. Before each
 native-capable item, including observation and preflight, Rig clears its footer,
 restores full terminal scrolling and emits a durable task header. The footer

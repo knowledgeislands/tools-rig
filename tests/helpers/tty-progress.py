@@ -102,6 +102,7 @@ def main():
     parser.add_argument("--columns", type=int, default=100)
     parser.add_argument("--stdout", required=True)
     parser.add_argument("--stderr", required=True)
+    parser.add_argument("--screen")
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
@@ -194,6 +195,8 @@ def main():
         screen.resize(rows, columns)
         offset = boundary
     screen.feed(streams["stderr"][offset:])
+    if args.screen:
+        Path(args.screen).write_text(screen.text())
     print(json.dumps({"status": status,
                       "restored": last is None or last.group(1) is None,
                       "regions": len([match for match in margins if match.group(1)]),

@@ -39,6 +39,143 @@ terminal() {
   [ "$(<"$STDOUT")" = FINAL ] || false
 }
 
+@test "complete footer phases including skips disappear without a durable success summary" {
+  fixture 'rig_progress_start applying 2 owned' 'rig_progress_begin alpha' \
+    'rig_progress_result succeeded alpha' 'rig_progress_begin beta' \
+    'rig_progress_result skipped beta' 'rig_progress_finish'
+  terminal
+  [[ "$(<"$STDERR")" == *'active: waiting | ok=1 skip=1 fail=0'* ]] || false
+  [[ "$(<"$STDERR")" != *'finished completed='* ]] || false
+}
+
+@test "incomplete footer phases retain a truthful durable summary" {
+  fixture 'rig_progress_start applying 2 owned' 'rig_progress_begin alpha' \
+    'rig_progress_result succeeded alpha' 'rig_progress_finish'
+  terminal
+  [[ "$(<"$STDERR")" == *'finished completed=1/2 succeeded=1 skipped=0 failed=0'* ]] || false
+}
+
+@test "owned configuration grouping keeps the same spacing across consecutive successful phases" {
+  local count gap previous_gap screen
+  screen=$BATS_TEST_TMPDIR/screen
+  previous_gap=
+  for count in 1 4; do
+    fixture 'printf "\033[23;1HPROMPT-SENTINEL\n" >&2' \
+      'rig_load_config_owned() {' '  index=0' "  while [ \"\$index\" -lt $count ]; do" \
+      '    rig_progress_start configuration 1 owned; rig_progress_begin item' \
+      '    rig_progress_result succeeded item; rig_progress_finish; index=$((index + 1))' '  done' \
+      '  rig_progress_start validation 1 owned; rig_progress_begin model' \
+      '  rig_fail "validation sentinel"' '}' \
+      'if rig_load_config; then code=0; else code=$?; fi' \
+      'printf "group=%s panel=%s\n" "$RIG_PROGRESS_GROUP" "$RIG_PROGRESS_PANEL_ACTIVE"' 'exit "$code"'
+    terminal --screen "$screen"
+    [[ "$output" == *'"status": 2'* ]] || false
+    [[ "$output" == *'"regions": 1'* ]] || false
+    [ "$(<"$STDOUT")" = 'group= panel=0' ] || false
+    [[ "$(<"$STDERR")" != *'configuration finished'* ]] || false
+    [[ "$(<"$STDERR")" != *'configuration failed'* ]] || false
+    [[ "$(<"$STDERR")" == *'validation failed completed=0/1'* ]] || false
+    gap=$(awk '/PROMPT-SENTINEL/ { start=NR } /validation failed/ { print NR-start-1 }' "$screen")
+    [ "$gap" = 1 ] || false
+    [ -z "$previous_gap" ] || [ "$gap" = "$previous_gap" ] || false
+    previous_gap=$gap
+  done
+}
+
+@test "the real configuration loader closes the group on success and validation failure" {
+  local schema
+  export RIG_CONFIG_HOME=$BATS_TEST_TMPDIR/config
+  mkdir -p "$RIG_CONFIG_HOME"
+  for schema in 1 2; do
+    printf '%s\n' '[rig]' "schema = $schema" 'default-profile = "default"' \
+      '[profile.default]' 'tools = []' >"$RIG_CONFIG_HOME/rig.toml"
+    fixture 'if rig_load_config; then code=0; else code=$?; fi' \
+      'printf "group=%s panel=%s\n" "$RIG_PROGRESS_GROUP" "$RIG_PROGRESS_PANEL_ACTIVE"' 'exit "$code"'
+    terminal
+    [[ "$output" == *'"regions": 1'* ]] || false
+    [ "$(<"$STDOUT")" = 'group= panel=0' ] || false
+    [[ "$(<"$STDERR")" != *'finished completed='* ]] || false
+    if [ "$schema" -eq 1 ]; then
+      [[ "$output" == *'"status": 0'* ]] || false
+    else
+      [[ "$output" == *'"status": 2'* ]] || false
+      [[ "$(<"$STDERR")" == *'config validation failed completed=0/1'* ]] || false
+      [[ "$(<"$STDERR")" == *"unsupported schema version '2'"* ]] || false
+    fi
+  done
+}
+
+@test "configuration early and unexpected returns release retained ownership and preserve status" {
+  fixture 'RIG_PROGRESS_GROUP=owned' 'rig_progress_start previous 1 owned' \
+    'rig_progress_begin item' 'rig_progress_result succeeded item' 'rig_progress_finish' \
+    'unset HOME RIG_CONFIG_HOME' 'if rig_load_config; then code=0; else code=$?; fi' 'exit "$code"'
+  terminal
+  [[ "$output" == *'"status": 2'* ]] || false
+  [[ "$(<"$STDERR")" == *'HOME is required'* ]] || false
+  [[ "$(<"$STDERR")" != *'previous failed'* ]] || false
+  fixture 'rig_load_config_owned() { rig_progress_start parsing 1 owned; return 7; }' \
+    'if rig_load_config; then code=0; else code=$?; fi' \
+    'printf "group=%s panel=%s\n" "$RIG_PROGRESS_GROUP" "$RIG_PROGRESS_PANEL_ACTIVE"' 'exit "$code"'
+  terminal
+  [[ "$output" == *'"status": 7'* ]] || false
+  [[ "$(<"$STDERR")" == *'parsing failed completed=0/1'* ]] || false
+  [ "$(<"$STDOUT")" = 'group= panel=0' ] || false
+}
+
+@test "retained frames close for zero work and never or lines mode changes" {
+  local mode total
+  for mode in zero never lines; do
+    total=1
+    [ "$mode" != zero ] || total=0
+    fixture 'RIG_PROGRESS_GROUP=owned' 'rig_progress_start previous 1 owned' \
+      'rig_progress_begin item' 'rig_progress_result succeeded item' 'rig_progress_finish' \
+      "[ '$mode' = zero ] || RIG_PROGRESS=$mode" "rig_progress_start next $total owned" \
+      'printf "panel=%s\n" "$RIG_PROGRESS_PANEL_ACTIVE"' \
+      'rig_progress_result succeeded item' 'rig_progress_finish'
+    terminal
+    [ "$(<"$STDOUT")" = 'panel=0' ] || false
+    [[ "$(<"$STDERR")" != *'previous failed'* ]] || false
+    if [ "$mode" = lines ]; then
+      [[ "$(<"$STDERR")" == *'next finished completed=1/1 succeeded=1 skipped=0 failed=0'* ]] || false
+    fi
+  done
+}
+
+@test "end-time resize fallback preserves the completed phase summary" {
+  fixture 'trap rig_progress_resize WINCH' 'rig_progress_start applying 1 owned' \
+    'rig_progress_begin item' 'rig_progress_result succeeded item' \
+    'printf "RESIZE:6:50\n"' '/bin/sleep 0.2' 'rig_progress_finish'
+  terminal
+  [[ "$(<"$STDERR")" == *'applying finished completed=1/1 succeeded=1 skipped=0 failed=0'* ]] || false
+  [[ "$output" == *'"resize_erase_safe": true'* ]] || false
+}
+
+@test "resize between grouped phases preserves diagnostics and safely replaces the footer" {
+  fixture 'printf "DIAGNOSTIC-SENTINEL\n" >&2' 'trap rig_progress_resize WINCH' \
+    'RIG_PROGRESS_GROUP=owned' 'rig_progress_start first 1 owned' 'rig_progress_begin item' \
+    'rig_progress_result succeeded item' 'rig_progress_finish' \
+    'printf "RESIZE:12:80\n"' '/bin/sleep 0.2' \
+    'rig_progress_start second 1 owned' 'rig_progress_begin item' \
+    'rig_progress_result succeeded item' 'rig_progress_finish' 'rig_progress_cleanup'
+  terminal
+  [[ "$output" == *'"diagnostic_survived": true'* ]] || false
+  [[ "$output" == *'"resize_erase_safe": true'* ]] || false
+  [[ "$(<"$STDERR")" != *'first failed'* ]] || false
+}
+
+@test "a native successor releases retained grouping and keeps partial diagnostics intact" {
+  fixture 'RIG_PROGRESS_GROUP=owned' 'rig_progress_start configuration 1 owned' \
+    'rig_progress_begin item' 'rig_progress_result succeeded item' 'rig_progress_finish' \
+    'rig_progress_start applying 1' 'rig_progress_begin runner:alpha' \
+    'printf "NATIVE partial-diagnostic" >&2' 'rig_progress_result succeeded runner:alpha' \
+    'rig_progress_finish' 'printf "panel=%s\n" "$RIG_PROGRESS_PANEL_ACTIVE"'
+  terminal
+  [[ "$output" == *'"native_full": true'* ]] || false
+  [[ "$(<"$STDERR")" == *$'NATIVE partial-diagnostic\r\n'* ]] || false
+  [[ "$(<"$STDERR")" != *'configuration failed'* ]] || false
+  [ "$(<"$STDOUT")" = 'panel=0' ] || false
+}
+
 @test "default and explicit passthrough phases restore before native ANSI and partial diagnostics" {
   local ownership
   for ownership in '' passthrough; do
@@ -122,14 +259,16 @@ terminal() {
     'exec /bin/stty "$@"' >"$RIG_TEST_PROVIDER_BIN/stty"
   chmod +x "$RIG_TEST_PROVIDER_BIN/stty"
   fixture 'rig_progress_start applying 1 owned' 'rig_progress_begin alpha' \
+    'rig_progress_result succeeded alpha' \
     'printf "FAIL-GEOMETRY\n" >&2' ': >"$GEOMETRY_FAILED"' \
-    'rig_progress_result succeeded alpha' 'rig_progress_finish'
+    'rig_progress_finish'
   terminal
   local remainder
   remainder=$(<"$STDERR")
   remainder=${remainder#*FAIL-GEOMETRY}
   [[ "$remainder" != *$'\033[2K'* ]] || false
   [[ "$remainder" == *$'\033[r'* ]] || false
+  [[ "$remainder" == *'applying finished completed=1/1 succeeded=1 skipped=0 failed=0'* ]] || false
 }
 
 @test "resize during native suspension never reclaims terminal early" {
@@ -147,11 +286,15 @@ terminal() {
   local signal code
   for signal in INT TERM HUP; do
     case "$signal" in INT) code=130 ;; TERM) code=143 ;; HUP) code=129 ;; esac
-    fixture "trap 'rig_progress_signal $code' $signal" 'rig_progress_start applying 2 owned' \
+    fixture "trap 'rig_progress_signal $code' $signal" 'RIG_PROGRESS_GROUP=owned' \
+      'rig_progress_start previous 1 owned' 'rig_progress_begin item' \
+      'rig_progress_result succeeded item' 'rig_progress_finish' 'rig_progress_start applying 2 owned' \
       'rig_progress_begin alpha' "printf 'SIGNAL:$signal\n'" '/bin/sleep 5'
     terminal
     [[ "$output" == *"\"status\": $code"* ]] || false
     [[ "$(<"$STDERR")" == *'interrupted completed=0/2 succeeded=0 skipped=0 failed=0'* ]] || false
+    [[ "$(<"$STDERR")" != *'previous failed'* ]] || false
+    [[ "$output" == *'"regions": 1'* ]] || false
   done
 }
 

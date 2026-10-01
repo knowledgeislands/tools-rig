@@ -4,12 +4,12 @@ area: CLI
 title: Quiet terminal phase completion
 theme: cli
 horizon: now
-status: ready
+status: in-progress
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 5f4aad112a2ece87bee915b3bb72e9d246bf0c0b
 created_at: 2026-10-01T21:48:03Z
-updated_at: 2026-10-01T21:48:03Z
+updated_at: 2026-10-01T22:10:30Z
 ---
 
 ## Goal
@@ -30,15 +30,15 @@ The existing display implementation is committed and awaiting human review in th
 
 ## Steps
 
-- [ ] Suppress durable summaries only for complete, failure-free phases that still qualify for the interactive footer; keep failures, interruption, incomplete counts, failed-item outcomes and line/fallback summaries.
-- [ ] Introduce an explicitly scoped owned configuration group around the four configuration phases, reusing one footer reservation. Guarantee cleanup and original status on every loader return; do not leak grouping into later resolution, native work or report output.
-- [ ] Add isolated terminal regressions for successful skips, adverse outcomes, consecutive-phase fixed spacing, early errors, zero work, display-mode changes and resize/fallback. Retain native partial-line, signal, privacy and stdout-equivalence coverage.
-- [ ] Align the guide, manual, specification and changelog; regenerate the single executable once worker edits are complete.
+- [x] Suppress durable summaries only for complete, failure-free phases that still qualify for the interactive footer; keep failures, interruption, incomplete counts, failed-item outcomes and line/fallback summaries.
+- [x] Introduce an explicitly scoped owned configuration group around the four configuration phases, reusing one footer reservation. Guarantee cleanup and original status on every loader return; do not leak grouping into later resolution, native work or report output.
+- [x] Add isolated terminal regressions for successful skips, adverse outcomes, consecutive-phase fixed spacing, early errors, zero work, display-mode changes and resize/fallback. Retain native partial-line, signal, privacy and stdout-equivalence coverage.
+- [x] Align the guide, manual, specification and changelog; regenerate the single executable once worker edits are complete.
 - [ ] Review terminal ownership independently and run the complete local gate, retaining acceptance evidence and a canonical review packet.
 
 ## Files touched
 
-`src/rig/00-runtime.bash`, `src/rig/10-configuration.bash`, `tests/rig-progress.bats`, `tests/helpers/tty-progress.py`, affected assertions in `tests/rig.bats`, generated `bin/rig`, `docs/specs/orchestration.md`, `docs/guides/user/commands.md`, `man/rig.1`, `CHANGELOG.md` and this record. No provider execution changes or new flags are expected.
+`src/rig/00-runtime.bash`, `src/rig/10-configuration.bash`, `tests/rig-progress.bats`, `tests/helpers/tty-progress.py`, affected assertions in `tests/rig.bats` and `tests/rig-output-contract.bats`, generated `bin/rig`, `docs/specs/orchestration.md`, `docs/guides/user/commands.md`, `man/rig.1`, `CHANGELOG.md` and this record. No provider execution changes or new flags are expected.
 
 ## Verify
 
@@ -50,7 +50,7 @@ The adaptive renderer exists. ChezMoi migration can proceed independently with a
 
 ## Delegation
 
-The renderer worker owns the two authored modules, terminal helper and progress tests plus affected existing Bats assertions. The coordinator owns documentation, roadmap, assembly, Git and the aggregate gate. A read-only independent reviewer checks cleanup, grouping, counters, mode transitions, native boundaries and the final diff. Shared primary checkout, disjoint path ownership and no worker Git writes. Do not regenerate the shared executable while another test run is reading it; use a private payload for focused tests. Return touched paths, exact checks, findings and limitations. Stop for unsafe native cursor assumptions, external dependencies or a broader rendering contract. The coordinator integrates only after the worker freezes its candidate.
+The renderer worker owns the two authored modules, terminal helper and progress tests plus affected existing Bats assertions, including terminal-outcome assertions in the all-command output-contract suite. The coordinator owns documentation, roadmap, assembly, Git and the aggregate gate. A read-only independent reviewer checks cleanup, grouping, counters, mode transitions, native boundaries and the final diff. Shared primary checkout, disjoint path ownership and no worker Git writes. Do not regenerate the shared executable while another test run is reading it; use a private payload for focused tests. Return touched paths, exact checks, findings and limitations. Stop for unsafe native cursor assumptions, external dependencies or a broader rendering contract. The coordinator integrates only after the worker freezes its candidate.
 
 ## Documentation impact
 
@@ -79,3 +79,7 @@ Successful footer state is transient; repeating it as a permanent log defeats th
 ### Bounded row ownership
 
 The configuration loader is a proven contiguous block of Rig-owned work with no native terminal writer. Reuse a single reservation only inside this explicit group, and close it on every return. Do not generalise deferred cleanup to arbitrary phases. One conservative initial separation may remain; the requirement is to remove repeated phase-by-phase gaps without guessing the cursor position or erasing opaque native diagnostics.
+
+### Rendered outcome assertions
+
+The first integrated run exposed an old test assumption: a durable success summary had supplied a newline before the final outcome, so the raw terminal transcript's last line began with that outcome. Quiet completion instead restores column one through terminal controls. Verify the final visible row with the existing bounded screen model and retain raw trailing-outcome ordering, exact stdout, native-byte and status checks. Do not reintroduce blank lines merely to satisfy a byte-line assertion that no longer describes terminal presentation.
