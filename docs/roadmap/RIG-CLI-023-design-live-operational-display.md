@@ -4,12 +4,12 @@ area: CLI
 title: Design live operational display
 theme: cli
 horizon: next
-status: in-progress
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: 617d4343ae679c8e74158cff9a0f5f053ab74837
 created_at: 2026-09-30T07:40:30Z
-updated_at: 2026-10-01T19:52:45Z
+updated_at: 2026-10-01T19:53:35Z
 ---
 
 ## Goal
@@ -26,7 +26,7 @@ At the implementation baseline, Rig had an in-place progress bar on terminal std
 
 ## Current state
 
-The reliability work is accepted and pruned. The user approved proceeding after reviewing established terminal conventions, with an APT-style footer preferred and native prompts, diagnostics and Bash-only portability preserved. Feasibility review established that a bottom-anchored footer is possible without an extra runtime, but an always-visible footer alongside arbitrary native terminal writers is not safely enforceable. Implement an adaptive footer: anchored during Rig-owned work, fully removed during native-capable items, restored after return. This is not a terminal multiplexer or an APT-equivalent child PTY.
+The reliability work is accepted and pruned. The user approved proceeding after reviewing established terminal conventions, with an APT-style footer preferred and native prompts, diagnostics and Bash-only portability preserved. Feasibility review established that a bottom-anchored footer is possible without an extra runtime, but an always-visible footer alongside arbitrary native terminal writers is not safely enforceable. The adaptive footer is delivered and awaits human acceptance: anchored during Rig-owned work, fully removed during native-capable items, restored after return. This is not a terminal multiplexer or an APT-equivalent child PTY.
 
 ## Steps
 
@@ -74,6 +74,38 @@ This is the last feature batch before the new 0.x release. Broader terminal medi
 ## Readiness gate
 
 The user requested implementation after the standards/examples review. The selected design is an adaptive bottom footer, not uninterrupted native-output isolation. Feasibility review and the explicit safe fallback were reported before implementation. Ready covers that bounded design only; if tests show it cannot preserve prompts, diagnostics, reports or terminal restoration, stop rather than add mediation or weaken the contract.
+
+## Review
+
+### Delivered
+
+Implemented the approved adaptive terminal footer from baseline `617d4343ae679c8e74158cff9a0f5f053ab74837` in delivery commit `7f7be58fd028de60e1daec0cf5dd098ed85a9e8c`. The footer is present during Rig-owned work and yields for complete native-capable items. No new runtime dependency, child PTY, native-output mediation, provider semantics, command or flag was introduced. Release, cross-repository changes, human acceptance and pruning remain outside this delivery.
+
+### Change Summary
+
+`src/rig/00-runtime.bash` replaces the inline bar with bounded two-line rendering, validated metadata, optional geometry discovery, conservative resize cleanup and nested suspension. Configuration and planning explicitly opt into owned rendering; other phases yield by default. Main, buffered mutation reports, resource locks and export cleanup compose terminal restoration with their existing lifecycle. The generated `bin/rig` is current.
+
+The command guide, RIG-ORCH-019 specification, man page, help and Unreleased changelog describe the same behavior and limitations. Completion and README command syntax need no changes because the public surface is unchanged. New terminal and all-command output-contract fixtures accompany updated existing progress assertions. On uncertain resize/reflow, old footer text may remain in scrollback; no uncertain diagnostic coordinates are erased. This implements the disclosed bounded design without expanding it.
+
+### Verification
+
+The complete AGENTS.md gate passed on 2026-10-01 against the integrated delivery: `ki repo audit --repo .`; ShellCheck and Bash syntax checks for the assembled executable, installer, authored modules and named scripts; `scripts/assemble-rig --check`; `scripts/benchmark-rig`; `scripts/smoke-native-providers`; `RIG_TEST_PYTHON=/opt/homebrew/opt/python@3.14/bin/python3.14 bats tests/ </dev/null`; and `mandoc -T lint man/rig.1`. All 375 Bats tests passed. The final gate log is local, disposable evidence at `/tmp/rig-cli023.nbILVQ/final.log`; the 354-test baseline gate also passed before implementation. Formatting, a fresh repository audit and `git diff --check` passed after documentation finalisation.
+
+Fourteen focused PTY tests passed independently on the final renderer. Seven output-contract groups exercise all ten commands with 33 paired cases plus a real controlling-terminal prompt: stdout bytes, JSON, exported artifacts, provider diagnostics, terminal geometry/modes and native failure outcomes remain separate and unchanged. The independent source reviewer found no blocking issue in native boundaries, shared return-value use, resizing, subprocess cleanup, locks or export traps; that review does not claim another independent test run.
+
+Acceptance captures are local temporary evidence: terminal fixtures at `/var/folders/l7/8bd9jm7j66xgt1vx3bppyh740000gn/T/bats-run-ERzTAR`, and paired all-command captures at `/var/folders/l7/8bd9jm7j66xgt1vx3bppyh740000gn/T/bats-run-v3xloj`. The latter retain baseline/TTY stdout, stderr, status and geometry, with the prompt case in `test/7`. They can be regenerated using the two committed suites with `bats --no-tempdir-cleanup` and the test-only Python override above. These are isolated fake-provider captures, not workstation mutations or permanent product artifacts.
+
+### Outstanding concerns
+
+No unresolved implementation blocker or failing check. Human visual acceptance in the user's usual terminal remains outstanding. The fixture-only VT/reflow model is bounded evidence, not exhaustive terminal emulation. Native work intentionally owns the whole terminal while running, so the footer is not continuously visible. A separating newline may add a blank line; resized footer text may remain in scrollback; uncatchable termination cannot guarantee cleanup. These are documented design limits, not hidden follow-on requirements.
+
+### Post-change review
+
+The delivered behavior meets the approved live-display goal within the Bash-only and native-execution boundaries. The highest regression risks—terminal ownership, prompt interaction, resize cleanup, signals and stdout contamination—have targeted fixtures and full-suite coverage. The item is ready for human acceptance, not self-accepted. If uninterrupted native-time visibility is wanted later, it requires a separately approved mediation design rather than a renderer tweak.
+
+### Mini recap
+
+Adaptive footer delivered, all ten command contracts covered, wraparound documentation aligned, full gate clean and independent review complete. Await human acceptance before done/prune. The ownership and resize lessons are recorded in the existing guide and specification; no additional policy or Decision Record is needed. The release item remains separate, and no push or release was performed.
 
 ## Discussion
 
