@@ -4,12 +4,12 @@ area: CORE
 title: Surface historical apply failures
 theme: orchestration
 horizon: next
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 43a73df5b346bc41512911644534bff46596f74c
 created_at: 2026-09-30T00:00:00Z
-updated_at: 2026-10-01T06:10:08Z
+updated_at: 2026-10-01T14:17:58Z
 ---
 
 ## Goal
@@ -99,6 +99,10 @@ Two independent reviewers checked transaction safety and dispatch/projection int
 ### Mini recap
 
 An installed target can now truthfully have a separate historical failure finding; later matching success clears it, unrelated work does not, and read-only commands never repair state. RIG-STATE-035 and the inspection guide retain the contract. This item is awaiting human acceptance; presentation and release remain separate records.
+
+## Done
+
+Accepted 2026-10-01 by Kris on the review packet above.
 
 ## Discussion
 

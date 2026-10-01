@@ -4,12 +4,12 @@ area: CORE
 title: Observe Dock folder attributes
 theme: orchestration
 horizon: next
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 43a73df5b346bc41512911644534bff46596f74c
 created_at: 2026-09-27T08:13:24Z
-updated_at: 2026-10-01T06:09:25Z
+updated_at: 2026-10-01T14:17:58Z
 ---
 
 ## Goal
@@ -104,6 +104,10 @@ A separate worker reviewed native evidence semantics and ran the focused tests. 
 ### Mini recap
 
 Status and doctor now expose declared Dock attribute drift before apply. The accepted behavior and evidence are retained in RIG-STATE-036 and the operational guide. This item is awaiting human acceptance; live-display work remains separate.
+
+## Done
+
+Accepted 2026-10-01 by Kris on the review packet above.
 
 ## Discussion
 

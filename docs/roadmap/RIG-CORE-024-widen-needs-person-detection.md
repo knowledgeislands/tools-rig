@@ -4,12 +4,12 @@ area: CORE
 title: Verify unattended upgrade guarantees
 theme: orchestration
 horizon: next
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 43a73df5b346bc41512911644534bff46596f74c
 created_at: 2026-09-25T15:00:00Z
-updated_at: 2026-10-01T06:09:25Z
+updated_at: 2026-10-01T14:17:58Z
 ---
 
 ## Goal
@@ -99,6 +99,10 @@ The coordinator independently reviewed the worker's source, tests and documentat
 ### Mini recap
 
 Unattended behavior is understood and regression-protected without widening the command surface. Specifications and guides retain the bounded contract. This item is awaiting human acceptance, not automatically done or eligible for pruning.
+
+## Done
+
+Accepted 2026-10-01 by Kris on the review packet above.
 
 ## Discussion
 
