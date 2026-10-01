@@ -85,6 +85,3 @@ MIG = "migration"
 export = ["work", "knowledge"]
 import = ["knowledge"]
 standing.export.knowledge = ["shared-capability-maintenance"]
-
-[skills.ki-trades.routes."krisb/dotfiles"]
-import = ["work", "knowledge"]
