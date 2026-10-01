@@ -536,6 +536,22 @@ write_query_config() {
   [[ "$output" == *'Describe the selected setup or one declared item.'* ]] || false
 }
 
+@test "command help explains history and the unattended boundary" {
+  for command in status doctor; do
+    run "$RIG" "$command" --help
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'historical apply failures separately from current observations'* ]] || false
+  done
+  run "$RIG" apply --help
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'later success clears the matching historical failure'* ]] || false
+  run "$RIG" upgrade --help
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'Give native stdin EOF, skip App Store upgrades, and record outcomes.'* ]] || false
+  [[ "$output" == *'Homebrew NONINTERACTIVE=1'* ]] || false
+  [[ "$output" == *'does not prevent terminal or graphical authentication or impose a time limit'* ]] || false
+}
+
 @test "public command inventory stays aligned across documentation" {
   repo_root=$BATS_TEST_DIRNAME/..
   bash_completion=$("$RIG" completion bash)

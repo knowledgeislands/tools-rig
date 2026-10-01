@@ -155,7 +155,7 @@ rig_command_options() {
     status) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--problems||Show only entries needing attention.||' '--unmanaged||Include observed items not declared by an installation.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
     doctor) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--verbose||Include runtime and configuration diagnostics.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
     apply) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--scope|SCOPE|Restrict to tools, skills, resources, or all.|tools skills resources all|' '--target|ID|Apply one selected entry; repeat for several targets.||' '--dry-run||Print the plan without invoking providers.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
-    upgrade) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--dry-run||Print the plan without invoking providers.||' '--unattended||Record an outcome when nobody is watching.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
+    upgrade) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--dry-run||Print the plan without invoking providers.||' '--unattended||Give native stdin EOF, skip App Store upgrades, and record outcomes.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
     capture) printf '%s\n' '--provider|NAME|Select an inventory provider.|homebrew|' '--profile|NAME|Select the profile for proposed membership.|profile name|' '--dry-run||Inspect and preview without writing a proposal.||' '--output|PATH|Write a new proposal outside active configuration.|path|' '--category|ID|Declare the category for selected items.|category id|' '--purpose|TEXT|Declare the purpose for selected items.|text|' '--rationale|TEXT|Declare the rationale for selected items.|text|' ;;
     export) printf '%s\n' '--profile|NAME|Select the view profile to export.|profile name|required' '--output|DIRECTORY|Write the public data tree here.|directory|required' '--title|TEXT|Set the exported document title.|title|' '--base-url|URL|Set the published document canonical URL.|url|' ;;
   esac
@@ -202,9 +202,16 @@ rig_command_help() {
   rig_command_usage "$command"
   if [ "$command" = apply ]; then
     printf '%s\n' '' 'Reconciles the selection; applying resources may restart applications mid-run.'
+    printf '%s\n' 'Records apply outcomes; later success clears the matching historical failure.'
   fi
+  case "$command" in
+    status|doctor)
+      printf '%s\n' '' 'Shows selected historical apply failures separately from current observations.' ;;
+  esac
   if [ "$command" = upgrade ]; then
     printf '%s\n' '' 'Interactive progress appears on stderr unless a provider writes to the terminal.'
+    printf '%s\n' 'Unattended mode sets Homebrew NONINTERACTIVE=1; native failures keep their results.' \
+      'It does not prevent terminal or graphical authentication or impose a time limit.'
   fi
   printf '%s\n' '' 'Options:' '  -h, --help  Show command help.'
   while IFS='|' read -r option value description choices required; do
