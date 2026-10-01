@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: 47e993b452492ea4afd6d69343223669279d02da
 created_at: 2026-09-30T21:35:00Z
-updated_at: 2026-10-01T04:07:40Z
+updated_at: 2026-10-01T04:09:49Z
 ---
 
 ## Goal
@@ -75,7 +75,7 @@ This record owns the approved cutover. The existing display and unresolved produ
 
 ### Delivered
 
-Implemented the approved ten-command breaking cutover, Rig-owned Homebrew package intent, declared prerequisite staging, safe configuration initialization and reviewed Homebrew adoption. The implementation and this review packet are recorded together against baseline `47e993b452492ea4afd6d69343223669279d02da`; the implementation is committed as `7d00cde00ac31dd200e4cbdf2d9a2a301af88d89`, and the batch ledger records its delivery and closeout evidence.
+Implemented the approved ten-command breaking cutover, Rig-owned Homebrew package intent, declared prerequisite staging, safe configuration initialization and reviewed Homebrew adoption. The implementation and this review packet are recorded together against baseline `47e993b452492ea4afd6d69343223669279d02da`; the implementation is committed as `7d00cde00ac31dd200e4cbdf2d9a2a301af88d89`, and the original batch ledger retains its historical parked-run outcome. The fresh verified closeout is recorded in this canonical review packet under the user's 2026-10-01 request.
 
 ### Change Summary
 
