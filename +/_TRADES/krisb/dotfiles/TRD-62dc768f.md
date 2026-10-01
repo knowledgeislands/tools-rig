@@ -8,8 +8,11 @@ kind: work
 source_ref: "DOTFILES-UE-028"
 observation: decision
 phase: received
-decision_status: unconsidered
+decision_status: superseded
 received_from_ref: ae5be36c03f08de5847c58bc753ca21ff48db379
+reviewed_at: 2026-10-01T04:45:08Z
+rationale: "Re-homed as unadopted Rig roadmap intake RIG-CORE-039; no implementation or priority has been approved."
+superseded_by: RIG-CORE-039
 ---
 
 # TRD-62dc768f: Observe retired application traces
