@@ -12,7 +12,7 @@ rig_resolve_operational_plan() {
   if [ "$load_mode" != preloaded ]; then
     rig_load_config || return
   fi
-  rig_progress_start resolution 2
+  rig_progress_start resolution 2 owned
   rig_progress_begin platform
   rig_current_platform || return
   platform=$RIG_VALUE
@@ -22,7 +22,7 @@ rig_resolve_operational_plan() {
   rig_progress_result succeeded profile
   rig_progress_finish
 
-  rig_progress_start planning 2
+  rig_progress_start planning 2 owned
   rig_progress_begin bindings
   rig_resolve_bindings || return
   rig_progress_result succeeded bindings
@@ -161,7 +161,7 @@ rig_acquire_reconciliation_lock() {
   fi
   RIG_RECONCILIATION_LOCK=$lock
   RIG_RECONCILIATION_LOCK_ACQUIRED=1
-  trap rig_release_reconciliation_lock EXIT
+  trap 'rig_progress_cleanup; rig_release_reconciliation_lock' EXIT
   trap 'rig_reconciliation_signal 129' HUP
   trap 'rig_reconciliation_signal 130' INT
   trap 'rig_reconciliation_signal 143' TERM

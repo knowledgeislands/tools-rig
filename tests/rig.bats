@@ -2151,17 +2151,20 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [[ "$progress_output" != *'observing finished'* ]] || false
 }
 
-@test "interactive progress rewrites an ASCII bar whose columns never move" {
+@test "interactive progress anchors a compact footer with truthful counters" {
   local wrapper
 
   wrapper=$BATS_TEST_TMPDIR/progress-terminal-$BATS_TEST_NUMBER
   printf '%s\n' \
     '#!/usr/bin/env bash' \
     '. "$1"' \
-    'COLUMNS=100' \
+    'stty rows 24 cols 100 </dev/tty' \
+    'export TERM=xterm-256color' \
     'RIG_PROGRESS=auto' \
     'RIG_PROGRESS_CONTEXT=operational' \
-    'rig_progress_start applying 2' \
+    'RIG_PROGRESS_COMMAND=apply' \
+    'rig_progress_selection default macos' \
+    'rig_progress_start applying 2 owned' \
     'rig_progress_begin alpha declaration' \
     'rig_progress_result succeeded alpha declaration' \
     'rig_progress_begin beta declaration' \
@@ -2176,14 +2179,13 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   fi
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *'0/2 [.............................] starting'* ]] || false
-  [[ "$output" == *'0/2 [>............................] alpha'* ]] || false
-  [[ "$output" == *'1/2 [##############...............] alpha'* ]] || false
-  [[ "$output" == *'2/2 [#############################] beta'* ]] || false
-  [[ "$output" == *'2/2 [#############################] ok=1 skip=1 fail=0'* ]] || false
-  [[ "$output" == *'rig: applying'* ]] || false
+  [[ "$output" == *'rig: apply | default/macos | applying | 0/2'* ]] || false
+  [[ "$output" == *'active: alpha | ok=0 skip=0 fail=0'* ]] || false
+  [[ "$output" == *'active: waiting | ok=1 skip=0 fail=0'* ]] || false
+  [[ "$output" == *'active: waiting | ok=1 skip=1 fail=0'* ]] || false
+  [[ "$output" == *$'\033[1;22r'* ]] || false
+  [[ "$output" == *'applying finished completed=2/2 succeeded=1 skipped=1 failed=0'* ]] || false
   [[ "$output" != *'[declaration]'* ]] || false
-  [[ "$output" != *'rig: progress:'* ]] || false
 
   run bash -c '
     . "$1"
@@ -2200,18 +2202,19 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [[ "$output" == *'rig: progress: applying finished completed=1/1 succeeded=1 skipped=0 failed=0'* ]] || false
 }
 
-@test "interactive progress fits the terminal and erases the whole previous line" {
-  local wrapper long erased
+@test "interactive progress elides long identities and clears its owned rows" {
+  local wrapper long
 
-  long=alpha-with-a-long-item-name-that-once-left-residue-behind
+  long=alpha-with-a-long-item-name-that-once-left-residue-behind-and-keeps-going-until-the-terminal-cannot-fit-the-entire-public-identity
   wrapper=$BATS_TEST_TMPDIR/progress-residue-$BATS_TEST_NUMBER
   printf '%s\n' \
     '#!/usr/bin/env bash' \
     '. "$1"' \
-    'COLUMNS=120' \
+    'stty rows 24 cols 120 </dev/tty' \
+    'export TERM=xterm-256color' \
     'RIG_PROGRESS=auto' \
     'RIG_PROGRESS_CONTEXT=operational' \
-    'rig_progress_start applying 2' \
+    'rig_progress_start applying 2 owned' \
     "rig_progress_begin $long declaration" \
     "rig_progress_result succeeded $long declaration" \
     'rig_progress_begin beta' \
@@ -2226,20 +2229,21 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   fi
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *'alpha-with-a-long-item-nam... ok'* ]] || false
+  [[ "$output" == *'active: alpha-with-a-long-item-name'*'... | ok='* ]] || false
   [[ "$output" != *"$long"* ]] || false
-
-  erased=$(printf '%25s' '')
-  [[ "$output" == *"beta$erased ok"* ]] || false
+  [[ "$output" == *$'\033[24;1H\033[2Kactive: beta | ok=1 skip=0 fail=0'* ]] || false
+  [[ "$output" == *'active: waiting | ok=2 skip=0 fail=0'* ]] || false
 }
 
-@test "a pass-through phase reports its start and summary instead of a bar" {
+@test "a native-capable phase yields the footer around provider diagnostics" {
   local wrapper
 
   wrapper=$BATS_TEST_TMPDIR/progress-passthrough-$BATS_TEST_NUMBER
   printf '%s\n' \
     '#!/usr/bin/env bash' \
     '. "$1"' \
+    'stty rows 24 cols 100 </dev/tty' \
+    'export TERM=xterm-256color' \
     'RIG_PROGRESS=always' \
     'RIG_PROGRESS_CONTEXT=operational' \
     'rig_progress_start applying 2 passthrough' \
@@ -2259,12 +2263,12 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   fi
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *'rig: progress: applying 0/2 started'* ]] || false
+  [[ "$output" == *'applying | 0/2'* ]] || false
   [[ "$output" == *'Warning: Already installed alpha'* ]] || false
   [[ "$output" == *'alpha'$'\t''runner'$'\t''completed'* ]] || false
   [[ "$output" == *'applying finished completed=2/2 succeeded=1 skipped=1 failed=0'* ]] || false
   [[ "$output" != *'[----------------]'* ]] || false
-  [[ "$output" != *'alpha [declaration] running'* ]] || false
+  [[ "$output" == *'alpha [declaration] running'* ]] || false
 
   run bash -c '
     . "$1"

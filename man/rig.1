@@ -698,26 +698,35 @@ to
 .B RIG_PROGRESS
 Set to
 .B always
-to force operational progress. A terminal receives an in-place ASCII bar whose
-fields hold fixed widths and whose bar takes the width the terminal has left;
-redirected stderr receives stable line-oriented events. Set to
+to force progress, including declaration-only queries. A supported interactive
+terminal receives a two-line bottom footer showing the command, resolved
+selection (or selection pending), phase, completed/total work, current target
+and phase-local outcome counts. Redirected stderr receives stable line-oriented
+events. Set to
 .B lines
 to request those durable events even on a terminal, or
 .B never
 to suppress it. The default is
 .BR auto ,
-which reports the bar for operational commands when stderr is a terminal and
-line-oriented events when it is redirected; declaration-only queries remain
-quiet. The bar is not a duration estimate.
+which reports the footer for operational commands on supported terminals and
+line-oriented events otherwise; declaration-only queries remain quiet.
+Unsupported or dumb terminals, unavailable geometry and terminals smaller than
+eight rows or sixty columns use line events. Counts are not a duration estimate.
 Enumerable phases report a running item without advancing the completed count,
 then advance once on a succeeded, skipped, or failed outcome. Consequential
 work names its declaration scope before invocation.
-Failure and interruption terminate the active phase explicitly. A phase that
-lets provider-native output reach the terminal, such as applying or upgrading,
-reports only its start and its summary, because a redrawn bar and a provider
-writing to the same line overwrite each other;
-.B lines
-still names every item there. Rig progress omits private paths, locators,
+Failure and interruption terminate the active phase explicitly. Before each
+native-capable item, including observation and preflight, Rig clears its footer,
+restores full terminal scrolling and emits a durable task header. The footer
+returns after the whole item finishes, even if the native tool was quiet.
+Native prompts and diagnostics are not buffered or filtered. A separating
+newline protects native output without a final newline. Resize is handled only
+at safe rendering boundaries. Reflowed footer text may remain in scrollback:
+Rig does not erase uncertain coordinates at the risk of losing diagnostics.
+No alternate screen, cursor hiding or background
+animation is used. Completion, failure and handled interruption restore the
+terminal; uncatchable termination cannot guarantee cleanup.
+Rig progress omits private paths, locators,
 arguments, environment
 values, titles, observed details, credentials, and native output. Progress
 never changes the deterministic report on stdout.

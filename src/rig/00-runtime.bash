@@ -96,17 +96,17 @@ RIG_PROGRESS_FAILED=0
 RIG_PROGRESS_CONTEXT=query
 RIG_PROGRESS_RENDER=off
 RIG_PROGRESS_PASSTHROUGH=0
-RIG_PROGRESS_BAR=
-RIG_PROGRESS_BAR_WIDTH=0
-RIG_PROGRESS_BAR_MAXIMUM=48
-RIG_PROGRESS_BAR_MINIMUM=8
-RIG_PROGRESS_LABEL_WIDTH=20
-RIG_PROGRESS_LABEL_BUDGET=20
-RIG_PROGRESS_COUNT_WIDTH=7
-RIG_PROGRESS_ITEM_WIDTH=28
-RIG_PROGRESS_ITEM_BUDGET=28
-RIG_PROGRESS_STATE_WIDTH=4
+RIG_PROGRESS_COMMAND=
+RIG_PROGRESS_PROFILE=
+RIG_PROGRESS_PLATFORM=
 RIG_PROGRESS_COLUMNS=
+RIG_PROGRESS_ROWS=
+RIG_PROGRESS_PANEL_ACTIVE=0
+RIG_PROGRESS_PANEL_ROWS=0
+RIG_PROGRESS_PANEL_COLUMNS=0
+RIG_PROGRESS_SUSPEND_DEPTH=0
+RIG_PROGRESS_ITEM_SUSPENDED=0
+RIG_PROGRESS_DIRTY=1
 RIG_OUTCOME_RESULT=
 RIG_OUTCOME_DETAIL=
 RIG_PROFILE_SELECTION_MODE=
@@ -209,7 +209,7 @@ rig_command_help() {
       printf '%s\n' '' 'Shows selected historical apply failures separately from current observations.' ;;
   esac
   if [ "$command" = upgrade ]; then
-    printf '%s\n' '' 'Interactive progress appears on stderr unless a provider writes to the terminal.'
+      printf '%s\n' '' 'Interactive progress uses a footer on supported terminals and yields for native work.'
     printf '%s\n' 'Unattended mode sets Homebrew NONINTERACTIVE=1; native failures keep their results.' \
       'It does not prevent terminal or graphical authentication or impose a time limit.'
   fi
@@ -354,264 +354,218 @@ rig_outcome_report() {
 
 rig_progress_enabled() {
   case "${RIG_PROGRESS:-auto}" in
-    always) return 0 ;;
-    lines) return 0 ;;
-    never) return 1 ;;
+    always|lines) return 0 ;; never) return 1 ;;
     auto|'') [ "${RIG_PROGRESS_CONTEXT:-query}" = operational ] ;;
     *) [ "${RIG_PROGRESS_CONTEXT:-query}" = operational ] && [ -t 2 ] ;;
   esac
 }
 
+rig_progress_dimensions() {
+  local size rows columns extra
+  RIG_PROGRESS_ROWS=; RIG_PROGRESS_COLUMNS=
+  [ -t 2 ] || return 1
+  size=$(stty size <&2 2>/dev/null) || return 1
+  read -r rows columns extra <<< "$size"
+  case "$rows:$columns" in *[!0-9:]*|:*|*:) return 1 ;; esac
+  [ -z "$extra" ] && [ "${#rows}" -le 5 ] && [ "${#columns}" -le 5 ] || return 1
+  rows=$((10#$rows)); columns=$((10#$columns))
+  [ "$rows" -gt 0 ] && [ "$rows" -le 4096 ] && [ "$columns" -gt 0 ] && [ "$columns" -le 16384 ] || return 1
+  RIG_PROGRESS_ROWS=$rows; RIG_PROGRESS_COLUMNS=$columns
+}
+
 rig_progress_select_renderer() {
-  case "${RIG_PROGRESS:-auto}" in
-    lines) RIG_PROGRESS_RENDER=lines ;;
-    always)
-      if [ -t 2 ]; then
-        RIG_PROGRESS_RENDER=bar
-      else
-        RIG_PROGRESS_RENDER=lines
-      fi
-      ;;
-    never) RIG_PROGRESS_RENDER=off ;;
-    auto|'')
-      if [ "${RIG_PROGRESS_CONTEXT:-query}" = operational ]; then
-        if [ -t 2 ]; then
-          RIG_PROGRESS_RENDER=bar
-        else
-          RIG_PROGRESS_RENDER=lines
-        fi
-      else
-        RIG_PROGRESS_RENDER=off
-      fi
-      ;;
-    *)
-      if [ "${RIG_PROGRESS_CONTEXT:-query}" = operational ] && [ -t 2 ]; then
-        RIG_PROGRESS_RENDER=bar
-      else
-        RIG_PROGRESS_RENDER=off
-      fi
-      ;;
-  esac
-  # A phase that lets provider-native output reach the terminal cannot also
-  # redraw a bar on the line it shares with that output: neither writer yields,
-  # so the two overwrite each other. Such a phase reports its start and its
-  # summary and leaves the per-item narrative to the provider and to the
-  # command's own rows. An explicit lines request stays line-oriented, because
-  # whole lines interleave safely.
-  if [ "$RIG_PROGRESS_PASSTHROUGH" -eq 1 ] && [ "$RIG_PROGRESS_RENDER" = bar ]; then
-    RIG_PROGRESS_RENDER=phase
-  fi
-}
-
-rig_progress_make_bar() {
-  local current total width running filled index
-
-  current=$1
-  total=$2
-  width=$3
-  running=$4
-  filled=0
-  index=0
-  RIG_PROGRESS_BAR=
-  if [ "$total" -gt 0 ]; then
-    filled=$((current * width / total))
-  fi
-  [ "$filled" -le "$width" ] || filled=$width
-  while [ "$index" -lt "$width" ]; do
-    if [ "$index" -lt "$filled" ]; then
-      RIG_PROGRESS_BAR=${RIG_PROGRESS_BAR}#
-    elif [ "$index" -eq "$filled" ] && [ "$running" -eq 1 ]; then
-      RIG_PROGRESS_BAR="${RIG_PROGRESS_BAR}>"
-    else
-      RIG_PROGRESS_BAR=${RIG_PROGRESS_BAR}.
-    fi
-    index=$((index + 1))
-  done
-}
-
-rig_progress_columns() {
-  local columns size
-
-  [ -z "$RIG_PROGRESS_COLUMNS" ] || return 0
-  columns=${COLUMNS:-}
-  case "$columns" in
-  ''|*[!0-9]*)
-    columns=
-    if [ -t 2 ]; then
-      size=$(stty size <&2 2>/dev/null) || size=
-      columns=${size#* }
-    fi
-    ;;
-  esac
-  case "$columns" in
-  ''|*[!0-9]*) columns=100 ;;
-  esac
-  [ "$columns" -ge 40 ] || columns=100
-  RIG_PROGRESS_COLUMNS=$columns
-}
-
-# Every field except the bar holds a fixed width, so a longer phase name, a
-# counter that gains a digit, or a longer identity never shifts the column
-# beside it. The bar spends what the terminal has left, up to a bound past
-# which a longer bar tells a reader nothing the identity beside it does not;
-# beyond that bound the surplus goes to the identity, which can always use it.
-rig_progress_geometry() {
-  local line label item bar
-
-  rig_progress_columns
-  line=$((RIG_PROGRESS_COLUMNS - 1))
-  label=$RIG_PROGRESS_LABEL_WIDTH
-  item=$RIG_PROGRESS_ITEM_WIDTH
-  bar=$((line - label - item - RIG_PROGRESS_COUNT_WIDTH -
-    RIG_PROGRESS_STATE_WIDTH - 11))
-  if [ "$bar" -gt "$RIG_PROGRESS_BAR_MAXIMUM" ]; then
-    bar=$RIG_PROGRESS_BAR_MAXIMUM
-    item=$((line - label - bar - RIG_PROGRESS_COUNT_WIDTH -
-      RIG_PROGRESS_STATE_WIDTH - 11))
-  elif [ "$bar" -lt "$RIG_PROGRESS_BAR_MINIMUM" ]; then
-    # A narrow terminal buys the bar's minimum from the identity first, then
-    # from the phase name, and finally gives the bar up altogether rather than
-    # draw one too short to read.
-    item=$((item + bar - RIG_PROGRESS_BAR_MINIMUM))
-    bar=$RIG_PROGRESS_BAR_MINIMUM
-    if [ "$item" -lt 8 ]; then
-      label=$((label + item - 8))
-      item=8
-      if [ "$label" -lt 10 ]; then
-        bar=$((bar + label - 10))
-        label=10
-      fi
-      [ "$bar" -ge 4 ] || bar=0
-    fi
-  fi
-  RIG_PROGRESS_LABEL_BUDGET=$label
-  RIG_PROGRESS_ITEM_BUDGET=$item
-  RIG_PROGRESS_BAR_WIDTH=$bar
+  RIG_PROGRESS_RENDER=off
+  rig_progress_enabled || return 0
+  RIG_PROGRESS_RENDER=lines
+  [ "${RIG_PROGRESS:-auto}" != lines ] && [ -t 2 ] || return 0
+  case "${TERM:-}" in xterm*|screen*|tmux*|rxvt*|vt100|vt220|linux) ;; *) return 0 ;; esac
+  rig_progress_dimensions || return 0
+  [ "$RIG_PROGRESS_ROWS" -ge 8 ] && [ "$RIG_PROGRESS_COLUMNS" -ge 60 ] || return 0
+  RIG_PROGRESS_RENDER=footer
 }
 
 rig_progress_compact() {
   local width
-
-  RIG_VALUE=$1
-  width=$2
-  if [ "$width" -lt 4 ]; then
-    RIG_VALUE=
-    return 0
-  fi
+  RIG_VALUE=$1; width=$2
+  [ "$width" -gt 0 ] || { RIG_VALUE=; return 0; }
   if [ "${#RIG_VALUE}" -gt "$width" ]; then
-    RIG_VALUE=${RIG_VALUE:0:$((width - 3))}...
+    if [ "$width" -ge 4 ]; then RIG_VALUE=${RIG_VALUE:0:$((width - 3))}...
+    else RIG_VALUE=${RIG_VALUE:0:$width}; fi
   fi
 }
 
-rig_progress_bar_render() {
-  local state detail result running label count line
-
-  state=$1
-  rig_progress_geometry
-  running=0
-  [ "$state" != running ] || running=1
-  rig_progress_make_bar "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" \
-    "$RIG_PROGRESS_BAR_WIDTH" "$running"
-
-  detail=$RIG_PROGRESS_ITEM
-  result=
-  case "$state" in
-  started) detail=starting ;;
-  succeeded) result=ok ;;
-  skipped) result=skip ;;
-  failed) result=fail ;;
-  finished|phase-failed)
-    detail="ok=$RIG_PROGRESS_SUCCEEDED skip=$RIG_PROGRESS_SKIPPED"
-    detail="$detail fail=$RIG_PROGRESS_FAILED"
-    ;;
-  interrupted)
-    detail="stopped ok=$RIG_PROGRESS_SUCCEEDED skip=$RIG_PROGRESS_SKIPPED"
-    detail="$detail fail=$RIG_PROGRESS_FAILED"
-    ;;
+rig_progress_safe_item() {
+  local value part
+  local -a parts
+  value=$1
+  case "$value" in
+    'selected plan') RIG_VALUE=$value; return 0 ;;
+    'source '*)
+      part=${value#source }
+      case "$part" in ''|*[!0-9]*) RIG_VALUE=work ;; *) RIG_VALUE=$value ;; esac
+      return 0 ;;
+    'retire '*) value=${value#retire } ;;
   esac
+  case "$value" in ''|*[!a-z0-9:.-]*|[.:]*|*[.:]|*..*|*::*|*.:*|*:.*) RIG_VALUE=work; return 0 ;; esac
+  IFS=':.' read -r -a parts <<< "$value"
+  for part in "${parts[@]}"; do rig_valid_id "$part" || { RIG_VALUE=work; return 0; }; done
+  RIG_VALUE=$1
+}
 
-  rig_progress_compact "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_LABEL_BUDGET"
-  label=$RIG_VALUE
-  count="$RIG_PROGRESS_CURRENT/$RIG_PROGRESS_TOTAL"
-  rig_progress_compact "$detail" "$RIG_PROGRESS_ITEM_BUDGET"
-  detail=$RIG_VALUE
+rig_progress_selection() {
+  RIG_PROGRESS_PROFILE=; RIG_PROGRESS_PLATFORM=
+  if rig_valid_id "$1"; then RIG_PROGRESS_PROFILE=$1; fi
+  if rig_valid_id "$2"; then RIG_PROGRESS_PLATFORM=$2; fi
+  return 0
+}
 
-  if [ "$RIG_PROGRESS_BAR_WIDTH" -gt 0 ]; then
-    printf -v line 'rig: %-*s %*s [%s] %-*s %-*s' \
-      "$RIG_PROGRESS_LABEL_BUDGET" "$label" \
-      "$RIG_PROGRESS_COUNT_WIDTH" "$count" "$RIG_PROGRESS_BAR" \
-      "$RIG_PROGRESS_ITEM_BUDGET" "$detail" \
-      "$RIG_PROGRESS_STATE_WIDTH" "$result"
-  else
-    printf -v line 'rig: %-*s %*s %-*s %-*s' \
-      "$RIG_PROGRESS_LABEL_BUDGET" "$label" \
-      "$RIG_PROGRESS_COUNT_WIDTH" "$count" \
-      "$RIG_PROGRESS_ITEM_BUDGET" "$detail" \
-      "$RIG_PROGRESS_STATE_WIDTH" "$result"
+rig_progress_resize() {
+  # Signal traps invalidate geometry; never redraw during a native writer.
+  RIG_PROGRESS_DIRTY=1
+  return 0
+}
+
+rig_progress_cleanup() {
+  local rows first second
+  if [ "${RIG_PROGRESS_PANEL_ACTIVE:-0}" -eq 1 ]; then
+    rows=$RIG_PROGRESS_PANEL_ROWS
+    if ! rig_progress_dimensions; then
+      # Without geometry, preserve the current output position instead of
+      # erasing addresses whose ownership can no longer be established.
+      printf '\0337\033[r\0338\n' >&2 || true
+    elif [ "$RIG_PROGRESS_ROWS" -ne "$RIG_PROGRESS_PANEL_ROWS" ] ||
+      [ "$RIG_PROGRESS_COLUMNS" -ne "$RIG_PROGRESS_PANEL_COLUMNS" ]; then
+      # Resize/reflow can move previous footer rows onto diagnostics. Never
+      # erase stale addresses: preserve that text as ordinary scrollback.
+      printf '\033[r\033[%s;1H\n' "$RIG_PROGRESS_ROWS" >&2 || true
+    else
+      first=$((rows - 1)); second=$rows
+      # Resetting margins homes the cursor; leave a fresh output position too.
+      printf '\033[r\033[%s;1H\033[2K\033[%s;1H\033[2K\033[%s;1H' \
+        "$first" "$second" "$first" >&2 || true
+    fi
   fi
-  # The frame is written to one fixed width, so it erases the frame before it
-  # without remembering how long that one was.
-  line=${line:0:$((RIG_PROGRESS_COLUMNS - 1))}
-  printf '\r%-*s\r' "$((RIG_PROGRESS_COLUMNS - 1))" "$line" >&2
-  case "$state" in
-  finished|phase-failed|interrupted)
-    printf '\n' >&2
-    ;;
-  esac
+  RIG_PROGRESS_PANEL_ACTIVE=0; RIG_PROGRESS_PANEL_ROWS=0; RIG_PROGRESS_PANEL_COLUMNS=0
+  return 0
+}
+
+rig_progress_reset() {
+  rig_progress_cleanup
+  RIG_PROGRESS_ACTIVE=0; RIG_PROGRESS_CURRENT=0; RIG_PROGRESS_TOTAL=0
+  RIG_PROGRESS_LABEL=; RIG_PROGRESS_ITEM=; RIG_PROGRESS_SCOPE=
+  RIG_PROGRESS_SUCCEEDED=0; RIG_PROGRESS_SKIPPED=0; RIG_PROGRESS_FAILED=0
+  RIG_PROGRESS_RENDER=off; RIG_PROGRESS_PASSTHROUGH=0
+  RIG_PROGRESS_COMMAND=; RIG_PROGRESS_PROFILE=; RIG_PROGRESS_PLATFORM=
+  RIG_PROGRESS_SUSPEND_DEPTH=0; RIG_PROGRESS_ITEM_SUSPENDED=0
+  RIG_PROGRESS_ROWS=; RIG_PROGRESS_COLUMNS=; RIG_PROGRESS_DIRTY=1
+  return 0
+}
+
+rig_progress_footer_render() {
+  local command selection phase target count outcomes width budget first second rows columns
+  [ "$RIG_PROGRESS_ACTIVE" -eq 1 ] && [ "$RIG_PROGRESS_SUSPEND_DEPTH" -eq 0 ] || return 0
+  rig_progress_select_renderer
+  if [ "$RIG_PROGRESS_RENDER" != footer ]; then rig_progress_cleanup; return 0; fi
+  rows=$RIG_PROGRESS_ROWS; columns=$RIG_PROGRESS_COLUMNS
+  if [ "$RIG_PROGRESS_PANEL_ACTIVE" -eq 1 ] &&
+    { [ "$rows" -ne "$RIG_PROGRESS_PANEL_ROWS" ] || [ "$columns" -ne "$RIG_PROGRESS_PANEL_COLUMNS" ]; }; then
+    rig_progress_cleanup
+  fi
+  width=$((columns - 1))
+  command=$RIG_PROGRESS_COMMAND
+  case "$command" in init|show|status|capture|apply|upgrade|doctor|export|help|completion) ;; *) command=rig ;; esac
+  selection=pending
+  if [ -n "$RIG_PROGRESS_PROFILE" ]; then
+    selection=$RIG_PROGRESS_PROFILE
+    [ -z "$RIG_PROGRESS_PLATFORM" ] || selection=$selection/$RIG_PROGRESS_PLATFORM
+  fi
+  count="$RIG_PROGRESS_CURRENT/$RIG_PROGRESS_TOTAL"
+  budget=$((width - ${#command} - ${#count} - 14))
+  rig_progress_compact "$selection" "$((budget / 2))"; selection=$RIG_VALUE
+  rig_progress_compact "$RIG_PROGRESS_LABEL" "$((budget - ${#selection}))"; phase=$RIG_VALUE
+  first="rig: $command | $selection | $phase | $count"
+  outcomes="ok=$RIG_PROGRESS_SUCCEEDED skip=$RIG_PROGRESS_SKIPPED fail=$RIG_PROGRESS_FAILED"
+  target=$RIG_PROGRESS_ITEM
+  [ -n "$target" ] || target=waiting
+  rig_progress_compact "$target" "$((width - ${#outcomes} - 11))"; target=$RIG_VALUE
+  second="active: $target | $outcomes"
+  rig_progress_compact "$first" "$width"; first=$RIG_VALUE
+  rig_progress_compact "$second" "$width"; second=$RIG_VALUE
+  if [ "$RIG_PROGRESS_PANEL_ACTIVE" -eq 0 ]; then
+    # Reserve blank rows by scrolling, never erase diagnostics or read replies.
+    printf '\033[r\033[%s;1H\n\n\033[1;%sr' "$rows" "$((rows - 2))" >&2 || true
+    RIG_PROGRESS_PANEL_ACTIVE=1
+    RIG_PROGRESS_PANEL_ROWS=$rows; RIG_PROGRESS_PANEL_COLUMNS=$columns
+  fi
+  printf '\033[%s;1H\033[2K%s\033[%s;1H\033[2K%s\033[%s;1H' \
+    "$((rows - 1))" "$first" "$rows" "$second" "$((rows - 2))" >&2 || true
+  RIG_PROGRESS_DIRTY=0
+  return 0
+}
+
+rig_progress_suspend() {
+  RIG_PROGRESS_SUSPEND_DEPTH=$((RIG_PROGRESS_SUSPEND_DEPTH + 1))
+  if [ "$RIG_PROGRESS_SUSPEND_DEPTH" -eq 1 ]; then rig_progress_cleanup; fi
+  return 0
+}
+
+rig_progress_resume() {
+  [ "$RIG_PROGRESS_SUSPEND_DEPTH" -gt 0 ] || return 0
+  RIG_PROGRESS_SUSPEND_DEPTH=$((RIG_PROGRESS_SUSPEND_DEPTH - 1))
+  if [ "$RIG_PROGRESS_SUSPEND_DEPTH" -eq 0 ] && [ "$RIG_PROGRESS_ACTIVE" -eq 1 ]; then
+    # Native output is opaque: a separator may add a blank line after native LF.
+    if [ -t 2 ] && [ "$RIG_PROGRESS_RENDER" = footer ]; then printf '\n' >&2 || true; fi
+    rig_progress_footer_render
+  fi
+  return 0
 }
 
 rig_progress_start() {
   rig_progress_fail
-  RIG_PROGRESS_ACTIVE=0
-  RIG_PROGRESS_CURRENT=0
-  RIG_PROGRESS_LABEL=$1
-  RIG_PROGRESS_TOTAL=$2
-  RIG_PROGRESS_ITEM=
-  RIG_PROGRESS_SCOPE=
-  RIG_PROGRESS_SUCCEEDED=0
-  RIG_PROGRESS_SKIPPED=0
-  RIG_PROGRESS_FAILED=0
-  RIG_PROGRESS_PASSTHROUGH=0
-  [ "${3:-}" != passthrough ] || RIG_PROGRESS_PASSTHROUGH=1
+  RIG_PROGRESS_ACTIVE=0; RIG_PROGRESS_CURRENT=0
+  RIG_PROGRESS_LABEL=$1; RIG_PROGRESS_TOTAL=$2
+  RIG_PROGRESS_ITEM=; RIG_PROGRESS_SCOPE=
+  RIG_PROGRESS_SUCCEEDED=0; RIG_PROGRESS_SKIPPED=0; RIG_PROGRESS_FAILED=0
+  RIG_PROGRESS_PASSTHROUGH=1
+  [ "${3:-}" != owned ] || RIG_PROGRESS_PASSTHROUGH=0
+  RIG_PROGRESS_SUSPEND_DEPTH=0; RIG_PROGRESS_ITEM_SUSPENDED=0
   [ "$RIG_PROGRESS_TOTAL" -gt 0 ] || return 0
   rig_progress_select_renderer
-  rig_progress_enabled || return 0
+  [ "$RIG_PROGRESS_RENDER" != off ] || return 0
   RIG_PROGRESS_ACTIVE=1
-  if [ "$RIG_PROGRESS_RENDER" = bar ]; then
-    rig_progress_bar_render started
-    return 0
-  fi
-  printf 'rig: progress: %s 0/%s started\n' \
-    "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_TOTAL" >&2
+  if [ "$RIG_PROGRESS_RENDER" = footer ]; then rig_progress_footer_render
+  else printf 'rig: progress: %s 0/%s started\n' "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_TOTAL" >&2; fi
+  return 0
 }
 
 rig_progress_begin() {
   [ "$RIG_PROGRESS_ACTIVE" -eq 1 ] || return 0
-  RIG_PROGRESS_ITEM=$1
-  RIG_PROGRESS_SCOPE=${2:-}
-  if [ "$RIG_PROGRESS_RENDER" = bar ]; then
-    rig_progress_bar_render running
-    return 0
+  rig_progress_safe_item "$1"; RIG_PROGRESS_ITEM=$RIG_VALUE
+  case "${2:-}" in declaration|target|dependency) RIG_PROGRESS_SCOPE=$2 ;; *) RIG_PROGRESS_SCOPE= ;; esac
+  if [ "$RIG_PROGRESS_RENDER" = footer ] && [ "$RIG_PROGRESS_PASSTHROUGH" -eq 0 ]; then
+    rig_progress_footer_render
+    [ "$RIG_PROGRESS_RENDER" = footer ] && return 0
   fi
-  [ "$RIG_PROGRESS_RENDER" != phase ] || return 0
+  if [ "$RIG_PROGRESS_PASSTHROUGH" -eq 1 ] && [ "$RIG_PROGRESS_ITEM_SUSPENDED" -eq 0 ]; then
+    rig_progress_suspend; RIG_PROGRESS_ITEM_SUSPENDED=1
+  fi
   if [ -n "$RIG_PROGRESS_SCOPE" ]; then
     printf 'rig: progress: %s %s/%s: %s [%s] running\n' \
-      "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" \
-      "$RIG_PROGRESS_ITEM" "$RIG_PROGRESS_SCOPE" >&2
+      "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" "$RIG_PROGRESS_ITEM" "$RIG_PROGRESS_SCOPE" >&2
   else
     printf 'rig: progress: %s %s/%s: %s running\n' \
-      "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" \
-      "$RIG_PROGRESS_ITEM" >&2
+      "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" "$RIG_PROGRESS_ITEM" >&2
   fi
+  return 0
 }
 
 rig_progress_result() {
   local result item scope
-
   [ "$RIG_PROGRESS_ACTIVE" -eq 1 ] || return 0
   result=$1
-  item=${2:-$RIG_PROGRESS_ITEM}
+  rig_progress_safe_item "${2:-$RIG_PROGRESS_ITEM}"; item=$RIG_VALUE
   scope=${3:-$RIG_PROGRESS_SCOPE}
+  case "$scope" in declaration|target|dependency) ;; *) scope= ;; esac
   case "$result" in
     succeeded) RIG_PROGRESS_SUCCEEDED=$((RIG_PROGRESS_SUCCEEDED + 1)) ;;
     skipped) RIG_PROGRESS_SKIPPED=$((RIG_PROGRESS_SKIPPED + 1)) ;;
@@ -619,86 +573,44 @@ rig_progress_result() {
     *) return 2 ;;
   esac
   RIG_PROGRESS_CURRENT=$((RIG_PROGRESS_CURRENT + 1))
-  if [ "$RIG_PROGRESS_RENDER" = bar ]; then
-    RIG_PROGRESS_ITEM=$item
-    RIG_PROGRESS_SCOPE=$scope
-    rig_progress_bar_render "$result"
-    RIG_PROGRESS_ITEM=
-    RIG_PROGRESS_SCOPE=
-    return 0
+  # A completed item is not still active while receipts or later phases run.
+  RIG_PROGRESS_ITEM=; RIG_PROGRESS_SCOPE=
+  if [ "$RIG_PROGRESS_ITEM_SUSPENDED" -eq 1 ]; then
+    RIG_PROGRESS_ITEM_SUSPENDED=0; rig_progress_resume
+  else rig_progress_footer_render; fi
+  if [ "$RIG_PROGRESS_RENDER" != footer ]; then
+    if [ -n "$scope" ]; then
+      printf 'rig: progress: %s %s/%s: %s [%s] %s\n' \
+        "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" "$item" "$scope" "$result" >&2
+    else
+      printf 'rig: progress: %s %s/%s: %s %s\n' \
+        "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" "$item" "$result" >&2
+    fi
   fi
-  if [ "$RIG_PROGRESS_RENDER" = phase ]; then
-    RIG_PROGRESS_ITEM=
-    RIG_PROGRESS_SCOPE=
-    return 0
-  fi
-  if [ -n "$scope" ]; then
-    printf 'rig: progress: %s %s/%s: %s [%s] %s\n' \
-      "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" \
-      "$item" "$scope" "$result" >&2
-  else
-    printf 'rig: progress: %s %s/%s: %s %s\n' \
-      "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" \
-      "$item" "$result" >&2
-  fi
-  RIG_PROGRESS_ITEM=
-  RIG_PROGRESS_SCOPE=
+  RIG_PROGRESS_ITEM=; RIG_PROGRESS_SCOPE=
+  return 0
 }
 
-rig_progress_finish() {
-  [ "$RIG_PROGRESS_ACTIVE" -eq 1 ] || return 0
-  if [ "$RIG_PROGRESS_RENDER" = bar ]; then
-    RIG_PROGRESS_ITEM=
-    RIG_PROGRESS_SCOPE=
-    rig_progress_bar_render finished
-    RIG_PROGRESS_ACTIVE=0
-    return 0
-  fi
-  printf 'rig: progress: %s finished completed=%s/%s succeeded=%s skipped=%s failed=%s\n' \
-    "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" \
-    "$RIG_PROGRESS_SUCCEEDED" "$RIG_PROGRESS_SKIPPED" "$RIG_PROGRESS_FAILED" >&2
-  RIG_PROGRESS_ACTIVE=0
-  RIG_PROGRESS_ITEM=
-  RIG_PROGRESS_SCOPE=
+rig_progress_end() {
+  local state
+  state=$1
+  if [ "${RIG_PROGRESS_ACTIVE:-0}" -eq 1 ]; then
+    rig_progress_cleanup
+    if [ "$RIG_PROGRESS_SUSPEND_DEPTH" -gt 0 ] && [ -t 2 ]; then printf '\n' >&2 || true; fi
+    printf 'rig: progress: %s %s completed=%s/%s succeeded=%s skipped=%s failed=%s\n' \
+      "$RIG_PROGRESS_LABEL" "$state" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" \
+      "$RIG_PROGRESS_SUCCEEDED" "$RIG_PROGRESS_SKIPPED" "$RIG_PROGRESS_FAILED" >&2 || true
+  else rig_progress_cleanup; fi
+  RIG_PROGRESS_ACTIVE=0; RIG_PROGRESS_ITEM=; RIG_PROGRESS_SCOPE=
+  RIG_PROGRESS_SUSPEND_DEPTH=0; RIG_PROGRESS_ITEM_SUSPENDED=0
+  return 0
 }
-
-rig_progress_fail() {
-  [ "${RIG_PROGRESS_ACTIVE:-0}" -eq 1 ] || return 0
-  if [ "$RIG_PROGRESS_RENDER" = bar ]; then
-    rig_progress_bar_render phase-failed
-    RIG_PROGRESS_ACTIVE=0
-    RIG_PROGRESS_ITEM=
-    RIG_PROGRESS_SCOPE=
-    return 0
-  fi
-  printf 'rig: progress: %s failed completed=%s/%s succeeded=%s skipped=%s failed=%s\n' \
-    "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" \
-    "$RIG_PROGRESS_SUCCEEDED" "$RIG_PROGRESS_SKIPPED" "$RIG_PROGRESS_FAILED" >&2
-  RIG_PROGRESS_ACTIVE=0
-  RIG_PROGRESS_ITEM=
-  RIG_PROGRESS_SCOPE=
-}
-
-rig_progress_interrupted() {
-  [ "${RIG_PROGRESS_ACTIVE:-0}" -eq 1 ] || return 0
-  if [ "$RIG_PROGRESS_RENDER" = bar ]; then
-    rig_progress_bar_render interrupted
-    RIG_PROGRESS_ACTIVE=0
-    RIG_PROGRESS_ITEM=
-    RIG_PROGRESS_SCOPE=
-    return 0
-  fi
-  printf 'rig: progress: %s interrupted completed=%s/%s succeeded=%s skipped=%s failed=%s\n' \
-    "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" \
-    "$RIG_PROGRESS_SUCCEEDED" "$RIG_PROGRESS_SKIPPED" "$RIG_PROGRESS_FAILED" >&2
-  RIG_PROGRESS_ACTIVE=0
-  RIG_PROGRESS_ITEM=
-  RIG_PROGRESS_SCOPE=
-}
+rig_progress_finish() { rig_progress_end finished; }
+rig_progress_fail() { rig_progress_end failed; }
+rig_progress_interrupted() { rig_progress_end interrupted; }
 
 rig_progress_signal() {
   local exit_code
-
   exit_code=$1
   trap - HUP INT TERM
   rig_progress_interrupted

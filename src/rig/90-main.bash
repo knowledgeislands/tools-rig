@@ -9,6 +9,11 @@ main() {
   set -u
   RIG_INVOKED_PATH=$0
   command_name=${1:-help}
+  rig_progress_reset
+  case "$command_name" in
+    init|show|status|doctor|apply|upgrade|capture|export|help|completion)
+      RIG_PROGRESS_COMMAND=$command_name ;;
+  esac
   rig_dock_reset_snapshot
   case "$command_name" in
     init|status|doctor|apply|upgrade|capture|export)
@@ -19,6 +24,8 @@ main() {
   trap 'rig_progress_signal 129' HUP
   trap 'rig_progress_signal 130' INT
   trap 'rig_progress_signal 143' TERM
+  trap rig_progress_cleanup EXIT
+  trap rig_progress_resize WINCH
   case "$command_name" in
     -h|--help)
       [ "$#" -eq 1 ] || syntax_error "unexpected arguments for $command_name" || return
@@ -95,6 +102,7 @@ main() {
   elif [ "$RIG_PROGRESS_ACTIVE" -eq 1 ]; then
     rig_progress_finish
   fi
+  rig_progress_cleanup
   case "$command_name" in
     # Help, version, and completion answer about Rig itself rather than
     # reaching a state of the machine, and completion output is evaluated by
@@ -102,7 +110,7 @@ main() {
     -h|--help|help|-V|--version|completion) ;;
     *) rig_outcome_report "$command_name" "$exit_code" ;;
   esac
-  trap - HUP INT TERM
+  trap - EXIT HUP INT TERM WINCH
   return "$exit_code"
 }
 

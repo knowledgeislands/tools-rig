@@ -997,11 +997,27 @@ rig_mutation_json() {
 }
 
 rig_capture_report_context() {
-  local captured metadata status
+  local captured metadata status progress_command
 
+  progress_command=$RIG_PROGRESS_COMMAND
   if captured=$(
+    # Command substitution resets caught traps. This shell, not main's
+    # parent, owns any footer drawn while assembling a mutation report.
+    rig_progress_reset
+    RIG_PROGRESS_COMMAND=$progress_command
+    trap rig_progress_cleanup EXIT
+    trap 'rig_progress_signal 129' HUP
+    trap 'rig_progress_signal 130' INT
+    trap 'rig_progress_signal 143' TERM
+    trap rig_progress_resize WINCH
     "$@"
     status=$?
+    if [ "$status" -eq 0 ]; then
+      rig_progress_finish
+    else
+      rig_progress_fail
+    fi
+    rig_progress_cleanup
     printf '\036%s\037%s\037%s\037%s\n' \
       "$RIG_OUTCOME_RESULT" "$RIG_OUTCOME_DETAIL" \
       "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
@@ -1059,6 +1075,7 @@ rig_buffer_mutation_report() {
   else
     status=$?
   fi
+  rig_progress_cleanup
   report=$RIG_CAPTURED_REPORT
   if [ -n "$report" ]; then
     if [ "$format" = json ] && [ "${args[0]-}" != --help ]; then

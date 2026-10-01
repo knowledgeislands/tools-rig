@@ -4,12 +4,12 @@ area: CLI
 title: Design live operational display
 theme: cli
 horizon: next
-status: ready
+status: in-progress
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 617d4343ae679c8e74158cff9a0f5f053ab74837
 created_at: 2026-09-30T07:40:30Z
-updated_at: 2026-10-01T19:29:52Z
+updated_at: 2026-10-01T19:52:45Z
 ---
 
 ## Goal
@@ -18,7 +18,7 @@ While Rig performs a long operation in an interactive terminal, the display give
 
 ## Context
 
-Rig currently has an in-place progress bar on terminal stderr and automatic line events when stderr is redirected. The command-surface and structural work is delivered. [The report contract](../specs/state.md) now covers completed tables and machine-readable projections, while [the progress contract](../specs/orchestration.md) covers non-terminal stderr. This item owns the interactive live experience and must preserve both contracts.
+At the implementation baseline, Rig had an in-place progress bar on terminal stderr and automatic line events when stderr was redirected. The command-surface and structural work is delivered. [The report contract](../specs/state.md) covers completed tables and machine-readable projections, while [the progress contract](../specs/orchestration.md) covers stderr progress. This item owns the interactive live experience and must preserve both contracts.
 
 ## Boundary
 
@@ -30,12 +30,12 @@ The reliability work is accepted and pruned. The user approved proceeding after 
 
 ## Steps
 
-- [ ] Record the terminal-feasibility assessment and implement the approved adaptive ownership boundary without a child PTY, native-output mediation or new runtime dependency.
-- [ ] Replace the bar with a bottom-anchored two-line stderr footer showing validated command and resolved selection identifiers, phase, completed/total count, qualified target and phase-local outcome counts.
-- [ ] Make native-capable items yield before their entire semantic operation, including observation and preflight; leave a durable task header, restore full margins and a safe cursor position, then resume at a safe boundary after return. Default unclassified phases to native-capable; explicitly opt proven Rig-owned phases into continuous rendering.
-- [ ] Fall back to line events for redirected stderr, unsupported or dumb terminals, failed geometry discovery and terminals smaller than eight rows or sixty columns. Preserve lines/never and automatic declaration-query silence; handle resize only at safe boundaries without animation, cursor hiding or alternate screens.
-- [ ] Preserve final stdout report bytes, JSON, provider diagnostics, exit status, interruption behavior and the privacy boundary for identifiers versus arbitrary native/authored values.
-- [ ] Add isolated stdout-equivalence coverage for all ten public commands, including previews, text/JSON results and discovery/export artifacts where supported. Extend PTY fixtures for widths, resizing, native ANSI/no-final-newline output, failure, interruption, redirection, fallback and idempotent cleanup; run the full gate and provide acceptance captures.
+- [x] Record the terminal-feasibility assessment and implement the approved adaptive ownership boundary without a child PTY, native-output mediation or new runtime dependency.
+- [x] Replace the bar with a bottom-anchored two-line stderr footer showing validated command and resolved selection identifiers, phase, completed/total count, qualified target and phase-local outcome counts.
+- [x] Make native-capable items yield before their entire semantic operation, including observation and preflight; leave a durable task header, restore full margins and a safe cursor position, then resume at a safe boundary after return. Default unclassified phases to native-capable; explicitly opt proven Rig-owned phases into continuous rendering.
+- [x] Fall back to line events for redirected stderr, unsupported or dumb terminals, failed geometry discovery and terminals smaller than eight rows or sixty columns. Preserve lines/never and automatic declaration-query silence; handle resize only at safe boundaries without animation, cursor hiding or alternate screens.
+- [x] Preserve final stdout report bytes, JSON, provider diagnostics, exit status, interruption behavior and the privacy boundary for identifiers versus arbitrary native/authored values.
+- [x] Add isolated stdout-equivalence coverage for all ten public commands, including previews, text/JSON results and discovery/export artifacts where supported. Extend PTY fixtures for widths, resizing, native ANSI/no-final-newline output, failure, interruption, redirection, fallback and idempotent cleanup; run the full gate and provide acceptance captures.
 
 ## Files touched
 

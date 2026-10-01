@@ -278,7 +278,7 @@ rig_replace_export_tree() {
   done
   mkdir -- "$temporary" || rig_fail "cannot create export staging directory: $temporary" || return
   RIG_EXPORT_TEMP=$temporary
-  trap rig_export_cleanup EXIT
+  trap 'rig_progress_cleanup; rig_export_cleanup' EXIT
   trap 'rig_export_interrupted 129' HUP
   trap 'rig_export_interrupted 130' INT
   trap 'rig_export_interrupted 143' TERM
@@ -305,7 +305,10 @@ rig_replace_export_tree() {
     mv -- "$temporary" "$target" || rig_fail "cannot install export output: $target" || return
     RIG_EXPORT_TEMP=
   fi
-  trap - EXIT HUP INT TERM
+  trap rig_progress_cleanup EXIT
+  trap 'rig_progress_signal 129' HUP
+  trap 'rig_progress_signal 130' INT
+  trap 'rig_progress_signal 143' TERM
   if [ "$report" = yes ]; then
     printf 'Exported profile %s to %s\n' "$RIG_RESOLVED_PROFILE" "$target"
   fi
@@ -366,6 +369,11 @@ rig_command_export() {
   RIG_EXPORT_TITLE=$title
   (
     umask 022
+    trap rig_progress_cleanup EXIT
+    trap 'rig_progress_signal 129' HUP
+    trap 'rig_progress_signal 130' INT
+    trap 'rig_progress_signal 143' TERM
+    trap rig_progress_resize WINCH
     rig_progress_start 'public data export' 1
     rig_progress_begin "$profile" declaration
     if rig_replace_export_tree "$output"; then
