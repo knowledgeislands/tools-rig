@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-30T07:40:30Z
-updated_at: 2026-10-01T04:07:40Z
+updated_at: 2026-10-01T14:28:14Z
 ---
 
 ## Goal
@@ -76,6 +76,16 @@ This is the last feature batch before the new 0.x release. Broader terminal medi
 The record remains draft until the user selects yielding versus always-visible native-output behavior. The bounded yielding proposal below is fully specified; it is not silently approved by preparation. If an always-visible region is selected, return to terminal-mediation design before Ready rather than implementing the smaller contract under the same promise.
 
 ## Discussion
+
+### Implementation preparation
+
+The reliability work is accepted and pruned. Read-only implementation review confirmed that public mutation wrappers already buffer Rig's final stdout reports, while native provider stdout and stderr stream immediately to stderr. The yielding design needs no additional provider-output buffering or per-report-row redraw hooks.
+
+Yielding means the panel steps aside for the entire native call, even when that call is quiet. A durable task header stays visible; the panel returns after the call. An always-visible pane cannot be promised by these helpers alone. This clarification is part of the pending interaction decision, not its approval.
+
+The renderer lane owns shared progress helpers and isolated PTY fixtures. The coordinator owns fresh command and resolved selection metadata, existing progress assertions, documentation and assembly. Labels may contain validated command, profile, platform and qualified target identifiers, never configuration paths, arguments or native output. Before selection resolution, show pending selection rather than stale metadata.
+
+Acceptance coverage spans all ten commands: configuration-free help and completion; init preview/creation; show tables and item/JSON views; status observations, unmanaged inventory and history; doctor findings and diagnostics; apply and upgrade previews/results; capture inventory/proposals; and export confirmation with its separate publication tree. Compare stdout and stderr separately, freeze fixture time for byte comparisons, and retain the final outcome ordering. Informational queries must stay quiet under automatic progress.
 
 ### Bounded yielding proposal
 
