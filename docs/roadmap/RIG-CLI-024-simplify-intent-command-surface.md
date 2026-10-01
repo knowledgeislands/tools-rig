@@ -4,12 +4,12 @@ area: CLI
 title: Simplify intent command surface
 theme: cli
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 47e993b452492ea4afd6d69343223669279d02da
 created_at: 2026-09-30T21:35:00Z
-updated_at: 2026-10-01T04:09:49Z
+updated_at: 2026-10-01T05:45:31Z
 ---
 
 ## Goal
@@ -102,6 +102,10 @@ Workers independently reviewed other implementation lanes. Review found and corr
 ### Mini recap
 
 The agreed command and package-authority simplification is implemented and independently reviewed, with reproducible Rig verification and an explicit migration route. The external audit blocker is resolved, every step is complete, and the record is awaiting explicit acceptance. Reliability, display, source migration and release work are separate records and are not evidence of an incomplete CLI-024 implementation. Nothing was pushed, tagged or released.
+
+## Done
+
+Accepted by the user on 2026-10-01 with explicit authority to mark this item done and then prune it. The implementation is retained at 7d00cde00ac31dd200e4cbdf2d9a2a301af88d89; the completed review and fresh verification are retained at cac3b6251b8e5335804a34276e067dd7ea386827. The full local gate passed again against 9b63b4a04b1b4ce4224363f474e2c42f53b4055f before closure. No scope remains outstanding in this record; independently planned reliability, display and release work remain open.
 
 ## Discussion
 
