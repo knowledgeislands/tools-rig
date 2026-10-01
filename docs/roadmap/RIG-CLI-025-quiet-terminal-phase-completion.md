@@ -4,12 +4,12 @@ area: CLI
 title: Quiet terminal phase completion
 theme: cli
 horizon: now
-status: in-progress
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: 5f4aad112a2ece87bee915b3bb72e9d246bf0c0b
 created_at: 2026-10-01T21:48:03Z
-updated_at: 2026-10-01T22:10:30Z
+updated_at: 2026-10-01T22:10:55Z
 ---
 
 ## Goal
@@ -34,7 +34,7 @@ The existing display implementation is committed and awaiting human review in th
 - [x] Introduce an explicitly scoped owned configuration group around the four configuration phases, reusing one footer reservation. Guarantee cleanup and original status on every loader return; do not leak grouping into later resolution, native work or report output.
 - [x] Add isolated terminal regressions for successful skips, adverse outcomes, consecutive-phase fixed spacing, early errors, zero work, display-mode changes and resize/fallback. Retain native partial-line, signal, privacy and stdout-equivalence coverage.
 - [x] Align the guide, manual, specification and changelog; regenerate the single executable once worker edits are complete.
-- [ ] Review terminal ownership independently and run the complete local gate, retaining acceptance evidence and a canonical review packet.
+- [x] Review terminal ownership independently and run the complete local gate, retaining acceptance evidence and a canonical review packet.
 
 ## Files touched
 
@@ -69,6 +69,38 @@ Explain the quieter terminal completion policy and unchanged explicit line mode;
 ### Roadmap
 
 Leave the original display record awaiting acceptance and the release record unexecuted. This follow-up ends at its own awaiting-review boundary.
+
+## Review
+
+### Delivered
+
+Quiet terminal completion and bounded configuration-phase spacing, delivered in `53684b2da0f4c4661994b52ff0998860301fc88f` from immutable baseline `5f4aad112a2ece87bee915b3bb72e9d246bf0c0b`. The approved presentation boundary held: no command, flag, provider, runtime dependency, live apply, release or acceptance change. The renderer worker's frozen candidate was independently reviewed before integration.
+
+### Change Summary
+
+`rig_progress_end` suppresses permanent summaries only for complete, failure-free phases that remain eligible for the footer. The configuration loader scopes a shared reservation to its four owned phases and cleans up on every return. Adverse outcomes, explicit line mode, native ownership and final command outcomes remain intact. The assembled executable, guide, manual, orchestration specification and changelog are aligned; help syntax and completion generation require no portable change because the public command surface is unchanged.
+
+Nine additional progress regressions cover grouping, fixed spacing, errors, skips, mode changes and terminal fallback. Existing all-command tests now verify final visible outcome placement with the bounded screen model and require the exact outcome bytes at the raw stream tail; stdout, status and native-byte checks remain unchanged.
+
+### Verification
+
+The complete local gate passed across the final candidate checks: `ki repo audit --repo .` (20 skills); the AGENTS.md `shellcheck` and `bash -n` target lists; `scripts/assemble-rig --check`; `scripts/benchmark-rig`; `scripts/smoke-native-providers`; `RIG_TEST_PYTHON=/opt/homebrew/opt/python@3.14/bin/python3.14 bats tests/ </dev/null` (384 passed); and `mandoc -T lint man/rig.1`. Targeted `rumdl check` and `git diff --check` also passed. The focused suites passed all 23 progress tests and seven output-contract groups.
+
+The first integrated run found four obsolete raw-line assertions, corrected with independently reviewed visible-screen and trailing-byte checks. A subsequent aggregate gate stopped at the unchanged eight-second observation budget during heavy host load; an isolated retry also missed it. No budget or runtime code was changed. After the functional suite completed, sequential baseline and candidate benchmarks both measured status at six seconds. This supports host contention rather than a regression; timing remains host-sensitive. Final functional evidence is `/tmp/rig-migration.xGuPBG/rig-final-tests.log`, the successful timing comparison is `rig-benchmark-comparison.log` beside it, and earlier failed runs remain retained rather than overwritten.
+
+### Outstanding concerns
+
+No remaining implementation or verification blocker. Human visual acceptance remains outstanding. The conservative initial separation row and resize/native-output limits are intentional; the fixture is a bounded terminal model, not proof for every terminal emulator.
+
+The coordinated ChezMoi source migration is separately committed and awaiting review under `DOTFILES-UE-036`. Its exact six-target diff still needs explicit application approval; the live retired-manifest error is not claimed fixed here. No packages or services were changed.
+
+### Post-change review
+
+The delivered change meets the goal without retaining cursor ownership across native writers or hiding failures. Independent review covered cleanup, counters, signal handling, mode changes, grouping and the strengthened final-outcome assertions, with no remaining findings. Exact stdout and exit-status checks passed across all ten public commands. The original display item and this follow-up remain separate acceptance decisions; neither was self-accepted or pruned.
+
+### Mini recap
+
+Routine successful terminal phases are transient, configuration phases share one bounded reservation, and errors and plain logs remain durable. Implementation, documentation and verification are complete and ready for acceptance. No new durable guidance is proposed beyond the updated owning specification and guide. Live ChezMoi application, other roadmap work and release remain outside this delivery.
 
 ## Discussion
 
