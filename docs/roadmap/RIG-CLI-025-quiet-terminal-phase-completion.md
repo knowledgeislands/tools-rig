@@ -4,12 +4,12 @@ area: CLI
 title: Quiet terminal phase completion
 theme: cli
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 5f4aad112a2ece87bee915b3bb72e9d246bf0c0b
 created_at: 2026-10-01T21:48:03Z
-updated_at: 2026-10-01T22:10:55Z
+updated_at: 2026-10-02T01:37:43Z
 ---
 
 ## Goal
@@ -101,6 +101,10 @@ The delivered change meets the goal without retaining cursor ownership across na
 ### Mini recap
 
 Routine successful terminal phases are transient, configuration phases share one bounded reservation, and errors and plain logs remain durable. Implementation, documentation and verification are complete and ready for acceptance. No new durable guidance is proposed beyond the updated owning specification and guide. Live ChezMoi application, other roadmap work and release remain outside this delivery.
+
+## Done
+
+Accepted 2026-10-02 by Kris Brown on the review packet above.
 
 ## Discussion
 

@@ -4,12 +4,12 @@ area: CLI
 title: Design live operational display
 theme: cli
 horizon: next
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 617d4343ae679c8e74158cff9a0f5f053ab74837
 created_at: 2026-09-30T07:40:30Z
-updated_at: 2026-10-01T19:53:35Z
+updated_at: 2026-10-02T01:37:43Z
 ---
 
 ## Goal
@@ -106,6 +106,10 @@ The delivered behavior meets the approved live-display goal within the Bash-only
 ### Mini recap
 
 Adaptive footer delivered, all ten command contracts covered, wraparound documentation aligned, full gate clean and independent review complete. Await human acceptance before done/prune. The ownership and resize lessons are recorded in the existing guide and specification; no additional policy or Decision Record is needed. The release item remains separate, and no push or release was performed.
+
+## Done
+
+Accepted 2026-10-02 by Kris Brown on the review packet above.
 
 ## Discussion
 
