@@ -7,7 +7,7 @@
 
 # Rig — declarative description and manager of a working setup.
 
-RIG_VERSION=0.3.0
+RIG_VERSION=0.4.0
 RIG_CAPTURE_ERROR=0
 RIG_CAPTURED_ERROR=
 

@@ -1,6 +1,6 @@
 # Migrate the command surface
 
-This guide is for an existing Rig configuration or script moving to the simplified command surface in the current checkout. The cutover is breaking: old commands are rejected with migration advice, not accepted as aliases. It is not a release announcement.
+This guide is for an existing Rig configuration or script moving to the `v0.4.0` command surface. The cutover is breaking: old commands are rejected with migration advice, not accepted as aliases. The [release history](https://github.com/knowledgeislands/tools-rig/releases) records immutable preview snapshots.
 
 ## Change invocations
 

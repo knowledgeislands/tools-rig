@@ -41,14 +41,16 @@ After an exact preview version is explicitly selected:
 
 ## Publish the release
 
-1. Create the annotated `vX.Y.Z` tag and GitHub release for the verified commit according to the repository release workflow.
-2. Verify the immutable installer before changing any recommendation:
+1. Commit the verified candidate on `main`, push that exact ref, and wait for its Linux, macOS, ShellCheck and manual CI jobs to pass. Do not tag a candidate whose branch checks failed.
+2. Create and push the annotated `vX.Y.Z` tag at that exact commit. Wait for tag CI, including the tag/version match job, before publishing the GitHub release. Never move a published tag to repair a failed candidate.
+3. Publish the GitHub release with migration notes for the breaking command and configuration changes.
+4. Verify the immutable installer in disposable executable and manual directories before changing any recommendation:
 
    ```sh
    curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/vX.Y.Z/install.sh | bash -s -- vX.Y.Z
    ```
 
-3. Confirm `rig --version` and `man rig` from the installed release.
+5. Confirm `rig --version` and `man rig` from the disposable installed release. After publication, return the development checkout to the released version plus `+dev` in a separate change; keep immutable installer examples on the published tag.
 
 Do not repair a published release in place. Correct the repository, verify another candidate, and publish a new version.
 

@@ -2,20 +2,20 @@
 
 This guide takes you from no Rig installation to a readable catalogue, a machine assessment, and a safe preview. It deliberately stops before applying changes.
 
-The simplified commands below belong to the current development checkout and have not been published by this change. The immutable installer in the next section installs the older release contract. To follow the new `init`, `show`, `capture` and `upgrade` workflow now, use the linked checkout installation described below; do not expect those commands from the older release.
+The commands below are available in Rig `v0.4.0`. Earlier releases have a different command surface; use the [migration guide](migrating-command-surface.md) when updating an existing configuration or script.
 
 ## Install the public preview
 
-Install the latest immutable release, currently `v0.3.0`:
+Install the latest immutable release, currently `v0.4.0`:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.3.0/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.4.0/install.sh | bash
 ```
 
 To make the selected release explicit:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.3.0/install.sh | bash -s -- v0.3.0
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.4.0/install.sh | bash -s -- v0.4.0
 ```
 
 The executable defaults to `~/.local/bin/rig`. The manual defaults beneath `${XDG_DATA_HOME:-$HOME/.local/share}/man/man1`. Set `RIG_INSTALL_DIR` or `RIG_MAN_INSTALL_DIR` before running the installer when you need different destinations.
@@ -27,9 +27,9 @@ rig --version
 man rig
 ```
 
-The released command reports `rig 0.3.0`.
+The released command reports `rig 0.4.0`.
 
-For a local checkout, use `./install.sh --link`. It links the executable and manual so subsequent repository changes are visible without reinstalling. This selected release checkout reports `rig 0.3.0`.
+For a local checkout, use `./install.sh --link`. It links the executable and manual so subsequent repository changes are visible without reinstalling. A checkout of this release reports `rig 0.4.0`.
 
 ## Create a small catalogue
 
