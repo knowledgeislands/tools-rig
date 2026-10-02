@@ -3,13 +3,14 @@ id: RIG-CORE-030
 area: CORE
 title: Govern tool repair lifecycle
 theme: orchestration
-horizon: waiting-for
-status: draft
+horizon: triage
+status: done
+intake_disposition: rejected
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-09-27T15:59:32Z
-updated_at: 2026-09-30T22:28:16Z
+updated_at: 2026-10-02T08:17:23Z
 ---
 
 ## Goal
@@ -30,15 +31,17 @@ This item belongs to Rig for the reusable orchestration, observation and provide
 
 Capture does not authorise applying patches, upgrading tools, deploying dotfiles, restarting services, changing grants or editing another repository. It does not commit to a generic patch engine, a new repository or package registry, or bulk migration of every existing wrapper.
 
-## Waiting condition
+## Intake disposition
 
-Waiting for an ownership and integration design investigation, reviewed by Kris with the dotfiles and affected component owners. Return to Next only when that investigation names the owner of repair declarations, implementation, verification and retirement, and demonstrates a concrete gap in Rig's existing provider contract. The user explicitly deferred this item on 2026-09-30; it is excluded from the reliability, display and next 0.x release finishing round.
+Outcome: rejected. No retained roadmap target applies.
 
-No investigation has been commissioned or completed by this deferral. The host's existing repair work retains its own owner and remains outside Rig's delivery authority.
+Rationale: The known Paperclip repairs retain their component and host owners; they do not currently demonstrate a missing Rig provider capability. A generic Rig repair lifecycle would be speculative. If a concrete repair or upgrade case exposes a Rig provider-contract gap, capture a new scoped item with that evidence then. Merely adding another managed tool does not reopen this work.
 
-## Shaping
+Approval: Kris explicitly approved marking RIG-CORE-030 done and pruning it on 2026-10-02 after agreeing to address any future Rig gap when a real tool-management case arises. This closes the proposed Rig work, not the host-owned repairs.
 
-Start with a read-only comparison of the existing Paperclip repairs and Rig provider protocol. The first deliverable is an ownership and integration decision with verification examples; implementation across Rig or the dotfiles repository follows only if that decision identifies a concrete gap. The external component's current behaviour and upgrade evidence must be rechecked before promotion to Next.
+## Done
+
+Disposed 2026-10-02 by Kris as rejected on the intake evidence above.
 
 ## Discussion
 
@@ -60,11 +63,9 @@ Repair health should be separately observable from agent-configuration drift and
 
 Mutation needs an explicit bounded operation, version checks and verification. Maintenance holds need one owner; an existing hold must not be replaced silently. Preserve the distinction between a drained restart, an explicitly authorised interruption and recovery of the underlying work. Any proposed upgrade gate must state whether it prevents replacement or only detects an already-replaced installation.
 
-### First deliverable and open decisions
+### Future evidence threshold
 
-The first deliverable should be a reviewed ownership and integration design using the two different Paperclip repairs as concrete cases, with enough verification detail to separate installed checks from live probes and retirement checks. It should identify what existing Rig capabilities already satisfy, what belongs in the Paperclip component, and any actual Rig protocol or lifecycle gap. Establish the follow-on delivery boundaries with the dotfiles owner before implementing them.
-
-Decide whether repair observation needs its own declared target, how upgrade gating composes with native providers, and whether reusable service-recovery primitives merit promotion into Rig. Keep both a provider-only solution and a small shared mechanism available until the evidence distinguishes them.
+A new case should first compare its actual observation, application, verification and retirement needs with the existing provider contract. Only a demonstrated cross-tool gap warrants new Rig work; repair implementation and live validation remain with the affected component and host owner.
 
 ### Related work
 
