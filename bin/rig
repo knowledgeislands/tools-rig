@@ -8898,9 +8898,12 @@ rig_history_load() {
     if ! { [ "$line" = "$canonical" ] && [ -z "$extra" ] && rig_history_target_valid "$target" && rig_valid_id "$provider"; }; then
       rig_history_error invalid-history-row; return
     fi
-    rig_history_number "$token" && [ "$token" -gt 0 ] && [ "$token" -le "$RIG_HISTORY_LAST_TOKEN" ] ||
-      { rig_history_error invalid-history-token; return; }
-    rig_history_number "$status" && [ "$status" -le 255 ] || { rig_history_error invalid-history-exit-status; return; }
+    if ! { rig_history_number "$token" && [ "$token" -gt 0 ] && [ "$token" -le "$RIG_HISTORY_LAST_TOKEN" ]; }; then
+      rig_history_error invalid-history-token; return
+    fi
+    if ! { rig_history_number "$status" && [ "$status" -le 255 ]; }; then
+      rig_history_error invalid-history-exit-status; return
+    fi
     rig_history_epoch "$recorded" || { rig_history_error invalid-history-time; return; }
     key=$target$'\t'$provider
     if [ -n "$previous" ] && [[ "$key" < "$previous" || "$key" = "$previous" ]]; then
@@ -8988,9 +8991,10 @@ rig_history_transaction() (
     [ "$RIG_HISTORY_LAST_TOKEN" -lt 2147483647 ] || { RIG_HISTORY_ERROR=history-token-exhausted; rig_history_warning; exit 1; }
     RIG_HISTORY_LAST_TOKEN=$((RIG_HISTORY_LAST_TOKEN + 1)); attempt=$RIG_HISTORY_LAST_TOKEN
   else
-    rig_history_number "$attempt" && [ "$attempt" -gt 0 ] && [ "$attempt" -le "$RIG_HISTORY_LAST_TOKEN" ] &&
-      rig_history_epoch "$recorded" && rig_history_number "$native_status" && [ "$native_status" -le 255 ] ||
-      { RIG_HISTORY_ERROR=invalid-history-completion; rig_history_warning; exit 1; }
+    if ! { rig_history_number "$attempt" && [ "$attempt" -gt 0 ] && [ "$attempt" -le "$RIG_HISTORY_LAST_TOKEN" ] &&
+      rig_history_epoch "$recorded" && rig_history_number "$native_status" && [ "$native_status" -le 255 ]; }; then
+      RIG_HISTORY_ERROR=invalid-history-completion; rig_history_warning; exit 1
+    fi
   fi
   while [ "$index" -lt "${#RIG_HISTORY_KEYS[@]}" ]; do
     case "$RIG_HISTORY_DECLARED_KEYS" in *$'\n'"${RIG_HISTORY_KEYS[$index]}"$'\n'*) ;; *) index=$((index + 1)); continue ;; esac
@@ -9014,7 +9018,9 @@ rig_history_transaction() (
   fi
   [ "${#keys[@]}" -le 4096 ] || { RIG_HISTORY_ERROR=history-row-limit; rig_history_warning; exit 1; }
   temporary=$(mktemp "$RIG_HISTORY_DIRECTORY/.${platform}.XXXXXX") || { RIG_HISTORY_ERROR=history-staging-unavailable; rig_history_warning; exit 1; }
-  [ -f "$temporary" ] && [ ! -L "$temporary" ] || { RIG_HISTORY_ERROR=unsafe-history-staging; rig_history_warning; exit 1; }
+  if ! { [ -f "$temporary" ] && [ ! -L "$temporary" ]; }; then
+    RIG_HISTORY_ERROR=unsafe-history-staging; rig_history_warning; exit 1
+  fi
   {
     printf 'rig-apply-history\t1\t%s\n' "$RIG_HISTORY_LAST_TOKEN" || {
       RIG_HISTORY_ERROR=history-staging-write-failed; rig_history_warning; exit 1;
@@ -9030,9 +9036,12 @@ rig_history_transaction() (
   bytes=$(wc -c <"$temporary") || { RIG_HISTORY_ERROR=history-staging-read-failed; rig_history_warning; exit 1; }
   [ "$bytes" -le 4194304 ] || { RIG_HISTORY_ERROR=history-byte-limit; rig_history_warning; exit 1; }
   rig_history_paths "$platform" || { rig_history_warning; exit 1; }
-  [ -f "$temporary" ] && [ ! -L "$temporary" ] || { RIG_HISTORY_ERROR=unsafe-history-staging; rig_history_warning; exit 1; }
-  [ ! -L "$RIG_HISTORY_LOCK/owner" ] && [ "$(<"$RIG_HISTORY_LOCK/owner")" = "$owner" ] ||
-    { RIG_HISTORY_ERROR=history-lock-ownership-changed; rig_history_warning; exit 1; }
+  if ! { [ -f "$temporary" ] && [ ! -L "$temporary" ]; }; then
+    RIG_HISTORY_ERROR=unsafe-history-staging; rig_history_warning; exit 1
+  fi
+  if ! { [ ! -L "$RIG_HISTORY_LOCK/owner" ] && [ "$(<"$RIG_HISTORY_LOCK/owner")" = "$owner" ]; }; then
+    RIG_HISTORY_ERROR=history-lock-ownership-changed; rig_history_warning; exit 1
+  fi
   mv -f -- "$temporary" "$RIG_HISTORY_FILE" || { RIG_HISTORY_ERROR=history-replacement-failed; rig_history_warning; exit 1; }
   temporary=
   [ "$operation" != reserve ] || printf '%s\n' "$attempt"
