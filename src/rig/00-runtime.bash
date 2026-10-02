@@ -378,6 +378,9 @@ rig_progress_select_renderer() {
   RIG_PROGRESS_RENDER=off
   rig_progress_enabled || return 0
   RIG_PROGRESS_RENDER=lines
+  # Reclaiming a footer around every native call leaves its reserved rows in
+  # scrollback. A batch of native-capable items reads better as line events.
+  [ "${RIG_PROGRESS_PASSTHROUGH:-0}" -eq 1 ] && [ "${RIG_PROGRESS_TOTAL:-0}" -gt 1 ] && return 0
   [ "${RIG_PROGRESS:-auto}" != lines ] && [ -t 2 ] || return 0
   case "${TERM:-}" in xterm*|screen*|tmux*|rxvt*|vt100|vt220|linux) ;; *) return 0 ;; esac
   rig_progress_dimensions || return 0

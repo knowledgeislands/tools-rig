@@ -48,6 +48,17 @@ terminal() {
   [[ "$(<"$STDERR")" != *'finished completed='* ]] || false
 }
 
+@test "multi-item native phases use adjacent line events without footer gaps" {
+  local screen
+  screen=$BATS_TEST_TMPDIR/native-batch-screen
+  fixture 'rig_progress_start observation 2' 'rig_progress_begin runner:alpha' \
+    'rig_progress_result succeeded runner:alpha' 'rig_progress_begin runner:beta' \
+    'rig_progress_result succeeded runner:beta' 'rig_progress_finish'
+  terminal --screen "$screen"
+  [[ "$output" == *'"regions": 0'* ]] || false
+  [[ "$(<"$screen")" == *$'rig: progress: observation 0/2: runner:alpha running\nrig: progress: observation 1/2: runner:alpha succeeded\nrig: progress: observation 1/2: runner:beta running'* ]] || false
+}
+
 @test "incomplete footer phases retain a truthful durable summary" {
   fixture 'rig_progress_start applying 2 owned' 'rig_progress_begin alpha' \
     'rig_progress_result succeeded alpha' 'rig_progress_finish'

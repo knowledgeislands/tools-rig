@@ -729,17 +729,20 @@ to
 Set to
 .B always
 to force progress, including declaration-only queries. A supported interactive
-terminal receives a two-line bottom footer showing the command, resolved
-selection (or selection pending), phase, completed/total work, current target
-and phase-local outcome counts. Redirected stderr receives stable line-oriented
-events. Set to
+terminal receives a two-line bottom footer for Rig-owned phases and single
+native-capable items, showing the command, resolved selection (or selection
+pending), phase, completed/total work, current target and phase-local outcome
+counts. Multi-item native-capable phases use line events without repeated
+footer reservations. Redirected stderr receives stable line-oriented events.
+Set to
 .B lines
 to request those durable events even on a terminal, or
 .B never
 to suppress it. The default is
 .BR auto ,
-which reports the footer for operational commands on supported terminals and
-line-oriented events otherwise; declaration-only queries remain quiet.
+which selects the footer for owned phases and single native-capable items on
+supported terminals, and line-oriented events otherwise; declaration-only
+queries remain quiet.
 Unsupported or dumb terminals, unavailable geometry and terminals smaller than
 eight rows or sixty columns use line events. Counts are not a duration estimate.
 Enumerable phases report a running item without advancing the completed count,
@@ -751,8 +754,9 @@ reservation instead of accumulating blank rows. Failed, interrupted, incomplete
 and failed-item phases retain their summaries, as do line-output phases.
 Failure and interruption terminate the active phase explicitly. Before each
 native-capable item, including observation and preflight, Rig clears its footer,
-restores full terminal scrolling and emits a durable task header. The footer
-returns after the whole item finishes, even if the native tool was quiet.
+restores full terminal scrolling and emits a durable task header. For a single
+native-capable item, the footer returns after it finishes, even if the native
+tool was quiet.
 Native prompts and diagnostics are not buffered or filtered. A separating
 newline protects native output without a final newline. Resize is handled only
 at safe rendering boundaries. Reflowed footer text may remain in scrollback:
