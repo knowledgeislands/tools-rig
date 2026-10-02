@@ -15,6 +15,8 @@ Start with the [user-guide journey](user/README.md). It begins with a small cata
 7. [Upgrade without watching](user/unattended-updates.md) — schedule one pass that advances every declared manager and records what happened.
 8. [Export a public rig](user/exporting.md) — project a deliberately public view as data a site can consume.
 
+For a retired macOS application, [review retained traces](user/retired-applications.md) as private information without automatic cleanup.
+
 For exhaustive syntax and provider matrices, use `man rig`. The guides focus on completing user outcomes rather than restating the reference contract.
 
 ## Develop Rig

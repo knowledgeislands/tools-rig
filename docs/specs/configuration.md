@@ -251,3 +251,13 @@ _Conformance:_ conforming
 _Verify:_ Isolated adoption tests exercise new, existing, fragment-only and symlink targets and parse the generated configuration.
 
 _Evidence:_ `rig_command_init` and `tests/rig-adoption.bats` implement exclusive initialisation.
+
+### RIG-CONF-026 — Retired application declarations
+
+Schema 1 MUST accept separate `[retired-application.ID]` declarations requiring a non-empty `name`, exact dot-separated `bundle-id` and non-empty `application-paths` string array, with optional `data-paths` and `package-paths` arrays. It MUST reject duplicate bundle identities, unknown fields, installation and profile metadata, unsafe path syntax and relative paths other than documented leading `~/` or `$HOME/` forms. Validation MUST remain inert and MUST NOT inspect the declared paths. Retired declarations MUST NOT become selectable installation or resource targets.
+
+_Conformance:_ conforming
+
+_Verify:_ Isolated retired-application tests parse accepted declarations, reject unsafe identities/paths and forbidden fields before any native call, and compare active selection and mutation plans with and without retirement metadata.
+
+_Evidence:_ `rig_validate_retired_application` and `tests/rig-retired-applications.bats` verify the separate inert schema and its exclusions.

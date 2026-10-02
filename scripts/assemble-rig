@@ -20,6 +20,7 @@ assemble() {
     22-observation.bash \
     23-application.bash \
     25-apply-history.bash \
+    26-retired-applications.bash \
     30-commands.bash \
     35-adoption.bash \
     40-publication-lifecycle.bash \

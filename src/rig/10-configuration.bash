@@ -152,7 +152,7 @@ rig_parse_section_identity() {
   fi
 
   case "$name" in
-    category.*|tool.*|skill.*|profile.*|provider.*|service.*|scheduled-job.*|setting.*|dock.*|dock-item.*|port.*)
+    category.*|tool.*|skill.*|profile.*|provider.*|service.*|scheduled-job.*|setting.*|dock.*|dock-item.*|port.*|retired-application.*)
       RIG_SECTION_TYPE=${name%%.*}
       rest=${name#*.}
       rig_valid_id "$rest" || return 1
@@ -241,6 +241,7 @@ rig_field_kind() {
   case "$section_type:$key" in
     rig:schema|rig:default-profile|rig:bootstrap-profile|\
     category:name|category:purpose|\
+    retired-application:name|retired-application:bundle-id|\
     tool:name|tool:category|tool:purpose|tool:rationale|\
     skill:name|skill:purpose|skill:rationale|skill:authority|skill:source|\
     skill:source-skill|skill:trust|skill:public-source|\
@@ -269,6 +270,7 @@ rig_field_kind() {
     action:mode|action:description|action:argument-policy)
       RIG_FIELD_KIND=scalar
       ;;
+    retired-application:application-path|retired-application:data-path|retired-application:package-path|\
     tool:platform|tool:requires|tool:related|tool:alternative|tool:artifact|tool:member-profile|\
     tool:variant:*:platform|tool:variant:*:artifact|tool:variant:*:install-argument|\
     tool:install-platform|tool:install-argument|\
@@ -333,6 +335,7 @@ rig_toml_field() {
       ;;
     rig:default-profile|rig:bootstrap-profile|\
     category:name|category:purpose|profile:name|profile:purpose|profile:kind|\
+    retired-application:name|retired-application:bundle-id|\
     tool:name|tool:category|tool:purpose|tool:rationale|\
     skill:name|skill:purpose|skill:rationale|skill:authority|skill:source|\
     skill:source-skill|skill:trust|skill:public-source|\
@@ -354,6 +357,9 @@ rig_toml_field() {
       RIG_TOML_FIELD_KEY=$key
       RIG_TOML_FIELD_TYPE=string
       ;;
+    retired-application:application-paths) RIG_TOML_FIELD_KEY=application-path; RIG_TOML_FIELD_TYPE=array ;;
+    retired-application:data-paths) RIG_TOML_FIELD_KEY=data-path; RIG_TOML_FIELD_TYPE=array ;;
+    retired-application:package-paths) RIG_TOML_FIELD_KEY=package-path; RIG_TOML_FIELD_TYPE=array ;;
     provider:autoupdate-interval)
       RIG_TOML_FIELD_KEY=autoupdate-interval
       RIG_TOML_FIELD_TYPE=integer
@@ -1859,6 +1865,9 @@ rig_validate_model() {
 
     case "$section_type" in
       rig) ;;
+      retired-application)
+        rig_validate_retired_application "$section_name" "$index" || return
+        ;;
       category)
         rig_require_field "$section_name" name || return
         rig_require_field "$section_name" purpose || return

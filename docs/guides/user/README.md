@@ -34,6 +34,8 @@ Follow these guides in order until you have what you need:
 7. [Upgrade without watching](unattended-updates.md) replaces each manager's private timer with one scheduled pass that reports one outcome.
 8. [Export a public rig](exporting.md) creates a private-by-default data projection for a site such as `rig.midnight.ninja`.
 
+For a deliberately retired macOS application, [review retained traces](retired-applications.md) without treating old data as unhealthy or authorising cleanup.
+
 Use `man rig` when you need the complete schema, provider support matrix, environment variables, exit statuses, or extension protocol.
 
 ## Keep the ownership boundary clear

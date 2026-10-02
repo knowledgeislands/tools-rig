@@ -20,6 +20,7 @@ rig \- describe and manage a personal working setup
 .RI [ \-\-profile " NAME" ]
 .RI [ \-\-problems ]
 .RI [ \-\-unmanaged ]
+.RI [ \-\-retired ]
 .RI [ \-\-format " text|json" ]
 .br
 .B rig capture
@@ -284,6 +285,35 @@ Homebrew inventory covers formulae installed on request and installed casks;
 dependency-only formulae are excluded. Matching uses declared provider
 identities across all profiles, rather than only the current selection.
 The macOS application scanner remains an additional read-only source.
+.TP
+.B rig status \-\-retired
+Include private, informational evidence for every
+.B [retired-application.ID]
+declaration in the loaded configuration. Profile selection still governs the
+ordinary machine comparison; it does not filter retired declarations.
+.B \-\-problems
+does not hide explicitly requested retirement evidence. Retained data and
+unavailable evidence do not alter health counts, doctor findings or exit status.
+No cleanup, installation or removal is performed.
+.PP
+Observe only declared application locations, explicit data and package paths,
+and exact bundle-ID candidates under Library Application Support, Caches,
+Preferences, Saved Application State and Containers. A bundle matches only
+through its exact CFBundleIdentifier. Missing, inaccessible, mismatched,
+symlink and unavailable evidence remain distinct. No path-component symlink
+is followed and no data contents or recursive directory inventory is read.
+Declared package association and conventional candidates are not verified
+ownership. Non-macOS platforms report unavailable evidence without native
+probes.
+.PP
+Optional last-used metadata comes from Spotlight for an exactly matched bundle.
+It is partial evidence, not proof of use or disuse; unavailable metadata does
+not mean never used. Normal status does not probe retired paths.
+.B \-\-retired
+adds a private
+.B retired_applications
+JSON array, whose evidence paths remain in
+.BR detail .
 .TP
 .BI "rig status \-\-format " text|json
 Select the rendering. The default
@@ -870,6 +900,33 @@ item-owned membership. Tool
 fields retain their native locator and argument data without executing it while
 configuration is loaded. Installation metadata is valid only in its owning
 tool table.
+.SS RETIRED APPLICATIONS
+\&
+.TP
+.B [retired-application.ID]
+Declare a private observation target, separate from tools and profiles.
+Required fields are
+.BR name ", " bundle-id ", and a non-empty " application-paths
+string array. Optional
+.BR data-paths " and " package-paths
+arrays name explicit retained locations. Bundle identifiers must be exact,
+dot-separated identities and unique across retired declarations. Paths must
+be literal absolute paths or begin with
+.BR ~/ " or " $HOME/ .
+Shell/glob syntax and dot/parent traversal components are rejected.
+Installation and profile fields are not accepted. Apply, upgrade and public
+export ignore retired declarations. An independent active tool declaration
+still expresses its own installation intent; retirement metadata does not
+override it. Removing a retired declaration changes reporting only.
+.PP
+The optional native metadata executable override
+.B RIG_MDLS
+defaults to
+.IR /usr/bin/mdls ;
+bundle identity uses the existing
+.B RIG_PLUTIL
+override or
+.IR /usr/bin/plutil .
 .SS MANAGED RESOURCES
 \&
 .B [service.ID]

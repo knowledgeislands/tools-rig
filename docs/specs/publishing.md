@@ -159,3 +159,13 @@ _Conformance:_ conforming
 _Verify:_ Bats exports selected and unselected skills, compares deterministic order and empty arrays, parses JSON containing quotes, controls, and UTF-8, and scans the complete tree for private markers including ports, paths, roots, runtimes, locks, arguments, state, and unmanaged inventory.
 
 _Evidence:_ `rig_render_public_skill`, `rig_render_publication_json`, and `tests/rig-skills.bats` implement and verify the format-2 allow-list.
+
+### RIG-PUB-012 — Retired application privacy
+
+Every public export MUST exclude retired-application declarations and observations, including names, bundle identifiers, application/data/package paths and usage evidence, regardless of the selected view. Export MUST NOT probe retired locations.
+
+_Conformance:_ conforming
+
+_Verify:_ Export a view from a configuration containing unique retired-only markers and assert none occur anywhere in the output tree and no retirement probe runs.
+
+_Evidence:_ `tests/rig-retired-applications.bats` verifies retired-only markers and probes are absent from public export.

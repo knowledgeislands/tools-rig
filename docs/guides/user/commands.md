@@ -6,7 +6,7 @@ Rig configuration describes the setup you want. Providers install or observe the
 
 - `rig init [--dry-run]`
 - `rig show [ITEM] [--profile NAME] [--all] [--category ID] [--format text|json]`
-- `rig status [--profile NAME] [--problems] [--unmanaged] [--format text|json]`
+- `rig status [--profile NAME] [--problems] [--unmanaged] [--retired] [--format text|json]`
 - `rig doctor [--profile NAME] [--verbose] [--format text|json]`
 - `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID]... [--dry-run] [--format text|json]`
 - `rig upgrade [--profile NAME] [--dry-run] [--unattended] [--format text|json]`
@@ -44,6 +44,8 @@ Both commands also show selected historical apply failures separately from live 
 History is local per-platform evidence beneath Rig's state directory, not configuration or a package database. Read-only commands never clear or repair it. Missing history is neutral; damaged, inaccessible or unsafe history is an unavailable-history finding. Future completion times are reported as clock discrepancies. If an apply cannot save history, Rig warns separately without changing the provider's actual result. Successful ordering records remain internal; neither success nor failure history retains arguments, locators or provider output.
 
 If you intentionally run without `HOME`, set `RIG_STATE_HOME` or `XDG_STATE_HOME` explicitly as well as any configuration/data overrides. An unresolved state location is unavailable evidence, not proof that no history exists.
+
+`rig status --retired` adds private, read-only evidence for separately declared retired applications. It does not change health counts or cause cleanup, installation or removal. The section is configuration-wide even with `--profile` or `--problems`, and does not appear without the flag. See [Review a retired application's traces](retired-applications.md) for declarations, ownership caveats and partial usage evidence.
 
 ## Make the machine follow intent
 

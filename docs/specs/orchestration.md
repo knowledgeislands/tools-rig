@@ -396,3 +396,15 @@ _Conformance:_ conforming
 _Verify:_ Exercise discovery, duplicate and ambiguous identities, unsafe paths, literal metadata, failed inventory and dry-run with inert Homebrew fixtures.
 
 _Evidence:_ `rig_command_capture`, `rig_homebrew_inventory` and `tests/rig-adoption.bats` implement the selective proposal contract.
+
+### RIG-ORCH-039 — Bounded retirement observation
+
+Retired-application observation MUST inspect only explicitly declared application/data/package locations and exact bundle-ID conventional data candidates, without recursive enumeration, data-content reads, mutation or symlink traversal at any path component. Application matching MUST use exact native bundle identity, never a display-name substring. Reports MUST distinguish ordinary missing, inaccessible, symlink, mismatched and unavailable evidence without claiming that a failed existence check rules out all macOS privacy or access restrictions; declared package association and conventional candidate attribution MUST NOT be presented as verified ownership. Other platforms MUST report unavailable observation without macOS probes.
+
+Optional last-used metadata MUST come only from an exact matched application and retain its native source and partial-evidence caveat. Missing, malformed or unavailable metadata MUST NOT be interpreted as never used, and filesystem modification time MUST NOT substitute for usage evidence.
+
+_Conformance:_ conforming
+
+_Verify:_ Isolated native-command fakes cover identity match/mismatch, unreadable ancestry, symlinked ancestors and bundle metadata, absent/failed native commands, uncertain timestamps, Linux isolation and unchanged filesystem sentinels.
+
+_Evidence:_ `src/rig/26-retired-applications.bash` implements bounded observation; `tests/rig-retired-applications.bats` verifies exact identity, uncertainty, platform isolation and no mutation.

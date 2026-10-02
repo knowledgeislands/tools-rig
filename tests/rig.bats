@@ -674,7 +674,7 @@ write_query_config() {
     case "$command" in
       init) expected='--dry-run' ;;
       show) expected='--profile --all --category --format' ;;
-      status) expected='--profile --problems --unmanaged --format' ;;
+      status) expected='--profile --problems --unmanaged --retired --format' ;;
       capture) expected='--provider --profile --dry-run --output --category --purpose --rationale' ;;
       apply) expected='--profile --scope --target --dry-run --format' ;;
       upgrade) expected='--profile --dry-run --unattended --format' ;;
@@ -2923,7 +2923,7 @@ bootstrap-profile = "default"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" status --help
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Usage: rig status [--profile NAME] [--problems] [--unmanaged] [--format text|json]"* ]] || false
+  [[ "$output" == *"Usage: rig status [--profile NAME] [--problems] [--unmanaged] [--retired] [--format text|json]"* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --help
   [ "$status" -eq 0 ]

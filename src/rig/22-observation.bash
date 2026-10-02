@@ -896,9 +896,10 @@ rig_json_envelope() {
 }
 
 rig_status_json() {
-  local unmanaged_requested index separator healthy port section_name number mode owner state
+  local unmanaged_requested retired_requested index separator healthy port section_name number mode owner state
 
   unmanaged_requested=$1
+  retired_requested=${2:-0}
   rig_json_envelope status
   if [ "$RIG_STATUS_UNHEALTHY" -eq 0 ] && rig_history_healthy; then healthy=true; else healthy=false; fi
   printf ',"healthy":%s' "$healthy"
@@ -1020,6 +1021,9 @@ rig_status_json() {
   else
     printf ',"unmanaged":null,"unmanaged_problems":null'
   fi
+  if [ "$retired_requested" -eq 1 ]; then
+    rig_retired_json
+  fi
   rig_history_json
   printf '}\n'
   [ "$RIG_STATUS_UNHEALTHY" -eq 0 ] && rig_history_healthy
@@ -1027,10 +1031,11 @@ rig_status_json() {
 
 rig_command_status() {
   local profile index tool provider state detail unmanaged_requested format
-  local problems
+  local problems retired_requested
 
   profile=
   unmanaged_requested=0
+  retired_requested=0
   format=text
   problems=0
   while [ "$#" -gt 0 ]; do
@@ -1041,6 +1046,10 @@ rig_command_status() {
         ;;
       --unmanaged)
         unmanaged_requested=1
+        shift
+        ;;
+      --retired)
+        retired_requested=1
         shift
         ;;
       --problems)
@@ -1087,6 +1096,9 @@ rig_command_status() {
   if [ "$unmanaged_requested" -eq 1 ]; then
     rig_collect_unmanaged || return
   fi
+  if [ "$retired_requested" -eq 1 ]; then
+    rig_collect_retired_applications || return
+  fi
   rig_status_totals
   rig_history_project || return
   if [ "$RIG_STATUS_UNHEALTHY" -eq 0 ] && rig_history_healthy; then
@@ -1095,7 +1107,7 @@ rig_command_status() {
     rig_outcome_note unhealthy "unhealthy=$RIG_STATUS_UNHEALTHY present=$RIG_STATUS_PRESENT historical=${#RIG_APPLY_FAILURE_KEYS[@]} history-unavailable=${RIG_APPLY_HISTORY_UNAVAILABLE:-no}"
   fi
   if [ "$format" = json ]; then
-    rig_status_json "$unmanaged_requested"
+    rig_status_json "$unmanaged_requested" "$retired_requested"
     return
   fi
   rig_print_status_verdict
@@ -1162,6 +1174,9 @@ rig_command_status() {
     printf 'Unmanaged: %s\n' "${#RIG_UNMANAGED_IDENTITIES[@]}"
     rig_print_unmanaged_listeners || return
     rig_print_unmanaged_skills || return
+  fi
+  if [ "$retired_requested" -eq 1 ]; then
+    rig_retired_print || return
   fi
   rig_history_print || return
   [ "$RIG_STATUS_UNHEALTHY" -eq 0 ] && rig_history_healthy

@@ -399,3 +399,13 @@ _Conformance:_ conforming
 _Verify:_ Isolated Dock fixtures cover every declared attribute, omitted attributes, raw and encoded paths, binary/XML snapshots, ambiguity, missing tools and data, mismatch precedence, one snapshot per command, sourced command reuse and zero native mutation.
 
 _Evidence:_ `rig_dock_observe_attributes`, typed snapshot helpers in `src/rig/20-orchestration.bash` and the command-entry reset in `src/rig/90-main.bash` implement the comparison. `tests/rig-dock-observation.bats` and `tests/rig-macos.bats` verify the boundary; disposable native-plutil fixtures independently confirm typed extraction and control-character preservation. The Dock apply body is unchanged.
+
+### RIG-STATE-037 — Informational retired application evidence
+
+`rig status --retired` MUST add configuration-wide retired-application evidence in text and JSON without changing active health counts, historical findings or exit status. Profile selection and `--problems` MUST NOT suppress the explicitly requested informational section. Without the flag, Rig MUST NOT probe retired locations or add retired report fields. JSON MUST add `retired_applications` only when requested, including an empty array when none are declared; filesystem paths MUST remain confined to `detail`, preserving the existing redaction contract.
+
+_Conformance:_ conforming
+
+_Verify:_ Compare text/JSON and existing reports without the flag; combine profile and problem filtering; remove redaction fields recursively and assert fixture paths disappear; compare doctor, apply and upgrade results independently of retained evidence.
+
+_Evidence:_ `rig_collect_retired_applications`, `rig_retired_json`, `rig_retired_text` and `tests/rig-retired-applications.bats` verify the opt-in, redactable informational section.

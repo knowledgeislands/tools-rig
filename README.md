@@ -51,7 +51,7 @@ To preview just one declared change, use `rig apply --target ID --dry-run`; repe
 
 Use `rig init` for new configuration, `rig show [ITEM]` to understand intent, `rig status` to compare it with the machine, `rig apply` to reconcile it, and `rig upgrade` to advance declared software. `rig capture` prepares reviewed Homebrew additions; `rig doctor --verbose` diagnoses health and configuration. Export, help and completion remain utilities.
 
-Use `--format json` with `show`, `status`, `doctor`, `apply`, or `upgrade` when a script needs complete values. Capture emits discovery text or additive TOML. Existing users should follow the [command migration guide](docs/guides/user/migrating-command-surface.md); the current checkout makes a breaking cutover without aliases.
+Use `--format json` with `show`, `status`, `doctor`, `apply`, or `upgrade` when a script needs complete values. `status --retired` adds private, informational evidence for [explicitly retired applications](docs/guides/user/retired-applications.md), without cleanup or health findings. Capture emits discovery text or additive TOML. Existing users should follow the [command migration guide](docs/guides/user/migrating-command-surface.md); the current checkout makes a breaking cutover without aliases.
 
 The [user-guide journey](docs/guides/user/README.md) then introduces profiles, machine resources, user-level skills, provider boundaries, and publication in stages. Use `man rig` for the exhaustive command and configuration reference.
 

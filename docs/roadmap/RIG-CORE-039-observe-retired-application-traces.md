@@ -4,12 +4,12 @@ area: CORE
 title: Observe retired app traces
 theme: orchestration
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 65f358bb62143ac1e838cfa357ebf8e1fefab60e
 created_at: 2026-10-01T04:22:44Z
-updated_at: 2026-10-02T01:37:43Z
+updated_at: 2026-10-02T02:28:50Z
 ---
 
 # RIG-CORE-039: Observe retired app traces
@@ -34,11 +34,11 @@ The built-in macOS inventory reads application bundles, but there is no retired 
 
 ## Steps
 
-- [ ] Add validated `[retired-application.ID]` declarations with required `name`, exact `bundle-id` and non-empty `application-paths`; optional `data-paths` and `package-paths` remain literal absolute or documented home-relative paths, with no globbing or shell evaluation. Reject duplicate bundle identities, unsafe paths and installation/profile fields.
-- [ ] Add `status --retired` as an additive, configuration-wide informational report, independent of profile selection. Inspect only declared application locations and exact bundle-ID conventional data candidates plus explicitly declared data/package paths. Match bundles through `CFBundleIdentifier`, distinguish missing, inaccessible, mismatched and symbolic-link evidence, and never follow links to inspect arbitrary data.
-- [ ] Report optional native last-used metadata only for an exact matched bundle, with source and partial-evidence caveat; absent metadata remains unavailable, never never-used. Keep declared package ownership and inferred candidate attribution explicitly weaker than verified ownership. On non-macOS platforms report unsupported observation without native probes.
-- [ ] Cover schema, text/JSON, deterministic ordering, inaccessible and symlink evidence, missing native commands, literal paths, last-used uncertainty, platform isolation, no-mutation and unchanged health/installation/export contracts in isolated tests.
-- [ ] Align help, completion output, manual, command/configuration guides, specifications and changelog; assemble the single executable, independently review the integrated result and run the complete local gate.
+- [x] Add validated `[retired-application.ID]` declarations with required `name`, exact `bundle-id` and non-empty `application-paths`; optional `data-paths` and `package-paths` remain literal absolute or documented home-relative paths, with no globbing or shell evaluation. Reject duplicate bundle identities, unsafe paths and installation/profile fields.
+- [x] Add `status --retired` as an additive, configuration-wide informational report, independent of profile selection. Inspect only declared application locations and exact bundle-ID conventional data candidates plus explicitly declared data/package paths. Match bundles through `CFBundleIdentifier`, distinguish missing, inaccessible, mismatched and symbolic-link evidence, and never follow links to inspect arbitrary data.
+- [x] Report optional native last-used metadata only for an exact matched bundle, with source and partial-evidence caveat; absent metadata remains unavailable, never never-used. Keep declared package ownership and inferred candidate attribution explicitly weaker than verified ownership. On non-macOS platforms report unsupported observation without native probes.
+- [x] Cover schema, text/JSON, deterministic ordering, inaccessible and symlink evidence, missing native commands, literal paths, last-used uncertainty, platform isolation, no-mutation and unchanged health/installation/export contracts in isolated tests.
+- [x] Align help, completion output, manual, command/configuration guides, specifications and changelog; assemble the single executable, independently review the integrated result and run the complete local gate.
 
 ## Files touched
 
@@ -73,6 +73,32 @@ Show a synthetic declaration and `status --retired`, including package-path prov
 ### Roadmap
 
 End this delivery awaiting human review. Mark only the explicitly accepted display records done; leave CORE-030 deferred and release publication separate.
+
+## Review
+
+### Delivered
+
+Read-only retired-application observation is implemented from immutable baseline `65f358bb62143ac1e838cfa357ebf8e1fefab60e`. It adds an opt-in `rig status --retired` report and a separate configuration declaration without installation, cleanup, release or personal-catalogue changes. The approved boundary held.
+
+### Change Summary
+
+Configuration validation, bounded path and native-metadata observation, and text/JSON reporting live in the authored Bash modules and assembled `bin/rig`. The new isolated suite has 23 tests. Help, completion, README, user guide, manual, specifications and changelog describe the contract. Independent review found and prompted fixes for empty names and impossible usage-date offsets; a filesystem-existence caveat now avoids overclaiming macOS access certainty.
+
+### Verification
+
+The complete AGENTS.md gate passed: `ki repo audit --repo .` (20 skills), ShellCheck and Bash syntax on all required targets, `scripts/assemble-rig --check`, `scripts/benchmark-rig`, `scripts/smoke-native-providers`, `RIG_TEST_PYTHON=/opt/homebrew/opt/python@3.14/bin/python3.14 bats tests/ </dev/null` (407 passed), and `mandoc -T lint man/rig.1`. Targeted `rumdl check` and `git diff --check` passed. The final gate log is `/tmp/rig-core039-gate.up0BnE`; no live apply or native-machine mutation was used to test failure cases.
+
+### Outstanding concerns
+
+No implementation or verification blocker remains. Human acceptance is outstanding. macOS usage metadata is partial, and filesystem existence checks cannot prove every privacy or access condition; the report explicitly preserves those uncertainties. Personal retirement declarations and decisions remain with their owner.
+
+### Post-change review
+
+The implementation meets the observation goal without changing active-tool health, doctor, apply, upgrade or public export. Exact bundle identity gates usage metadata; paths remain private and redactable. The integrated review found no remaining issue after the two validation corrections and the complete gate.
+
+### Mini recap
+
+CORE-039 is ready for acceptance. The report separates declared associations, conventional candidates and verified bundle identity while making no cleanup decision. The updated specifications and guide hold the durable behavior; release and personal configuration follow-up remain separate.
 
 ## Discussion
 
