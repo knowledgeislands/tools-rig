@@ -9,7 +9,7 @@ Expected public routes are:
 
 ## Prepare a local development candidate
 
-Keep the authored runtime version at the latest release plus `+dev` and the changelog headed `Unreleased` until an exact next preview is explicitly selected. The development marker distinguishes the linked checkout from the latest immutable release without promising a version.
+Keep the authored runtime version at the latest release plus `+dev` until an exact next preview is explicitly selected. Keep the changelog's consolidated Pre-1.0 baseline current with the development checkout; do not add a dated 0.x section. The development marker distinguishes the linked checkout from the latest immutable release without promising a version.
 
 Release-facing documentation must distinguish these two paths:
 
@@ -21,7 +21,7 @@ Before proposing an exact version, review the complete diff from the latest immu
 After an exact preview version is explicitly selected:
 
 1. Replace the development marker with `X.Y.Z` in `src/rig/00-runtime.bash` and assemble `bin/rig`.
-2. Move the `Unreleased` changelog material into a dated `X.Y.Z` entry.
+2. Refresh the consolidated Pre-1.0 command and behaviour baseline in `CHANGELOG.md` against the exact candidate. The tag and GitHub release retain the per-preview record; from 1.0 onward, use dated changelog entries.
 3. Update immutable installer examples and downstream handoff details to that exact version.
 4. Re-run every local candidate and repository check before requesting publication authority.
 
@@ -32,7 +32,7 @@ After an exact preview version is explicitly selected:
 - [ ] Read the affected guidance as a user: confirm the journey has a recognisable outcome, introduces concepts incrementally, uses copyable examples, and remains clear with realistic configuration.
 - [ ] Confirm examples agree on the declarative schema, implicit built-in providers, init, show, status, capture, apply, upgrade, doctor and export boundaries, managed-resource kinds, extension boundary, and changed command synopsis.
 - [ ] While no exact release is selected, confirm the authored and assembled runtime report the same development marker and every immutable install example still names the latest released tag.
-- [ ] After explicit version selection, update `RIG_VERSION` in `src/rig/00-runtime.bash`, assemble `bin/rig`, and confirm the drift check, `rig --version`, changelog release entry, intended `vX.Y.Z` tag, installer examples, and Homebrew formula handoff all agree.
+- [ ] After explicit version selection, update `RIG_VERSION` in `src/rig/00-runtime.bash`, assemble `bin/rig`, and confirm the drift check, `rig --version`, consolidated Pre-1.0 baseline, intended `vX.Y.Z` tag, installer examples, and Homebrew formula handoff all agree. From 1.0 onward, also confirm the dated changelog entry.
 - [ ] Verify a disposable `./install.sh --link` installation includes working executable and manual links, then exercise the isolated release-installer fixture.
 - [ ] Run staged apply-prerequisite tests, bounded native-provider smoke, and an offline public export.
 - [ ] Run the complete verification gate in [Develop Rig](README.md), including public command-inventory alignment tests and rendered manual inspection.

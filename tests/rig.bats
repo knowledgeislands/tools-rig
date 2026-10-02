@@ -580,14 +580,14 @@ write_query_config() {
   done
 }
 
-@test "release surfaces distinguish immutable release from linked development" {
+@test "release surfaces distinguish immutable release from the current pre-1.0 baseline" {
   repo_root=$BATS_TEST_DIRNAME/..
 
   grep -Fxq 'RIG_VERSION=0.3.0' "$repo_root/src/rig/00-runtime.bash"
   grep -Fxq 'RIG_VERSION=0.3.0' "$repo_root/bin/rig"
-  grep -Fq '## [Unreleased]' "$repo_root/CHANGELOG.md"
-  grep -Fq '## [0.2.0]' "$repo_root/CHANGELOG.md"
-  ! grep -Fq '## [1.0.0] — in progress' "$repo_root/CHANGELOG.md"
+  grep -Fxq '## Pre-1.0 baseline' "$repo_root/CHANGELOG.md"
+  grep -Fxq -- '- `rig upgrade`' "$repo_root/CHANGELOG.md"
+  ! grep -Eq '^## \[[0-9]+\.' "$repo_root/CHANGELOG.md"
   grep -Fq 'v0.3.0/install.sh' "$repo_root/README.md"
   grep -Fq 'rig 0.3.0' "$repo_root/README.md"
   grep -Fq 'v0.3.0/install.sh' "$repo_root/docs/guides/user/getting-started.md"
