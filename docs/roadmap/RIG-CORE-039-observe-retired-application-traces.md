@@ -4,12 +4,12 @@ area: CORE
 title: Observe retired app traces
 theme: orchestration
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 65f358bb62143ac1e838cfa357ebf8e1fefab60e
 created_at: 2026-10-01T04:22:44Z
-updated_at: 2026-10-02T02:28:50Z
+updated_at: 2026-10-02T02:49:23Z
 ---
 
 # RIG-CORE-039: Observe retired app traces
@@ -99,6 +99,10 @@ The implementation meets the observation goal without changing active-tool healt
 ### Mini recap
 
 CORE-039 is ready for acceptance. The report separates declared associations, conventional candidates and verified bundle identity while making no cleanup decision. The updated specifications and guide hold the durable behavior; release and personal configuration follow-up remain separate.
+
+## Done
+
+Accepted 2026-10-02 by Kris Brown on the review packet above.
 
 ## Discussion
 
