@@ -4,6 +4,8 @@ Keep Rig's installed core compatible with macOS Bash 3.2 and free of required ru
 
 ## Respect the repository boundary
 
+[See Rig's manager-of-managers architecture](architecture.md) for a source-backed interactive map of the observation and mutation paths across native tools.
+
 This repository owns Rig's portable executable, native lifecycle, declarative schema, built-in provider registry and adapters, extension protocol, public documentation, tests, and releases. A Rig owner's private configuration owns catalogue entries, profiles, resource values and trusted external executables. Rig owns package-selection intent without a Brewfile; native managers retain execution state and credentials, and chezmoi retains its source and templates.
 
 When a change crosses that boundary, define and verify the portable contract here first. A generally useful provider adapter, bootstrap stage, setting type, inventory source, or resource lifecycle belongs in Rig rather than a personal workstation script. Do not copy personal declarations into this repository or reimplement portable Rig behaviour in dotfiles.

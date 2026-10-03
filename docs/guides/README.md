@@ -22,5 +22,6 @@ For exhaustive syntax and provider matrices, use `man rig`. The guides focus on 
 ## Develop Rig
 
 - [Develop Rig](developer/README.md) — preserve the portable product boundary and run the repository verification gate.
+- [Understand Rig's architecture](developer/architecture.md) — explore the source-backed diagram of intent, observation, and native execution.
 - [Definition of done](developer/definition-of-done.md) — align affected public surfaces and prepare an evidence-backed review.
 - [Release Rig](developer/releasing.md) — verify a release candidate, publish only with explicit authority, and complete downstream distribution.

@@ -1,6 +1,8 @@
 # Complete a Rig change
 
-Use this checklist before presenting a Rig change for review. It defines delivery readiness for the repository; a roadmap record becomes `done` only after a human accepts its review packet through the selected KI workflow. Mark an inapplicable check explicitly in that packet rather than silently skipping it.
+Use this checklist before presenting a Rig change for review. It defines delivery readiness for the repository. Where a change has a roadmap record, it becomes `done` only after a human accepts its review packet through the selected KI workflow. Direct maintenance does not require a new roadmap item; record inapplicable checks in the change review rather than silently skipping them.
+
+The `ki-repo-tools` change-readiness checklist owns the cross-tool documentation, verification, and authority questions; the checks below make them actionable for Rig.
 
 Release publication has additional steps in [Release Rig](releasing.md).
 
@@ -39,8 +41,8 @@ Release publication has additional steps in [Release Rig](releasing.md).
 
 ## Prepare review
 
-- [ ] The roadmap record contains its immutable baseline, completed steps, verification evidence, outstanding concerns, post-change assessment, and mini recap.
-- [ ] The record is `awaiting-review` before any separately authorised acceptance or pruning.
+- [ ] For roadmap-backed work, the record contains its immutable baseline, completed steps, verification evidence, outstanding concerns, post-change assessment, and mini recap.
+- [ ] For roadmap-backed work, the record is `awaiting-review` before any separately authorised acceptance or pruning.
 - [ ] Stage only intended paths, preserve unrelated working-tree changes, and create a Conventional Commit for the verified delivery.
 - [ ] After a hook-backed commit, inspect `git show --name-status HEAD`; rebuild an unpushed commit if it captured unrelated staged work.
 - [ ] Do not push, publish a release, apply chezmoi, or mutate another repository without explicit authority for that external or cross-repository action.

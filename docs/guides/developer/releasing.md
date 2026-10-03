@@ -2,6 +2,8 @@
 
 Rig owns its release artifacts and version. The Homebrew tap owns formula distribution, while the Knowledge Islands website owns the public tool-registry and stable installer routes. Those downstream systems consume an already published exact Rig version; they are not release authority.
 
+The `ki-repo-tools` release-readiness checklist owns the common release review; this guide supplies Rig's exact candidate, installation, and downstream steps.
+
 Expected public routes are:
 
 - `https://knowledgeislands.info/projects/rig/` for people;
@@ -37,7 +39,7 @@ After an exact preview version is explicitly selected:
 - [ ] Run staged apply-prerequisite tests, bounded native-provider smoke, and an offline public export.
 - [ ] Run the complete verification gate in [Develop Rig](README.md), including public command-inventory alignment tests and rendered manual inspection.
 - [ ] Inspect the committed release-candidate diff, exclude unrelated working-tree changes, and record anything deliberately deferred.
-- [ ] Obtain explicit authority before any external mutation: tag creation, push, GitHub release publication, formula update, or manual consumer handoff.
+- [ ] Obtain explicit authority before any external mutation by the local agent: tag creation, push, GitHub release publication, manual formula update, or manual consumer handoff. Authorised release-event automation follows the receiving repository's own checks.
 
 ## Publish the release
 
@@ -58,7 +60,7 @@ Do not repair a published release in place. Correct the repository, verify anoth
 
 ## Complete downstream distribution
 
-Send the exact released version and immutable installer URL to `knowledgeislands/homebrew-tap`. Release-event automation can update explicitly enrolled consumers. The Knowledge Islands website advances its existing Rig entry through the website's normal reviewed workflow.
+Hand the exact released version and immutable installer URL to `knowledgeislands/homebrew-tap` through the enrolled release-event path. The tap validates and advances its formula, then dispatches its verified update to enrolled consumers. Confirm the formula reaches the tap's default branch and the website pull request passes its checks and reaches its intended disposition; dispatch alone does not prove the public entry advanced.
 
 A first-time website entry, maturity change, or consumer not enrolled in automation remains an explicit receiver-owned handoff. Carry:
 

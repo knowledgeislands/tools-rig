@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Rig manages intent; native tools own execution",
+    "output": "docs/guides/developer/architecture/rig-manager-of-managers.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "git@github.com:knowledgeislands/tools-rig.git",
+      "revision": "44b936c051499cc344d71eae4aa9fc130462b732",
+      "link_mode": "local-only"
+    }
+  },
+  "components": [
+    {
+      "id": "operator",
+      "type": "external",
+      "label": "Operator",
+      "sublabel": "Chooses a Rig command",
+      "pos": [50, 380],
+      "size": [150, 72],
+      "sources": [{ "path": "src/rig/90-main.bash", "line": 51, "end_line": 81 }]
+    },
+    {
+      "id": "configuration",
+      "type": "database",
+      "label": "Rig configuration",
+      "sublabel": "Catalogue and profile",
+      "pos": [50, 85],
+      "size": [165, 72],
+      "sources": [
+        { "path": "src/rig/10-configuration.bash", "line": 2048, "end_line": 2080 },
+        { "path": "src/rig/10-configuration.bash", "line": 2748, "end_line": 2774 }
+      ]
+    },
+    {
+      "id": "planner",
+      "type": "backend",
+      "label": "Selection and plan",
+      "sublabel": "Bindings and dependencies",
+      "pos": [385, 310],
+      "size": [180, 78],
+      "sources": [
+        { "path": "src/rig/21-provider-state.bash", "line": 6, "end_line": 32 },
+        { "path": "src/rig/20-orchestration.bash", "line": 40, "end_line": 76 }
+      ]
+    },
+    {
+      "id": "observation",
+      "type": "backend",
+      "label": "Observation",
+      "sublabel": "Compare intent with state",
+      "pos": [730, 105],
+      "size": [170, 78],
+      "sources": [{ "path": "src/rig/22-observation.bash", "line": 1255, "end_line": 1309 }]
+    },
+    {
+      "id": "report",
+      "type": "frontend",
+      "label": "Status and doctor",
+      "sublabel": "Read-only findings",
+      "pos": [1080, 105],
+      "size": [175, 78],
+      "sources": [
+        { "path": "src/rig/22-observation.bash", "line": 1032, "end_line": 1085 },
+        { "path": "src/rig/22-observation.bash", "line": 1381, "end_line": 1441 }
+      ]
+    },
+    {
+      "id": "application",
+      "type": "backend",
+      "label": "Apply and upgrade",
+      "sublabel": "Explicit managed actions",
+      "pos": [730, 520],
+      "size": [170, 78],
+      "sources": [
+        { "path": "src/rig/23-application.bash", "line": 638, "end_line": 710 },
+        { "path": "src/rig/23-application.bash", "line": 963, "end_line": 964 },
+        { "path": "src/rig/40-publication-lifecycle.bash", "line": 391, "end_line": 395 }
+      ]
+    },
+    {
+      "id": "native",
+      "type": "external",
+      "label": "Native tools and OS",
+      "sublabel": "brew, uv, mise, npm, macOS",
+      "pos": [1080, 390],
+      "size": [190, 78],
+      "sources": [
+        { "path": "src/rig/21-provider-state.bash", "line": 402, "end_line": 418 },
+        { "path": "src/rig/21-provider-state.bash", "line": 465, "end_line": 531 },
+        { "path": "src/rig/20-orchestration.bash", "line": 87, "end_line": 98 }
+      ]
+    },
+    {
+      "id": "chezmoi",
+      "type": "external",
+      "label": "ChezMoi",
+      "sublabel": "Source and templates stay native",
+      "pos": [1080, 635],
+      "size": [190, 78],
+      "sources": [{ "path": "src/rig/21-provider-state.bash", "line": 533, "end_line": 544 }]
+    },
+    {
+      "id": "machine",
+      "type": "database",
+      "label": "Machine state",
+      "sublabel": "Packages, files, settings",
+      "pos": [1420, 500],
+      "size": [170, 78],
+      "sources": [
+        { "path": "src/rig/21-provider-state.bash", "line": 484, "end_line": 544 },
+        { "path": "src/rig/20-orchestration.bash", "line": 93, "end_line": 98 }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Rig executable · Bash 3.2",
+      "wraps": ["planner", "observation", "report", "application"]
+    },
+    {
+      "kind": "region",
+      "label": "Outside Rig · native ownership",
+      "wraps": ["native", "chezmoi", "machine"]
+    }
+  ],
+  "connections": [
+    { "id": "operator-plan", "from": "operator", "to": "planner", "label": "rig command", "variant": "emphasis" },
+    { "id": "configuration-plan", "from": "configuration", "to": "planner", "label": "declared selection" },
+    { "id": "plan-observe", "from": "planner", "to": "observation", "label": "status / doctor" },
+    { "id": "observation-report", "from": "observation", "to": "report", "label": "outcomes", "variant": "emphasis" },
+    { "id": "observation-native", "from": "observation", "to": "native", "label": "query current state" },
+    { "id": "plan-apply", "from": "planner", "to": "application", "label": "ordered actions" },
+    { "id": "apply-native", "from": "application", "to": "native", "label": "invoke manager", "variant": "emphasis" },
+    { "id": "apply-chezmoi", "from": "application", "to": "chezmoi", "label": "apply target" },
+    { "id": "native-machine", "from": "native", "to": "machine", "label": "native state" },
+    { "id": "chezmoi-machine", "from": "chezmoi", "to": "machine", "label": "managed files" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Rig owns intent",
+      "items": ["Tool selection and provider bindings", "Dependency order and capability checks", "Observed-versus-declared reporting"]
+    },
+    {
+      "dot": "emerald",
+      "title": "Native owners keep control",
+      "items": ["Manager resolution, credentials and installs", "ChezMoi source, templates and file semantics", "Rig does not use a Brewfile or generic runner"]
+    }
+  ]
+}
