@@ -722,7 +722,7 @@ write_query_config() {
     XDG_DATA_HOME= XDG_STATE_HOME= XDG_CACHE_HOME= RIG_PLATFORM=macos "$RIG" doctor --verbose
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"$(printf 'Runtime:\n  Rig version: 0.4.0\n  Executable: %s\n  Bash version: %s\n  Platform: macos\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.toml\n  Fragment count: 2\n  Status: valid\n  Schema: 1\n  Default profile: default\n  Selection mode: central\n  Profiles: 1\n  Tools: 1\n  Skills: 0\n  Managed resources: 0\n  Ports: 0\n  Tool variants: 0' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]] || false
+  [[ "$output" == *"$(printf 'Runtime:\n  Rig version: 0.4.0\n  Executable: %s\n  Bash version: %s\n  Platform: macos\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.toml\n  Fragment count: 2\n  Status: valid\n  Default profile: default\n  Selection mode: central\n  Profiles: 1\n  Tools: 1\n  Skills: 0\n  Managed resources: 0\n  Ports: 0\n  Tool variants: 0' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]] || false
 }
 
 @test "doctor verbose accepts fragment-only configuration and reports the optional root absent" {
@@ -737,7 +737,7 @@ write_query_config() {
   [[ "$output" == *"  Root config: $CONFIG_HOME/rig.toml (absent)"* ]] || false
   [[ "$output" == *"  Fragment count: 1"* ]] || false
   [[ "$output" == *"  Status: valid"* ]] || false
-  [[ "$output" == *"  Schema: 1"* ]] || false
+  [[ "$output" != *"  Schema:"* ]] || false
 }
 
 @test "doctor verbose summarizes invalid configuration without parser diagnostics" {
@@ -1556,7 +1556,7 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
   [ "$status" -eq 0 ]
 }
 
-@test "schema version and root scalar cardinality fail closed" {
+@test "unversioned config loads while invalid legacy schema and root scalar cardinality fail closed" {
   write_minimal_config
   sed 's/schema = 1/schema = 2/' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/unsupported.toml"
   mv "$CONFIG_HOME/unsupported.toml" "$CONFIG_HOME/rig.toml"
@@ -1568,8 +1568,8 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
   sed '/schema = 1/d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/missing.toml"
   mv "$CONFIG_HOME/missing.toml" "$CONFIG_HOME/rig.toml"
   run_loader
-  [ "$status" -eq 2 ]
-  [[ "$output" == *"[rig] requires field 'schema'"* ]] || false
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"requires field 'schema'"* ]] || false
 
   printf '%s\n' \
     '[rig]' \
@@ -3326,7 +3326,7 @@ import json, sys
 with open(sys.argv[1], encoding="utf-8") as source:
     data = json.load(source)
 assert data["format"] == "rig-publication"
-assert data["version"] == 2
+assert data["version"] == 1
 assert data["profile"]["skills"] == []
 assert data["publication"] == {
     "id": "public",

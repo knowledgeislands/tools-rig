@@ -132,7 +132,7 @@ print_help() {
     '  -V, --version         Print the Rig release or development version.' \
     '' \
     'Commands:' \
-    '  init        Create a minimal Rig configuration.' \
+    '  init        Create configuration or propose legacy schema repair.' \
     '  show        Describe the selected setup or one declared item.' \
     '  status      Compare expected and observed tool, skill, and resource state.' \
     '  capture     Discover installed items and propose additive declarations.' \
@@ -150,7 +150,7 @@ rig_command_options() {
   # name | value placeholder | purpose | completion values | required
   # This is the authored option inventory for help, usage and both completions.
   case "$1" in
-    init) printf '%s\n' '--dry-run||Preview the configuration without writing it.||' ;;
+    init) printf '%s\n' '--dry-run||Preview without writing configuration.||' '--repair-schema||Propose removal of a recognised legacy schema field.||' '--output|PATH|Write a repaired proposal outside active configuration.|path|' ;;
     show) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--all||Browse all catalogue tools.||' '--category|ID|Limit tools to a category.|category id|' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
     completion) ;;
     status) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--problems||Show only entries needing attention.||' '--unmanaged||Include observed items not declared by an installation.||' '--retired||Include private, informational retired-application evidence.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;

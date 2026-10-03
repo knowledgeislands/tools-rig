@@ -1847,8 +1847,9 @@ rig_validate_model() {
   local field_index field_end
 
   rig_section_index rig || rig_fail 'missing [rig] section' || return
-  rig_require_field rig schema || return
-  [ "$RIG_VALUE" = 1 ] || rig_fail "unsupported schema version '$RIG_VALUE'" || return
+  if rig_get_value rig schema; then
+    [ "$RIG_VALUE" = 1 ] || rig_fail "unsupported schema version '$RIG_VALUE'" || return
+  fi
   rig_require_field rig default-profile || return
   rig_valid_id "$RIG_VALUE" || rig_fail "invalid default profile '$RIG_VALUE'" || return
   rig_reference_exists profile "$RIG_VALUE" || rig_fail "[rig] references unknown profile '$RIG_VALUE'" || return

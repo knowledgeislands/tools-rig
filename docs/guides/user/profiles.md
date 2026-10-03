@@ -8,7 +8,6 @@ A declaration without `profiles` belongs to the profile named by `[rig].default-
 
 ```toml
 [rig]
-schema = 1
 default-profile = "workstation"
 
 [tool.mgit]

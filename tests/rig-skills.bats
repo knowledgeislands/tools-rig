@@ -271,7 +271,7 @@ import json, sys
 with open(sys.argv[1], encoding="utf-8") as source:
     data = json.load(source)
 assert data["format"] == "rig-publication"
-assert data["version"] == 2
+assert data["version"] == 1
 assert data["profile"]["skills"] == [{
     "id": "caveman",
     "name": "Caveman",

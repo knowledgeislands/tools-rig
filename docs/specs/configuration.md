@@ -14,15 +14,15 @@ _Verify:_ Bats tests isolate `RIG_CONFIG_HOME`, exercise root-only, root-plus-fr
 
 _Evidence:_ `rig_load_config` reads only the selected root and fragment directory; `tests/rig.bats` covers every supported source layout.
 
-### RIG-CONF-002 — Explicit schema version
+### RIG-CONF-002 — Unversioned input and recognised legacy marker
 
-Every configuration MUST declare exactly one decimal integer `schema = 1` in the root `rig` table. Rig MUST reject a missing, duplicated, non-integer, or unsupported version before resolving declarations.
+New configuration MUST omit a schema field. Rig MUST read the current unversioned shape and a structurally valid legacy file with one integer `schema = 1` in `[rig]`. It MUST reject a duplicated, non-integer, or unsupported marker and MUST NOT use the marker to excuse an unknown declaration. Ordinary reads MUST NOT rewrite configuration. `rig init --repair-schema --dry-run` MUST preview removing the recognised field; `rig init --repair-schema --output PATH` MUST write a proposal outside active configuration for explicit review and manual replacement.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests accept schema version 1 and reject missing, duplicate, float, and unsupported versions.
+_Verify:_ Bats tests accept unversioned and recognised legacy input; reject duplicate, float, unsupported, and structurally invalid legacy input; and verify preview, exclusive proposal creation, and no-write reads.
 
-_Evidence:_ `rig_toml_field`, `rig_toml_mark_field`, and `rig_validate_model` enforce the version contract; `tests/rig.bats` covers its accepted and rejected forms.
+_Evidence:_ `rig_toml_field`, `rig_toml_mark_field`, `rig_validate_model`, and `rig_schema_repair` enforce the input boundary; `tests/rig.bats` and `tests/rig-schema-migration.bats` cover it.
 
 ### RIG-CONF-003 — Deterministic fragment order
 
@@ -36,7 +36,7 @@ _Evidence:_ `rig_load_config` scopes discovery and ordering under `LC_ALL=C`; `t
 
 ### RIG-CONF-004 — Inert bounded TOML
 
-Rig MUST accept schema 1 tables, bare keys, decimal integer schema value, single-line basic strings, bounded single-line or multiline arrays of basic strings, blank lines, and `#` comments without sourcing files, evaluating commands, interpreting shell syntax, or performing general environment expansion. Every accepted source MUST be valid TOML. Rig MUST reject unsupported TOML types and syntax before returning a resolved rig.
+Rig MUST accept its current tables, bare keys, an optional recognised legacy decimal integer schema marker, single-line basic strings, bounded single-line or multiline arrays of basic strings, blank lines, and `#` comments without sourcing files, evaluating commands, interpreting shell syntax, or performing general environment expansion. Every accepted source MUST be valid TOML. Rig MUST reject unsupported TOML types and syntax before returning a resolved rig.
 
 _Conformance:_ conforming
 
@@ -88,7 +88,7 @@ _Evidence:_ `rig_parse_section_identity` and `rig_valid_id` enforce the table an
 
 ### RIG-CONF-009 — Root fields
 
-Schema 1 MUST require `schema` and `default-profile` in `[rig]`; the default MUST name a declared profile. `bootstrap-profile` MUST be rejected with migration guidance, not silently ignored.
+`[rig]` MUST require `default-profile`; the default MUST name a declared profile. A recognised legacy `schema = 1` MAY be present but MUST NOT be written by init. `bootstrap-profile` MUST be rejected with migration guidance, not silently ignored.
 
 _Conformance:_ conforming
 

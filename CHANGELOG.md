@@ -23,9 +23,10 @@ Run `rig COMMAND --help` for options and exact arguments.
 
 - A readable catalogue declares tools, user-level agent skills, managed services and scheduled jobs, typed machine settings, Dock layout, private ports, relationships, providers, and profiles. Profiles select a machine or role setup; provider observations produce expected-versus-observed state.
 - `show`, `status`, and `doctor` explain intent, observed state, and capability or health findings without changing the machine. `status --unmanaged` and `status --retired` add informational observations; `capture` proposes additive declarations for review.
+- `init` writes unversioned configuration. Recognised legacy `schema = 1` input remains readable; `init --repair-schema` previews a repaired source or writes a reviewable proposal outside active configuration without rewriting it.
 - `apply` supports exact target selection, complete preflight, dependency order, non-mutating dry runs, and independent outcomes. Reconciliation preserves receipts for declared resources outside the selected profile and retires a resource only when no catalogue declaration still owns it.
 - `upgrade` delegates execution to the appropriate native provider. Homebrew, uv, chezmoi, direct downloads, and declared custom providers retain their own resolution, credentials, and installation state. Rig owns selection and reporting, not a competing package database.
-- `export` generates a deterministic, platform-neutral `rig-publication` version 2 JSON view of an explicitly selected public profile. Private paths, credentials, runtime mappings, state, and private ports are excluded.
+- `export` generates a deterministic, platform-neutral `rig-publication` version 1 JSON view of an explicitly selected public profile. Private paths, credentials, runtime mappings, state, and private ports are excluded.
 - Terminal progress keeps diagnostics visible, redacts private values, and leaves machine-readable standard output stable. Multi-item native phases use adjacent line events rather than reopening a footer between items. The Bash and Zsh completion definitions follow the current commands and options.
 
 ### Changed and removed

@@ -187,7 +187,7 @@ rig_render_publication_json() {
   rig_sort_query_items
   categories=("${RIG_QUERY_ITEMS[@]+"${RIG_QUERY_ITEMS[@]}"}")
 
-  printf '{\n  "format": "rig-publication",\n  "version": 2,\n  "publication": {\n'
+  printf '{\n  "format": "rig-publication",\n  "version": 1,\n  "publication": {\n'
   rig_json_escape "$profile"
   printf '    "id": "%s",\n' "$RIG_VALUE"
   rig_json_escape "$title"

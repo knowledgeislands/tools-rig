@@ -4,7 +4,7 @@ Rig configuration describes the setup you want. Providers install or observe the
 
 ## Command synopsis
 
-- `rig init [--dry-run]`
+- `rig init [--dry-run] [--repair-schema] [--output PATH]`
 - `rig show [ITEM] [--profile NAME] [--all] [--category ID] [--format text|json]`
 - `rig status [--profile NAME] [--problems] [--unmanaged] [--retired] [--format text|json]`
 - `rig doctor [--profile NAME] [--verbose] [--format text|json]`
@@ -19,7 +19,7 @@ Use `rig COMMAND --help` for command-local details. Item lookup cannot be combin
 
 ## Set up configuration
 
-`rig init` creates a minimal default configuration. It does not inspect or install software, overwrite existing configuration, or adopt what happens to be installed. Preview with `rig init --dry-run`.
+`rig init` creates a minimal unversioned default configuration. It does not inspect or install software, overwrite existing configuration, or adopt what happens to be installed. Preview with `rig init --dry-run`. For a valid older configuration carrying `schema = 1`, `rig init --repair-schema --dry-run` previews the source with that obsolete line removed. `rig init --repair-schema --output PATH` writes the repaired source to a new file outside active configuration; review it and replace the named source manually. Ordinary commands never rewrite configuration, and unknown or invalid legacy shapes receive no repair proposal.
 
 Add categories and declarations to the resulting file, or use capture to prepare reviewed additions. See [Get started](getting-started.md).
 

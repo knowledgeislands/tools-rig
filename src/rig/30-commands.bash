@@ -422,7 +422,7 @@ rig_count_config_fragments() {
 }
 
 rig_doctor_diagnostics() {
-  local platform root_file root_display fragment_count config_status schema default_profile exit_code
+  local platform root_file root_display fragment_count config_status default_profile exit_code
   local index key profiles tools skills resources ports variants variant rest
   local format config_loaded
   local -a seen_variants
@@ -440,7 +440,6 @@ rig_doctor_diagnostics() {
   [ -e "$root_file" ] || root_display="$root_file (absent)"
 
   config_status=missing
-  schema=
   default_profile=
   profiles=0
   tools=0
@@ -453,8 +452,6 @@ rig_doctor_diagnostics() {
   if [ -e "$root_file" ] || [ "$fragment_count" -gt 0 ]; then
     if [ "$config_loaded" -eq 1 ]; then
       config_status=valid
-      rig_get_value rig schema || return 1
-      schema=$RIG_VALUE
       rig_get_value rig default-profile || return 1
       default_profile=$RIG_VALUE
       index=0
@@ -505,7 +502,6 @@ rig_doctor_diagnostics() {
     rig_json_field ',' status "$config_status"
     printf ',"fragment_count":%s' "$fragment_count"
     if [ "$config_status" = valid ]; then
-      rig_json_field ',' schema "$schema"
       rig_json_field ',' default_profile "$default_profile"
       rig_json_field ',' selection_mode "$RIG_PROFILE_SELECTION_MODE"
       printf ',"profiles":%s,"tools":%s,"skills":%s,"resources":%s,"ports":%s,"variants":%s' \
@@ -522,8 +518,8 @@ rig_doctor_diagnostics() {
   printf 'Configuration:\n  Root config: %s\n  Fragment count: %s\n  Status: %s\n' \
     "$root_display" "$fragment_count" "$config_status"
   if [ "$config_status" = valid ]; then
-    printf '  Schema: %s\n  Default profile: %s\n  Selection mode: %s\n' \
-      "$schema" "$default_profile" "$RIG_PROFILE_SELECTION_MODE"
+    printf '  Default profile: %s\n  Selection mode: %s\n' \
+      "$default_profile" "$RIG_PROFILE_SELECTION_MODE"
     printf '  Profiles: %s\n  Tools: %s\n  Skills: %s\n  Managed resources: %s\n  Ports: %s\n  Tool variants: %s\n' \
       "$profiles" "$tools" "$skills" "$resources" "$ports" "$variants"
   fi

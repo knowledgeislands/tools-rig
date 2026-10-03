@@ -4,12 +4,12 @@ area: MIG
 title: Align schema contracts
 theme: migration
 horizon: next
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 6f049c71170fc0a169dafb3cdeeeab3fb8740fc9
 created_at: 2026-10-03T04:00:16Z
-updated_at: 2026-10-03T06:43:53Z
+updated_at: 2026-10-03T07:00:13Z
 ---
 
 ## Goal
@@ -30,10 +30,10 @@ Input parsing and examples require a schema field; export output names version 2
 
 ## Steps
 
-- [ ] Inventory all Rig input, operational output and publication version uses and their consumers.
-- [ ] Accept and write the current unversioned config shape; keep recognised `schema = 1` readable and provide an explicit, previewed repair that never rewrites active configuration on a read.
-- [ ] Renumber the export contract to v1 without reducing payload capability, and make downstream consumers additive-field tolerant.
-- [ ] Align help, completion, manual, guides, specifications and tests; run the full isolated Rig gate.
+- [x] Inventory all Rig input, operational output and publication version uses and their consumers.
+- [x] Accept and write the current unversioned config shape; keep recognised `schema = 1` readable and provide an explicit, previewed repair that never rewrites active configuration on a read.
+- [x] Renumber the export contract to v1 without reducing payload capability, and make downstream consumers additive-field tolerant.
+- [x] Align help, completion, manual, guides, specifications and tests; run the full isolated Rig gate.
 
 ## Files touched
 
@@ -67,6 +67,32 @@ Explain unversioned input, explicit repair and v1 export contract.
 ### Roadmap
 
 Record implementation and verification here.
+
+## Review
+
+### Delivered
+
+From baseline `6f049c71170fc0a169dafb3cdeeeab3fb8740fc9`, Rig now writes and reads the current unversioned configuration shape, accepts only structurally valid legacy `schema = 1` input, and emits the complete public projection under its own version-1 identity. Repair is explicit: preview the exact amended source or write a new proposal outside active configuration for manual replacement. No ordinary read rewrites configuration, no live workstation apply was run, and no release or push is included.
+
+### Change Summary
+
+The authored Bash modules and assembled `bin/rig` implement input compatibility, a guarded init repair proposal, and export v1. The diagnostic snapshot no longer presents a nested configuration-schema field that could imply the user must declare one. `tests/rig-schema-migration.bats` adds isolated migration and help/completion coverage; existing export assertions and the root-cardinality test were aligned. README, changelog, manual, user guides, configuration and publication Specifications, and the configuration Decision Record describe the current contract. An adjacent-repository search found no checked-in consumer of Rig's export; the publication Specification now requires future consumers to tolerate additive fields.
+
+### Verification
+
+`ki repo audit --repo .`, full ShellCheck, Bash syntax, `scripts/assemble-rig --check`, `scripts/benchmark-rig`, `scripts/smoke-native-providers`, `bats tests/ < /dev/null`, `mandoc -T lint man/rig.1`, and `git diff --check` passed. The new focused migration suite passed five tests; the full suite passed after the rebuilt executable was tested.
+
+### Outstanding concerns
+
+No blocking concern. An external export consumer not present in the adjacent repositories may have pinned version 2; it must verify version-1 acceptance at its next integration. The exported fields and behaviour were not reduced.
+
+### Post-change review
+
+The requested input and generated-output contracts are aligned without a parallel parser-version regime. The repair path is deliberately non-destructive: it refuses unknown semantics and never targets active configuration. Regression risk is concentrated in version-pinned external export readers; local and isolated checks passed, so the item is ready for acceptance review.
+
+### Mini recap
+
+Rig's current input is unversioned, recognised legacy input is repairable through a reviewed proposal, and operational and public JSON each identify their own v1 contract. Verification passed with no live apply. The configuration Decision Record, Specifications, and user guide carry the durable behaviour; any newly discovered external consumer should be evaluated at integration rather than adding a speculative compatibility mode here.
 
 ## Discussion
 

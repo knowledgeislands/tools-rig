@@ -18,7 +18,7 @@ The installed core must remain compatible with Bash 3.2 and require no runtime b
 
 ## Decision
 
-Rig uses TOML schema 1. It reads an optional root file at `${RIG_CONFIG_HOME}/rig.toml`, then regular `${RIG_CONFIG_HOME}/conf.d/*.toml` fragments in deterministic bytewise order. At least one source exists, and the merged model contains exactly one root declaration.
+Rig uses one current TOML input shape without a mandatory version field. It reads an optional root file at `${RIG_CONFIG_HOME}/rig.toml`, then regular `${RIG_CONFIG_HOME}/conf.d/*.toml` fragments in deterministic bytewise order. At least one source exists, and the merged model contains exactly one root declaration. A structurally recognised legacy `schema = 1` marker remains readable and can be removed through an explicit, previewed proposal; reads do not rewrite files.
 
 The schema gives each catalogue capability one declaration. Installation and platform variants remain with their owning tool; managed-resource dependencies remain an inert graph; profile membership remains with each selectable item. A profile records identity, purpose, inheritance, and whether it is complete intent or a non-appliable view. Built-in providers are selected by stable identity without repeating their adapter capabilities. External providers are explicit, narrowly allowed executable extensions.
 
@@ -28,7 +28,7 @@ The complete table and field contract belongs to the Specifications and the `rig
 
 ## Consequences
 
-Configuration remains approachable in standard TOML-aware editors while the runtime keeps its dependency-free Bash parser. A valid TOML document may still be outside schema 1, so diagnostics distinguish unsupported TOML from unknown Rig declarations.
+Configuration remains approachable in standard TOML-aware editors while the runtime keeps its dependency-free Bash parser. A valid TOML document may still be outside the current Rig shape, so diagnostics distinguish unsupported TOML from unknown Rig declarations.
 
 Ordinary configuration states intent and native ownership. Adapter selection, capability discovery, lifecycle sequencing, native command selection, and extension protocol versioning remain implementation concerns. External executables stay explicit trust transitions, while declaration queries remain free of provider side effects.
 

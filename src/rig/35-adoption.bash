@@ -13,23 +13,94 @@ rig_adoption_config_home() {
 }
 
 rig_init_content() {
-  printf '%s\n' '[rig]' 'schema = 1' 'default-profile = "default"' '' \
+  printf '%s\n' '[rig]' 'default-profile = "default"' '' \
     '[profile.default]' 'name = "Default"' 'kind = "complete"'
 }
 
-rig_command_init() {
-  local dry_run config_home target fragment
+rig_schema_repair_render() {
+  local source omit line number
+  source=$1; omit=$2; number=0
+  while IFS= read -r line; do
+    number=$((number + 1))
+    [ "$number" -eq "$omit" ] || printf '%s\n' "$line"
+  done <"$source"
+  if [ -n "$line" ]; then
+    number=$((number + 1))
+    [ "$number" -eq "$omit" ] || printf '%s' "$line"
+  fi
+}
 
-  dry_run=0
+rig_schema_repair() {
+  local dry_run output config_home source line stripped section key value number found source_file source_line
+  dry_run=$1; output=$2
+  rig_load_config || return
+  if ! rig_get_value rig schema; then
+    printf '%s\n' 'Configuration is already unversioned; no repair needed.'
+    return 0
+  fi
+  rig_adoption_config_home || return
+  config_home=$RIG_VALUE
+  found=0; source_file=; source_line=0
+  for source in "$config_home/rig.toml" "$config_home"/conf.d/*.toml; do
+    [ -f "$source" ] || continue
+    section=; number=0
+    while IFS= read -r line || [ -n "$line" ]; do
+      number=$((number + 1))
+      rig_toml_strip_comment "$line" || return
+      rig_trim "$RIG_VALUE"
+      stripped=$RIG_VALUE
+      case "$stripped" in
+        \[*\]) section=${stripped#\[}; section=${section%\]} ;;
+        *=*)
+          [ "$section" = rig ] || continue
+          key=${stripped%%=*}; value=${stripped#*=}
+          rig_trim "$key"; key=$RIG_VALUE
+          rig_trim "$value"; value=$RIG_VALUE
+          if [ "$key" = schema ] && [ "$value" = 1 ]; then
+            found=$((found + 1)); source_file=$source; source_line=$number
+          fi
+          ;;
+      esac
+    done <"$source"
+  done
+  [ "$found" -eq 1 ] || rig_fail 'cannot isolate one recognised legacy schema field for repair' || return
+  if [ "$dry_run" -eq 1 ]; then
+    printf 'Would remove the legacy schema field at %s:%s; active configuration is unchanged.\n' "$source_file" "$source_line"
+    rig_schema_repair_render "$source_file" "$source_line"
+    return
+  fi
+  [ -n "$output" ] || rig_fail 'repair requires --output PATH outside active configuration; preview with --dry-run' || return
+  rig_capture_output_path "$output" || return
+  output=$RIG_VALUE
+  (umask 077; set -C; rig_schema_repair_render "$source_file" "$source_line" >"$output") || {
+    rig_fail "could not create repaired proposal: $output"; return;
+  }
+  printf 'Created repaired proposal: %s\nReview it, then replace %s manually.\n' "$output" "$source_file"
+}
+
+rig_command_init() {
+  local dry_run repair output config_home target fragment
+
+  dry_run=0; repair=0; output=
   while [ "$#" -gt 0 ]; do
     case "$1" in
       -h|--help) [ "$#" -eq 1 ] || rig_command_syntax_error init || return
         rig_command_help init; return ;;
       --dry-run) [ "$dry_run" -eq 0 ] || rig_command_syntax_error init || return
         dry_run=1; shift ;;
+      --repair-schema) [ "$repair" -eq 0 ] || rig_command_syntax_error init || return
+        repair=1; shift ;;
+      --output) [ "$#" -ge 2 ] && [ -n "$2" ] && [ -z "$output" ] || rig_command_syntax_error init || return
+        output=$2; shift 2 ;;
       *) rig_command_syntax_error init; return ;;
     esac
   done
+  if [ "$repair" -eq 1 ]; then
+    [ "$dry_run" -eq 0 ] || [ -z "$output" ] || rig_command_syntax_error init || return
+    rig_schema_repair "$dry_run" "$output"
+    return
+  fi
+  [ -z "$output" ] || rig_command_syntax_error init || return
   rig_adoption_config_home || return
   config_home=$RIG_VALUE
   while :; do

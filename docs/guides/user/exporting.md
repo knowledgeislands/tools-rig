@@ -38,7 +38,7 @@ rig export --profile public --output ./public-rig \
 
 `--title` defaults to the view's declared `name`, and to the profile identifier when the view declares none. `--base-url` may be a domain root, subdomain, or subpath; Rig normalises it into canonical URL metadata but does not generate presentation. Omit it and `canonical_url` is `null`.
 
-Export performs no network operation and invokes no provider. The output contains one regular file, `rig.json`. A consumer first checks the `rig-publication` format and version, then renders only fields it understands.
+Export performs no network operation and invokes no provider. The output contains one regular file, `rig.json`, with `format: rig-publication` and `version: 1`. A consumer checks those fields, renders only fields it understands, and tolerates additive fields.
 
 The export includes only the selected view's allow-listed catalogue and skill metadata. It excludes provider configuration, other profiles, private ports, executable paths, native authorities, install sources, runtime projections, local paths, arguments, credentials, observed state, and unmanaged inventory.
 

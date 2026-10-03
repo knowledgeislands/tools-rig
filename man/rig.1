@@ -1,4 +1,4 @@
-.TH RIG 1 "2026-10-02" "Knowledge Islands" "User Commands"
+.TH RIG 1 "2026-10-03" "Knowledge Islands" "User Commands"
 .SH NAME
 \&
 .PP
@@ -8,6 +8,8 @@ rig \- describe and manage a personal working setup
 .br
 .B rig init
 .RI [ \-\-dry-run ]
+.RI [ \-\-repair-schema ]
+.RI [ \-\-output " PATH" ]
 .br
 .B rig show
 .RI [ ITEM ]
@@ -163,12 +165,19 @@ Without either form, the installer discovers the latest GitHub release.
 \&
 .TP
 .B rig init
-Create minimal schema-1 configuration and a complete default profile at
+Create minimal unversioned configuration and a complete default profile at
 .IR RIG_CONFIG_HOME/rig.toml ,
 using the XDG default when the override is absent. Existing root configuration,
 fragments, and symlinked configuration targets are refused.
 .B \-\-dry-run
 prints the target and content without creating directories or files.
+For a valid legacy configuration with
+.BR "schema = 1" ,
+.B \-\-repair-schema \-\-dry-run
+previews removal of that marker.
+.B \-\-repair-schema \-\-output
+writes a repaired proposal to a new file outside active configuration for
+review and manual replacement; it never rewrites an active source.
 .TP
 .B rig show
 Describe the default resolved profile with tools, skills, and resources.
@@ -568,7 +577,8 @@ consumes the export.
 .B rig doctor \-\-verbose
 Include runtime/configuration evidence with normal health checks: Rig and Bash
 versions, invoked executable, platform, XDG directories, root configuration,
-fragment count, validity, schema, default profile, selection mode, and
+fragment count, validity, default profile,
+selection mode, and
 declaration counts. JSON embeds the snapshot as
 .B diagnostics
 while retaining ordinary findings and exit status.
@@ -690,8 +700,9 @@ When
 is unset, its default is
 .IR ${XDG_CONFIG_HOME:-$HOME/.config}/rig .
 .PP
-Configuration uses schema 1's bounded TOML grammar: named tables, the integer
-schema value, single-line basic strings, bounded single-line or multiline
+Configuration uses a bounded TOML grammar: named tables, an optional
+recognised legacy integer schema marker, single-line basic strings,
+bounded single-line or multiline
 basic-string arrays, blank lines, and comments. Accepted files are valid TOML.
 Rig rejects unused TOML features
 and does not source configuration, evaluate commands, interpret shell syntax,
@@ -822,19 +833,19 @@ Set the base cache directory when
 .B RIG_CACHE_HOME
 is unset. The fallback is
 .IR $HOME/.cache .
-.SS SCHEMA 1 TABLES
+.SS CONFIGURATION TABLES
 \&
 .SS CATALOGUE AND PROFILES
 \&
 .TP
 .I ${XDG_CONFIG_HOME:-$HOME/.config}/rig/rig.toml
-Optional root configuration file. Schema 1 uses
+Optional root configuration file. The current input shape uses
 .B [rig]
 with
-.B schema
-and
 .B default-profile
-fields;
+and an optional recognised legacy
+.B schema = 1
+marker;
 .B [category.ID]
 with
 .B name
@@ -1250,7 +1261,6 @@ metadata. Rig does not generate presentation or navigation.
 A minimal catalogue is:
 .nf
 [rig]
-schema = 1
 default-profile = "default"
 
 [category.navigation]
@@ -1354,7 +1364,7 @@ is
 .B rig-publication
 and its integer
 .B version
-is 2. It contains export metadata, profile identity, selected categories,
+is 1. It contains export metadata, profile identity, selected categories,
 and selected tool identity, name, purpose, rationale, declared platforms, and
 closed relationships. It always includes a deterministic profile skills array,
 including when empty. A selected skill contributes only identity, name, purpose,

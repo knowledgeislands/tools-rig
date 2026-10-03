@@ -132,7 +132,7 @@ print_help() {
     '  -V, --version         Print the Rig release or development version.' \
     '' \
     'Commands:' \
-    '  init        Create a minimal Rig configuration.' \
+    '  init        Create configuration or propose legacy schema repair.' \
     '  show        Describe the selected setup or one declared item.' \
     '  status      Compare expected and observed tool, skill, and resource state.' \
     '  capture     Discover installed items and propose additive declarations.' \
@@ -150,7 +150,7 @@ rig_command_options() {
   # name | value placeholder | purpose | completion values | required
   # This is the authored option inventory for help, usage and both completions.
   case "$1" in
-    init) printf '%s\n' '--dry-run||Preview the configuration without writing it.||' ;;
+    init) printf '%s\n' '--dry-run||Preview without writing configuration.||' '--repair-schema||Propose removal of a recognised legacy schema field.||' '--output|PATH|Write a repaired proposal outside active configuration.|path|' ;;
     show) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--all||Browse all catalogue tools.||' '--category|ID|Limit tools to a category.|category id|' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
     completion) ;;
     status) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--problems||Show only entries needing attention.||' '--unmanaged||Include observed items not declared by an installation.||' '--retired||Include private, informational retired-application evidence.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
@@ -2603,8 +2603,9 @@ rig_validate_model() {
   local field_index field_end
 
   rig_section_index rig || rig_fail 'missing [rig] section' || return
-  rig_require_field rig schema || return
-  [ "$RIG_VALUE" = 1 ] || rig_fail "unsupported schema version '$RIG_VALUE'" || return
+  if rig_get_value rig schema; then
+    [ "$RIG_VALUE" = 1 ] || rig_fail "unsupported schema version '$RIG_VALUE'" || return
+  fi
   rig_require_field rig default-profile || return
   rig_valid_id "$RIG_VALUE" || rig_fail "invalid default profile '$RIG_VALUE'" || return
   rig_reference_exists profile "$RIG_VALUE" || rig_fail "[rig] references unknown profile '$RIG_VALUE'" || return
@@ -9954,7 +9955,7 @@ rig_count_config_fragments() {
 }
 
 rig_doctor_diagnostics() {
-  local platform root_file root_display fragment_count config_status schema default_profile exit_code
+  local platform root_file root_display fragment_count config_status default_profile exit_code
   local index key profiles tools skills resources ports variants variant rest
   local format config_loaded
   local -a seen_variants
@@ -9972,7 +9973,6 @@ rig_doctor_diagnostics() {
   [ -e "$root_file" ] || root_display="$root_file (absent)"
 
   config_status=missing
-  schema=
   default_profile=
   profiles=0
   tools=0
@@ -9985,8 +9985,6 @@ rig_doctor_diagnostics() {
   if [ -e "$root_file" ] || [ "$fragment_count" -gt 0 ]; then
     if [ "$config_loaded" -eq 1 ]; then
       config_status=valid
-      rig_get_value rig schema || return 1
-      schema=$RIG_VALUE
       rig_get_value rig default-profile || return 1
       default_profile=$RIG_VALUE
       index=0
@@ -10037,7 +10035,6 @@ rig_doctor_diagnostics() {
     rig_json_field ',' status "$config_status"
     printf ',"fragment_count":%s' "$fragment_count"
     if [ "$config_status" = valid ]; then
-      rig_json_field ',' schema "$schema"
       rig_json_field ',' default_profile "$default_profile"
       rig_json_field ',' selection_mode "$RIG_PROFILE_SELECTION_MODE"
       printf ',"profiles":%s,"tools":%s,"skills":%s,"resources":%s,"ports":%s,"variants":%s' \
@@ -10054,8 +10051,8 @@ rig_doctor_diagnostics() {
   printf 'Configuration:\n  Root config: %s\n  Fragment count: %s\n  Status: %s\n' \
     "$root_display" "$fragment_count" "$config_status"
   if [ "$config_status" = valid ]; then
-    printf '  Schema: %s\n  Default profile: %s\n  Selection mode: %s\n' \
-      "$schema" "$default_profile" "$RIG_PROFILE_SELECTION_MODE"
+    printf '  Default profile: %s\n  Selection mode: %s\n' \
+      "$default_profile" "$RIG_PROFILE_SELECTION_MODE"
     printf '  Profiles: %s\n  Tools: %s\n  Skills: %s\n  Managed resources: %s\n  Ports: %s\n  Tool variants: %s\n' \
       "$profiles" "$tools" "$skills" "$resources" "$ports" "$variants"
   fi
@@ -11555,23 +11552,94 @@ rig_adoption_config_home() {
 }
 
 rig_init_content() {
-  printf '%s\n' '[rig]' 'schema = 1' 'default-profile = "default"' '' \
+  printf '%s\n' '[rig]' 'default-profile = "default"' '' \
     '[profile.default]' 'name = "Default"' 'kind = "complete"'
 }
 
-rig_command_init() {
-  local dry_run config_home target fragment
+rig_schema_repair_render() {
+  local source omit line number
+  source=$1; omit=$2; number=0
+  while IFS= read -r line; do
+    number=$((number + 1))
+    [ "$number" -eq "$omit" ] || printf '%s\n' "$line"
+  done <"$source"
+  if [ -n "$line" ]; then
+    number=$((number + 1))
+    [ "$number" -eq "$omit" ] || printf '%s' "$line"
+  fi
+}
 
-  dry_run=0
+rig_schema_repair() {
+  local dry_run output config_home source line stripped section key value number found source_file source_line
+  dry_run=$1; output=$2
+  rig_load_config || return
+  if ! rig_get_value rig schema; then
+    printf '%s\n' 'Configuration is already unversioned; no repair needed.'
+    return 0
+  fi
+  rig_adoption_config_home || return
+  config_home=$RIG_VALUE
+  found=0; source_file=; source_line=0
+  for source in "$config_home/rig.toml" "$config_home"/conf.d/*.toml; do
+    [ -f "$source" ] || continue
+    section=; number=0
+    while IFS= read -r line || [ -n "$line" ]; do
+      number=$((number + 1))
+      rig_toml_strip_comment "$line" || return
+      rig_trim "$RIG_VALUE"
+      stripped=$RIG_VALUE
+      case "$stripped" in
+        \[*\]) section=${stripped#\[}; section=${section%\]} ;;
+        *=*)
+          [ "$section" = rig ] || continue
+          key=${stripped%%=*}; value=${stripped#*=}
+          rig_trim "$key"; key=$RIG_VALUE
+          rig_trim "$value"; value=$RIG_VALUE
+          if [ "$key" = schema ] && [ "$value" = 1 ]; then
+            found=$((found + 1)); source_file=$source; source_line=$number
+          fi
+          ;;
+      esac
+    done <"$source"
+  done
+  [ "$found" -eq 1 ] || rig_fail 'cannot isolate one recognised legacy schema field for repair' || return
+  if [ "$dry_run" -eq 1 ]; then
+    printf 'Would remove the legacy schema field at %s:%s; active configuration is unchanged.\n' "$source_file" "$source_line"
+    rig_schema_repair_render "$source_file" "$source_line"
+    return
+  fi
+  [ -n "$output" ] || rig_fail 'repair requires --output PATH outside active configuration; preview with --dry-run' || return
+  rig_capture_output_path "$output" || return
+  output=$RIG_VALUE
+  (umask 077; set -C; rig_schema_repair_render "$source_file" "$source_line" >"$output") || {
+    rig_fail "could not create repaired proposal: $output"; return;
+  }
+  printf 'Created repaired proposal: %s\nReview it, then replace %s manually.\n' "$output" "$source_file"
+}
+
+rig_command_init() {
+  local dry_run repair output config_home target fragment
+
+  dry_run=0; repair=0; output=
   while [ "$#" -gt 0 ]; do
     case "$1" in
       -h|--help) [ "$#" -eq 1 ] || rig_command_syntax_error init || return
         rig_command_help init; return ;;
       --dry-run) [ "$dry_run" -eq 0 ] || rig_command_syntax_error init || return
         dry_run=1; shift ;;
+      --repair-schema) [ "$repair" -eq 0 ] || rig_command_syntax_error init || return
+        repair=1; shift ;;
+      --output) [ "$#" -ge 2 ] && [ -n "$2" ] && [ -z "$output" ] || rig_command_syntax_error init || return
+        output=$2; shift 2 ;;
       *) rig_command_syntax_error init; return ;;
     esac
   done
+  if [ "$repair" -eq 1 ]; then
+    [ "$dry_run" -eq 0 ] || [ -z "$output" ] || rig_command_syntax_error init || return
+    rig_schema_repair "$dry_run" "$output"
+    return
+  fi
+  [ -z "$output" ] || rig_command_syntax_error init || return
   rig_adoption_config_home || return
   config_home=$RIG_VALUE
   while :; do
@@ -12092,7 +12160,7 @@ rig_render_publication_json() {
   rig_sort_query_items
   categories=("${RIG_QUERY_ITEMS[@]+"${RIG_QUERY_ITEMS[@]}"}")
 
-  printf '{\n  "format": "rig-publication",\n  "version": 2,\n  "publication": {\n'
+  printf '{\n  "format": "rig-publication",\n  "version": 1,\n  "publication": {\n'
   rig_json_escape "$profile"
   printf '    "id": "%s",\n' "$RIG_VALUE"
   rig_json_escape "$title"

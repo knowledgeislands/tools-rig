@@ -37,7 +37,6 @@ Run `rig init --dry-run`, then `rig init` to create a minimal `${XDG_CONFIG_HOME
 
 ```toml
 [rig]
-schema = 1
 default-profile = "default"
 
 [category.navigation]

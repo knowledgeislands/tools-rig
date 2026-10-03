@@ -36,12 +36,12 @@ _Evidence:_ `tests/rig.bats` observes the public relationship while the private 
 
 ### RIG-PUB-004 — Versioned deterministic artifact
 
-`rig export` MUST produce a complete tree containing exactly one regular, non-symlink file named `rig.json`. The UTF-8 JSON document MUST use this version-2 shape and MUST order categories, tools, skills, declared platforms, and relationship values bytewise by identity or value:
+`rig export` MUST produce a complete tree containing exactly one regular, non-symlink file named `rig.json`. The UTF-8 JSON document MUST use this version-1 shape and MUST order categories, tools, skills, declared platforms, and relationship values bytewise by identity or value:
 
 ```json
 {
   "format": "rig-publication",
-  "version": 2,
+  "version": 1,
   "publication": {
     "id": "public",
     "title": "A public rig",
@@ -76,7 +76,7 @@ _Evidence:_ `tests/rig.bats` observes the public relationship while the private 
 }
 ```
 
-A consumer MUST inspect both `format` and `version` before interpreting the remaining document. Rig MAY add a new integer version in a later contract, but MUST NOT silently change the meaning or shape of version 2.
+A consumer MUST inspect both `format` and `version` before interpreting the remaining document, tolerate additive fields, and reject an unsupported format or version. Rig MAY add a new integer version in a later contract, but MUST NOT silently remove or repurpose a version-1 field.
 
 _Conformance:_ conforming
 
@@ -152,13 +152,13 @@ _Evidence:_ `rig_render_publication_json` has a fixed tool-and-category allow-li
 
 ### RIG-PUB-011 — Explicit user-level skill projection
 
-Publication format 2 MUST always emit deterministic `profile.skills`, including an empty array. A skill MUST enter an export only through explicit view membership and MUST expose only `id`, `name`, `purpose`, `rationale`, and optional reviewed `public-source` as `source`. Rig MUST exclude skill authority, native installation source, runtime projections, local paths and roots, locks, arguments, observed state, and unmanaged inventory. JSON string encoding MUST preserve valid UTF-8 and escape quotes, backslashes, and control characters without changing the existing category or tool semantics.
+Publication format 1 MUST always emit deterministic `profile.skills`, including an empty array. A skill MUST enter an export only through explicit view membership and MUST expose only `id`, `name`, `purpose`, `rationale`, and optional reviewed `public-source` as `source`. Rig MUST exclude skill authority, native installation source, runtime projections, local paths and roots, locks, arguments, observed state, and unmanaged inventory. JSON string encoding MUST preserve valid UTF-8 and escape quotes, backslashes, and control characters without changing the existing category or tool semantics.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats exports selected and unselected skills, compares deterministic order and empty arrays, parses JSON containing quotes, controls, and UTF-8, and scans the complete tree for private markers including ports, paths, roots, runtimes, locks, arguments, state, and unmanaged inventory.
 
-_Evidence:_ `rig_render_public_skill`, `rig_render_publication_json`, and `tests/rig-skills.bats` implement and verify the format-2 allow-list.
+_Evidence:_ `rig_render_public_skill`, `rig_render_publication_json`, and `tests/rig-skills.bats` implement and verify the format-1 allow-list.
 
 ### RIG-PUB-012 — Retired application privacy
 
