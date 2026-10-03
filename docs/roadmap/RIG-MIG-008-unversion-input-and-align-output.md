@@ -4,12 +4,12 @@ area: MIG
 title: Align schema contracts
 theme: migration
 horizon: next
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 6f049c71170fc0a169dafb3cdeeeab3fb8740fc9
 created_at: 2026-10-03T04:00:16Z
-updated_at: 2026-10-03T07:00:13Z
+updated_at: 2026-10-03T07:30:08Z
 ---
 
 ## Goal
@@ -93,6 +93,10 @@ The requested input and generated-output contracts are aligned without a paralle
 ### Mini recap
 
 Rig's current input is unversioned, recognised legacy input is repairable through a reviewed proposal, and operational and public JSON each identify their own v1 contract. Verification passed with no live apply. The configuration Decision Record, Specifications, and user guide carry the durable behaviour; any newly discovered external consumer should be evaluated at integration rather than adding a speculative compatibility mode here.
+
+## Done
+
+Accepted 2026-10-03 by Kris Brown on the review packet above.
 
 ## Discussion
 
