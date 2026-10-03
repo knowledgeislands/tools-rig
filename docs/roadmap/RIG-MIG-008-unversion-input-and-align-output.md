@@ -4,12 +4,12 @@ area: MIG
 title: Align schema contracts
 theme: migration
 horizon: next
-status: draft
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-03T04:00:16Z
-updated_at: 2026-10-03T04:00:16Z
+updated_at: 2026-10-03T06:43:53Z
 ---
 
 ## Goal
@@ -31,7 +31,7 @@ Input parsing and examples require a schema field; export output names version 2
 ## Steps
 
 - [ ] Inventory all Rig input, operational output and publication version uses and their consumers.
-- [ ] Accept and write the current unversioned config shape; provide an explicit previewed fix for structurally recognised legacy config.
+- [ ] Accept and write the current unversioned config shape; keep recognised `schema = 1` readable and provide an explicit, previewed repair that never rewrites active configuration on a read.
 - [ ] Renumber the export contract to v1 without reducing payload capability, and make downstream consumers additive-field tolerant.
 - [ ] Align help, completion, manual, guides, specifications and tests; run the full isolated Rig gate.
 
