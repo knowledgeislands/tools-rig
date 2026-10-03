@@ -41,6 +41,8 @@ After an exact preview version is explicitly selected:
 
 ## Publish the release
 
+Confirm GitHub release immutability is enabled for this repository before publication. The setting protects only newly created releases; it does not retroactively make older releases immutable. Verify GitHub reports this exact new release as immutable before handing it to an immutable-only receiver.
+
 1. Commit the verified candidate on `main`, push that exact ref, and wait for its Linux, macOS, ShellCheck and manual CI jobs to pass. Do not tag a candidate whose branch checks failed.
 2. Create and push the annotated `vX.Y.Z` tag at that exact commit. Wait for tag CI, including the tag/version match job, before publishing the GitHub release. Never move a published tag to repair a failed candidate.
 3. Publish the GitHub release with migration notes for the breaking command and configuration changes.
