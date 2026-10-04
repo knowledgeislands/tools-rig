@@ -3,6 +3,28 @@
 # Cross-module state is intentionally consumed by the assembled executable.
 # shellcheck disable=SC2004,SC2034,SC2094
 
+rig_command_diag() {
+  local full config_home
+  full=0
+  case "${1:-}" in
+    '') ;;
+    --full) full=1; shift ;;
+    -h|--help) [ "$#" -eq 1 ] || rig_command_syntax_error diag || return
+      rig_command_help diag; return ;;
+    *) rig_command_syntax_error diag; return ;;
+  esac
+  [ "$#" -eq 0 ] || rig_command_syntax_error diag || return
+  rig_adoption_config_home || return
+  config_home=$RIG_VALUE
+  printf 'rig diag: version=%s bash=%s\n' "$RIG_VERSION" "$BASH_VERSION"
+  if [ -f "$config_home/rig.toml" ]; then
+    printf 'rig diag: configuration=present\n'
+  else
+    printf 'rig diag: configuration=absent\n'
+  fi
+  [ "$full" -eq 0 ] || printf 'rig diag: config-home=%s\n' "$config_home"
+}
+
 main() {
   local command_name exit_code
 
@@ -11,7 +33,7 @@ main() {
   command_name=${1:-help}
   rig_progress_reset
   case "$command_name" in
-    init|show|status|doctor|apply|upgrade|capture|export|help|completion)
+    init|repair|show|status|doctor|diag|apply|upgrade|capture|export|help|completion)
       RIG_PROGRESS_COMMAND=$command_name ;;
   esac
   rig_dock_reset_snapshot
@@ -36,11 +58,12 @@ main() {
         1) ;;
         2)
           case "$2" in
-            -h|--help) ;;
-            *) syntax_error "unexpected $2" || return ;;
-          esac
-          ;;
-        *) syntax_error 'usage: rig help [-h|--help]' || return ;;
+            -h|--help|help) ;;
+            init|repair|show|status|doctor|diag|apply|upgrade|capture|export|completion)
+              rig_command_help "$2"; return ;;
+            *) syntax_error "unknown command: $2" || return ;;
+          esac ;;
+        *) syntax_error 'usage: rig help [COMMAND]' || return ;;
       esac
       print_help
       ;;
@@ -51,6 +74,10 @@ main() {
     init)
       shift
       rig_command_init "$@"
+      ;;
+    repair)
+      shift
+      rig_command_repair "$@"
       ;;
     show)
       shift
@@ -63,6 +90,10 @@ main() {
     doctor)
       shift
       rig_command_doctor "$@"
+      ;;
+    diag)
+      shift
+      rig_command_diag "$@"
       ;;
     apply)
       shift
@@ -92,7 +123,6 @@ main() {
     list|explain) syntax_error "command '$command_name' was removed; use rig show [ITEM] or rig show --all" || return ;;
     bootstrap) syntax_error "command 'bootstrap' was removed; use rig apply [--profile NAME]" || return ;;
     update) syntax_error "command 'update' was removed; use rig upgrade" || return ;;
-    diag) syntax_error "command 'diag' was removed; use rig doctor --verbose" || return ;;
     run|maintain) syntax_error "command '$command_name' was removed; use the provider's native tools" || return ;;
     *) syntax_error "unknown command: $command_name" || return ;;
   esac

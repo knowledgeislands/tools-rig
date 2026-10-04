@@ -32,7 +32,7 @@ After an exact preview version is explicitly selected:
 - [ ] Complete the [definition of done](definition-of-done.md).
 - [ ] Compare `bin/rig`, top-level and command-local help, README orientation, user guides, `man/rig.1`, generated Bash and Zsh completions, `CHANGELOG.md`, Specifications, and Decision Records.
 - [ ] Read the affected guidance as a user: confirm the journey has a recognisable outcome, introduces concepts incrementally, uses copyable examples, and remains clear with realistic configuration.
-- [ ] Confirm examples agree on the declarative schema, implicit built-in providers, init, show, status, capture, apply, upgrade, doctor and export boundaries, managed-resource kinds, extension boundary, and changed command synopsis.
+- [ ] Confirm examples agree on the declarative schema, implicit built-in providers, init, repair, show, status, capture, apply, upgrade, doctor, diag and export boundaries, managed-resource kinds, extension boundary, and changed command synopsis. Check root help/completion parity and preview-only repair separately.
 - [ ] While no exact release is selected, confirm the authored and assembled runtime report the same development marker and every immutable install example still names the latest released tag.
 - [ ] After explicit version selection, update `RIG_VERSION` in `src/rig/00-runtime.bash`, assemble `bin/rig`, and confirm the drift check, `rig --version`, consolidated Pre-1.0 baseline, intended `vX.Y.Z` tag, installer examples, and Homebrew formula handoff all agree. From 1.0 onward, also confirm the dated changelog entry.
 - [ ] Verify a disposable `./install.sh --link` installation includes working executable and manual links, then exercise the isolated release-installer fixture.

@@ -132,25 +132,29 @@ print_help() {
     '  -V, --version         Print the Rig release or development version.' \
     '' \
     'Commands:' \
-    '  init        Create configuration or propose legacy schema repair.' \
+    '  init        Create configuration.' \
+    '  repair      Preview a recognised configuration repair.' \
     '  show        Describe the selected setup or one declared item.' \
     '  status      Compare expected and observed tool, skill, and resource state.' \
     '  capture     Discover installed items and propose additive declarations.' \
     '  apply       Materialise the selected setup and its prerequisites.' \
     '  upgrade     Upgrade selected provider-managed tools and skills.' \
-    '  doctor      Check whether Rig can operate; --verbose adds diagnostics.' \
+    '  doctor      Check whether Rig can operate.' \
+    '  diag        Print share-safe environment facts.' \
     '  export      Generate public Rig data.' \
-    '  help        Show this help.' \
+    '  help        Show general or command help.' \
     '  completion  Print shell completion source.' \
     '' \
-    "Run 'rig COMMAND --help' for command usage."
+    "Run 'rig help COMMAND' for command usage."
 }
 
 rig_command_options() {
   # name | value placeholder | purpose | completion values | required
   # This is the authored option inventory for help, usage and both completions.
   case "$1" in
-    init) printf '%s\n' '--dry-run||Preview without writing configuration.||' '--repair-schema||Propose removal of a recognised legacy schema field.||' '--output|PATH|Write a repaired proposal outside active configuration.|path|' ;;
+    init) printf '%s\n' '--dry-run||Preview without writing configuration.||' ;;
+    repair) printf '%s\n' '--output|PATH|Write a repaired proposal outside active configuration.|path|' ;;
+    diag) printf '%s\n' '--full||Include local configuration path.||' ;;
     show) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--all||Browse all catalogue tools.||' '--category|ID|Limit tools to a category.|category id|' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
     completion) ;;
     status) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--problems||Show only entries needing attention.||' '--unmanaged||Include observed items not declared by an installation.||' '--retired||Include private, informational retired-application evidence.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
@@ -210,7 +214,7 @@ rig_command_help() {
       printf '%s\n' '' 'Shows selected historical apply failures separately from current observations.' ;;
   esac
   if [ "$command" = upgrade ]; then
-      printf '%s\n' '' 'Interactive progress uses a footer on supported terminals and yields for native work.'
+    printf '%s\n' '' 'Interactive progress uses a footer on supported terminals and yields for native work.'
     printf '%s\n' 'Unattended mode sets Homebrew NONINTERACTIVE=1; native failures keep their results.' \
       'It does not prevent terminal or graphical authentication or impose a time limit.'
   fi
@@ -220,7 +224,7 @@ rig_command_help() {
     printf '  %-20s %s\n' "$option${value:+ $value}" "$description"
   done < <(rig_command_options "$command")
   case "$command" in
-    init|status|doctor|apply|upgrade|capture|export)
+    init|repair|status|doctor|diag|apply|upgrade|capture|export)
       printf '%s\n' '' 'Exit status: 0 on success, 1 on an operational problem, 2 on usage error.' ;;
   esac
   printf '\nExample: rig %s\n' "$(rig_command_example "$command")"
@@ -229,9 +233,11 @@ rig_command_help() {
 rig_command_example() {
   case "$1" in
     init) printf 'init --dry-run' ;;
+    repair) printf 'repair' ;;
     show) printf 'show tool-name' ;;
     status) printf 'status --problems' ;;
     doctor) printf 'doctor --verbose' ;;
+    diag) printf 'diag' ;;
     apply) printf 'apply --dry-run' ;;
     upgrade) printf 'upgrade --dry-run' ;;
     capture) printf 'capture --provider homebrew --dry-run' ;;
@@ -696,19 +702,19 @@ print_bash_completion() {
     '  current=${COMP_WORDS[COMP_CWORD]}' \
     '  command=${COMP_WORDS[1]:-}' \
     '  if [ "$COMP_CWORD" -eq 1 ]; then' \
-    '    COMPREPLY=($(compgen -W "-h --help -V --version init show status capture apply upgrade doctor export help completion" -- "$current"))' \
+    '    COMPREPLY=($(compgen -W "-h --help -V --version init repair show status capture apply upgrade doctor diag export help completion" -- "$current"))' \
     '    return' \
     '  fi' \
     '  case "$command" in'
   local command words
-  for command in init show status capture apply upgrade doctor export completion; do
+  for command in init repair show status capture apply upgrade doctor diag export completion; do
     words=$(rig_command_completion_words "$command")
     # shellcheck disable=SC2016
     printf '    %s) COMPREPLY=($(compgen -W "%s" -- "$current")) ;;\n' "$command" "$words"
   done
   # shellcheck disable=SC2016
   printf '%s\n' \
-    '    help) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
+    '    help) COMPREPLY=($(compgen -W "-h --help init repair show status capture apply upgrade doctor diag export help completion" -- "$current")) ;;' \
     '  esac' \
     '}' \
     'complete -F _rig rig'
@@ -725,12 +731,14 @@ print_zsh_completion() {
     '  local state' \
     '  commands=(' \
     "    'init:create a minimal Rig configuration'" \
+    "    'repair:preview a recognised configuration repair'" \
     "    'show:describe the selected setup or one declared item'" \
     "    'status:compare expected and observed state'" \
     "    'capture:discover installed items and propose additive declarations'" \
     "    'apply:materialise the selected setup and its prerequisites'" \
     "    'upgrade:upgrade selected provider-managed tools and skills'" \
     "    'doctor:check whether Rig can operate'" \
+    "    'diag:print share-safe environment facts'" \
     "    'export:generate public rig data'" \
     "    'help:show help'" \
     "    'completion:print shell completion source'" \
@@ -741,12 +749,12 @@ print_zsh_completion() {
     '    argument)' \
     '      case $words[2] in'
   local command arguments
-  for command in init show status capture apply upgrade doctor export completion; do
+  for command in init repair show status capture apply upgrade doctor diag export completion; do
     arguments=$(rig_command_zsh_arguments "$command")
     printf '        %s) _arguments%s ;;\n' "$command" "$arguments"
   done
   printf '%s\n' \
-    "        help) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
+    "        help) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:command:(init repair show status capture apply upgrade doctor diag export help completion)' ;;" \
     '      esac' \
     '      ;;' \
     '  esac' \

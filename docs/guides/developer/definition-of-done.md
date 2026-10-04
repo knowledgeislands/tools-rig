@@ -20,6 +20,8 @@ Release publication has additional steps in [Release Rig](releasing.md).
 ## Align affected public surfaces
 
 - [ ] CLI help, command-local help, README orientation, user and developer guides, `man/rig.1`, Bash and Zsh completions, Specifications, Decision Records, and `CHANGELOG.md` agree wherever the change affects them.
+- [ ] Root `help [command]`, `completion`, share-safe `diag`, read-only `doctor`, and preview-first `repair` agree in command tests and public references; no retired duplicate route remains.
+- [ ] Terminal progress changes have isolated pseudo-terminal coverage for native output, redirected line events, completion, failure, and cleanup; never reproduce a destructive apply defect on the live machine.
 - [ ] Affected guidance leads its intended reader to a recognisable outcome, introduces concepts before relying on them, uses copyable examples, and remains readable against realistic configuration.
 
 ## Check distribution impact

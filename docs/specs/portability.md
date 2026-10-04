@@ -125,3 +125,13 @@ _Conformance:_ conforming
 _Verify:_ Run `bats --print-output-on-failure tests/`, then the same suite under `PATH=/usr/bin:/bin:/usr/sbin:/sbin` with `/bin/bash`, and inspect a complete run of `.github/workflows/ci.yml` for a stated reason on every skip.
 
 _Evidence:_ `.github/workflows/ci.yml` pins the harness, aligns the lint job with the local gate and gates `release-tag` behind it; `tests/helpers/toml-parser.bash` supplies the interpreter probe and its stated skip.
+
+### RIG-PORT-013 — Distinct support commands
+
+`rig help [COMMAND]` MUST show general or command-specific usage, and `rig diag` MUST report offline facts without exposing local configuration paths by default. `rig diag --full` MAY include the local configuration path for private troubleshooting. `rig doctor` MUST remain a separate read-only health evaluation whose findings affect its exit status.
+
+_Conformance:_ conforming
+
+_Verify:_ Isolated command tests exercise general and nested help, share-safe and full diagnostics, and doctor findings without provider mutation.
+
+_Evidence:_ `rig_command_diag`, `main`, and `tests/rig.bats` cover the root routes and diagnostic disclosure boundary; doctor findings are covered in `tests/rig-doctor-config.bats`.

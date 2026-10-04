@@ -4,22 +4,24 @@ Rig configuration describes the setup you want. Providers install or observe the
 
 ## Command synopsis
 
-- `rig init [--dry-run] [--repair-schema] [--output PATH]`
+- `rig init [--dry-run]`
+- `rig repair [--output PATH]`
 - `rig show [ITEM] [--profile NAME] [--all] [--category ID] [--format text|json]`
 - `rig status [--profile NAME] [--problems] [--unmanaged] [--retired] [--format text|json]`
 - `rig doctor [--profile NAME] [--verbose] [--format text|json]`
+- `rig diag [--full]`
 - `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID]... [--dry-run] [--format text|json]`
 - `rig upgrade [--profile NAME] [--dry-run] [--unattended] [--format text|json]`
 - `rig capture [ITEM...] [--provider homebrew] [--profile NAME] [--category ID] [--purpose TEXT] [--rationale TEXT] [--output FILE] [--dry-run]`
 - `rig export --profile NAME --output DIRECTORY [--title TEXT] [--base-url URL]`
 - `rig completion bash|zsh`
-- `rig help [-h|--help]`
+- `rig help [COMMAND]`
 
-Use `rig COMMAND --help` for command-local details. Item lookup cannot be combined with selection filters; `--all` and `--profile` are alternative selections. The optional `--profile` selects configuration; it is not a separate lifecycle.
+Use `rig help COMMAND` or `rig COMMAND --help` for command-local details. Item lookup cannot be combined with selection filters; `--all` and `--profile` are alternative selections. The optional `--profile` selects configuration; it is not a separate lifecycle.
 
 ## Set up configuration
 
-`rig init` creates a minimal unversioned default configuration. It does not inspect or install software, overwrite existing configuration, or adopt what happens to be installed. Preview with `rig init --dry-run`. For a valid older configuration carrying `schema = 1`, `rig init --repair-schema --dry-run` previews the source with that obsolete line removed. `rig init --repair-schema --output PATH` writes the repaired source to a new file outside active configuration; review it and replace the named source manually. Ordinary commands never rewrite configuration, and unknown or invalid legacy shapes receive no repair proposal.
+`rig init` creates a minimal unversioned default configuration. It does not inspect or install software, overwrite existing configuration, or adopt what happens to be installed. Preview with `rig init --dry-run`. For a valid older configuration carrying `schema = 1`, `rig repair` previews the source with that obsolete line removed. `rig repair --output PATH` writes the repaired source to a new file outside active configuration; review it and replace the named source manually. Ordinary commands never rewrite configuration, and unknown or invalid legacy shapes receive no repair proposal.
 
 Add categories and declarations to the resulting file, or use capture to prepare reviewed additions. See [Get started](getting-started.md).
 
@@ -37,9 +39,11 @@ Use `--format json` for complete values. Human-readable tables may abbreviate pr
 
 `rig doctor` gives actionable configuration and environment findings. `rig doctor --verbose` includes runtime paths, configuration sources and model counts. Doctor can diagnose missing or invalid configuration and still run independent checks; both forms may invoke read-only observations. A configuration finding returns 1, while invalid command syntax returns 2.
 
-Neither command repairs anything. A catalogue-only tool is neutral, not an installation failure. The JSON state envelope and exit status describe the same result as the text report. Verbose diagnostic metadata includes local paths and must be reviewed before sharing.
+`rig diag` is an offline, share-safe factual summary of the executable and configuration presence. Use `rig diag --full` to include the local configuration path when troubleshooting privately; `doctor` is the read-only health evaluation.
 
-Both commands also show selected historical apply failures separately from live observations. A tool can be present now while its last completed apply failed. The historical finding includes the attempt's completion time, age and native exit status; it is not proof that the current declaration will fail again. Same-provider declaration edits retain that caveat. Use the native diagnostic output from the original attempt to investigate, review `rig apply --target ID --dry-run`, and retry deliberately when appropriate. A later successful apply clears that target's visible failure; applying an unrelated target does not. `--problems` retains these findings and JSON carries them in `apply_failures`, separate from native state counts.
+Neither status nor doctor repairs anything. A catalogue-only tool is neutral, not an installation failure. The JSON state envelope and exit status describe the same result as the text report. Verbose diagnostic metadata includes local paths and must be reviewed before sharing.
+
+Status and doctor also show selected historical apply failures separately from live observations. A tool can be present now while its last completed apply failed. The historical finding includes the attempt's completion time, age and native exit status; it is not proof that the current declaration will fail again. Same-provider declaration edits retain that caveat. Use the native diagnostic output from the original attempt to investigate, review `rig apply --target ID --dry-run`, and retry deliberately when appropriate. A later successful apply clears that target's visible failure; applying an unrelated target does not. `--problems` retains these findings and JSON carries them in `apply_failures`, separate from native state counts.
 
 History is local per-platform evidence beneath Rig's state directory, not configuration or a package database. Read-only commands never clear or repair it. Missing history is neutral; damaged, inaccessible or unsafe history is an unavailable-history finding. Future completion times are reported as clock discrepancies. If an apply cannot save history, Rig warns separately without changing the provider's actual result. Successful ordering records remain internal; neither success nor failure history retains arguments, locators or provider output.
 
@@ -93,7 +97,7 @@ Text reports and JSON belong on stdout; progress, provider diagnostics and the f
 
 Status 0 means success or a healthy observation; 1 means operational findings or failed work; 2 means rejected syntax, configuration or selection. Signals return 129, 130 or 143. With `RIG_OUTCOME=auto`, terminal stderr receives a final outcome line; `always` includes redirected stderr and `never` suppresses it. Help, completion and version carry no outcome.
 
-`RIG_PROGRESS=auto` uses a two-line bottom footer on supported interactive terminals for Rig-owned work and single native-capable items. It shows the command, resolved selection (or selection pending), phase, completed/total work, current target and phase-local outcome counts. These are task counts, not an estimate of elapsed time. Before a native-capable item runs, including observation or preflight, Rig clears the footer and restores the full terminal. A durable task header identifies the work; the footer returns after a single item finishes. Multi-item native-capable phases use line events instead, avoiding repeated blank footer reservations in scrollback. Native prompts and diagnostics remain untouched, and a separating newline protects output that did not end with one when the footer returns.
+`RIG_PROGRESS=auto` uses a two-line bottom footer on supported interactive terminals for Rig-owned phases and single native-capable items. It shows the command, resolved selection (or selection pending), phase, completed/total work, current target and phase-local outcome counts. These are task counts, not an estimate of elapsed time. Multi-item native phases use line events. Rig releases the terminal and emits a durable task header before invoking a native tool, so its prompts, progress display and diagnostics remain unmodified; a separating newline protects output that did not end with one when the footer returns.
 
 Completed, failure-free footer phases leave no permanent success summary, including phases with skipped work. The four configuration phases share one footer instead of leaving a growing gap between each phase. Failures, interruption, incomplete work and phases with failed items still leave durable summaries. This does not remove native diagnostic separators or the final command outcome.
 

@@ -1,12 +1,13 @@
 # Migrate the command surface
 
-This guide is for an existing Rig configuration or script moving to the `v0.4.0` command surface. The cutover is breaking: old commands are rejected with migration advice, not accepted as aliases. The [release history](https://github.com/knowledgeislands/tools-rig/releases) records immutable preview snapshots.
+This guide is for an existing Rig configuration or script moving to the current command surface. Earlier cutovers were breaking: retired commands are rejected with migration advice, not accepted as aliases. The [release history](https://github.com/knowledgeislands/tools-rig/releases) records immutable preview snapshots.
 
 ## Change invocations
 
 - Replace `rig list` with `rig show --all`; use `rig show --category ID` for selected tools or add `--all` for the whole tool catalogue.
 - Replace `rig explain ITEM` with `rig show ITEM`.
-- Replace `rig diag` with `rig doctor --verbose`. Doctor observes health and may return 1 for findings; it is not an inert metadata-only query.
+- Use `rig diag` for share-safe offline facts, `rig diag --full` for local configuration-path detail, and `rig doctor` for read-only health evaluation that may return 1 for findings.
+- Replace `rig init --repair-schema --dry-run` with `rig repair` and `rig init --repair-schema --output PATH` with `rig repair --output PATH`.
 - Replace `rig bootstrap` with `rig apply`. Use an explicit `--profile` when the former bootstrap selection differed from the default.
 - Replace `rig update` with `rig upgrade`, including scheduled jobs and shell wrappers.
 - Remove `rig maintain` invocations. Run deliberate native housekeeping separately; do not add package removal to an upgrade wrapper.

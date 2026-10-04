@@ -527,13 +527,33 @@ write_query_config() {
   run "$RIG" --help
   [ "$status" -eq 0 ]
   [[ "$output" == *"Describe and manage a person's working setup."* ]] || false
-  for command in init show status capture apply upgrade doctor export help completion; do
+  for command in init repair show status capture apply upgrade doctor diag export help completion; do
     [[ "$output" == *"  $command"* ]] || false
   done
-  for command in list explain bootstrap update maintain run diag paths; do
+  for command in list explain bootstrap update maintain run paths; do
     [[ "$output" != *"  $command "* ]] || false
   done
   [[ "$output" == *'Describe the selected setup or one declared item.'* ]] || false
+}
+
+@test "diag is share-safe by default and help resolves command topics" {
+  run env RIG_CONFIG_HOME="$CONFIG_HOME" "$RIG" diag
+  [ "$status" -eq 0 ] || false
+  [[ "$output" == *'configuration='* ]] || false
+  [[ "$output" != *"$CONFIG_HOME"* ]] || false
+
+  run env RIG_CONFIG_HOME="$CONFIG_HOME" "$RIG" diag --full
+  [ "$status" -eq 0 ] || false
+  [[ "$output" == *"config-home=$CONFIG_HOME"* ]] || false
+
+  run "$RIG" help diag
+  [ "$status" -eq 0 ] || false
+  [[ "$output" == *'Usage: rig diag'* ]] || false
+  run "$RIG" help help
+  [ "$status" -eq 0 ] || false
+  [[ "$output" == *'Commands:'* ]] || false
+  run "$RIG" help nonexistent
+  [ "$status" -eq 2 ] || false
 }
 
 @test "command help explains history and the unattended boundary" {
@@ -556,7 +576,7 @@ write_query_config() {
   repo_root=$BATS_TEST_DIRNAME/..
   bash_completion=$("$RIG" completion bash)
   zsh_completion=$("$RIG" completion zsh)
-  for command in init show status capture apply upgrade doctor export help completion; do
+  for command in init repair show status capture apply upgrade doctor diag export help completion; do
     grep -Fq "\`rig $command" "$repo_root/docs/guides/user/commands.md"
     grep -Fq "rig $command" "$repo_root/man/rig.1"
     [[ "$bash_completion" == *" $command"* ]] || false
@@ -654,10 +674,10 @@ write_query_config() {
   run "$RIG" completion bash
   [ "$status" -eq 0 ]
   [[ "$output" == *'complete -F _rig rig'* ]] || false
-  [[ "$output" == *'init show status capture apply upgrade doctor export help completion'* ]] || false
+  [[ "$output" == *'init repair show status capture apply upgrade doctor diag export help completion'* ]] || false
   [[ "$output" == *'--all --category --format'* ]] || false
   [[ "$output" == *'--verbose'* ]] || false
-  for command in list explain bootstrap update maintain run diag; do
+  for command in list explain bootstrap update maintain run; do
     [[ "$output" != *"    $command)"* ]] || false
   done
   run "$RIG" completion zsh
@@ -781,7 +801,7 @@ write_query_config() {
   run env RIG_CONFIG_HOME="$missing_config" "$RIG" doctor --verbose --help
   [ "$status" -eq 0 ]
   [[ "$output" == *'Usage: rig doctor'* ]] || false
-  for command in list explain bootstrap update maintain run diag; do
+  for command in list explain bootstrap update maintain run; do
     run env RIG_CONFIG_HOME="$missing_config" "$RIG" "$command"
     [ "$status" -eq 2 ]
     [[ "$output" == *"command '$command' was removed; use"* ]] || false

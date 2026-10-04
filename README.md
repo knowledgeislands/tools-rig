@@ -49,7 +49,7 @@ Follow [Get started with Rig](docs/guides/user/getting-started.md) to write a sm
 
 To preview just one declared change, use `rig apply --target ID --dry-run`; repeat `--target` to select several exact entries.
 
-Use `rig init` for new, unversioned configuration or a previewed legacy-schema repair proposal, `rig show [ITEM]` to understand intent, `rig status` to compare it with the machine, `rig apply` to reconcile it, and `rig upgrade` to advance declared software. `rig capture` prepares reviewed Homebrew additions; `rig doctor --verbose` diagnoses health and configuration. Export, help and completion remain utilities.
+Use `rig init` for new, unversioned configuration and `rig repair` for a previewed legacy-schema repair proposal. `rig show [ITEM]` explains intent, `rig status` compares it with the machine, `rig apply` reconciles it, and `rig upgrade` advances declared software. `rig capture` prepares reviewed Homebrew additions; `rig doctor` evaluates health and `rig diag` gives share-safe facts. Export, help and completion remain utilities.
 
 Use `--format json` with `show`, `status`, `doctor`, `apply`, or `upgrade` when a script needs complete values. `status --retired` adds private, informational evidence for [explicitly retired applications](docs/guides/user/retired-applications.md), without cleanup or health findings. Capture emits discovery text or additive TOML. Existing users should follow the [command migration guide](docs/guides/user/migrating-command-surface.md); this release makes a breaking cutover without aliases.
 

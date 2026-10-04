@@ -16,7 +16,7 @@ _Evidence:_ `rig_load_config` reads only the selected root and fragment director
 
 ### RIG-CONF-002 — Unversioned input and recognised legacy marker
 
-New configuration MUST omit a schema field. Rig MUST read the current unversioned shape and a structurally valid legacy file with one integer `schema = 1` in `[rig]`. It MUST reject a duplicated, non-integer, or unsupported marker and MUST NOT use the marker to excuse an unknown declaration. Ordinary reads MUST NOT rewrite configuration. `rig init --repair-schema --dry-run` MUST preview removing the recognised field; `rig init --repair-schema --output PATH` MUST write a proposal outside active configuration for explicit review and manual replacement.
+New configuration MUST omit a schema field. Rig MUST read the current unversioned shape and a structurally valid legacy file with one integer `schema = 1` in `[rig]`. It MUST reject a duplicated, non-integer, or unsupported marker and MUST NOT use the marker to excuse an unknown declaration. Ordinary reads MUST NOT rewrite configuration. `rig repair` MUST preview removing the recognised field; `rig repair --output PATH` MUST write a proposal outside active configuration for explicit review and manual replacement.
 
 _Conformance:_ conforming
 

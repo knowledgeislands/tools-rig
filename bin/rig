@@ -132,25 +132,29 @@ print_help() {
     '  -V, --version         Print the Rig release or development version.' \
     '' \
     'Commands:' \
-    '  init        Create configuration or propose legacy schema repair.' \
+    '  init        Create configuration.' \
+    '  repair      Preview a recognised configuration repair.' \
     '  show        Describe the selected setup or one declared item.' \
     '  status      Compare expected and observed tool, skill, and resource state.' \
     '  capture     Discover installed items and propose additive declarations.' \
     '  apply       Materialise the selected setup and its prerequisites.' \
     '  upgrade     Upgrade selected provider-managed tools and skills.' \
-    '  doctor      Check whether Rig can operate; --verbose adds diagnostics.' \
+    '  doctor      Check whether Rig can operate.' \
+    '  diag        Print share-safe environment facts.' \
     '  export      Generate public Rig data.' \
-    '  help        Show this help.' \
+    '  help        Show general or command help.' \
     '  completion  Print shell completion source.' \
     '' \
-    "Run 'rig COMMAND --help' for command usage."
+    "Run 'rig help COMMAND' for command usage."
 }
 
 rig_command_options() {
   # name | value placeholder | purpose | completion values | required
   # This is the authored option inventory for help, usage and both completions.
   case "$1" in
-    init) printf '%s\n' '--dry-run||Preview without writing configuration.||' '--repair-schema||Propose removal of a recognised legacy schema field.||' '--output|PATH|Write a repaired proposal outside active configuration.|path|' ;;
+    init) printf '%s\n' '--dry-run||Preview without writing configuration.||' ;;
+    repair) printf '%s\n' '--output|PATH|Write a repaired proposal outside active configuration.|path|' ;;
+    diag) printf '%s\n' '--full||Include local configuration path.||' ;;
     show) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--all||Browse all catalogue tools.||' '--category|ID|Limit tools to a category.|category id|' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
     completion) ;;
     status) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--problems||Show only entries needing attention.||' '--unmanaged||Include observed items not declared by an installation.||' '--retired||Include private, informational retired-application evidence.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
@@ -210,7 +214,7 @@ rig_command_help() {
       printf '%s\n' '' 'Shows selected historical apply failures separately from current observations.' ;;
   esac
   if [ "$command" = upgrade ]; then
-      printf '%s\n' '' 'Interactive progress uses a footer on supported terminals and yields for native work.'
+    printf '%s\n' '' 'Interactive progress uses a footer on supported terminals and yields for native work.'
     printf '%s\n' 'Unattended mode sets Homebrew NONINTERACTIVE=1; native failures keep their results.' \
       'It does not prevent terminal or graphical authentication or impose a time limit.'
   fi
@@ -220,7 +224,7 @@ rig_command_help() {
     printf '  %-20s %s\n' "$option${value:+ $value}" "$description"
   done < <(rig_command_options "$command")
   case "$command" in
-    init|status|doctor|apply|upgrade|capture|export)
+    init|repair|status|doctor|diag|apply|upgrade|capture|export)
       printf '%s\n' '' 'Exit status: 0 on success, 1 on an operational problem, 2 on usage error.' ;;
   esac
   printf '\nExample: rig %s\n' "$(rig_command_example "$command")"
@@ -229,9 +233,11 @@ rig_command_help() {
 rig_command_example() {
   case "$1" in
     init) printf 'init --dry-run' ;;
+    repair) printf 'repair' ;;
     show) printf 'show tool-name' ;;
     status) printf 'status --problems' ;;
     doctor) printf 'doctor --verbose' ;;
+    diag) printf 'diag' ;;
     apply) printf 'apply --dry-run' ;;
     upgrade) printf 'upgrade --dry-run' ;;
     capture) printf 'capture --provider homebrew --dry-run' ;;
@@ -696,19 +702,19 @@ print_bash_completion() {
     '  current=${COMP_WORDS[COMP_CWORD]}' \
     '  command=${COMP_WORDS[1]:-}' \
     '  if [ "$COMP_CWORD" -eq 1 ]; then' \
-    '    COMPREPLY=($(compgen -W "-h --help -V --version init show status capture apply upgrade doctor export help completion" -- "$current"))' \
+    '    COMPREPLY=($(compgen -W "-h --help -V --version init repair show status capture apply upgrade doctor diag export help completion" -- "$current"))' \
     '    return' \
     '  fi' \
     '  case "$command" in'
   local command words
-  for command in init show status capture apply upgrade doctor export completion; do
+  for command in init repair show status capture apply upgrade doctor diag export completion; do
     words=$(rig_command_completion_words "$command")
     # shellcheck disable=SC2016
     printf '    %s) COMPREPLY=($(compgen -W "%s" -- "$current")) ;;\n' "$command" "$words"
   done
   # shellcheck disable=SC2016
   printf '%s\n' \
-    '    help) COMPREPLY=($(compgen -W "-h --help" -- "$current")) ;;' \
+    '    help) COMPREPLY=($(compgen -W "-h --help init repair show status capture apply upgrade doctor diag export help completion" -- "$current")) ;;' \
     '  esac' \
     '}' \
     'complete -F _rig rig'
@@ -725,12 +731,14 @@ print_zsh_completion() {
     '  local state' \
     '  commands=(' \
     "    'init:create a minimal Rig configuration'" \
+    "    'repair:preview a recognised configuration repair'" \
     "    'show:describe the selected setup or one declared item'" \
     "    'status:compare expected and observed state'" \
     "    'capture:discover installed items and propose additive declarations'" \
     "    'apply:materialise the selected setup and its prerequisites'" \
     "    'upgrade:upgrade selected provider-managed tools and skills'" \
     "    'doctor:check whether Rig can operate'" \
+    "    'diag:print share-safe environment facts'" \
     "    'export:generate public rig data'" \
     "    'help:show help'" \
     "    'completion:print shell completion source'" \
@@ -741,12 +749,12 @@ print_zsh_completion() {
     '    argument)' \
     '      case $words[2] in'
   local command arguments
-  for command in init show status capture apply upgrade doctor export completion; do
+  for command in init repair show status capture apply upgrade doctor diag export completion; do
     arguments=$(rig_command_zsh_arguments "$command")
     printf '        %s) _arguments%s ;;\n' "$command" "$arguments"
   done
   printf '%s\n' \
-    "        help) _arguments '(-h --help)'{-h,--help}'[show command help]' ;;" \
+    "        help) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:command:(init repair show status capture apply upgrade doctor diag export help completion)' ;;" \
     '      esac' \
     '      ;;' \
     '  esac' \
@@ -11608,7 +11616,7 @@ rig_schema_repair() {
     rig_schema_repair_render "$source_file" "$source_line"
     return
   fi
-  [ -n "$output" ] || rig_fail 'repair requires --output PATH outside active configuration; preview with --dry-run' || return
+  [ -n "$output" ] || rig_fail 'repair requires --output PATH outside active configuration; preview with rig repair' || return
   rig_capture_output_path "$output" || return
   output=$RIG_VALUE
   (umask 077; set -C; rig_schema_repair_render "$source_file" "$source_line" >"$output") || {
@@ -11618,28 +11626,18 @@ rig_schema_repair() {
 }
 
 rig_command_init() {
-  local dry_run repair output config_home target fragment
+  local dry_run config_home target fragment
 
-  dry_run=0; repair=0; output=
+  dry_run=0
   while [ "$#" -gt 0 ]; do
     case "$1" in
       -h|--help) [ "$#" -eq 1 ] || rig_command_syntax_error init || return
         rig_command_help init; return ;;
       --dry-run) [ "$dry_run" -eq 0 ] || rig_command_syntax_error init || return
         dry_run=1; shift ;;
-      --repair-schema) [ "$repair" -eq 0 ] || rig_command_syntax_error init || return
-        repair=1; shift ;;
-      --output) [ "$#" -ge 2 ] && [ -n "$2" ] && [ -z "$output" ] || rig_command_syntax_error init || return
-        output=$2; shift 2 ;;
       *) rig_command_syntax_error init; return ;;
     esac
   done
-  if [ "$repair" -eq 1 ]; then
-    [ "$dry_run" -eq 0 ] || [ -z "$output" ] || rig_command_syntax_error init || return
-    rig_schema_repair "$dry_run" "$output"
-    return
-  fi
-  [ -z "$output" ] || rig_command_syntax_error init || return
   rig_adoption_config_home || return
   config_home=$RIG_VALUE
   while :; do
@@ -11670,6 +11668,25 @@ rig_command_init() {
     rig_fail "init could not exclusively create configuration: $target"; return;
   }
   printf 'Created: %s\n' "$target"
+}
+
+rig_command_repair() {
+  local output
+  output=
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      -h|--help) [ "$#" -eq 1 ] || rig_command_syntax_error repair || return
+        rig_command_help repair; return ;;
+      --output) [ "$#" -ge 2 ] && [ -n "$2" ] && [ -z "$output" ] || rig_command_syntax_error repair || return
+        output=$2; shift 2 ;;
+      *) rig_command_syntax_error repair; return ;;
+    esac
+  done
+  if [ -n "$output" ]; then
+    rig_schema_repair 0 "$output"
+  else
+    rig_schema_repair 1 ''
+  fi
 }
 
 rig_homebrew_normalize_identity() {
@@ -12780,6 +12797,28 @@ rig_command_lifecycle() {
 # Cross-module state is intentionally consumed by the assembled executable.
 # shellcheck disable=SC2004,SC2034,SC2094
 
+rig_command_diag() {
+  local full config_home
+  full=0
+  case "${1:-}" in
+    '') ;;
+    --full) full=1; shift ;;
+    -h|--help) [ "$#" -eq 1 ] || rig_command_syntax_error diag || return
+      rig_command_help diag; return ;;
+    *) rig_command_syntax_error diag; return ;;
+  esac
+  [ "$#" -eq 0 ] || rig_command_syntax_error diag || return
+  rig_adoption_config_home || return
+  config_home=$RIG_VALUE
+  printf 'rig diag: version=%s bash=%s\n' "$RIG_VERSION" "$BASH_VERSION"
+  if [ -f "$config_home/rig.toml" ]; then
+    printf 'rig diag: configuration=present\n'
+  else
+    printf 'rig diag: configuration=absent\n'
+  fi
+  [ "$full" -eq 0 ] || printf 'rig diag: config-home=%s\n' "$config_home"
+}
+
 main() {
   local command_name exit_code
 
@@ -12788,7 +12827,7 @@ main() {
   command_name=${1:-help}
   rig_progress_reset
   case "$command_name" in
-    init|show|status|doctor|apply|upgrade|capture|export|help|completion)
+    init|repair|show|status|doctor|diag|apply|upgrade|capture|export|help|completion)
       RIG_PROGRESS_COMMAND=$command_name ;;
   esac
   rig_dock_reset_snapshot
@@ -12813,11 +12852,12 @@ main() {
         1) ;;
         2)
           case "$2" in
-            -h|--help) ;;
-            *) syntax_error "unexpected $2" || return ;;
-          esac
-          ;;
-        *) syntax_error 'usage: rig help [-h|--help]' || return ;;
+            -h|--help|help) ;;
+            init|repair|show|status|doctor|diag|apply|upgrade|capture|export|completion)
+              rig_command_help "$2"; return ;;
+            *) syntax_error "unknown command: $2" || return ;;
+          esac ;;
+        *) syntax_error 'usage: rig help [COMMAND]' || return ;;
       esac
       print_help
       ;;
@@ -12828,6 +12868,10 @@ main() {
     init)
       shift
       rig_command_init "$@"
+      ;;
+    repair)
+      shift
+      rig_command_repair "$@"
       ;;
     show)
       shift
@@ -12840,6 +12884,10 @@ main() {
     doctor)
       shift
       rig_command_doctor "$@"
+      ;;
+    diag)
+      shift
+      rig_command_diag "$@"
       ;;
     apply)
       shift
@@ -12869,7 +12917,6 @@ main() {
     list|explain) syntax_error "command '$command_name' was removed; use rig show [ITEM] or rig show --all" || return ;;
     bootstrap) syntax_error "command 'bootstrap' was removed; use rig apply [--profile NAME]" || return ;;
     update) syntax_error "command 'update' was removed; use rig upgrade" || return ;;
-    diag) syntax_error "command 'diag' was removed; use rig doctor --verbose" || return ;;
     run|maintain) syntax_error "command '$command_name' was removed; use the provider's native tools" || return ;;
     *) syntax_error "unknown command: $command_name" || return ;;
   esac

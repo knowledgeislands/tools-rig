@@ -33,13 +33,13 @@ write_legacy_config() {
   write_legacy_config
   cp "$RIG_CONFIG_HOME/rig.toml" "$BATS_TEST_TMPDIR/original.toml"
 
-  run "$RIG" init --repair-schema --dry-run
+  run "$RIG" repair
   [ "$status" -eq 0 ] || false
   [[ "$output" == *'Would remove the legacy schema field'* ]] || false
   [[ "$output" == *'default-profile = "default"'* ]] || false
   cmp "$RIG_CONFIG_HOME/rig.toml" "$BATS_TEST_TMPDIR/original.toml" || false
 
-  run "$RIG" init --repair-schema --output "$BATS_TEST_TMPDIR/repaired.toml"
+  run "$RIG" repair --output "$BATS_TEST_TMPDIR/repaired.toml"
   [ "$status" -eq 0 ] || false
   [ -f "$BATS_TEST_TMPDIR/repaired.toml" ] || false
   ! grep -Fq 'schema =' "$BATS_TEST_TMPDIR/repaired.toml" || false
@@ -48,9 +48,9 @@ write_legacy_config() {
   cmp "$BATS_TEST_TMPDIR/repaired.toml" "$BATS_TEST_TMPDIR/expected.toml" || false
   cmp "$RIG_CONFIG_HOME/rig.toml" "$BATS_TEST_TMPDIR/original.toml" || false
 
-  run "$RIG" init --repair-schema --output "$BATS_TEST_TMPDIR/repaired.toml"
+  run "$RIG" repair --output "$BATS_TEST_TMPDIR/repaired.toml"
   [ "$status" -eq 2 ] || false
-  run "$RIG" init --repair-schema --output "$RIG_CONFIG_HOME/conf.d/repaired.toml"
+  run "$RIG" repair --output "$RIG_CONFIG_HOME/conf.d/repaired.toml"
   [ "$status" -eq 2 ] || false
   [ ! -e "$RIG_CONFIG_HOME/conf.d/repaired.toml" ] || false
 }
@@ -59,13 +59,13 @@ write_legacy_config() {
   write_legacy_config
   sed 's/schema = 1/schema = 2/' "$RIG_CONFIG_HOME/rig.toml" >"$RIG_CONFIG_HOME/unknown.toml"
   mv "$RIG_CONFIG_HOME/unknown.toml" "$RIG_CONFIG_HOME/rig.toml"
-  run "$RIG" init --repair-schema --output "$BATS_TEST_TMPDIR/repaired.toml"
+  run "$RIG" repair --output "$BATS_TEST_TMPDIR/repaired.toml"
   [ "$status" -eq 2 ] || false
   [ ! -e "$BATS_TEST_TMPDIR/repaired.toml" ] || false
 
   write_legacy_config
   printf '%s\n' '[tool.broken]' 'name = "Broken"' >>"$RIG_CONFIG_HOME/rig.toml"
-  run "$RIG" init --repair-schema --output "$BATS_TEST_TMPDIR/repaired.toml"
+  run "$RIG" repair --output "$BATS_TEST_TMPDIR/repaired.toml"
   [ "$status" -eq 2 ] || false
   [ ! -e "$BATS_TEST_TMPDIR/repaired.toml" ] || false
 }
@@ -74,27 +74,27 @@ write_legacy_config() {
   write_legacy_config
   mv "$RIG_CONFIG_HOME/rig.toml" "$RIG_CONFIG_HOME/conf.d/10-root.toml"
 
-  run "$RIG" init --repair-schema --dry-run
+  run "$RIG" repair
   [ "$status" -eq 0 ] || false
   [[ "$output" == *'conf.d/10-root.toml:2'* ]] || false
   grep -Fq 'schema = 1' "$RIG_CONFIG_HOME/conf.d/10-root.toml" || false
 
-  run "$RIG" init --repair-schema --output "$BATS_TEST_TMPDIR/repaired.toml"
+  run "$RIG" repair --output "$BATS_TEST_TMPDIR/repaired.toml"
   [ "$status" -eq 0 ] || false
   ! grep -Fq 'schema =' "$BATS_TEST_TMPDIR/repaired.toml" || false
   grep -Fq 'schema = 1' "$RIG_CONFIG_HOME/conf.d/10-root.toml" || false
 }
 
 @test "repair options stay aligned in help and both completions" {
-  run "$RIG" init --help
+  run "$RIG" repair --help
   [ "$status" -eq 0 ] || false
-  [[ "$output" == *'--repair-schema'* ]] || false
+  [[ "$output" == *'Usage: rig repair'* ]] || false
   [[ "$output" == *'--output PATH'* ]] || false
 
   run "$RIG" completion bash
   [ "$status" -eq 0 ] || false
-  [[ "$output" == *'--repair-schema'* ]] || false
+  [[ "$output" == *'--output'* ]] || false
   run "$RIG" completion zsh
   [ "$status" -eq 0 ] || false
-  [[ "$output" == *'--repair-schema'* ]] || false
+  [[ "$output" == *'--output'* ]] || false
 }

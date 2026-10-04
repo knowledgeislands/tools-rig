@@ -69,7 +69,7 @@ rig_schema_repair() {
     rig_schema_repair_render "$source_file" "$source_line"
     return
   fi
-  [ -n "$output" ] || rig_fail 'repair requires --output PATH outside active configuration; preview with --dry-run' || return
+  [ -n "$output" ] || rig_fail 'repair requires --output PATH outside active configuration; preview with rig repair' || return
   rig_capture_output_path "$output" || return
   output=$RIG_VALUE
   (umask 077; set -C; rig_schema_repair_render "$source_file" "$source_line" >"$output") || {
@@ -79,28 +79,18 @@ rig_schema_repair() {
 }
 
 rig_command_init() {
-  local dry_run repair output config_home target fragment
+  local dry_run config_home target fragment
 
-  dry_run=0; repair=0; output=
+  dry_run=0
   while [ "$#" -gt 0 ]; do
     case "$1" in
       -h|--help) [ "$#" -eq 1 ] || rig_command_syntax_error init || return
         rig_command_help init; return ;;
       --dry-run) [ "$dry_run" -eq 0 ] || rig_command_syntax_error init || return
         dry_run=1; shift ;;
-      --repair-schema) [ "$repair" -eq 0 ] || rig_command_syntax_error init || return
-        repair=1; shift ;;
-      --output) [ "$#" -ge 2 ] && [ -n "$2" ] && [ -z "$output" ] || rig_command_syntax_error init || return
-        output=$2; shift 2 ;;
       *) rig_command_syntax_error init; return ;;
     esac
   done
-  if [ "$repair" -eq 1 ]; then
-    [ "$dry_run" -eq 0 ] || [ -z "$output" ] || rig_command_syntax_error init || return
-    rig_schema_repair "$dry_run" "$output"
-    return
-  fi
-  [ -z "$output" ] || rig_command_syntax_error init || return
   rig_adoption_config_home || return
   config_home=$RIG_VALUE
   while :; do
@@ -131,6 +121,25 @@ rig_command_init() {
     rig_fail "init could not exclusively create configuration: $target"; return;
   }
   printf 'Created: %s\n' "$target"
+}
+
+rig_command_repair() {
+  local output
+  output=
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      -h|--help) [ "$#" -eq 1 ] || rig_command_syntax_error repair || return
+        rig_command_help repair; return ;;
+      --output) [ "$#" -ge 2 ] && [ -n "$2" ] && [ -z "$output" ] || rig_command_syntax_error repair || return
+        output=$2; shift 2 ;;
+      *) rig_command_syntax_error repair; return ;;
+    esac
+  done
+  if [ -n "$output" ]; then
+    rig_schema_repair 0 "$output"
+  else
+    rig_schema_repair 1 ''
+  fi
 }
 
 rig_homebrew_normalize_identity() {

@@ -8,7 +8,8 @@ rig \- describe and manage a personal working setup
 .br
 .B rig init
 .RI [ \-\-dry-run ]
-.RI [ \-\-repair-schema ]
+.br
+.B rig repair
 .RI [ \-\-output " PATH" ]
 .br
 .B rig show
@@ -53,6 +54,9 @@ rig \- describe and manage a personal working setup
 .RI [ \-\-verbose ]
 .RI [ \-\-format " text|json" ]
 .br
+.B rig diag
+.RI [ \-\-full ]
+.br
 .BI "rig export \-\-profile " NAME
 .BI " \-\-output " DIRECTORY
 .RI [ \-\-title " TEXT" ]
@@ -61,7 +65,7 @@ rig \- describe and manage a personal working setup
 .BI "rig completion " bash|zsh
 .br
 .B rig help
-.RB [ \-h | \-\-help ]
+.RI [ COMMAND ]
 .br
 .B rig
 .RB [ \-h | \-\-help | \-V | \-\-version ]
@@ -171,11 +175,12 @@ using the XDG default when the override is absent. Existing root configuration,
 fragments, and symlinked configuration targets are refused.
 .B \-\-dry-run
 prints the target and content without creating directories or files.
+.TP
+.B rig repair
 For a valid legacy configuration with
 .BR "schema = 1" ,
-.B \-\-repair-schema \-\-dry-run
-previews removal of that marker.
-.B \-\-repair-schema \-\-output
+the default invocation previews removal of that marker.
+.B \-\-output
 writes a repaired proposal to a new file outside active configuration for
 review and manual replacement; it never rewrites an active source.
 .TP
@@ -368,6 +373,11 @@ auto-update agent Rig did not declare, such as Homebrew's
 .BR "brew autoupdate" ,
 is reported as information alone: it adds no finding, changes no exit status,
 and Rig never installs, modifies, or removes it.
+.TP
+.B rig diag [\-\-full]
+Print offline, share-safe runtime and configuration-presence facts. Use
+.B \-\-full
+to include the local configuration path; review full output before sharing it.
 .TP
 .BI "rig doctor \-\-profile " NAME
 Check a named resolved profile without changing the configured default.
@@ -591,8 +601,8 @@ or
 print command usage without generating completion source.
 .TP
 .B rig help
-Show the compact top-level command summary. Use
-.BI "rig " COMMAND " \-\-help"
+Show the compact top-level command summary, or use
+.BI "rig help " COMMAND
 for detailed command syntax. The optional
 .B \-h
 and
@@ -743,8 +753,8 @@ to force progress, including declaration-only queries. A supported interactive
 terminal receives a two-line bottom footer for Rig-owned phases and single
 native-capable items, showing the command, resolved selection (or selection
 pending), phase, completed/total work, current target and phase-local outcome
-counts. Multi-item native-capable phases use line events without repeated
-footer reservations. Redirected stderr receives stable line-oriented events.
+counts. Multi-item native phases and redirected stderr receive stable
+line-oriented events. Rig releases the terminal before native execution.
 Set to
 .B lines
 to request those durable events even on a terminal, or
@@ -763,13 +773,11 @@ Complete, failure-free footer phases leave no permanent success summary,
 including phases with skipped work. The configuration phases share one footer
 reservation instead of accumulating blank rows. Failed, interrupted, incomplete
 and failed-item phases retain their summaries, as do line-output phases.
-Failure and interruption terminate the active phase explicitly. Before each
-native-capable item, including observation and preflight, Rig clears its footer,
-restores full terminal scrolling and emits a durable task header. For a single
-native-capable item, the footer returns after it finishes, even if the native
-tool was quiet.
-Native prompts and diagnostics are not buffered or filtered. A separating
-newline protects native output without a final newline. Resize is handled only
+Failure and interruption terminate the active phase explicitly. Rig emits a
+durable task header and releases the terminal before native execution. Native
+prompts and diagnostics are not buffered or filtered. A separating newline
+protects native output without a final newline when the footer returns.
+Resize is handled only
 at safe rendering boundaries. Reflowed footer text may remain in scrollback:
 Rig does not erase uncertain coordinates at the risk of losing diagnostics.
 No alternate screen, cursor hiding or background
