@@ -48,7 +48,7 @@ terminal() {
   [[ "$(<"$STDERR")" != *'finished completed='* ]] || false
 }
 
-@test "multi-item native phases use adjacent line events without footer gaps" {
+@test "multi-item native phases use compact truthful handoffs and one summary" {
   local screen
   screen=$BATS_TEST_TMPDIR/native-batch-screen
   fixture 'rig_progress_start observation 2' 'rig_progress_begin runner:alpha' \
@@ -56,7 +56,62 @@ terminal() {
     'rig_progress_result succeeded runner:beta' 'rig_progress_finish'
   terminal --screen "$screen"
   [[ "$output" == *'"regions": 0'* ]] || false
-  [[ "$(<"$screen")" == *$'rig: progress: observation 0/2: runner:alpha running\nrig: progress: observation 1/2: runner:alpha succeeded\nrig: progress: observation 1/2: runner:beta running'* ]] || false
+  [[ "$(<"$STDERR")" == *'rig: observation 1/2: runner:alpha (completed=0/2)'* ]] || false
+  [[ "$(<"$STDERR")" == *'rig: observation 2/2: runner:beta (completed=1/2)'* ]] || false
+  [[ "$(<"$STDERR")" != *'runner:alpha succeeded'* ]] || false
+  [[ "$(<"$STDERR")" != *'runner:beta succeeded'* ]] || false
+  [[ "$(<"$STDERR")" != *'started'* ]] || false
+  [[ "$(<"$STDERR")" == *'finished completed=2/2 succeeded=2 skipped=0 failed=0'* ]] || false
+}
+
+@test "compact native batch preserves ANSI partial output prompt stdin and failure status" {
+  fixture 'rig_progress_start applying 3' 'rig_progress_begin runner:alpha declaration' \
+    'printf "NATIVE\033[31mloading\033[0m\rNATIVE prompt: " >&2' \
+    'read -r answer' 'printf "answer=%s\n" "$answer"' \
+    'printf "native-without-newline" >&2' 'rig_progress_result succeeded' \
+    'rig_progress_begin runner:beta target' 'rig_progress_result skipped' \
+    'rig_progress_begin runner:gamma dependency' \
+    'if /bin/bash -c '\''printf "native-failure" >&2; exit 7'\''; then code=0; else code=$?; fi' \
+    'rig_progress_result failed' 'rig_progress_fail' 'exit "$code"'
+  terminal --reply yes
+  [[ "$output" == *'"status": 7'* ]] || false
+  [[ "$output" == *'"regions": 0'* ]] || false
+  [[ "$output" == *'"native_full": true'* ]] || false
+  [ "$(<"$STDOUT")" = 'answer=yes' ] || false
+  [[ "$(<"$STDERR")" == *$'NATIVE\033[31mloading\033[0m\rNATIVE prompt: '* ]] || false
+  [[ "$(<"$STDERR")" == *$'native-without-newline\r\nrig: applying 2/3: runner:beta [target] (completed=1/3)'* ]] || false
+  [[ "$(<"$STDERR")" == *'runner:beta [target] skipped'* ]] || false
+  # Streams stay opaque even for skips: a silent item still gets a separator.
+  [[ "$(<"$STDERR")" == *$'(completed=1/3)\r\n\r\nrig: progress: applying 2/3: runner:beta [target] skipped'* ]] || false
+  [[ "$(<"$STDERR")" == *$'native-failure\r\nrig: progress: applying 3/3: runner:gamma [dependency] failed'* ]] || false
+  [[ "$(<"$STDERR")" == *'failed completed=3/3 succeeded=1 skipped=1 failed=1'* ]] || false
+}
+
+@test "compact native batch resize never reserves a footer and interruption retains counts" {
+  fixture 'trap rig_progress_resize WINCH' 'trap '\''rig_progress_signal 130'\'' INT' \
+    'rig_progress_start applying 2' 'rig_progress_begin runner:alpha declaration' \
+    'printf "RESIZE:12:80\n"' '/bin/sleep 0.2' 'printf "NATIVE resized" >&2' \
+    'rig_progress_result succeeded' 'rig_progress_begin runner:beta target' \
+    'printf "SIGNAL:INT\n"' '/bin/sleep 5'
+  terminal
+  [[ "$output" == *'"status": 130'* ]] || false
+  [[ "$output" == *'"regions": 0'* ]] || false
+  [[ "$(<"$STDERR")" == *'interrupted completed=1/2 succeeded=1 skipped=0 failed=0'* ]] || false
+}
+
+@test "native batch lines override and redirected stderr retain detailed item events" {
+  fixture 'RIG_PROGRESS=lines' 'rig_progress_start applying 2' 'rig_progress_begin alpha' \
+    'rig_progress_result succeeded' 'rig_progress_begin beta' 'rig_progress_result skipped' 'rig_progress_finish'
+  terminal
+  [[ "$output" == *'"regions": 0'* ]] || false
+  [[ "$(<"$STDERR")" == *'applying 0/2: alpha running'* ]] || false
+  [[ "$(<"$STDERR")" == *'applying 1/2: alpha succeeded'* ]] || false
+  fixture 'rig_progress_start applying 2' 'rig_progress_begin alpha' \
+    'rig_progress_result succeeded' 'rig_progress_begin beta' 'rig_progress_result skipped' 'rig_progress_finish'
+  /bin/bash "$WRAPPER" "$RIG" >"$STDOUT" 2>"$STDERR"
+  [[ "$(<"$STDERR")" == *'applying 0/2: alpha running'* ]] || false
+  [[ "$(<"$STDERR")" == *'applying 1/2: alpha succeeded'* ]] || false
+  [[ "$(<"$STDERR")" != *$'\033'* ]] || false
 }
 
 @test "incomplete footer phases retain a truthful durable summary" {

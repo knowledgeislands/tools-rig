@@ -2255,7 +2255,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [[ "$output" == *'active: waiting | ok=2 skip=0 fail=0'* ]] || false
 }
 
-@test "a multi-item native phase keeps provider diagnostics in compact line output" {
+@test "a multi-item native phase keeps provider diagnostics with compact handoffs" {
   local wrapper
 
   wrapper=$BATS_TEST_TMPDIR/progress-passthrough-$BATS_TEST_NUMBER
@@ -2283,12 +2283,12 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   fi
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *'rig: progress: applying 0/2: alpha [declaration] running'* ]] || false
+  [[ "$output" == *'rig: applying 1/2: alpha [declaration] (completed=0/2)'* ]] || false
   [[ "$output" == *'Warning: Already installed alpha'* ]] || false
   [[ "$output" == *'alpha'$'\t''runner'$'\t''completed'* ]] || false
   [[ "$output" == *'applying finished completed=2/2 succeeded=1 skipped=1 failed=0'* ]] || false
   [[ "$output" != *'[----------------]'* ]] || false
-  [[ "$output" == *'alpha [declaration] running'* ]] || false
+  [[ "$output" != *'alpha [declaration] succeeded'* ]] || false
 
   [[ "$output" != *$'\033[1;22r'* ]] || false
 

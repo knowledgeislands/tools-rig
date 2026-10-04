@@ -214,7 +214,7 @@ rig_command_help() {
       printf '%s\n' '' 'Shows selected historical apply failures separately from current observations.' ;;
   esac
   if [ "$command" = upgrade ]; then
-    printf '%s\n' '' 'Interactive progress uses a footer on supported terminals and yields for native work.'
+    printf '%s\n' '' 'Interactive progress uses an owned footer and compact native-batch handoffs.'
     printf '%s\n' 'Unattended mode sets Homebrew NONINTERACTIVE=1; native failures keep their results.' \
       'It does not prevent terminal or graphical authentication or impose a time limit.'
   fi
@@ -384,13 +384,16 @@ rig_progress_select_renderer() {
   RIG_PROGRESS_RENDER=off
   rig_progress_enabled || return 0
   RIG_PROGRESS_RENDER=lines
-  # Reclaiming a footer around every native call leaves its reserved rows in
-  # scrollback. A batch of native-capable items reads better as line events.
-  [ "${RIG_PROGRESS_PASSTHROUGH:-0}" -eq 1 ] && [ "${RIG_PROGRESS_TOTAL:-0}" -gt 1 ] && return 0
   [ "${RIG_PROGRESS:-auto}" != lines ] && [ -t 2 ] || return 0
   case "${TERM:-}" in xterm*|screen*|tmux*|rxvt*|vt100|vt220|linux) ;; *) return 0 ;; esac
   rig_progress_dimensions || return 0
   [ "$RIG_PROGRESS_ROWS" -ge 8 ] && [ "$RIG_PROGRESS_COLUMNS" -ge 60 ] || return 0
+  # Native batches keep the whole terminal between items. No footer rows are
+  # reserved, and routine success is accounted for in the phase summary.
+  if [ "${RIG_PROGRESS_PASSTHROUGH:-0}" -eq 1 ] && [ "${RIG_PROGRESS_TOTAL:-0}" -gt 1 ]; then
+    RIG_PROGRESS_RENDER=compact
+    return 0
+  fi
   RIG_PROGRESS_RENDER=footer
 }
 
@@ -524,7 +527,7 @@ rig_progress_resume() {
   RIG_PROGRESS_SUSPEND_DEPTH=$((RIG_PROGRESS_SUSPEND_DEPTH - 1))
   if [ "$RIG_PROGRESS_SUSPEND_DEPTH" -eq 0 ] && [ "$RIG_PROGRESS_ACTIVE" -eq 1 ]; then
     # Native output is opaque: a separator may add a blank line after native LF.
-    if [ -t 2 ] && [ "$RIG_PROGRESS_RENDER" = footer ]; then printf '\n' >&2 || true; fi
+    if [ -t 2 ] && { [ "$RIG_PROGRESS_RENDER" = footer ] || [ "$RIG_PROGRESS_RENDER" = compact ]; }; then printf '\n' >&2 || true; fi
     rig_progress_footer_render
   fi
   return 0
@@ -550,7 +553,9 @@ rig_progress_start() {
   if [ "$RIG_PROGRESS_RENDER" = footer ]; then rig_progress_footer_render
   else
     rig_progress_cleanup
-    printf 'rig: progress: %s 0/%s started\n' "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_TOTAL" >&2
+    if [ "$RIG_PROGRESS_RENDER" != compact ]; then
+      printf 'rig: progress: %s 0/%s started\n' "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_TOTAL" >&2
+    fi
   fi
   return 0
 }
@@ -565,6 +570,12 @@ rig_progress_begin() {
   fi
   if [ "$RIG_PROGRESS_PASSTHROUGH" -eq 1 ] && [ "$RIG_PROGRESS_ITEM_SUSPENDED" -eq 0 ]; then
     rig_progress_suspend; RIG_PROGRESS_ITEM_SUSPENDED=1
+  fi
+  if [ "$RIG_PROGRESS_RENDER" = compact ]; then
+    printf 'rig: %s %s/%s: %s' "$RIG_PROGRESS_LABEL" "$((RIG_PROGRESS_CURRENT + 1))" "$RIG_PROGRESS_TOTAL" "$RIG_PROGRESS_ITEM" >&2
+    [ -z "$RIG_PROGRESS_SCOPE" ] || printf ' [%s]' "$RIG_PROGRESS_SCOPE" >&2
+    printf ' (completed=%s/%s)\n' "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" >&2
+    return 0
   fi
   if [ -n "$RIG_PROGRESS_SCOPE" ]; then
     printf 'rig: progress: %s %s/%s: %s [%s] running\n' \
@@ -595,7 +606,7 @@ rig_progress_result() {
   if [ "$RIG_PROGRESS_ITEM_SUSPENDED" -eq 1 ]; then
     RIG_PROGRESS_ITEM_SUSPENDED=0; rig_progress_resume
   else rig_progress_footer_render; fi
-  if [ "$RIG_PROGRESS_RENDER" != footer ]; then
+  if [ "$RIG_PROGRESS_RENDER" != footer ] && { [ "$RIG_PROGRESS_RENDER" != compact ] || [ "$result" != succeeded ]; }; then
     if [ -n "$scope" ]; then
       printf 'rig: progress: %s %s/%s: %s [%s] %s\n' \
         "$RIG_PROGRESS_LABEL" "$RIG_PROGRESS_CURRENT" "$RIG_PROGRESS_TOTAL" "$item" "$scope" "$result" >&2

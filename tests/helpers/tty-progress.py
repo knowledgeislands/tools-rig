@@ -103,6 +103,7 @@ def main():
     parser.add_argument("--stdout", required=True)
     parser.add_argument("--stderr", required=True)
     parser.add_argument("--screen")
+    parser.add_argument("--reply", help="reply once to a NATIVE prompt on terminal stdin")
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
@@ -117,7 +118,7 @@ def main():
         os.setsid()
         fcntl.ioctl(slave, termios.TIOCSCTTY, 0)
 
-    process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+    process = subprocess.Popen(command, stdin=slave if args.reply is not None else subprocess.DEVNULL, stdout=subprocess.PIPE,
                                stderr=slave, preexec_fn=controlling_terminal)
     os.close(slave)
     selector = selectors.DefaultSelector()
@@ -126,6 +127,7 @@ def main():
     streams = {"stdout": bytearray(), "stderr": bytearray()}
     geometry_events = []
     handled = set()
+    replied = False
     deadline = time.monotonic() + 20
     try:
         while selector.get_map():
@@ -142,6 +144,9 @@ def main():
                     selector.unregister(key.fileobj)
                     continue
                 streams[key.data].extend(chunk)
+                if args.reply is not None and not replied and b"NATIVE prompt: " in streams["stderr"]:
+                    os.write(master, args.reply.encode() + b"\n")
+                    replied = True
                 if key.data == "stdout":
                     for match in re.finditer(rb"RESIZE:(\d+):(\d+)\n|SIGNAL:(INT|TERM|HUP)\n", streams["stdout"]):
                         if match.start() in handled:
@@ -200,7 +205,7 @@ def main():
     print(json.dumps({"status": status,
                       "restored": last is None or last.group(1) is None,
                       "regions": len([match for match in margins if match.group(1)]),
-                      "native_full": native < 0 or bool(before_native and before_native[-1].group(1) is None),
+                      "native_full": native < 0 or not before_native or before_native[-1].group(1) is None,
                       "max_frame_width": max(frame_widths, default=0),
                       "resize_erase_safe": resize_erase_safe,
                       "diagnostic_survived": "DIAGNOSTIC-SENTINEL" in screen.text()}))

@@ -29,7 +29,7 @@ Run `rig help COMMAND` or `rig COMMAND --help` for options and exact arguments.
 - `apply` supports exact target selection, complete preflight, dependency order, non-mutating dry runs, and independent outcomes. Reconciliation preserves receipts for declared resources outside the selected profile and retires a resource only when no catalogue declaration still owns it.
 - `upgrade` delegates execution to the appropriate native provider. Homebrew, uv, chezmoi, direct downloads, and declared custom providers retain their own resolution, credentials, and installation state. Rig owns selection and reporting, not a competing package database.
 - `export` generates a deterministic, platform-neutral `rig-publication` version 1 JSON view of an explicitly selected public profile. Private paths, credentials, runtime mappings, state, and private ports are excluded.
-- Terminal progress keeps diagnostics visible, redacts private values, and leaves machine-readable standard output stable. Native operations retain terminal ownership; multi-item native phases use line events. The Bash and Zsh completion definitions follow the current commands and options.
+- Terminal progress keeps diagnostics visible, redacts private values, and leaves machine-readable standard output stable. Native operations retain terminal ownership; multi-item native phases use compact target-and-count handoff headers, retain skips, failures and final counts, and omit routine success chatter. The Bash and Zsh completion definitions follow the current commands and options.
 
 ### Changed and removed
 

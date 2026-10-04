@@ -753,8 +753,12 @@ to force progress, including declaration-only queries. A supported interactive
 terminal receives a two-line bottom footer for Rig-owned phases and single
 native-capable items, showing the command, resolved selection (or selection
 pending), phase, completed/total work, current target and phase-local outcome
-counts. Multi-item native phases and redirected stderr receive stable
-line-oriented events. Rig releases the terminal before native execution.
+counts. Multi-item native phases use compact target-and-scope handoff headers
+with a one-based ordinal and completed count, without reserving footer rows.
+Routine item successes are quiet; skips, failures and a final phase summary
+remain visible. Redirected stderr receives stable line-oriented events.
+Rig releases the terminal before native execution.
+Native output may scroll the handoff header away.
 Set to
 .B lines
 to request those durable events even on a terminal, or
@@ -762,7 +766,8 @@ to request those durable events even on a terminal, or
 to suppress it. The default is
 .BR auto ,
 which selects the footer for owned phases and single native-capable items on
-supported terminals, and line-oriented events otherwise; declaration-only
+supported terminals, compact handoffs for native batches, and line-oriented
+events otherwise; declaration-only
 queries remain quiet.
 Unsupported or dumb terminals, unavailable geometry and terminals smaller than
 eight rows or sixty columns use line events. Counts are not a duration estimate.
@@ -776,7 +781,7 @@ and failed-item phases retain their summaries, as do line-output phases.
 Failure and interruption terminate the active phase explicitly. Rig emits a
 durable task header and releases the terminal before native execution. Native
 prompts and diagnostics are not buffered or filtered. A separating newline
-protects native output without a final newline when the footer returns.
+protects native output without a final newline before Rig resumes reporting.
 Resize is handled only
 at safe rendering boundaries. Reflowed footer text may remain in scrollback:
 Rig does not erase uncertain coordinates at the risk of losing diagnostics.
