@@ -2,6 +2,8 @@
 
 Rig is one standalone command-line tool. The runtime entry point is `bin/rig`; keep it compatible with Bash 3.2 and do not introduce a runtime dependency beyond Bash.
 
+Use `ki-repo-tools` for shared CLI and delivery policy, `ki-git` for commit and publication authority, and the authoring, guide and specification skills for their document contracts. [Develop Rig](docs/guides/developer/README.md) owns the complete local verification commands; the [definition of done](docs/guides/developer/definition-of-done.md) and [release guide](docs/guides/developer/releasing.md) add Rig-specific checks and procedures.
+
 ## Product boundary
 
 Rig is the declarative description and manager of a person's working setup. Its catalogue owns tool identity, category, purpose, rationale, relationships, and supported platforms; profiles select catalogue subsets; providers materialise them; state compares the selection with provider observations.
@@ -20,10 +22,7 @@ XDG defines no executable directory. `install.sh` therefore defaults to `~/.loca
 
 - `src/rig/*.bash` are ordered authored modules; `src/rig/00-runtime.bash` owns the sole authored `RIG_VERSION`, and `scripts/assemble-rig` deterministically generates the committed `bin/rig`.
 - `bin/rig` is the single executable installation payload and contains the assembled runtime version; never edit it directly or introduce a runtime module loader.
-- `install.sh` supports released installation and `--link` local development.
-- `man/rig.1`, CLI help, README command summaries, and completion output stay aligned.
 - `tests/rig.bats` tests the public command contract.
-- Decisions explain why, Specifications state what, Guides explain how, and roadmap records state when.
 
 ## Authoring notes
 
@@ -45,19 +44,6 @@ The helper also points the built-in macOS application inventory at an empty test
 
 ## Verification
 
-Run the complete local gate before committing:
-
-```sh
-ki repo audit --repo .
-shellcheck bin/rig install.sh src/rig/*.bash scripts/assemble-rig scripts/benchmark-rig scripts/smoke-native-providers
-bash -n bin/rig install.sh src/rig/*.bash scripts/assemble-rig scripts/benchmark-rig scripts/smoke-native-providers
-scripts/assemble-rig --check
-scripts/benchmark-rig
-scripts/smoke-native-providers
-bats tests/
-mandoc -T lint man/rig.1
-```
+Run the complete local gate in [Develop Rig](docs/guides/developer/README.md#verify-the-repository) before committing; keep that guide as the single command list.
 
 Never reproduce a destructive Rig defect by applying against the live workstation, even with every sandbox variable set. Rig manages the machine you are working on, and an apply that escapes its sandbox by one unset variable unloads that machine's running services. A defect that retires, unloads, or deletes is reproduced by a test under `tests/`, or by a throwaway catalogue whose declarations name nothing the machine owns — never by running the failing scenario against the real estate to watch it fail. One such experiment left a leak path that was never isolated, so the sandbox was not proof.
-
-Do not push or publish a release unless explicitly asked.

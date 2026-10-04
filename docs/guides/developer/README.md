@@ -26,9 +26,9 @@ Edit the domain-focused authored modules beneath `src/rig/`, then run:
 scripts/assemble-rig --write
 ```
 
-The assembled `bin/rig` is the one installed executable; do not edit it directly. Update tests with behaviour changes. When a public surface changes, align CLI help, generated Bash and Zsh completions, `man/rig.1`, the relevant user guide, and `CHANGELOG.md` in the same change.
+The assembled `bin/rig` is the one installed executable; do not edit it directly. Update tests with behaviour changes and apply the `ki-repo-tools` change-readiness checklist for public-surface alignment.
 
-Put durable rationale in Decision Records, accepted behaviour in Specifications, practical procedures in guides, and future work in the canonical roadmap. Use isolated XDG and Rig-specific environment values in tests so no developer configuration or state is read or written.
+Use the governing documentation skills for durable knowledge placement. Use isolated XDG and Rig-specific environment values in tests so no developer configuration or state is read or written.
 
 Use `scripts/benchmark-rig` after parser, resolution, or query changes. The normal gate has a five-second portability ceiling; `RIG_BENCHMARK_BUDGET_SECONDS=2` exercises the reference macOS target. `scripts/smoke-native-providers` performs only bounded version probes and reports absent optional providers as skips.
 
@@ -45,7 +45,7 @@ bash -n bin/rig install.sh src/rig/*.bash scripts/assemble-rig scripts/benchmark
 scripts/assemble-rig --check
 scripts/benchmark-rig
 scripts/smoke-native-providers
-bats tests/
+bats tests/ </dev/null
 mandoc -T lint man/rig.1
 git diff --check
 ```
