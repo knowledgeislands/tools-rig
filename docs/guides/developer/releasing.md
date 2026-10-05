@@ -60,3 +60,5 @@ Follow the shared release-readiness checklist's tap and website handoff procedur
 - the exact `vX.Y.Z` version;
 - `https://raw.githubusercontent.com/knowledgeislands/tools-rig/vX.Y.Z/install.sh` as the immutable installer target;
 - the expected `/projects/rig/` and `/install/rig` routes.
+
+Publishing the GitHub release triggers the `Notify Homebrew tap` workflow, which sends a `tool-release-published` dispatch to `knowledgeislands/homebrew-tap` through the `ki-tools-release-bot` GitHub App; the tap then opens the exact formula pull request and squash-merges it automatically once its required checks pass. The job is skipped until the `KI_TOOLS_RELEASE_BOT_APP_ID` variable and `KI_TOOLS_RELEASE_BOT_PRIVATE_KEY` secret are available to this repository at organisation or repository level (not as `release`-environment secrets); the tap's daily scheduled intake still picks up a published immutable release without the dispatch.
