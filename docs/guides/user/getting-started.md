@@ -4,6 +4,35 @@ This guide takes you from no Rig installation to a readable catalogue, a machine
 
 The commands below are available in Rig `v0.4.0`. Earlier releases have a different command surface; use the [migration guide](migrating-command-surface.md) when updating an existing configuration or script.
 
+## What Rig can manage
+
+Rig describes your working setup and compares it with the machine. Its supported item types are:
+
+- **Tools and apps:** install and observe command-line tools, development runtimes and desktop applications, or keep catalogue-only entries for things you want to document without managing their installation. ChezMoi-managed configuration targets use this same tool model.
+- **Agent skills:** install remote user-level skills, project reviewed local skills into agent runtimes, or observe skills owned by a runtime or plugin. See [Manage user-level skills](skills.md).
+- **Services:** declare and reconcile background services through macOS launchd.
+- **Scheduled jobs:** declare and reconcile jobs with calendar or interval schedules through macOS launchd.
+- **Settings:** compare and apply typed macOS preferences, such as Finder options or a screenshot location.
+- **Dock layouts:** compare and apply an ordered macOS Dock containing applications and folders.
+- **Private ports:** record TCP allocations and check listener ownership and scope. Rig does not open, reserve or close ports.
+- **Retired applications:** observe explicitly declared macOS application traces after retirement. These records are observation-only and do not remove retained files. See [Review retired applications](retired-applications.md).
+
+The [operational resources and private ports guide](operational-resources.md) covers services, scheduled jobs, settings, Dock layouts and ports.
+
+Supported installation methods for tools and apps are:
+
+- **Homebrew formulae:** command-line tools and packages through `brew`.
+- **Homebrew casks:** macOS desktop applications through `brew`.
+- **Mac App Store:** macOS applications through `mas`.
+- **uv:** Python command-line tools through `uv tool`.
+- **mise:** development tools and runtimes through `mise`.
+- **npm:** global Node.js packages through `npm`.
+- **chezmoi:** configuration targets applied through `chezmoi`.
+- **Direct download:** standalone executables downloaded over HTTPS with a required SHA-256 checksum.
+- **External providers:** explicitly trusted custom executables when a built-in provider cannot express the required observation or application. See [Use external providers safely](provider-actions.md).
+
+Profiles select the active items that belong on a machine or in a role. The catalogue records tool purpose and your rationale; native providers retain their own execution semantics, credentials and installation state. Tool declarations can select different installation methods on macOS and Linux, while the built-in service, scheduled-job, settings and Dock providers are macOS-specific.
+
 ## Install the public preview
 
 Install the latest immutable release, currently `v0.4.0`:
