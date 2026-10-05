@@ -16,13 +16,15 @@ Release-facing documentation must distinguish these two paths:
 - the README, getting-started guide, and manual identify the latest immutable release and use its immutable installer URL;
 - a contributor links the current checkout with `./install.sh --link`, and that executable reports the matching development version.
 
+For an explicitly selected, unpublished candidate, the examples may already name its exact tag, but must say that remote installation is available only after publication. The current candidate is `v0.4.0`; the latest published release is `v0.2.0`. Link the checkout to exercise the candidate now, and do not describe it as the latest immutable release until that release exists.
+
 Before proposing an exact version, verify a disposable linked installation, the release-installer fixture, staged apply-prerequisite tests, bounded native-provider smoke, and an offline public export alongside the complete repository gate.
 
 After an exact preview version is explicitly selected:
 
 1. Replace the development marker with `X.Y.Z` in `src/rig/00-runtime.bash` and assemble `bin/rig`.
 2. Update `CHANGELOG.md` under the shared release-readiness checklist's version-phase policy.
-3. Update immutable installer examples and downstream handoff details to that exact version.
+3. Update immutable installer examples and downstream handoff details to that exact version. Identify the candidate as unpublished until its GitHub release is actually published.
 4. Re-run the local candidate and repository checks against the exact version.
 
 ## Complete the pre-release checklist
@@ -39,7 +41,7 @@ After an exact preview version is explicitly selected:
 
 1. Commit the verified candidate on `main`, push that exact ref, and wait for its Linux, macOS, ShellCheck and manual CI jobs to pass. Do not tag a candidate whose branch checks failed.
 2. Create and push the annotated `vX.Y.Z` tag at that exact commit. Wait for tag CI, including the tag/version match job, before publishing the GitHub release.
-3. Publish the GitHub release with migration notes for the breaking command and configuration changes.
+3. Publish the GitHub release with migration notes for the breaking command and configuration changes. Confirm GitHub marks that exact release immutable before using it as downstream distribution evidence.
 4. Verify the immutable installer in disposable executable and manual directories before changing any recommendation:
 
    ```sh
@@ -51,7 +53,7 @@ After an exact preview version is explicitly selected:
    MANPATH="$rig_release_check/man" man rig
    ```
 
-5. After publication, return the development checkout to the released version plus `+dev` in a separate change; keep immutable installer examples on the published tag.
+5. After publication, return the development checkout to the released version plus `+dev` in a separate change; keep immutable installer examples on the published tag. Remove the unpublished-candidate notices from the README, getting-started guide and manual only after checking publication and the immutable installer.
 
 ## Complete downstream distribution
 

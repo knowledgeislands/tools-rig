@@ -24,7 +24,7 @@ Rig treats a published rig as a derived, versioned data projection of one non-ap
 
 The caller supplies the whole instruction: which view to project, where to write it, and the optional title and canonical URL that describe the document it becomes. Rig holds none of that in configuration, because the consuming site owns it.
 
-Rig does not deploy. A person or a build pipeline takes the exported tree wherever it belongs, using the credentials, transport, and rollback that the receiving system already has.
+Rig does not deploy. A person or a build pipeline takes the exported artifact wherever it belongs, using the credentials, transport, and rollback that the receiving system already has.
 
 ## Consequences
 

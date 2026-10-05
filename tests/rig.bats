@@ -613,6 +613,9 @@ write_query_config() {
   grep -Fq 'v0.4.0/install.sh' "$repo_root/docs/guides/user/getting-started.md"
   grep -Fq 'rig 0.4.0' "$repo_root/docs/guides/user/getting-started.md"
   grep -Fq 'v0.4.0/install.sh' "$repo_root/man/rig.1"
+  grep -Fq 'not yet a published release' "$repo_root/README.md"
+  grep -Fq 'not available before publication' "$repo_root/docs/guides/user/getting-started.md"
+  grep -Fq 'not available before publication' "$repo_root/man/rig.1"
   grep -Fq 'development version marker' "$repo_root/man/rig.1"
   grep -Fq "grep -Eq '^[0-9]+\\.[0-9]+\\.[0-9]+$'" "$repo_root/.github/workflows/ci.yml"
 }

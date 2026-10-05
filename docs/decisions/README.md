@@ -2,14 +2,14 @@
 
 Rig keeps living product, architecture, security, and governance decisions in this directory. Read them in reveal order:
 
-1. [GDR-RIG-001](GDR-RIG-001-adopting-decision-records.md) — adopting Decision Records.
-2. [PDR-RIG-001](PDR-RIG-001-catalogue-led-working-setup.md) — making the catalogue the primary model of a person's working setup.
-3. [ADR-RIG-001](ADR-RIG-001-shell-only-runtime.md) — keeping the installed core compatible with Bash 3.2.
-4. [ADR-RIG-002](ADR-RIG-002-xdg-directory-contract.md) — placing persistent Rig files beneath XDG base directories.
-5. [ADR-RIG-003](ADR-RIG-003-declarative-configuration-grammar.md) — defining the inert dependency-free TOML configuration grammar.
-6. [XDR-RIG-001](XDR-RIG-001-executable-provider-boundary.md) — separating declarative queries from trusted execution and disclosure.
-7. [ADR-RIG-004](ADR-RIG-004-static-publication-projection.md) — separating deterministic versioned public data from website presentation and deployment.
-8. [ADR-RIG-005](ADR-RIG-005-provider-execution-contract.md) — defining provider invocation, state, ordering, and outcome reporting.
-9. [ADR-RIG-006](ADR-RIG-006-declarative-operational-resources.md) — making services and scheduled jobs profile-selected declarations with safe retirement receipts.
-10. [ADR-RIG-007](ADR-RIG-007-resolved-artifact-link-evidence.md) — observing a declared artifact link through the target that supplies its installation evidence.
-11. [ADR-RIG-008](ADR-RIG-008-catalogue-scoped-resource-retirement.md) — retiring a resource because the catalogue no longer declares it rather than because a profile did not select it.
+1. [GDR-RIG-001](GDR-RIG-001-adopting-decision-records.md) — Adopting Decision Records.
+2. [PDR-RIG-001](PDR-RIG-001-catalogue-led-working-setup.md) — Catalogue-led Working Setup.
+3. [ADR-RIG-001](ADR-RIG-001-shell-only-runtime.md) — Shell-only Runtime.
+4. [ADR-RIG-002](ADR-RIG-002-xdg-directory-contract.md) — XDG Directory Contract.
+5. [ADR-RIG-003](ADR-RIG-003-declarative-configuration-grammar.md) — Declarative Configuration Grammar.
+6. [XDR-RIG-001](XDR-RIG-001-executable-provider-boundary.md) — Executable Provider Boundary.
+7. [ADR-RIG-004](ADR-RIG-004-static-publication-projection.md) — Static Publication Projection.
+8. [ADR-RIG-005](ADR-RIG-005-provider-execution-contract.md) — Provider Execution Contract.
+9. [ADR-RIG-006](ADR-RIG-006-declarative-operational-resources.md) — Declarative Operational Resources.
+10. [ADR-RIG-007](ADR-RIG-007-resolved-artifact-link-evidence.md) — Resolved Artifact Link Evidence.
+11. [ADR-RIG-008](ADR-RIG-008-catalogue-scoped-resource-retirement.md) — Catalogue-Scoped Resource Retirement.

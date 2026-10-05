@@ -12,13 +12,13 @@ decision_depends_on: [PDR-RIG-001, ADR-RIG-003]
 
 ## Context
 
-Rig must inspect declarative intent without silently executing it. Built-in providers invoke reviewed native commands, while external providers and publishers may execute arbitrary code that can inspect, change, or disclose local state. Commands hidden in configuration would blur that transition and make arguments, review, and failure behaviour unreliable.
+Rig must inspect declarative intent without silently executing it. Built-in providers invoke reviewed native commands, while external providers may execute arbitrary code that can inspect, change, or disclose local state. Commands hidden in configuration would blur that transition and make arguments, review, and failure behaviour unreliable.
 
 Publication creates a separate disclosure boundary because useful private configuration can contain native ownership, paths, machine policy, and relationships that do not belong on a public website. User-level skills add another trust concern: a declaration can refer to reviewed content, but Rig must not infer trust from an observed directory or evaluate that content itself.
 
 ## Decision
 
-Rig never sources or evaluates configuration. Built-in adapters are reviewed Rig code with fixed provider identities, supported operations, platform gates, and argument construction. External providers and publishers are explicit executable trust transitions with narrowly allowed operations and deterministic executable resolution. Configuration cannot supply hidden commands or grant built-in capabilities.
+Rig never sources or evaluates configuration. Built-in adapters are reviewed Rig code with fixed provider identities, supported operations, platform gates, and argument construction. External providers are explicit executable trust transitions with narrowly allowed operations and deterministic executable resolution. Configuration cannot supply hidden commands or grant built-in capabilities.
 
 Declaration queries invoke no provider code. Status and doctor, including verbose diagnostics, may invoke only bounded observation. Apply and upgrade explicitly authorise machine mutation and complete required preflight first. Init creates missing configuration only; capture observes supported inventory and emits additive proposals outside active configuration for deliberate review. Neither operation installs packages. Rig does not expose generic provider-action dispatch, destructive package cleanup or network publication.
 

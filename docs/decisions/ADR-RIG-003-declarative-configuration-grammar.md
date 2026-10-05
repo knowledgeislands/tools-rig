@@ -12,7 +12,7 @@ decision_depends_on: [PDR-RIG-001, ADR-RIG-001, ADR-RIG-002]
 
 ## Context
 
-Rig needs a structured way to describe catalogue entries, profiles, managed resources, publications, and explicitly trusted extensions. People should be able to read and edit that declaration with familiar tools without repeating internal adapter or protocol details.
+Rig needs a structured way to describe catalogue entries, profiles, managed resources, public views, and explicitly trusted extensions. People should be able to read and edit that declaration with familiar tools without repeating internal adapter or protocol details.
 
 The installed core must remain compatible with Bash 3.2 and require no runtime beyond Bash. Sourcing shell configuration would turn inspection into arbitrary execution, while implementing every TOML feature would add complexity unrelated to Rig's schema.
 

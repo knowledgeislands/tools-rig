@@ -26,13 +26,13 @@ That makes Rig a manager of managers beneath a catalogue people can read.
 
 ## Install
 
-Rig is a pre-v1 public preview. The latest immutable release is `v0.4.0`:
+Rig is a pre-v1 public preview. This checkout is the selected `v0.4.0` release candidate, not yet a published release. After publication, install that exact immutable preview with:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.4.0/install.sh | bash -s -- v0.4.0
 ```
 
-That command installs the released `0.4.0` contract.
+That command becomes available when `v0.4.0` is published. The latest published release is `v0.2.0`, with an earlier command surface.
 
 To use the current checkout while developing or evaluating those changes, link both the executable and manual:
 
@@ -65,7 +65,7 @@ The [user-guide journey](docs/guides/user/README.md) then introduces profiles, m
 
 ## Contributing
 
-Issues and pull requests are welcome. Start with [Develop Rig](docs/guides/developer/README.md) and use the [definition of done](docs/guides/developer/definition-of-done.md) before presenting a change for review.
+Pull requests are welcome. Start with [Develop Rig](docs/guides/developer/README.md) and use the [definition of done](docs/guides/developer/definition-of-done.md) before presenting a change for review.
 
 ## License
 

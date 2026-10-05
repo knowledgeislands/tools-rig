@@ -90,6 +90,7 @@ rig_trim() {
 }
 
 rig_valid_id() {
+  local LC_ALL=C
   case "$1" in
     ''|[!a-z]*|*[!a-z0-9-]*) return 1 ;;
   esac

@@ -22,8 +22,10 @@ jobs:
             scripts/assemble-rig scripts/benchmark-rig scripts/smoke-native-providers
       - name: Parse every shell source
         run: |
-          bash -n bin/rig install.sh src/rig/*.bash \
-            scripts/assemble-rig scripts/benchmark-rig scripts/smoke-native-providers
+          for script in bin/rig install.sh src/rig/*.bash \
+            scripts/assemble-rig scripts/benchmark-rig scripts/smoke-native-providers; do
+            bash -n "$script" || exit 1
+          done
       - name: Check the assembled executable matches its sources
         run: scripts/assemble-rig --check
 
@@ -47,7 +49,7 @@ jobs:
           bats --version
       - name: Run tests on Linux
         if: runner.os == 'Linux'
-        run: bats --print-output-on-failure tests/
+        run: bats --print-output-on-failure tests/ </dev/null
       - name: Provide a TOML-capable interpreter for the tests
         if: runner.os == 'macOS'
         uses: actions/setup-python@v5
@@ -60,7 +62,7 @@ jobs:
           bats_bin=$(command -v bats)
           test_python=$(command -v python3)
           RIG_TEST_PYTHON="$test_python" PATH=/usr/bin:/bin:/usr/sbin:/sbin \
-            "$bats_bin" --print-output-on-failure tests/
+            "$bats_bin" --print-output-on-failure tests/ </dev/null
 
   manual:
     name: mandoc

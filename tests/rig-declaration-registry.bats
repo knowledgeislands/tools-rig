@@ -28,39 +28,51 @@ setup() {
   [ -z "$RIG_DECLARATION_LABEL" ] || false
 }
 
-@test "registry identity shapes accept every declaration and reject malformed identities" {
+assert_registry_identities() {
   local record kind identity seen
   seen='|'
   for record in "${RIG_DECLARATION_REGISTRY[@]}"; do
     kind=${record%%|*}
-    [[ "$seen" != *"|$kind|"* ]] || false
+    [[ "$seen" != *"|$kind|"* ]] || return 1
     seen="$seen$kind|"
-    rig_declaration_lookup "$kind" || false
-    [ -n "$RIG_DECLARATION_LABEL" ] || false
+    rig_declaration_lookup "$kind" || return 1
+    [ -n "$RIG_DECLARATION_LABEL" ] || return 1
     case "$RIG_DECLARATION_SEGMENTS" in
       0) identity=$kind ;;
       1) identity=$kind.example ;;
       2) identity=$kind.example.operation ;;
-      *) false ;;
+      *) return 1 ;;
     esac
-    rig_parse_section_identity "$identity" || false
-    [ "$RIG_SECTION_TYPE" = "$kind" ] || false
+    rig_parse_section_identity "$identity" || return 1
+    [ "$RIG_SECTION_TYPE" = "$kind" ] || return 1
     case "$RIG_DECLARATION_SEGMENTS" in
-      0) [ -z "$RIG_SECTION_ID" ] || false ;;
-      1) [ "$RIG_SECTION_ID" = example ] || false ;;
+      0) [ -z "$RIG_SECTION_ID" ] || return 1 ;;
+      1) [ "$RIG_SECTION_ID" = example ] || return 1 ;;
       2)
-        [ "$RIG_SECTION_ID" = example ] || false
-        [ "$RIG_SECTION_SECONDARY_ID" = operation ] || false
+        [ "$RIG_SECTION_ID" = example ] || return 1
+        [ "$RIG_SECTION_SECONDARY_ID" = operation ] || return 1
         ;;
     esac
-    ! rig_parse_section_identity "$identity.extra" || false
+    ! rig_parse_section_identity "$identity.extra" || return 1
   done
 
   for identity in tool tool. tool.Example tool.1example tool.example.extra \
     action action.example action.example. action.example.operation.extra \
     rig.example binding.example unknown.example; do
-    ! rig_parse_section_identity "$identity" || false
+    ! rig_parse_section_identity "$identity" || return 1
   done
+}
+
+@test "registry identity shapes accept every declaration and reject malformed identities" {
+  assert_registry_identities || false
+}
+
+@test "registry identities remain lowercase ASCII under a UTF-8 collation locale" {
+  export LC_ALL=en_US.UTF-8
+  assert_registry_identities || false
+  ! rig_parse_section_identity 'tool.éxample' || false
+  ! rig_parse_section_identity 'tool.example-é' || false
+  [ "$LC_ALL" = en_US.UTF-8 ] || false
 }
 
 @test "Getting Started lists every setup and observation type exactly once" {

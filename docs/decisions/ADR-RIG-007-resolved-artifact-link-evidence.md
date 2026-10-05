@@ -1,7 +1,7 @@
 ---
 id: ADR-RIG-007
 title: 'Resolved Artifact Link Evidence'
-date: 2026-09-23
+date: 2026-10-05
 status: current
 decision_type: architecture
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/adr
@@ -12,31 +12,25 @@ decision_depends_on: [PDR-RIG-001, ADR-RIG-003, ADR-RIG-006]
 
 ## Context
 
-Artifact observation refused a symbolic link outright, reporting `unavailable` with the detail `unsafe` ahead of every other test. The reasoning was that a link can be repointed, so the link is not evidence of what is installed.
+Applications can install their command-line executable as a symbolic link from a shared executable directory into an application bundle. The declaration names the expected artifact, while the filesystem supplies its current target. Refusing all symbolic links makes that legitimate installed state unavailable to observation.
 
-The cost of that refusal is an entire class of real installed state that cannot be declared. Applications install their command line as a link from a shared executable directory into their own bundle — `code`, `subl`, `gitup` and their peers. Declaring one did not track it; it reported the owning tool as `unavailable`, so a healthy machine acquired findings for state that was perfectly correct, and the surface stayed unmanaged instead.
+A link may be absent, dangling after an upgrade, cyclic, or pointed at an unsuitable target. A declaration of expectation allows Rig to distinguish those cases from a healthy installed artifact; an inventory of existing files alone cannot establish whether an expected command was never installed.
 
-The refusal also left the two interesting failures invisible. An upgrade that moves an executable inside its bundle leaves the link dangling, and nothing said so. A command line an application never installed cannot be noticed by any check that enumerates what exists, because only a declaration of expectation can report an absence, and the artifact list is that declaration.
-
-The safety the refusal appeared to buy was not real. Rig already trusts a declared path to be the artifact it names. A link and a path are both names the filesystem resolves; the only difference is that one resolves in two steps.
+Both direct paths and symbolic links can change between observations. Their evidence describes the filesystem at the time of the read rather than a permanent installation guarantee.
 
 ## Decision
 
-A declared artifact that is a symbolic link is observed through the target it resolves to. Resolution follows at most 40 leaf links with the native `readlink` Rig already uses, resolving a relative target against the link's own directory, and treats an exhausted bound, a cycle, or an absent target as its own failure — `unavailable` with a detail that says resolution failed, never `unsafe`.
+Rig observes a declared artifact symbolic link through its resolved target. Resolution follows at most 40 leaf links using native `readlink`, resolves relative targets against each link's own directory, and reports exhausted bounds, cycles or failed resolution as `unavailable` with an explanatory detail.
 
-Resolution is not constrained to any root. The artifact declaration explicitly names the trusted expectation, so constraining the target would refuse exactly the bundles the declaration was written to describe. The trust boundary sits on the other side instead: the resolved target must independently satisfy every test a directly declared artifact satisfies before it can be `present`. A target that is absent is `missing`; a target that is a damaged application is `drifted`; a target that is neither a regular file nor a directory remains `unavailable`. Resolution can therefore never manufacture a healthy answer.
+Resolution is not constrained to a particular root: the declaration explicitly trusts the expected artifact path, including application bundles outside a shared executable directory. The resolved target independently satisfies the same health checks as a directly declared artifact before it can be `present`. An absent target is `missing`, a damaged application is `drifted`, and an unsupported target type is `unavailable`; indirection never manufactures a healthy answer.
 
-Because indirection is now observable rather than fatal, it must also be reviewable. Where a link was followed, the reported detail carries the resolved target beside the declared path, so a reader sees both the expectation and the evidence that answered it.
-
-Rig still does not create, repair, or repoint a link. Observation remains read-only, and the declaration remains the only source of desired state.
+When Rig follows a link, its observation detail identifies the resolved target beside the declared path. Rig does not create, repair or repoint the link. Only leaf links receive this explicit resolution; intermediate directory components are resolved by the operating system as for a direct path.
 
 ## Consequences
 
-A class of real installed state becomes declarable. A command line an application installs by link is now `present` on a healthy machine instead of an unexplained `unavailable`, and the five such paths that once took a healthy workstation from four findings to nine can be declared without manufacturing noise. The two failures that mattered become visible: a link left dangling by an upgrade that moved an executable inside its bundle, and a command line an application never installed at all, which no check that enumerates what exists could ever report.
+Application-owned command links can be declared and assessed without treating ordinary installation indirection as a safety failure. Missing commands and dangling links become actionable observations rather than unexplained refusal.
 
-The repository-side check that enumerated a shared executable directory and resolved each link is retired. That compensation belonged in Rig, and a workstation no longer needs local code to answer for a general observation.
-
-Rig accepts a narrower guarantee in exchange. A link can be repointed between observations, so `present` asserts that the declared path resolved to a healthy artifact at the moment it was read, not that the link has always pointed there. That is the same guarantee a direct path already carried, and the detail now names the target, so a reader can see when it changes. Only the leaf link is followed; an intermediate directory component is resolved by the kernel exactly as it is for a direct path.
+A `present` result states that the declared path resolved to a healthy artifact when read. It cannot guarantee that a link remains unchanged afterward. Reporting both expectation and target makes the scope of that evidence reviewable, while keeping observation read-only and desired state in the catalogue.
 
 ## References
 

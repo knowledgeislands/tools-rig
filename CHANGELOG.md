@@ -33,6 +33,7 @@ Run `rig help COMMAND` or `rig COMMAND --help` for options and exact arguments.
 
 ### Changed and removed
 
+- Configuration identities remain lowercase ASCII regardless of the host's collation locale, including macOS Bash 3.2.
 - Supported declaration kinds share one parser registry, with mechanical checks keeping the setup-item guide and canonical table specification aligned.
 - Diagnostics share a common tool/version, proven installation mode, runtime host and configuration-presence baseline. Doctor exposes read-only coverage and item-based pass/warn/fail/skipped counts, explicitly distinguishing declared health from package freshness. Tables wrap complete prose at interactive terminal width, use labelled entries on narrow terminals, and preserve identifiers and deterministic plain redirected output.
 - The current command surface replaces `bootstrap`, `maintain`, `run`, `publish`, and `clean` without compatibility aliases. Imperative provider operations and housekeeping remain native; Rig exports data, while a receiving system owns publication and transport.
