@@ -139,28 +139,30 @@ rig_index_section_name() {
 }
 
 rig_parse_section_identity() {
-  local name rest first second
+  local name kind rest first second
 
   name=$1
   RIG_SECTION_TYPE=
   RIG_SECTION_ID=
   RIG_SECTION_SECONDARY_ID=
 
-  if [ "$name" = rig ]; then
-    RIG_SECTION_TYPE=rig
-    return 0
-  fi
+  kind=${name%%.*}
+  rig_declaration_lookup "$kind" || return 1
+  RIG_SECTION_TYPE=$kind
 
-  case "$name" in
-    category.*|tool.*|skill.*|profile.*|provider.*|service.*|scheduled-job.*|setting.*|dock.*|dock-item.*|port.*|retired-application.*)
-      RIG_SECTION_TYPE=${name%%.*}
+  case "$RIG_DECLARATION_SEGMENTS" in
+    0)
+      [ "$name" = "$kind" ] || return 1
+      ;;
+    1)
       rest=${name#*.}
+      [ "$rest" != "$name" ] || return 1
       rig_valid_id "$rest" || return 1
       RIG_SECTION_ID=$rest
       ;;
-    action.*)
-      RIG_SECTION_TYPE=${name%%.*}
+    2)
       rest=${name#*.}
+      [ "$rest" != "$name" ] || return 1
       [ "$rest" != "${rest#*.}" ] || return 1
       first=${rest%%.*}
       second=${rest#*.}

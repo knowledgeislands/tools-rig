@@ -56,11 +56,11 @@ _Evidence:_ `tests/rig.bats` covers a neutral catalogue-only row in an otherwise
 
 ### RIG-STATE-009 — Deterministic status report
 
-`rig status` MUST print `TOOL`, `PROVIDER`, `STATE`, and `DETAIL` columns in stable dependency order followed by fixed-order summary counters. Every human section MUST close with its own fixed-order summary counters. Every human status section MUST use aligned columns, a header rule, and two-space gutters; MUST remain at most 120 characters wide; and MUST mark bounded values with deterministic `...` ellipsis. Path-like unmanaged identities SHOULD preserve useful leading and trailing context when bounded. This human layout MUST NOT be treated as a machine-readable contract.
+`rig status` MUST print `TOOL`, `PROVIDER`, `STATE`, and `DETAIL` columns in stable dependency order followed by fixed-order summary counters. Every human section MUST close with its own fixed-order summary counters. Human status sections MUST use aligned columns, a header rule and two-space gutters when columns fit, or labelled stacked entries when they do not. Descriptive values MUST wrap without abbreviation; identity preservation takes precedence over the available width. This human layout MUST NOT be treated as a machine-readable contract.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats compares exact status output for a dependency graph whose lexical order differs from its execution order, exercises every status section, and bounds deliberately long rows to 120 characters with visible ellipsis.
+_Verify:_ Bats compares exact status output for a dependency graph whose lexical order differs from its execution order, exercises every status section, and verifies complete wrapped descriptions, intact identities and terminal-width-aware stacked fallback.
 
 _Evidence:_ `rig_build_plan` provides stable dependency order and `rig_command_status` owns the exact table and summary.
 
@@ -100,7 +100,7 @@ _Evidence:_ `rig_command_doctor` consumes `rig_observe_plan` and `rig_observe_re
 
 ### RIG-STATE-015 — Doctor output and outcomes
 
-`rig doctor` MUST print either `Rig doctor: healthy` or `Rig doctor: findings`, deterministic owner and action fields for each finding, and fixed-order summary counts. An unusable configuration MUST become a configuration finding retaining its file, line, reason, and corrective guidance in text and JSON. Doctor MUST still report effective paths, platform, and native provider executable availability without running configuration-dependent observations. It MUST exit 0 when healthy, 1 for findings including configuration load failure, and 2 for syntax or resolution failure. Other operational commands MUST continue to reject unusable configuration with status 2.
+`rig doctor` MUST print `Verdict: healthy` or `Verdict: unhealthy`, deterministic owner and action fields for each finding, and fixed-order summary counts. An unusable configuration MUST become a configuration finding retaining its file, line, reason, and corrective guidance in text and JSON. Doctor MUST still report effective paths, platform, and native provider executable availability without running configuration-dependent observations. It MUST exit 0 when healthy, 1 for findings including configuration load failure, and 2 for syntax or resolution failure. Other operational commands MUST continue to reject unusable configuration with status 2.
 
 _Conformance:_ conforming
 
@@ -348,9 +348,11 @@ _Evidence:_ `rig_collect_unmanaged` always includes the macOS application adapte
 
 ### RIG-STATE-033 — Shared report and command projection
 
-Every human-readable table MUST use the shared column renderer. It MUST preserve the full value of an identity column and spend a 120-character line budget on abbreviating other columns first; when the identities alone exceed that budget, preserving the identities takes precedence. Report spacing MUST NOT be treated as a machine interface.
+Every human-readable table MUST use the shared column renderer. It MUST preserve identity columns, wrap descriptive values, use current interactive terminal geometry when available, and use labelled stacked entries when columns cannot fit. Redirected output and unavailable terminal geometry MUST use a deterministic plain 120-column budget independent of ambient `COLUMNS`; when an identity exceeds that budget, preserving it takes precedence. Report spacing MUST NOT be treated as a machine interface.
 
-`rig show`, `rig apply`, and `rig upgrade` MUST accept `--format text|json`, default to text, and reject another format with status 2 before dispatch. JSON MUST be one parseable object on stdout with the common schema, version, command, profile, platform, and observation-time envelope. The selection, declaration, and result values carried in JSON MUST remain complete even when text abbreviates a prose column. Mutation projections MUST group unabridged result rows by their named columns and retain the full source report; explanation projections MUST retain the full report alongside labelled fields.
+Human cells MUST show ASCII terminal controls and malformed UTF-8 bytes as visible escapes. Valid UTF-8 code points MUST remain intact and use a conservative two-cell non-ASCII budget; when a terminal cannot contain one wide glyph, preserving that glyph takes precedence. JSON MUST retain original values independently of human rendering.
+
+`rig show`, `rig apply`, and `rig upgrade` MUST accept `--format text|json`, default to text, and reject another format with status 2 before dispatch. JSON MUST be one parseable object on stdout with the common schema, version, command, profile, platform, and observation-time envelope. The selection, declaration, and result values carried in JSON MUST remain complete independently of text wrapping. Mutation projections MUST group unabridged result rows by their named columns and retain the full source report; explanation projections MUST retain the full report alongside labelled fields.
 
 Mutation text reports MUST emit a completed table after its work finishes, so native diagnostics written to stderr cannot divide its rows when a terminal merges the streams. Progress and native diagnostics MUST remain on stderr during execution; buffering stdout MUST NOT change the command's exit status or stated outcome.
 
@@ -409,3 +411,23 @@ _Conformance:_ conforming
 _Verify:_ Compare text/JSON and existing reports without the flag; combine profile and problem filtering; remove redaction fields recursively and assert fixture paths disappear; compare doctor, apply and upgrade results independently of retained evidence.
 
 _Evidence:_ `rig_collect_retired_applications`, `rig_retired_json`, `rig_retired_text` and `tests/rig-retired-applications.bats` verify the opt-in, redactable informational section.
+
+### RIG-STATE-038 — Common diagnostic context
+
+`rig diag` and `rig doctor` MUST report tool, version, proven installation mode (`local`, `release` or `unknown`), runtime-host platform and architecture, runtime version, and configuration presence; default diag MUST omit local paths and configuration values, and `--full` MUST add only executable and effective XDG paths without exposing values or secrets. Runtime-host context MUST remain distinct from selected provider platform.
+
+_Conformance:_ conforming
+
+_Verify:_ Isolated tests compare direct and linked checkout, copied unknown payload and Homebrew receipt provenance, fragment-only configuration, host-versus-target platform, default redaction and explicit full paths.
+
+_Evidence:_ `rig_diagnostic_context`, text/JSON context projections and `tests/diagnostics-tables.bats` cover the shared baseline without executing providers or parsing configuration.
+
+### RIG-STATE-039 — Explicit health coverage and counts
+
+`rig doctor` MUST expose read-only coverage, verdict and pass/warn/fail/skipped counts using declared item checks rather than subprocess counts, MUST skip unavailable dependent selection explicitly, and MUST state that available package updates are not checked. Neutral catalogue-only and incompatible selections MUST NOT become failures. Existing doctor JSON fields MUST retain their meanings alongside additive context, verdict and checks.
+
+_Conformance:_ conforming
+
+_Verify:_ Parse healthy and unusable-configuration JSON, check mixed and incompatible selections, damaged history and multiple historical failures, and assert counts and explicit freshness scope.
+
+_Evidence:_ `rig_command_doctor`, `tests/diagnostics-tables.bats`, `tests/rig.bats` and `tests/rig-apply-history.bats` cover additive health and coverage projections.

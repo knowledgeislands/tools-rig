@@ -539,12 +539,12 @@ write_query_config() {
 @test "diag is share-safe by default and help resolves command topics" {
   run env RIG_CONFIG_HOME="$CONFIG_HOME" "$RIG" diag
   [ "$status" -eq 0 ] || false
-  [[ "$output" == *'configuration='* ]] || false
+  [[ "$output" == *'Configuration: '* ]] || false
   [[ "$output" != *"$CONFIG_HOME"* ]] || false
 
   run env RIG_CONFIG_HOME="$CONFIG_HOME" "$RIG" diag --full
   [ "$status" -eq 0 ] || false
-  [[ "$output" == *"config-home=$CONFIG_HOME"* ]] || false
+  [[ "$output" == *"Config home: $CONFIG_HOME"* ]] || false
 
   run "$RIG" help diag
   [ "$status" -eq 0 ] || false
@@ -633,7 +633,7 @@ write_query_config() {
     "$RIG" doctor --verbose
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"$(printf 'Runtime:\n  Rig version: 0.4.0\n  Executable: %s\n  Bash version: %s\n  Platform: macos\nPaths:\n  Config home: %s/.config/rig\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/.config/rig/rig.toml (absent)\n  Fragment count: 0\n  Status: missing' "$RIG" "$BASH_VERSION" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME")" ]] || false
+  [[ "$output" == *"$(printf 'Runtime:\n  Rig version: 0.4.0\n  Executable: %s\n  Bash version: %s\n  Selected platform: macos\nPaths:\n  Config home: %s/.config/rig\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/.config/rig/rig.toml (absent)\n  Fragment count: 0\n  Status: missing' "$RIG" "$BASH_VERSION" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME")" ]] || false
 }
 
 @test "doctor verbose follows XDG base directories" {
@@ -742,7 +742,7 @@ write_query_config() {
     XDG_DATA_HOME= XDG_STATE_HOME= XDG_CACHE_HOME= RIG_PLATFORM=macos "$RIG" doctor --verbose
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"$(printf 'Runtime:\n  Rig version: 0.4.0\n  Executable: %s\n  Bash version: %s\n  Platform: macos\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.toml\n  Fragment count: 2\n  Status: valid\n  Default profile: default\n  Selection mode: central\n  Profiles: 1\n  Tools: 1\n  Skills: 0\n  Managed resources: 0\n  Ports: 0\n  Tool variants: 0' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]] || false
+  [[ "$output" == *"$(printf 'Runtime:\n  Rig version: 0.4.0\n  Executable: %s\n  Bash version: %s\n  Selected platform: macos\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.toml\n  Fragment count: 2\n  Status: valid\n  Default profile: default\n  Selection mode: central\n  Profiles: 1\n  Tools: 1\n  Skills: 0\n  Managed resources: 0\n  Ports: 0\n  Tool variants: 0' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]] || false
 }
 
 @test "doctor verbose accepts fragment-only configuration and reports the optional root absent" {
@@ -826,7 +826,7 @@ write_query_config() {
   [ "$output" = $'Profile:  minimal\nPlatform: macos\nTools:    1\n\nID   NAME  CATEGORY    PURPOSE\n---  ----  ----------  --------------------\ngit  Git   foundation  Track source history\n\nSkills: 0' ]
 }
 
-@test "show bounds wide table rows and marks abbreviated values" {
+@test "show bounds wide table rows and wraps complete prose" {
   write_minimal_config
   long_purpose='Summarise a deliberately long purpose that would otherwise force the profile table beyond its stable terminal width and make the selected rig difficult to scan quickly'
   sed "s|purpose = \"Test parsing\"|purpose = \"$long_purpose\"|" \
@@ -838,7 +838,9 @@ write_query_config() {
 
   [ "$status" -eq 0 ]
   [ "${#lines[5]}" -le 120 ]
-  [[ "${lines[5]}" == *... ]] || false
+  [[ "$output" != *...* ]] || false
+  [[ "$output" == *'scan quickly'* ]] || false
+  printf '%s\n' "$output" | awk 'length > 120 { exit 1 }'
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" show --format json
@@ -2382,7 +2384,9 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" doctor
 
   [ "$status" -eq 0 ]
-  [ "$output" = $'Rig doctor: healthy\nProfile: default\nPlatform: macos\nSummary: findings=0 present=3 catalogue-only=1 incompatible-platform=0' ]
+  [[ "$output" == $'Verdict: healthy\nProfile: default\nSelected platform: macos\n'* ]] || false
+  [[ "$output" == *'Checks: pass=9 warn=0 fail=0 skipped=1 (unit=item)'* ]] || false
+  [[ "$output" == *'Summary: findings=0 present=3 catalogue-only=1 incompatible-platform=0'* ]] || false
   [ "$(grep '^CALL=' "$ORCHESTRATION_LOG")" = $'CALL=observe:base:present\nCALL=observe:app:present\nCALL=observe:independent:present' ]
   ! grep -q '^CALL=apply:' "$ORCHESTRATION_LOG"
 }
@@ -2400,7 +2404,10 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
     RIG_TEST_LOG="$ORCHESTRATION_LOG" "$RIG" doctor
 
   [ "$status" -eq 1 ]
-  [ "$output" = $'Rig doctor: findings\nProfile: default\nPlatform: macos\nTool findings:\n  base: missing via runner (-); owner=runner; action=run-rig-apply\n  app: drifted via runner (-); owner=runner; action=review-then-run-rig-apply\n  independent: unknown via runner (invalid-response); owner=runner; action=inspect-provider-diagnostics\nSummary: findings=3 present=0 catalogue-only=1 incompatible-platform=0' ]
+  [[ "$output" == $'Verdict: unhealthy\nProfile: default\nSelected platform: macos\n'* ]] || false
+  [[ "$output" == *$'Tool findings:\n  base: missing via runner (-); owner=runner; action=run-rig-apply\n  app: drifted via runner (-); owner=runner; action=review-then-run-rig-apply\n  independent: unknown via runner (invalid-response); owner=runner; action=inspect-provider-diagnostics'* ]] || false
+  [[ "$output" == *'Checks: pass=6 warn=0 fail=3 skipped=1 (unit=item)'* ]] || false
+  [[ "$output" == *'Summary: findings=3 present=0 catalogue-only=1 incompatible-platform=0'* ]] || false
   [ "$(grep '^CALL=' "$ORCHESTRATION_LOG")" = $'CALL=observe:base:missing\nCALL=observe:app:drifted\nCALL=observe:independent:invalid-response' ]
 }
 
@@ -2452,6 +2459,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [ "$status" -eq 0 ]
   [[ "$output" == *'linux-only: incompatible-platform; owner=catalogue; action=none'* ]] || false
   [[ "$output" == *'Summary: findings=0 present=3 catalogue-only=1 incompatible-platform=1'* ]] || false
+  [[ "$output" == *'Checks: pass=9 warn=0 fail=0 skipped=2 (unit=item)'* ]] || false
 }
 
 @test "doctor diagnoses configuration failures and reserves status 2 for invalid syntax" {
@@ -2526,7 +2534,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   grep -F 'ARG=install * value' "$ORCHESTRATION_LOG" >/dev/null
 }
 
-@test "status table rendering is aligned bounded and visibly truncates long cells" {
+@test "status table rendering is aligned bounded and wraps long cells" {
   run bash -c '
     . "$1"
     rig_table_reset
@@ -2544,9 +2552,9 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
 
   [ "$status" -eq 0 ]
   [[ "$output" != *$'\t'* ]] || false
-  [[ "$output" == *'tool-with-an-identity-lon...'* ]] || false
-  [[ "$output" == *'provider-with-a...'* ]] || false
-  [[ "$output" == *'detail-with-enough-content-to-exceed-the-deliberately...'* ]] || false
+  [[ "$output" != *...* ]] || false
+  [[ "$output" == *'unavailable'* ]] || false
+  [[ "$output" == *'clear-margin'* ]] || false
   printf '%s\n' "$output" | awk 'length > 120 { exit 1 }'
 }
 

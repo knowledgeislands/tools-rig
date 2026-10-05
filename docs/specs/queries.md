@@ -6,11 +6,11 @@ This area of the [Rig Specifications](index.md) defines read-only ways to answer
 
 ### RIG-QUERY-001 — Show a rig
 
-`rig show` MUST describe the resolved default profile, and `rig show --profile NAME` MUST describe a named profile without changing the configured default. The output MUST present profile metadata, a human-readable aligned tool table, and concise selected service, scheduled-job, setting, and Dock-layout sections. Table rows MUST use a stable 120-character budget and mark abbreviated values with `...`; qualified `rig show` retains complete metadata.
+`rig show` MUST describe the resolved default profile, and `rig show --profile NAME` MUST describe a named profile without changing the configured default. The output MUST present profile metadata, a human-readable aligned tool table or narrow-terminal labelled entries, and concise selected service, scheduled-job, setting, and Dock-layout sections. Table descriptions MUST wrap without abbreviation within current terminal width or a deterministic plain 120-column fallback; identifiers and qualified `rig show` metadata MUST remain complete.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests compare exact default and named profile summaries, every selected declaration kind, and bounded-width abbreviation.
+_Verify:_ Bats tests compare exact default and named profile summaries, every selected declaration kind, complete wrapped descriptions and real terminal geometry with stacked fallback.
 
 _Evidence:_ `rig_command_show`, `rig_print_profile_tool_table`, and `rig_print_profile_resource_tables` render the resolved profile within the width budget; `show describes the resolved profile in an aligned table` and the typed macOS query test cover tool and managed-resource sections.
 

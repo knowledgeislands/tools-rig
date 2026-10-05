@@ -123,6 +123,21 @@ SH
   ! grep -F $'tool:alpha\trunner' "$LEDGER" || false
 }
 
+@test "doctor counts multiple historical failures separately from present tools" {
+  run env HISTORY_EXIT=7 "$RIG" apply
+  [ "$status" -eq 1 ] || false
+  run "$RIG" doctor --format json
+  [ "$status" -eq 1 ] || false
+  printf '%s\n' "$output" | /usr/bin/python3 -c '
+import json,sys
+d=json.load(sys.stdin)
+assert d["historical_failure_count"] == 2
+assert d["summary"]["present"] == 2
+assert d["checks"]["pass"] == 8
+assert d["checks"]["fail"] == 2 and d["checks"]["skipped"] == 0
+' || false
+}
+
 @test "missing history is neutral corrupt history is unavailable and never overwritten" {
   run "$RIG" status --format json
   [ "$status" -eq 0 ] || false
@@ -139,6 +154,7 @@ SH
   run "$RIG" doctor
   [ "$status" -eq 1 ] || false
   [[ "$output" == *'Apply history unavailable: invalid-history-header'* ]] || false
+  [[ "$output" == *'Checks: pass=7 warn=0 fail=1 skipped=0 (unit=item)'* ]] || false
 }
 
 @test "history symlinks and foreign locks preserve evidence and native results" {

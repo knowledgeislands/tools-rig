@@ -421,6 +421,78 @@ rig_count_config_fragments() {
   RIG_COUNT=$count
 }
 
+# Inspect only executable provenance and environment, never configuration values.
+rig_diagnostic_context() {
+  local path parent target hops
+  rig_effective_paths || return
+  case "${OSTYPE:-unknown}" in
+    darwin*) RIG_DIAG_PLATFORM=macos ;;
+    linux*) RIG_DIAG_PLATFORM=linux ;;
+    msys*|cygwin*|win32*|windows*) RIG_DIAG_PLATFORM=windows ;;
+    *) RIG_DIAG_PLATFORM=${OSTYPE:-unknown} ;;
+  esac
+  RIG_DIAG_ARCHITECTURE=unknown
+  if command -v uname >/dev/null 2>&1; then
+    RIG_DIAG_ARCHITECTURE=$(uname -m 2>/dev/null) || RIG_DIAG_ARCHITECTURE=unknown
+  fi
+  case "$RIG_DIAG_ARCHITECTURE" in
+    x64|AMD64) RIG_DIAG_ARCHITECTURE=x86_64 ;;
+    aarch64) RIG_DIAG_ARCHITECTURE=arm64 ;;
+    '') RIG_DIAG_ARCHITECTURE=unknown ;;
+  esac
+  RIG_DIAG_CONFIGURATION=absent
+  if [ -f "$RIG_DIAG_CONFIG_HOME/rig.toml" ]; then
+    RIG_DIAG_CONFIGURATION=present
+  else
+    for path in "$RIG_DIAG_CONFIG_HOME"/conf.d/*.toml; do
+      [ ! -f "$path" ] || RIG_DIAG_CONFIGURATION=present
+    done
+  fi
+  RIG_DIAG_INSTALLATION=unknown
+  path=${RIG_INVOKED_PATH:-${BASH_SOURCE[0]}}
+  case "$path" in */*) ;; *) path=$(command -v "$path" 2>/dev/null) || path= ;; esac
+  hops=0
+  while [ -n "$path" ]; do
+    parent=$(cd -P "${path%/*}" 2>/dev/null && pwd) || break
+    path=$parent/${path##*/}
+    if [ -L "$path" ]; then
+      command -v readlink >/dev/null 2>&1 || break
+      target=$(readlink "$path" 2>/dev/null) || break
+      hops=$((hops + 1))
+      [ "$hops" -lt 40 ] || break
+      case "$target" in /*) path=$target ;; *) path=$parent/$target ;; esac
+      continue
+    fi
+    if [ "${path##*/}" = rig ] && [ "${parent##*/}" = bin ] &&
+        [ -e "$parent/../.git" ] && [ -f "$parent/../src/rig/00-runtime.bash" ] &&
+        [ -f "$parent/../scripts/assemble-rig" ]; then
+      RIG_DIAG_INSTALLATION=local
+    elif [ -f "$parent/../INSTALL_RECEIPT.json" ]; then
+      case "$parent" in */Cellar/rig/*/bin) RIG_DIAG_INSTALLATION=release ;; esac
+    fi
+    break
+  done
+  RIG_DIAG_EXECUTABLE=${path:-${RIG_INVOKED_PATH:-unknown}}
+}
+
+rig_diagnostic_context_text() {
+  printf 'Tool: rig\nVersion: %s\nInstallation: %s\nPlatform: %s\nArchitecture: %s\nRuntime: bash %s\nConfiguration: %s\n' \
+    "$RIG_VERSION" "$RIG_DIAG_INSTALLATION" "$RIG_DIAG_PLATFORM" \
+    "$RIG_DIAG_ARCHITECTURE" "$BASH_VERSION" "$RIG_DIAG_CONFIGURATION"
+}
+
+rig_diagnostic_context_json() {
+  rig_json_field '{' tool rig
+  rig_json_field ',' version "$RIG_VERSION"
+  rig_json_field ',' installation "$RIG_DIAG_INSTALLATION"
+  rig_json_field ',' platform "$RIG_DIAG_PLATFORM"
+  rig_json_field ',' architecture "$RIG_DIAG_ARCHITECTURE"
+  rig_json_field ',' runtime bash
+  rig_json_field ',' runtime_version "$BASH_VERSION"
+  rig_json_field ',' configuration "$RIG_DIAG_CONFIGURATION"
+  printf '}'
+}
+
 rig_doctor_diagnostics() {
   local platform root_file root_display fragment_count config_status default_profile exit_code
   local index key profiles tools skills resources ports variants variant rest
@@ -511,7 +583,7 @@ rig_doctor_diagnostics() {
     return 0
   fi
 
-  printf 'Runtime:\n  Rig version: %s\n  Executable: %s\n  Bash version: %s\n  Platform: %s\n' \
+  printf 'Runtime:\n  Rig version: %s\n  Executable: %s\n  Bash version: %s\n  Selected platform: %s\n' \
     "$RIG_VERSION" "$RIG_INVOKED_PATH" "$BASH_VERSION" "$platform"
   printf 'Paths:\n  Config home: %s\n  Data home: %s\n  State home: %s\n  Cache home: %s\n' \
     "$RIG_DIAG_CONFIG_HOME" "$RIG_DIAG_DATA_HOME" "$RIG_DIAG_STATE_HOME" "$RIG_DIAG_CACHE_HOME"
@@ -709,6 +781,8 @@ rig_table_reset() {
   RIG_TABLE_KEEP=()
   RIG_TABLE_CELLS=()
   RIG_TABLE_ROW_COUNT=0
+  RIG_TABLE_STACKED=0
+  RIG_TABLE_COLUMNS=120
 }
 
 rig_table_add_column() {
@@ -728,8 +802,99 @@ rig_table_add_column() {
   RIG_TABLE_KEEP[$index]=$keep
 }
 
+rig_table_safe_cell() {
+  local value index character encoded result advance code LC_ALL=C
+  value=$1
+  case "$value" in *[!\ -~]*) ;; *) RIG_VALUE=$value; return ;; esac
+  result=
+  index=0
+  while [ "$index" -lt "${#value}" ]; do
+    character=${value:$index:1}
+    advance=1
+    case "$character" in
+      $'\t') result=$result'\t' ;;
+      $'\n') result=$result'\n' ;;
+      $'\r') result=$result'\r' ;;
+      [[:cntrl:]])
+        printf -v encoded '\\x%02x' "'$character"
+        result=$result$encoded ;;
+      [\ -~]) result=$result$character ;;
+      *)
+        rig_table_character "$value" "$index"
+        if [ "$RIG_TABLE_CHARACTER_BYTES" -eq 1 ]; then
+          printf -v code '%d' "'$character"
+          printf -v encoded '\\x%02x' "$((code & 255))"
+          result=$result$encoded
+        else
+          advance=$RIG_TABLE_CHARACTER_BYTES
+          result=$result${value:$index:$advance}
+        fi ;;
+    esac
+    index=$((index + advance))
+  done
+  RIG_VALUE=$result
+}
+
+# UTF-8 code points conservatively cost two display cells. Combining marks and
+# joined emoji may underfill a line, but wide glyphs cannot exceed its budget.
+# Invalid UTF-8 bytes each cost two; never group an invalid byte sequence.
+rig_table_character() {
+  local value index character next offset expected valid LC_ALL=C
+  value=$1; index=$2
+  character=${value:$index:1}
+  RIG_TABLE_CHARACTER_BYTES=1
+  RIG_TABLE_CHARACTER_WIDTH=2
+  case "$character" in
+    [\ -~]) RIG_TABLE_CHARACTER_WIDTH=1; return ;;
+    [$'\302'-$'\337']) expected=2 ;;
+    [$'\340'-$'\357']) expected=3 ;;
+    [$'\360'-$'\364']) expected=4 ;;
+    *) return ;;
+  esac
+  offset=1
+  while [ "$offset" -lt "$expected" ]; do
+    next=${value:$((index + offset)):1}
+    case "$next" in [$'\200'-$'\277']) ;; *) return ;; esac
+    if [ "$offset" -eq 1 ]; then
+      valid=1
+      case "$character" in
+        $'\340') case "$next" in [$'\240'-$'\277']) ;; *) valid=0 ;; esac ;;
+        $'\355') case "$next" in [$'\200'-$'\237']) ;; *) valid=0 ;; esac ;;
+        $'\360') case "$next" in [$'\220'-$'\277']) ;; *) valid=0 ;; esac ;;
+        $'\364') case "$next" in [$'\200'-$'\217']) ;; *) valid=0 ;; esac ;;
+      esac
+      [ "$valid" -eq 1 ] || return
+    fi
+    offset=$((offset + 1))
+  done
+  RIG_TABLE_CHARACTER_BYTES=$expected
+}
+
+rig_table_display_width() {
+  local value index width LC_ALL=C
+  value=$1
+  case "$value" in *[!\ -~]*) ;; *) RIG_TABLE_DISPLAY_WIDTH=${#value}; return ;; esac
+  index=0; width=0
+  while [ "$index" -lt "${#value}" ]; do
+    rig_table_character "$value" "$index"
+    index=$((index + RIG_TABLE_CHARACTER_BYTES))
+    width=$((width + RIG_TABLE_CHARACTER_WIDTH))
+  done
+  RIG_TABLE_DISPLAY_WIDTH=$width
+}
+
 rig_table_fit_widths() {
-  local index total overflow minimum available reduction
+  local index total overflow minimum available reduction geometry rows columns
+
+  # Redirected reports have a stable plain layout, independent of the caller's
+  # COLUMNS. Terminal geometry is optional; Bash remains the only requirement.
+  if [ -t 1 ]; then
+    geometry=$(stty size 2>/dev/null <&3) || geometry=
+    read -r rows columns <<< "$geometry"
+    case "${columns:-}" in ''|*[!0-9]*) ;; *)
+      [ "$columns" -le 0 ] || RIG_TABLE_COLUMNS=$columns ;;
+    esac
+  fi
 
   total=$(((${#RIG_TABLE_HEADERS[@]} - 1) * 2))
   index=0
@@ -737,7 +902,7 @@ rig_table_fit_widths() {
     total=$((total + ${RIG_TABLE_WIDTHS[$index]}))
     index=$((index + 1))
   done
-  overflow=$((total - 120))
+  overflow=$((total - RIG_TABLE_COLUMNS))
   [ "$overflow" -gt 0 ] || return 0
   index=$((${#RIG_TABLE_WIDTHS[@]} - 1))
   while [ "$index" -ge 0 ] && [ "$overflow" -gt 0 ]; do
@@ -753,6 +918,7 @@ rig_table_fit_widths() {
     fi
     index=$((index - 1))
   done
+  [ "$overflow" -le 0 ] || RIG_TABLE_STACKED=1
 }
 
 rig_table_add_row() {
@@ -761,10 +927,11 @@ rig_table_add_row() {
   [ "$#" -eq "${#RIG_TABLE_HEADERS[@]}" ] || return 2
   index=0
   for cell in "$@"; do
-    cell=${cell//$'\t'/\\t}
-    cell=${cell//$'\n'/\\n}
+    rig_table_safe_cell "$cell"
+    cell=$RIG_VALUE
     RIG_TABLE_CELLS[${#RIG_TABLE_CELLS[@]}]=$cell
-    width=${#cell}
+    rig_table_display_width "$cell"
+    width=$RIG_TABLE_DISPLAY_WIDTH
     maximum=${RIG_TABLE_MAX_WIDTHS[$index]}
     if [ "${RIG_TABLE_KEEP[$index]}" != keep ]; then
       [ "$width" -le "$maximum" ] || width=$maximum
@@ -775,10 +942,49 @@ rig_table_add_row() {
   RIG_TABLE_ROW_COUNT=$((RIG_TABLE_ROW_COUNT + 1))
 }
 
+rig_table_take_line() {
+  local value width prefix index cells last_space LC_ALL=C
+  value=$1
+  width=$2
+  RIG_TABLE_REMAINDER=
+  RIG_VALUE=$value
+  rig_table_display_width "$value"
+  [ "$RIG_TABLE_DISPLAY_WIDTH" -gt "$width" ] || return 0
+  case "$value" in
+    *[!\ -~]*)
+      index=0; cells=0; last_space=0
+      while [ "$index" -lt "${#value}" ]; do
+        rig_table_character "$value" "$index"
+        [ "$((cells + RIG_TABLE_CHARACTER_WIDTH))" -le "$width" ] || break
+        [ "${value:$index:1}" != ' ' ] || last_space=$index
+        cells=$((cells + RIG_TABLE_CHARACTER_WIDTH))
+        index=$((index + RIG_TABLE_CHARACTER_BYTES))
+      done
+      if [ "$index" -eq 0 ]; then
+        # A one-cell terminal cannot contain a two-cell glyph; preserve the
+        # glyph rather than corrupting its bytes or looping without progress.
+        rig_table_character "$value" 0
+        index=$RIG_TABLE_CHARACTER_BYTES
+      fi
+      [ "$last_space" -eq 0 ] || index=$last_space
+      ;;
+    *)
+      index=$width
+      prefix=${value:0:$width}
+      case "$prefix" in *' '*) index=${#prefix}; prefix=${prefix% *}; [ -z "$prefix" ] || index=${#prefix} ;; esac
+      ;;
+  esac
+  RIG_VALUE=${value:0:$index}
+  RIG_TABLE_REMAINDER=${value:$index}
+  while [[ "$RIG_TABLE_REMAINDER" = ' '* ]]; do RIG_TABLE_REMAINDER=${RIG_TABLE_REMAINDER# }; done
+}
+
 rig_table_print_row() {
-  local offset index cell width
+  local offset index cell width pending line
+  local -a remaining
 
   offset=$1
+  remaining=()
   index=0
   while [ "$index" -lt "${#RIG_TABLE_HEADERS[@]}" ]; do
     if [ "$offset" -lt 0 ]; then
@@ -786,27 +992,71 @@ rig_table_print_row() {
     else
       cell=${RIG_TABLE_CELLS[$((offset + index))]}
     fi
-    width=${RIG_TABLE_WIDTHS[$index]}
-    if [ "${RIG_TABLE_ELLIPSIS[$index]}" = middle ]; then
-      rig_ellipsize_middle "$cell" "$width"
-    else
-      rig_ellipsize "$cell" "$width"
-    fi
-    [ "$index" -eq 0 ] || printf '  '
-    if [ "$index" -eq $((${#RIG_TABLE_HEADERS[@]} - 1)) ]; then
-      printf '%s' "$RIG_VALUE"
-    else
-      printf '%-*s' "$width" "$RIG_VALUE"
-    fi
+    remaining[$index]=$cell
     index=$((index + 1))
   done
-  printf '\n'
+  pending=1
+  while [ "$pending" -eq 1 ]; do
+    pending=0
+    index=0
+    while [ "$index" -lt "${#RIG_TABLE_HEADERS[@]}" ]; do
+      width=${RIG_TABLE_WIDTHS[$index]}
+      rig_table_take_line "${remaining[$index]}" "$width"
+      line=$RIG_VALUE
+      remaining[$index]=$RIG_TABLE_REMAINDER
+      [ -z "$RIG_TABLE_REMAINDER" ] || pending=1
+      [ "$index" -eq 0 ] || printf '  '
+      if [ "$index" -eq $((${#RIG_TABLE_HEADERS[@]} - 1)) ]; then
+        printf '%s' "$line"
+      else
+        printf '%s' "$line"
+        rig_table_display_width "$line"
+        printf '%*s' "$((width - RIG_TABLE_DISPLAY_WIDTH))" ''
+      fi
+      index=$((index + 1))
+    done
+    printf '\n'
+  done
+}
+
+rig_table_print_stacked() {
+  local offset index label cell width
+  offset=0
+  while [ "$offset" -lt "${#RIG_TABLE_CELLS[@]}" ]; do
+    [ "$offset" -eq 0 ] || printf '\n'
+    index=0
+    while [ "$index" -lt "${#RIG_TABLE_HEADERS[@]}" ]; do
+      label=${RIG_TABLE_HEADERS[$index]}
+      cell=${RIG_TABLE_CELLS[$((offset + index))]}
+      printf '%s:\n' "$label"
+      if [ "${RIG_TABLE_KEEP[$index]}" = keep ]; then
+        # Identifiers remain copyable, even if an unusually long token exceeds
+        # terminal width. Prose can wrap; identities must never be shortened.
+        printf '  %s\n' "$cell"
+      else
+        width=$((RIG_TABLE_COLUMNS - 2))
+        [ "$width" -ge 1 ] || width=1
+        while :; do
+          rig_table_take_line "$cell" "$width"
+          printf '  %s\n' "$RIG_VALUE"
+          cell=$RIG_TABLE_REMAINDER
+          [ -n "$cell" ] || break
+        done
+      fi
+      index=$((index + 1))
+    done
+    offset=$((offset + ${#RIG_TABLE_HEADERS[@]}))
+  done
 }
 
 rig_table_print() {
   local index offset
 
-  rig_table_fit_widths
+  rig_table_fit_widths 3<&1
+  if [ "$RIG_TABLE_STACKED" -eq 1 ]; then
+    rig_table_print_stacked
+    return
+  fi
   rig_table_print_row -1
   index=0
   while [ "$index" -lt "${#RIG_TABLE_HEADERS[@]}" ]; do

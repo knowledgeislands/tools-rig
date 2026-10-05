@@ -4,7 +4,7 @@
 # shellcheck disable=SC2004,SC2034,SC2094
 
 rig_command_diag() {
-  local full config_home
+  local full
   full=0
   case "${1:-}" in
     '') ;;
@@ -14,15 +14,10 @@ rig_command_diag() {
     *) rig_command_syntax_error diag; return ;;
   esac
   [ "$#" -eq 0 ] || rig_command_syntax_error diag || return
-  rig_adoption_config_home || return
-  config_home=$RIG_VALUE
-  printf 'rig diag: version=%s bash=%s\n' "$RIG_VERSION" "$BASH_VERSION"
-  if [ -f "$config_home/rig.toml" ]; then
-    printf 'rig diag: configuration=present\n'
-  else
-    printf 'rig diag: configuration=absent\n'
-  fi
-  [ "$full" -eq 0 ] || printf 'rig diag: config-home=%s\n' "$config_home"
+  rig_diagnostic_context || return
+  rig_diagnostic_context_text
+  [ "$full" -eq 0 ] || printf 'Executable: %s\nConfig home: %s\nData home: %s\nState home: %s\nCache home: %s\n' \
+    "$RIG_DIAG_EXECUTABLE" "$RIG_DIAG_CONFIG_HOME" "$RIG_DIAG_DATA_HOME" "$RIG_DIAG_STATE_HOME" "$RIG_DIAG_CACHE_HOME"
 }
 
 main() {

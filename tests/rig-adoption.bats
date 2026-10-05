@@ -75,10 +75,9 @@ adoption_config() {
   rig_test_provider_response brew 'list --cask --full-name' 0 '-'
   run "$RIG" capture
   [ "$status" -eq 0 ] || false
-  rig_test_report_contains "$output" $'PROVIDER\tIDENTITY\tSTATE' || false
-  rig_test_report_contains "$output" $'homebrew\tformula:'"$locator"$'\tunmanaged' || false
+  [[ "$output" == *$'PROVIDER:\n  homebrew\nIDENTITY:\n  formula:'"$locator"$'\nSTATE:\n  unmanaged'* ]] || false
   [[ "$output" != *$'homebrew\t'* ]] || false
-  [[ "$output" == *'--------'* ]] || false
+  [[ "$output" != *'...'* ]] || false
 }
 
 @test "capture preserves configured provider arguments as literal values" {

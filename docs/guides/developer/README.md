@@ -12,6 +12,8 @@ When a change crosses that boundary, define and verify the portable contract her
 
 Built-in providers are product code. Rig infers their supported installation kinds and lifecycle operations from its internal registry, so ordinary configuration must not repeat adapter capabilities or protocol markers.
 
+The declaration inventory lives in `src/rig/05-declarations.bash`. Its registry names each authored table type, role, identity shape and reader-facing label; the parser uses it to recognise supported declarations. Setup items include ports even though they never materialise sockets, while retired applications are observation-only records. When adding a type, update the registry and the canonical table identities in RIG-CONF-008; include setup and observation types in the item list in [Getting Started](../user/getting-started.md#what-rig-can-manage). `tests/rig-declaration-registry.bats` checks those lists against the registry. Dock items remain components of a layout, and tool artifacts remain fields of their owning tool.
+
 External providers are explicit extensions. They require `adapter = "custom"`, an operation allow-list, and either a configured executable or the exact `${RIG_DATA_HOME}/providers/ID` location. Only extensions receive the versioned `rig-provider-v1` protocol. Configuration must never become an arbitrary task runner.
 
 Generated artifacts remain observation-only parts of their owning tool. Their native owner remains responsible for creation, update, and removal.
@@ -41,7 +43,9 @@ Run the complete gate once the edit batch is finished:
 ```sh
 ki repo audit --repo .
 shellcheck bin/rig install.sh src/rig/*.bash scripts/assemble-rig scripts/benchmark-rig scripts/smoke-native-providers
-bash -n bin/rig install.sh src/rig/*.bash scripts/assemble-rig scripts/benchmark-rig scripts/smoke-native-providers
+for script in bin/rig install.sh src/rig/*.bash scripts/assemble-rig scripts/benchmark-rig scripts/smoke-native-providers; do
+  bash -n "$script" || exit 1
+done
 scripts/assemble-rig --check
 scripts/benchmark-rig
 scripts/smoke-native-providers

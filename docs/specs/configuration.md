@@ -78,13 +78,13 @@ _Evidence:_ `rig_add_field`, `rig_normalize_artifact_identity`, and `rig_expand_
 
 ### RIG-CONF-008 — Canonical table identities
 
-Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[profile.ID]`, `[provider.ID]`, `[service.ID]`, `[scheduled-job.ID]`, `[setting.ID]`, `[dock.ID]`, `[dock-item.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`. Any other table shape MUST be rejected. Installation metadata MUST remain in its owning tool table.
+Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[skill.ID]`, `[profile.ID]`, `[provider.ID]`, `[service.ID]`, `[scheduled-job.ID]`, `[setting.ID]`, `[dock.ID]`, `[dock-item.ID]`, `[port.ID]`, `[retired-application.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`. Any other table shape MUST be rejected. Installation metadata MUST remain in its owning tool table.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats table tests accept every supported table form and reject uppercase, empty, extra, whitespace-containing, and digit-leading identities.
 
-_Evidence:_ `rig_parse_section_identity` and `rig_valid_id` enforce the table and identifier grammar; the `section identities are strict and unique` Bats test covers the accepted and rejected identity grammar.
+_Evidence:_ `RIG_DECLARATION_REGISTRY`, `rig_parse_section_identity` and `rig_valid_id` enforce the table and identifier grammar; `tests/rig-declaration-registry.bats` checks recognition, invalid identities and documentation coverage, and the `section identities are strict and unique` Bats test covers configuration loading.
 
 ### RIG-CONF-009 — Root fields
 

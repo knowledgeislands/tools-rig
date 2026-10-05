@@ -14,6 +14,7 @@ assemble() {
 
   for module in \
     00-runtime.bash \
+    05-declarations.bash \
     10-configuration.bash \
     20-orchestration.bash \
     21-provider-state.bash \

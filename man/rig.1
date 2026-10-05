@@ -214,7 +214,8 @@ and
 .B upgrade
 accept
 .BI "\-\-format " text|json .
-JSON retains full values when text columns abbreviate them. Mutation JSON
+JSON retains lossless structured values; text columns wrap descriptive values.
+Mutation JSON
 groups complete rows by named columns; diagnostics remain on stderr.
 Capture instead prints human discovery or reviewable TOML, without a format
 option.
@@ -251,10 +252,17 @@ The report opens with a verdict line naming how many entries need attention
 and the sections holding them, and every section closes with its own summary
 counters.
 Human output uses aligned, ruled tables with two-space column gutters.
-Rows are bounded to 120 characters and visibly abbreviate unusually long
-values with
-.BR ... ;
-path-like unmanaged identities retain leading and trailing context.
+Interactive tables use the actual terminal width and wrap descriptive values.
+If columns cannot fit, entries use a labelled, stacked layout.
+Identifiers remain intact, even when an unusually long identifier exceeds
+terminal width. Redirected
+output is plain and deterministic with a 120-column budget, independent of
+ambient COLUMNS. Unavailable terminal geometry uses the same fallback.
+Human cells render terminal controls as visible escapes, never executable
+terminal sequences. UTF-8 code points stay intact, with a conservative two-cell
+budget per non-ASCII code point; combining marks and joined emoji may underfill
+rows. A wide glyph on a one-cell terminal remains intact even when it exceeds
+the budget. JSON retains original values.
 The spacing is not a machine-readable interface.
 A declared private port compares its owner against the whole command line of
 the bound process, so a listener started through an interpreter still matches
@@ -367,6 +375,14 @@ Check the resolved default profile and print one compact operational health
 answer. Doctor checks effective XDG path accessibility, native-manager and
 external-provider availability, and selected tool, skill, and resource
 observations.
+Common Tool, Version, Installation, runtime-host Platform, Architecture, Runtime
+and Configuration fields accompany a healthy or unhealthy Verdict, Coverage,
+and pass/warn/fail/skipped Checks. Counts use evaluated items, not subprocesses:
+configuration, each XDG directory, history availability, selected declarations,
+retirement and historical-failure items. Dependent selection is one skipped
+group when configuration cannot load. Catalogue-only and incompatible items are
+skipped. Warning counts are currently zero. This is read-only declared setup
+health; available package updates are explicitly not checked.
 Catalogue-only and
 incompatible-platform tools are informational. An observed competing
 auto-update agent Rig did not declare, such as Homebrew's
@@ -375,9 +391,16 @@ is reported as information alone: it adds no finding, changes no exit status,
 and Rig never installs, modifies, or removes it.
 .TP
 .B rig diag [\-\-full]
-Print offline, share-safe runtime and configuration-presence facts. Use
+Print offline, share-safe Tool, Version, Installation, Platform, Architecture,
+Runtime and Configuration facts, matching doctor's context.
+Runtime host platform
+is separate from the selected provider platform. Installation is local for a
+proven checkout payload, release for a Homebrew Cellar payload with a receipt,
+or unknown when provenance is unavailable; version alone is not proof.
+Root or fragment configuration presence does not parse its contents. Use
 .B \-\-full
-to include the local configuration path; review full output before sharing it.
+to include executable and effective XDG paths; review full output before sharing
+it. Configuration values and secrets are never printed.
 .TP
 .BI "rig doctor \-\-profile " NAME
 Check a named resolved profile without changing the configured default.

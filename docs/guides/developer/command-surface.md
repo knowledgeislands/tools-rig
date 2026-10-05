@@ -10,7 +10,7 @@ Rig is authored as ordered Bash 3.2 modules beneath `src/rig/`. `scripts/assembl
 - `21-provider-state.bash`: native invocation, observations, inventory and receipts.
 - `22-observation.bash`: status and doctor, including verbose diagnostic evidence.
 - `23-application.bash`: apply and declared manager prerequisites.
-- `30-commands.bash`: catalogue query helpers, diagnostic metadata and retained extension validation helpers.
+- `30-commands.bash`: catalogue query helpers, diagnostic metadata and proven installation context, terminal-width-aware wrapped/stacked tables, and retained extension validation helpers.
 - `35-adoption.bash`: init, Homebrew discovery and reviewed capture proposals.
 - `40-publication-lifecycle.bash`: export and declaration-scoped upgrades.
 - `90-main.bash`: public dispatch and shared outcome handling.
@@ -26,6 +26,8 @@ Apply makes the machine follow declarations. Capture prepares reviewed additions
 The command cutover is explicit: retired names are rejected with migration advice, not kept as aliases. Internal helper names and the provider ABI's `update` capability are implementation boundaries, not additional public commands. Custom action records remain validated inert metadata; no public generic action dispatcher exposes them.
 
 ## Review and verification
+
+The `ki-repo-tools` diagnostic baseline owns common context and health labels. Rig keeps runtime host context separate from its selected provider platform. `tests/diagnostics-tables.bats` verifies provenance, default redaction, fragment presence, item-count coverage, actual pseudo-terminal geometry, UTF-8 width and escaped terminal controls; unknown provenance or geometry must remain explicit rather than guessed. JSON doctor adds context and checks without removing domain summaries; native provider operations remain observation-only. Tables add no ANSI decoration or runtime dependency, conservatively budget non-ASCII code points, and never abbreviate identifiers.
 
 Keep parser, option metadata, help, Bash and Zsh completion, manual, user guide and regression fixtures aligned. Preserve JSON schema and report field meaning; document public command-identifier changes. New adoption code must test exclusive file creation, literal escaping, catalogue deduplication and dry-run purity.
 

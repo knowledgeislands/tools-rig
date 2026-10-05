@@ -1152,7 +1152,7 @@ rig_command_status() {
   if [ "$unmanaged_requested" -eq 1 ]; then
     printf '\n'
     rig_table_reset
-    rig_table_add_column IDENTITY 32 middle
+    rig_table_add_column IDENTITY 32 end keep
     rig_table_add_column PROVIDER 18 end keep
     rig_table_add_column STATE 12
     rig_table_add_column DETAIL 52
@@ -1381,7 +1381,7 @@ rig_doctor_native_availability() {
 rig_command_doctor() {
   local profile findings incompatible xdg_findings tool_findings resource_findings port_findings skill_findings
   local index section_name state detail port owner action skill authority format information config_finding config_loaded
-  local verbose profile_seen format_seen
+  local verbose profile_seen format_seen checks_passed checks_skipped checks_total checks_coverage
 
   profile=
   format=text
@@ -1559,8 +1559,36 @@ rig_command_doctor() {
   fi
   [ -z "$RIG_APPLY_HISTORY_UNAVAILABLE" ] || findings=$((findings + 1))
 
+  # Counts use one evaluated item/configuration/path/history check as the unit,
+  # not individual subprocess calls or progress events. Neutral selections skip.
+  checks_total=6
+  checks_skipped=0
+  checks_coverage=configuration,xdg,apply-history
+  if [ "$config_loaded" -eq 1 ]; then
+    checks_total=$((checks_total + ${#RIG_PLAN_TOOLS[@]} + ${#RIG_RESOURCE_PLAN_SECTIONS[@]} + \
+      ${#RIG_STALE_RESOURCE_IDS[@]} + ${#RIG_SELECTED_PORTS[@]} + ${#RIG_SELECTED_SKILLS[@]} + \
+      ${#RIG_APPLY_FAILURE_KEYS[@]} + incompatible))
+    checks_skipped=$((RIG_DOCTOR_CATALOGUE_ONLY + incompatible))
+    checks_coverage=configuration,xdg,tools,resources,ports,skills,apply-history
+  else
+    # One dependent selection group could not be evaluated at all.
+    checks_total=$((checks_total + 1))
+    checks_skipped=1
+  fi
+  checks_passed=$((checks_total - checks_skipped - findings))
+  rig_diagnostic_context || return
+
   if [ "$format" = json ]; then
     rig_json_envelope doctor
+    printf ',"context":'
+    rig_diagnostic_context_json
+    [ "$findings" -eq 0 ] && state=healthy || state=unhealthy
+    rig_json_field ',' verdict "$state"
+    printf ',"checks":{"pass":%s,"warn":0,"fail":%s,"skipped":%s,"unit":"item","coverage":' \
+      "$checks_passed" "$findings" "$checks_skipped"
+    rig_json_escape "$checks_coverage"
+    printf '"%s"' "$RIG_VALUE"
+    printf ',"read_only":true,"freshness":"not-checked"}'
     [ "$findings" -eq 0 ] && state=true || state=false
     printf ',"healthy":%s' "$state"
     printf ',"summary":{"findings":%s,"present":%s,"catalogue_only":%s,"incompatible_platform":%s}' \
@@ -1589,9 +1617,12 @@ rig_command_doctor() {
     [ "$findings" -eq 0 ]
     return
   fi
-  printf 'Rig doctor: %s\nProfile: %s\nPlatform: %s\n' \
-    "$([ "$findings" -eq 0 ] && printf healthy || printf findings)" \
+  printf 'Verdict: %s\nProfile: %s\nSelected platform: %s\n' \
+    "$([ "$findings" -eq 0 ] && printf healthy || printf unhealthy)" \
     "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
+  rig_diagnostic_context_text
+  printf 'Scope: read-only declared setup health; package updates not checked\nCoverage: %s\nChecks: pass=%s warn=0 fail=%s skipped=%s (unit=item)\n' \
+    "$checks_coverage" "$checks_passed" "$findings" "$checks_skipped"
   if [ -n "$config_finding" ]; then
     printf 'Configuration findings:\n%s\n' "$config_finding"
   fi

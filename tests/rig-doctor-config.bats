@@ -14,10 +14,10 @@ setup() {
 @test "doctor diagnoses a retired configuration section and retains machine checks" {
   run "$RIG" doctor
   [ "$status" -eq 1 ] || false
-  [[ "$output" == *'Rig doctor: findings'* ]] || false
+  [[ "$output" == *'Verdict: unhealthy'* ]] || false
   [[ "$output" == *'Configuration findings:'* ]] || false
   [[ "$output" == *'10-bad.toml:1: [publication.legacy] is retired; export a view profile with rig export --profile'* ]] || false
-  [[ "$output" == *'Platform: macos'* ]] || false
+  [[ "$output" == *'Selected platform: macos'* ]] || false
   [[ "$output" == *"config path: $RIG_CONFIG_HOME"* ]] || false
   [[ "$output" == *'brew: unavailable; owner=environment; action=none'* ]] || false
   [[ "$output" == *'Summary: findings=1 present=0 catalogue-only=0 incompatible-platform=0'* ]] || false
