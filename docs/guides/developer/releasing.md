@@ -16,7 +16,7 @@ Release-facing documentation must distinguish these two paths:
 - the README, getting-started guide, and manual identify the latest immutable release and use its immutable installer URL;
 - a contributor links the current checkout with `./install.sh --link`, and that executable reports the matching development version.
 
-For an explicitly selected, unpublished candidate, the examples may already name its exact tag, but must say that remote installation is available only after publication. The current candidate is `v0.4.0`; the latest published release is `v0.2.0`. Link the checkout to exercise the candidate now, and do not describe it as the latest immutable release until that release exists.
+No exact candidate is currently selected. For an explicitly selected, unpublished candidate, the examples may already name its exact tag, but must say that remote installation is available only after publication and identify the latest published release. Link the checkout to exercise the candidate, and do not describe it as the latest immutable release until that release exists.
 
 Before proposing an exact version, verify a disposable linked installation, the release-installer fixture, staged apply-prerequisite tests, bounded native-provider smoke, and an offline public export alongside the complete repository gate.
 

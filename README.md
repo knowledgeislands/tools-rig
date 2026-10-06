@@ -26,22 +26,22 @@ That makes Rig a manager of managers beneath a catalogue people can read.
 
 ## Install
 
-Rig is a pre-v1 public preview. This checkout is the selected `v0.4.0` release candidate, not yet a published release. After publication, install that exact immutable preview with:
+Rig is a pre-v1 public preview. The latest immutable release is `v0.4.0`:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.4.0/install.sh | bash -s -- v0.4.0
 ```
 
-That command becomes available when `v0.4.0` is published. The latest published release is `v0.2.0`, with an earlier command surface.
+That command installs the released `0.4.0` contract.
 
 To use the current checkout while developing or evaluating those changes, link both the executable and manual:
 
 ```sh
 ./install.sh --link
-rig --version # rig 0.4.0
+rig --version # rig 0.4.0+dev
 ```
 
-The final version identifies the selected release candidate.
+The development marker identifies an untagged checkout after the latest immutable release; it does not promise the next release number.
 
 ## Start here
 

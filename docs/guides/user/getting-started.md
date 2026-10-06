@@ -2,7 +2,7 @@
 
 This guide takes you from no Rig installation to a readable catalogue, a machine assessment, and a safe preview. It deliberately stops before applying changes.
 
-The commands below describe the selected Rig `v0.4.0` release candidate. Until it is published, use a linked checkout. The latest published release, `v0.2.0`, has a different command surface; use the [migration guide](migrating-command-surface.md) when updating an existing configuration or script.
+The commands below describe Rig `v0.4.0`, the latest immutable release. Releases before `v0.4.0` have a different command surface; use the [migration guide](migrating-command-surface.md) when updating an existing configuration or script.
 
 ## What Rig can manage
 
@@ -35,7 +35,7 @@ Profiles select the active items that belong on a machine or in a role. The cata
 
 ## Install the public preview
 
-After `v0.4.0` is published, install the immutable preview:
+Install the latest immutable release, currently `v0.4.0`:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.4.0/install.sh | bash
@@ -56,9 +56,9 @@ rig --version
 man rig
 ```
 
-These installer URLs are not available before publication. The selected candidate reports `rig 0.4.0`.
+The released command reports `rig 0.4.0`.
 
-For a local checkout now, use `./install.sh --link`. It links the executable and manual so subsequent repository changes are visible without reinstalling. This selected candidate reports `rig 0.4.0`.
+For a local checkout now, use `./install.sh --link`. It links the executable and manual so subsequent repository changes are visible without reinstalling. The current checkout reports `rig 0.4.0+dev`; the marker means development after the latest immutable release and does not choose the next preview number.
 
 ## Create a small catalogue
 
