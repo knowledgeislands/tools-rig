@@ -17,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The audit's Markdown gate runs rumdl through bunx.
+      - uses: oven-sh/setup-bun@v2
       - name: Install released KI
         env:
           KI_CLI_INSTALL_DIR: ${{ runner.temp }}/ki/bin
