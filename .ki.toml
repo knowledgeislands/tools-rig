@@ -15,6 +15,7 @@ repo_type = "project"
 primary_shape = "ki-repo-tools"
 repository = "https://github.com/knowledgeislands/tools-rig"
 title = "Rig"
+capital = "https://github.com/knowledgeislands/ki-arcadia-principal"
 description = "Describe and manage a person's working setup through catalogues, profiles, providers, and machine state."
 repo_code = "RIG"
 supported_runtimes = ["claude-code", "claude-desktop", "chatgpt-codex"]
@@ -80,8 +81,3 @@ MIG = "migration"
 # -----------------------------------------------------------------------------
 
 [skills.ki-trades]
-
-[skills.ki-trades.routes."knowledgeislands/ki-agentic-harness"]
-export = ["work", "knowledge"]
-import = ["knowledge"]
-standing.export.knowledge = ["shared-capability-maintenance"]
