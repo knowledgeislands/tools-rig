@@ -9,8 +9,53 @@ on:
 
 env:
   BATS_VERSION: v1.11.1
+  KI_VERSION: v0.6.1
 
 jobs:
+  governance:
+    name: KI governance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install released KI
+        env:
+          KI_CLI_INSTALL_DIR: ${{ runner.temp }}/ki/bin
+          KI_MAN_INSTALL_DIR: ${{ runner.temp }}/ki/man/man1
+          KI_DATA_HOME: ${{ runner.temp }}/ki/data
+          KI_CONFIG_HOME: ${{ runner.temp }}/ki/config
+          KI_CACHE_HOME: ${{ runner.temp }}/ki/cache
+          KI_MCP_SOURCE: ${{ runner.temp }}/ki/mcp-servers.yaml
+          XDG_STATE_HOME: ${{ runner.temp }}/ki/state
+          KI_STATE_HOME: ${{ runner.temp }}/ki/state/ki
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.agents" "$HOME/.claude"
+          printf '{"autoMemoryEnabled": false}\n' > "$HOME/.claude/settings.json"
+          mkdir -p "$(dirname "$KI_MCP_SOURCE")"
+          printf 'mcpServers: []\n' > "$KI_MCP_SOURCE"
+          curl --fail -sSL --proto '=https' -o "$RUNNER_TEMP/install.sh" \
+            "https://raw.githubusercontent.com/knowledgeislands/tools-ki/$KI_VERSION/install.sh"
+          bash "$RUNNER_TEMP/install.sh" "$KI_VERSION"
+          export PATH="$KI_CLI_INSTALL_DIR:$PATH"
+          test "$(command -v ki)" = "$KI_CLI_INSTALL_DIR/ki"
+          test "v$(ki --version)" = "$KI_VERSION"
+          ki bootstrap
+          ki registry add --repo .
+          ki repo repair --repo .
+          {
+            printf 'KI_CLI_INSTALL_DIR=%s\n' "$KI_CLI_INSTALL_DIR"
+            printf 'KI_MAN_INSTALL_DIR=%s\n' "$KI_MAN_INSTALL_DIR"
+            printf 'KI_DATA_HOME=%s\n' "$KI_DATA_HOME"
+            printf 'KI_CONFIG_HOME=%s\n' "$KI_CONFIG_HOME"
+            printf 'KI_CACHE_HOME=%s\n' "$KI_CACHE_HOME"
+            printf 'KI_MCP_SOURCE=%s\n' "$KI_MCP_SOURCE"
+            printf 'XDG_STATE_HOME=%s\n' "$XDG_STATE_HOME"
+            printf 'KI_STATE_HOME=%s\n' "$KI_STATE_HOME"
+          } >> "$GITHUB_ENV"
+          printf '%s\n' "$KI_CLI_INSTALL_DIR" >> "$GITHUB_PATH"
+      - name: Audit
+        run: ki repo audit --repo .
+
   lint:
     name: Shell lint
     runs-on: ubuntu-latest
@@ -77,7 +122,7 @@ jobs:
   release-tag:
     name: Release tag matches executable
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [lint, test, manual]
+    needs: [governance, lint, test, manual]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
