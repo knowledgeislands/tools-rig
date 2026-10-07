@@ -55,4 +55,4 @@ Doctor can report an observed Homebrew autoupdate agent as information, not a he
 
 Personal scheduled jobs and wrappers managed by chezmoi must be reviewed in their owning repository. This guide does not imply that changing the Rig executable migrates them.
 
-See [Choose a command](commands.md), [Manage operational resources](operational-resources.md) and [Migrate the command surface](migrating-command-surface.md).
+See [Choose a command](commands.md), [Manage operational resources](operational-resources.md) and [Review configuration and automation](migrating-command-surface.md).

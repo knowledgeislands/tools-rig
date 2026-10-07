@@ -115,10 +115,6 @@ main() {
         *) syntax_error "unsupported shell: $2" || return ;;
       esac
       ;;
-    list|explain) syntax_error "command '$command_name' was removed; use rig show [ITEM] or rig show --all" || return ;;
-    bootstrap) syntax_error "command 'bootstrap' was removed; use rig apply [--profile NAME]" || return ;;
-    update) syntax_error "command 'update' was removed; use rig upgrade" || return ;;
-    run|maintain) syntax_error "command '$command_name' was removed; use the provider's native tools" || return ;;
     *) syntax_error "unknown command: $command_name" || return ;;
   esac
   exit_code=$?

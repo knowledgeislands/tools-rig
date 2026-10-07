@@ -803,20 +803,35 @@ write_query_config() {
   [[ "$output" == *"  Executable: $link_dir/rig"* ]] || false
 }
 
-@test "doctor verbose help is local and retired commands give migration guidance" {
+@test "doctor verbose help is local and unknown commands show current usage" {
   missing_config=$BATS_TEST_TMPDIR/missing-config-$BATS_TEST_NUMBER
   run env RIG_CONFIG_HOME="$missing_config" "$RIG" doctor --verbose --help
+
   [ "$status" -eq 0 ]
   [[ "$output" == *'Usage: rig doctor'* ]] || false
-  for command in list explain bootstrap update maintain run; do
-    run env RIG_CONFIG_HOME="$missing_config" "$RIG" "$command"
-    [ "$status" -eq 2 ]
-    [[ "$output" == *"command '$command' was removed; use"* ]] || false
-    [[ "$output" != *'no configuration sources'* ]] || false
+
+  error_file=$BATS_TEST_TMPDIR/unknown-error-$BATS_TEST_NUMBER
+  run bash -c 'error_file=$1; shift; "$@" 2>"$error_file"' _ "$error_file" \
+    env RIG_CONFIG_HOME="$missing_config" "$RIG" unknown
+  [ "$status" -eq 2 ] || false
+  [ -z "$output" ] || false
+  unknown_error=$(cat "$error_file")
+
+  for command in list explain bootstrap update maintain run publish clean paths; do
+    for form in command command-help help-topic; do
+      case "$form" in
+        command) set -- "$command" ;;
+        command-help) set -- "$command" --help ;;
+        help-topic) set -- help "$command" ;;
+      esac
+      run bash -c 'error_file=$1; shift; "$@" 2>"$error_file"' _ "$error_file" \
+        env RIG_CONFIG_HOME="$missing_config" "$RIG" "$@"
+
+      [ "$status" -eq 2 ] || false
+      [ -z "$output" ] || false
+      [ "$(cat "$error_file")" = "${unknown_error/unknown command: unknown/unknown command: $command}" ] || false
+    done
   done
-  run "$RIG" paths
-  [ "$status" -eq 2 ]
-  [[ "$output" == *'unknown command: paths'* ]] || false
 }
 
 @test "show describes default and named resolved profiles deterministically" {
@@ -5032,7 +5047,7 @@ artifacts = ["$HOME/bin/home-tool", "~/bin/tilde-tool", "/opt/rig/absolute-tool"
     env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
       RIG_OPERATION_LOG="$OPERATION_LOG" RIG_OUTCOME=always "$RIG" run runner audit
   [ "$status" -eq 2 ]
-  [[ "$(head -n 1 "$outcome_file")" == *"command 'run' was removed"* ]] || false
+  [ "$(head -n 1 "$outcome_file")" = 'rig: error: unknown command: run' ] || false
   [ ! -e "$OPERATION_LOG" ]
   [[ "$(tail -n 1 "$outcome_file")" != 'rig: run failed:'* ]] || false
 }

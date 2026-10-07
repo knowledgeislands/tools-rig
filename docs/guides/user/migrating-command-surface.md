@@ -1,20 +1,6 @@
-# Migrate the command surface
+# Review configuration and automation
 
-This guide is for an existing Rig configuration or script moving to the current command surface. Earlier cutovers were breaking: retired commands are rejected with migration advice, not accepted as aliases. The [release history](https://github.com/knowledgeislands/tools-rig/releases) records immutable preview snapshots.
-
-## Change invocations
-
-- Replace `rig list` with `rig show --all`; use `rig show --category ID` for selected tools or add `--all` for the whole tool catalogue.
-- Replace `rig explain ITEM` with `rig show ITEM`.
-- Use `rig diag` for share-safe offline facts, `rig diag --full` for local configuration-path detail, and `rig doctor` for read-only health evaluation that may return 1 for findings.
-- Replace `rig init --repair-schema --dry-run` with `rig repair` and `rig init --repair-schema --output PATH` with `rig repair --output PATH`.
-- Replace `rig bootstrap` with `rig apply`. Use an explicit `--profile` when the former bootstrap selection differed from the default.
-- Replace `rig update` with `rig upgrade`, including scheduled jobs and shell wrappers.
-- Remove `rig maintain` invocations. Run deliberate native housekeeping separately; do not add package removal to an upgrade wrapper.
-- Replace `rig run PROVIDER ACTION` with the component's documented native operation. Provider ABI arguments are not a user command template.
-- Replace Brewfile snapshot capture with `rig capture` discovery and selective reviewed proposals.
-
-Scripts consuming JSON must recognise `show` and `upgrade` command identifiers. Selected, catalogue and individual show views keep distinct payload shapes. Capture emits discovery text or TOML, not the old mutation-report JSON. Verbose doctor adds path-bearing diagnostics; review that field before sharing.
+Use this guide to review an existing Rig setup before changing configuration or scheduled operations. The [command guide](commands.md) describes the current CLI; unknown command names print a syntax error and current usage.
 
 ## Make Rig the package authority
 
@@ -36,7 +22,7 @@ Configurations using central profile membership arrays can still discover invent
 
 ## Check unattended consumers
 
-New unattended upgrades write `last-upgrade` below Rig's state home with action `upgrade`. Update wrapper paths and scheduled command arguments together. Old `last-update` files are left untouched and are not evidence of a new run.
+Unattended upgrades write `last-upgrade` below Rig's state home with action `upgrade`. Keep scheduled invocations aligned with the current command guide and review their recorded outcomes.
 
 Preview configuration with `rig show`, diagnose with `rig doctor --verbose`, and inspect `rig apply --dry-run` and `rig upgrade --dry-run` before any live operation.
 

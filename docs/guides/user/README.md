@@ -21,7 +21,7 @@ Inspection precedes mutation. Declaration queries do not invoke providers, and d
 
 ## Learn in stages
 
-Existing users: start with [Migrate the command surface](migrating-command-surface.md) for the breaking CLI and package-authority cutover.
+For an existing setup, [review configuration and automation](migrating-command-surface.md) before applying changes.
 
 Follow these guides in order until you have what you need:
 

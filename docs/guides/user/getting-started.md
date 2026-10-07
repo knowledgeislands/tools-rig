@@ -2,7 +2,7 @@
 
 This guide takes you from no Rig installation to a readable catalogue, a machine assessment, and a safe preview. It deliberately stops before applying changes.
 
-The commands below describe Rig `v0.4.0`, the latest immutable release. Releases before `v0.4.0` have a different command surface; use the [migration guide](migrating-command-surface.md) when updating an existing configuration or script.
+The commands below describe Rig's current command surface. For an existing setup, [review configuration and automation](migrating-command-surface.md) before applying changes.
 
 ## What Rig can manage
 

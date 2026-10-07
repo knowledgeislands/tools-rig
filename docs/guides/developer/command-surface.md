@@ -23,7 +23,7 @@ Public commands are `init`, `show`, `status`, `capture`, `apply`, `upgrade`, `do
 
 Apply makes the machine follow declarations. Capture prepares reviewed additions from supported observed inventory. Init creates configuration only. Upgrade advances selected software rather than refreshing configuration.
 
-The command cutover is explicit: retired names are rejected with migration advice, not kept as aliases. Internal helper names and the provider ABI's `update` capability are implementation boundaries, not additional public commands. Custom action records remain validated inert metadata; no public generic action dispatcher exposes them.
+Unknown command names follow the normal syntax-error path and print current usage. Internal helper names and the provider ABI's `update` capability are implementation boundaries, not additional public commands. Custom action records remain validated inert metadata; no public generic action dispatcher exposes them.
 
 ## Review and verification
 
