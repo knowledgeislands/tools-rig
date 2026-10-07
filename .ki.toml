@@ -1,14 +1,14 @@
 # Knowledge Islands repository configuration.
 # Its presence declares conformance with the Knowledge Islands repository standard.
 
-# =============================================================================
-
 # -----------------------------------------------------------------------------
 # Foundation
 # -----------------------------------------------------------------------------
 
 [repo]
-harnesses = ["knowledgeislands/ki-agentic-harness"]
+harnesses = [
+  "knowledgeislands/ki-agentic-harness",
+]
 
 [skills.ki-repo]
 repo_type = "project"
@@ -18,16 +18,15 @@ title = "Rig"
 capital = "https://github.com/knowledgeislands/ki-arcadia-principal"
 description = "Describe and manage a person's working setup through catalogues, profiles, providers, and machine state."
 repo_code = "RIG"
-supported_runtimes = ["claude-code", "claude-desktop", "chatgpt-codex"]
+supported_runtimes = [
+  "claude-code",
+  "claude-desktop",
+  "chatgpt-codex",
+]
 visibility = "public"
 license = "MIT"
 
 [skills.ki-authoring]
-[skills.ki-binding]
-[skills.ki-binding-claude]
-[skills.ki-binding-chatgpt]
-[skills.ki-housekeeping-chatgpt]
-auto_memory = "disabled"
 
 # -----------------------------------------------------------------------------
 # Repository shape
@@ -41,16 +40,25 @@ auto_memory = "disabled"
 # Governance and runtime
 # -----------------------------------------------------------------------------
 
-[skills.ki-guides]
+[skills.ki-decision-records]
 
 [skills.ki-specs]
 
-[skills.ki-decision-records]
+[skills.ki-guides]
 
-[skills.ki-tokenomics]
+[skills.ki-binding]
+
+[skills.ki-binding-claude]
+
+[skills.ki-binding-chatgpt]
 
 [skills.ki-housekeeping-claude]
 auto_memory = "disabled"
+
+[skills.ki-housekeeping-chatgpt]
+auto_memory = "disabled"
+
+[skills.ki-tokenomics]
 
 [skills.ki-tokenomics-claude]
 
@@ -69,7 +77,12 @@ organisation_code = "KIS"
 adapter = "roadmap"
 
 [skills.ki-work-roadmap]
-components = ["cli", "distribution", "migration", "orchestration"]
+components = [
+  "cli",
+  "distribution",
+  "migration",
+  "orchestration",
+]
 
 [skills.ki-work-roadmap.areas]
 CLI = "Command-line interface"
