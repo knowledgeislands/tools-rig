@@ -73,9 +73,9 @@ components = ["cli", "distribution", "migration", "orchestration"]
 
 [skills.ki-work-roadmap.areas]
 CLI = "Command-line interface"
-CORE = "Orchestration"
-DIST = "Distribution"
-MIG = "Migration"
+CORE = "Core engine"
+DIST = "Releases and distribution"
+MIG = "Migration from chezmoi"
 
 # -----------------------------------------------------------------------------
 # Relationships
