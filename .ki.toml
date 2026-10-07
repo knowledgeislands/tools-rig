@@ -69,12 +69,8 @@ organisation_code = "KIS"
 adapter = "roadmap"
 
 [skills.ki-work-roadmap]
-
-[skills.ki-work-roadmap.areas]
-CLI = "cli"
-CORE = "orchestration"
-DIST = "distribution"
-MIG = "migration"
+areas = ["CLI", "CORE", "DIST", "MIG"]
+components = ["cli", "distribution", "migration", "orchestration"]
 
 # -----------------------------------------------------------------------------
 # Relationships
