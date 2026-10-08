@@ -2126,6 +2126,7 @@ rig_command_explain_impl() {
     "$platforms" "$requires" "$related" "$alternatives" "$profiles"
   printf 'Installation: %s\n' "$binding"
     printf 'Artifacts: %s\n' "$artifacts"
+  rig_show_tool_clis "$tool" "$platform"
 }
 
 rig_render_list_report() {

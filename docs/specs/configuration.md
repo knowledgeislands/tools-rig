@@ -202,7 +202,7 @@ _Evidence:_ `rig_detect_profile_selection_mode`, `rig_item_declares_profile`, `r
 
 ### RIG-CONF-021 — Platform-specific tool variants
 
-A tool MAY declare bounded dotted `variant.ID.*` fields beneath its single `[tool.ID]` table. Every variant MUST have a non-empty `variant.ID.platforms` string array and at least one installation or artifact field. Installation variants MUST contain `variant.ID.install.provider`, `variant.ID.install.kind`, and `variant.ID.install.locator`; they MAY contain the same bounded destination, checksum, and arguments fields as a non-variant installation. A variant MAY contain `variant.ID.artifacts`. Variant identifiers MUST match normal Rig identifiers.
+A tool MAY declare bounded dotted `variant.ID.*` fields beneath its single `[tool.ID]` table. Every variant MUST have a non-empty `variant.ID.platforms` string array and at least one installation or artifact field. Installation variants MUST contain `variant.ID.install.provider`, `variant.ID.install.kind`, and `variant.ID.install.locator`; they MAY contain the same bounded destination, checksum, and arguments fields as a non-variant installation. A variant MAY contain `variant.ID.artifacts` and named `variant.ID.cli.NAME.*` companion groups. Variant identifiers MUST match normal Rig identifiers.
 
 Every platform declared by the tool MUST match exactly one variant. Rig MUST reject zero or multiple variant matches, partial variant installation metadata, and a tool combining a non-variant `install.*` declaration with variant installations. Platform-neutral `artifacts` MAY coexist with selected variant artifacts. Variant installation and artifact values MUST remain private and MUST NOT enter the public publication projection.
 
@@ -261,3 +261,13 @@ _Conformance:_ conforming
 _Verify:_ Isolated retired-application tests parse accepted declarations, reject unsafe identities/paths and forbidden fields before any native call, and compare active selection and mutation plans with and without retirement metadata.
 
 _Evidence:_ `rig_validate_retired_application` and `tests/rig-retired-applications.bats` verify the separate inert schema and its exclusions.
+
+### RIG-CONF-027 — Explicit application CLI declarations
+
+A materialised tool MAY declare named `cli.ID.source`, `cli.ID.destination` and `cli.ID.owner` string groups, including `variant.ID.cli.NAME.*` groups. Each group MUST contain all three fields, MUST use absolute source and destination paths with only leading `~/` or `$HOME/` expansion, MUST reject traversal and control characters, and MUST distinguish `owner = "provider"` for an existing Homebrew cask installation from `owner = "link"` for explicit link materialisation. Resolved companions MUST have unique destination paths across selected tools; unknown fields and owners MUST fail before provider work. Existing `artifacts` MUST retain their observation-only meaning, and companion paths MUST remain private in exported views.
+
+_Conformance:_ conforming
+
+_Verify:_ Isolated Bats fixtures parse complete, partial, unsafe and unsupported declarations, select platform variants, reject competing destinations, explain private intent and inspect public export privacy.
+
+_Evidence:_ `rig_toml_cli_field`, `rig_validate_tool_clis`, `rig_validate_selected_cli_destinations` and `tests/rig-app-clis.bats` implement the explicit companion boundary.

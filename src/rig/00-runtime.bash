@@ -207,6 +207,7 @@ rig_command_help() {
   rig_command_usage "$command"
   if [ "$command" = apply ]; then
     printf '%s\n' '' 'Reconciles the selection; applying resources may restart applications mid-run.'
+    printf '%s\n' 'Explicit app CLI companions follow their installer; provider-owned repair may reinstall its cask.'
     printf '%s\n' 'Records apply outcomes; later success clears the matching historical failure.'
   fi
   case "$command" in

@@ -40,6 +40,8 @@ Use `man rig` when you need the complete schema, provider support matrix, enviro
 
 ## Keep the ownership boundary clear
 
+[Manage application CLIs](app-clis.md) when a selected application also provides a terminal command. Its companion declaration stays inside the app's catalogue entry and records whether the installer or Rig owns the command link.
+
 Rig owns catalogue meaning, profile resolution, orchestration order, preflight checks, and outcome reporting. Rig owns package-selection intent without a Brewfile; native systems retain resolution rules, credentials and operating state. ChezMoi retains its native source and templates. Personal choices and host-specific values stay in private Rig configuration rather than the executable.
 
 For a visual explanation of that boundary, [explore Rig's architecture](../developer/architecture.md).

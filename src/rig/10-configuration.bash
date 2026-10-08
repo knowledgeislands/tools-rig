@@ -251,6 +251,8 @@ rig_field_kind() {
     profile:name|profile:purpose|profile:kind|\
     tool:install-provider|tool:install-kind|tool:install-locator|\
     tool:install-destination|tool:install-checksum|\
+    tool:cli:*:source|tool:cli:*:destination|tool:cli:*:owner|\
+    tool:variant:*:cli:*:source|tool:variant:*:cli:*:destination|tool:variant:*:cli:*:owner|\
     provider:adapter|provider:command|provider:executable|provider:manifest|\
     provider:autoupdate-interval|\
     binding:kind|binding:locator|binding:destination|binding:checksum|binding:variant|\
@@ -307,6 +309,10 @@ rig_toml_variant_field() {
   variant=${rest%%.*}
   field=${rest#*.}
   rig_valid_id "$variant" || return 1
+  if rig_toml_cli_field "$field"; then
+    RIG_TOML_FIELD_KEY=variant:$variant:$RIG_TOML_FIELD_KEY
+    return 0
+  fi
   case "$field" in
     platforms) canonical=platform; RIG_TOML_FIELD_TYPE=array ;;
     artifacts) canonical=artifact; RIG_TOML_FIELD_TYPE=array ;;
@@ -328,6 +334,9 @@ rig_toml_field() {
   key=$2
   RIG_TOML_FIELD_KEY=
   RIG_TOML_FIELD_TYPE=
+  if [ "$section_type" = tool ] && rig_toml_cli_field "$key"; then
+    return 0
+  fi
   if [ "$section_type" = tool ] && rig_toml_variant_field "$key"; then
     return 0
   fi
@@ -1741,7 +1750,7 @@ rig_validate_tool_variants() {
         field=${key#variant:"$variant":}
         case "$field" in
           platform) platform_count=$((platform_count + 1)) ;;
-          artifact) artifact_count=$((artifact_count + 1)) ;;
+          artifact|cli:*) artifact_count=$((artifact_count + 1)) ;;
           install-*) install_fields=$((install_fields + 1)) ;;
         esac
         ;;
@@ -1896,6 +1905,7 @@ rig_validate_model() {
         fi
       fi
       rig_validate_tool_variants "$section_name" "$index" || return
+      rig_validate_tool_clis "$section_name" || return
       rig_validate_references_for_field "$index" requires tool || return
         rig_validate_references_for_field "$index" related tool || return
         rig_validate_references_for_field "$index" alternative tool || return

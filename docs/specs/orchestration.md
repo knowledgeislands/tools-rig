@@ -408,3 +408,13 @@ _Conformance:_ conforming
 _Verify:_ Isolated native-command fakes cover identity match/mismatch, unreadable ancestry, symlinked ancestors and bundle metadata, absent/failed native commands, uncertain timestamps, Linux isolation and unchanged filesystem sentinels.
 
 _Evidence:_ `src/rig/26-retired-applications.bash` implements bounded observation; `tests/rig-retired-applications.bats` verifies exact identity, uncertainty, platform isolation and no mutation.
+
+### RIG-ORCH-040 — Application CLI reconciliation
+
+Apply and supported tool upgrades MUST reconcile explicitly declared application CLIs after their owning installer succeeds. A provider-owned unhealthy companion MUST use native Homebrew cask reinstall without adding force before verifying the result; a link-owned companion MUST create only a missing leaf link to an executable source and MUST preserve occupied or mismatched destinations. Preflight MUST reject unsafe or unwritable destination parents before installer work, revalidation MUST precede link creation, and native failure or an unhealthy result MUST fail the owning tool. Apply dry-run MUST describe companion ownership and conditional repair without mutation or native installer invocation; deselection MUST NOT remove companion links.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats fixtures prove installation order, conditional native repair, healthy repetition, read-only previews, conflict preservation, permissions, native and ineffective-repair failures, post-upgrade repair and cleanup of a directory arriving during link creation.
+
+_Evidence:_ `rig_preflight_tool_clis` and `rig_apply_tool_clis` join the existing provider and upgrade boundaries; `tests/rig-app-clis.bats` supplies isolated filesystem and native-installer evidence.

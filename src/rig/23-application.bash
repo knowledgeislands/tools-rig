@@ -424,7 +424,9 @@ rig_apply_tool_needs_dispatch() {
   [ -n "${RIG_PLAN_BINDINGS[$index]}" ] || return 0
   rig_observe_provider "${RIG_PLAN_TOOLS[$index]}" \
     "${RIG_PLAN_BINDINGS[$index]}" "${RIG_PLAN_PROVIDERS[$index]}" || return 2
-  [ "$RIG_OBSERVATION" != present ]
+  [ "$RIG_OBSERVATION" = present ] || return 0
+  rig_observe_tool_clis "${RIG_PLAN_TOOLS[$index]}" || return 2
+  [ "$RIG_CLI_STATE" != present ]
 }
 
 rig_apply_resource_needs_dispatch() {
@@ -804,6 +806,8 @@ rig_command_apply_impl() {
     elif [ "$dry_run" -eq 1 ]; then
       RIG_PLAN_RESULTS[$index]=planned
       RIG_PLAN_DETAILS[$index]=-
+      rig_cli_plan_summary "$tool" || return
+      [ -z "$RIG_VALUE" ] || RIG_PLAN_DETAILS[$index]=$RIG_VALUE
     elif rig_plan_blocker "$tool"; then
       blocker=$RIG_VALUE
       RIG_PLAN_RESULTS[$index]=skipped

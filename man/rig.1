@@ -453,6 +453,11 @@ platform, and receipt-boundary failures stop the plan before mutation. The
 atomic resource receipt advances only after the complete resource plan
 succeeds, and stale retirement is withheld after any selected resource
 failure. The report identifies declaration scope before execution.
+Explicit application CLI companions are checked after their installer succeeds.
+A missing provider-owned companion can trigger a native cask reinstall;
+a link-owned companion creates only a missing command link. Conflicting paths
+are preserved and fail preflight. Dry-run reports conditional companion work
+without invoking the installer or creating links.
 Receipt-backed work acquires one exclusive
 platform lock before reading the receipt. A profile whose kind is
 .B view
@@ -1231,8 +1236,31 @@ and a target that is neither a regular file nor a directory stays
 A link Rig cannot resolve, because it cycles or exhausts the bound, is
 .B unavailable
 with a detail naming failed resolution. Where a link was followed, the detail
-reports the resolved target beside the declared path. Rig never creates,
-repairs, or repoints a link.
+reports the resolved target beside the declared path. Artefact observation never
+creates, repairs, or repoints a link.
+.PP
+Explicit managed command companions remain within the owning tool through
+.BR cli.NAME.source ,
+.BR cli.NAME.destination ,
+and
+.BR cli.NAME.owner .
+Every companion requires all three string fields. Source and destination must
+be absolute paths, with only leading home forms expanded. Parent traversal,
+control characters, identical paths and competing selected destinations are
+rejected. An owner of
+.B provider
+requires a Homebrew cask installation and keeps repair with its native cask
+reinstall operation, without adding force. An owner of
+.B link
+creates a missing leaf symlink after the application installer succeeds.
+The destination directory must exist, be writable and have no symlinked
+ancestors. A mismatched link, file or directory is preserved, and failure to
+produce the declared executable and link fails the tool. Apply and supported
+tool upgrades reconcile companions; dry-run does not mutate them, and
+deselection does not remove links. Companion paths remain private in exports.
+Platform-specific companions use
+.B variant.ID.cli.NAME.*
+within the tool's existing variant.
 .PP
 One tool may declare bounded platform variants through dotted
 .B variant.ID.*

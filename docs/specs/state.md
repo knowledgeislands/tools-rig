@@ -431,3 +431,13 @@ _Conformance:_ conforming
 _Verify:_ Parse healthy and unusable-configuration JSON, check mixed and incompatible selections, damaged history and multiple historical failures, and assert counts and explicit freshness scope.
 
 _Evidence:_ `rig_command_doctor`, `tests/diagnostics-tables.bats`, `tests/rig.bats` and `tests/rig-apply-history.bats` cover additive health and coverage projections.
+
+### RIG-STATE-040 — Application CLI health
+
+Status and doctor MUST refine a present application's state with the health of its explicitly declared CLI companions, distinguishing a missing command, unavailable executable source, mismatched target, occupied destination and unsafe destination parent. A companion MUST be present only when its expected link resolves to the declared executable source; a relative installer link MAY satisfy that expectation. Reads MUST NOT repair companions or invoke their executables, and structured observations MUST agree with the human health result.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats observes missing, healthy, dangling, non-executable, relative, wrong-target and conflicted companions through status and doctor, and compares the structured missing state without filesystem mutation.
+
+_Evidence:_ `rig_observe_cli`, `rig_observe_tool_clis` and `tests/rig-app-clis.bats` refine existing per-tool observations without creating new catalogue entries.

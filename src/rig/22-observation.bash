@@ -1307,6 +1307,11 @@ rig_observe_plan() {
         state=$RIG_ARTIFACT_STATE
         detail=$RIG_ARTIFACT_DETAIL
       fi
+      if [ "$state" = present ]; then
+        rig_observe_tool_clis "$tool" || return
+        state=$RIG_CLI_STATE
+        detail=$RIG_CLI_DETAIL
+      fi
       if [ "$state" = present ] || [ "$state" = missing ] || [ "$state" = drifted ]; then
           RIG_PLAN_RESULTS[$index]=observed
         else

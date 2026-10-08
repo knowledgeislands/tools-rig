@@ -74,6 +74,7 @@ rig_build_plan() {
     done
     [ "$progress" -eq 1 ] || rig_fail 'cannot produce a dependency-ordered provider plan' || return
   done
+  rig_validate_selected_cli_destinations
 }
 
 rig_provider_has_capability() {

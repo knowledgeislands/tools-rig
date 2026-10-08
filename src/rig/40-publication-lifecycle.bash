@@ -482,7 +482,7 @@ rig_lifecycle_unavailable() {
 }
 
 rig_preflight_lifecycle_task() {
-  local action provider binding adapter executable
+  local action provider binding adapter executable tool
 
   action=$1
   provider=$2
@@ -504,12 +504,18 @@ rig_preflight_lifecycle_task() {
   rig_executable_available "$executable" ||
     rig_lifecycle_unavailable executable-unavailable \
       "provider '$provider' lifecycle executable unavailable: $executable" || return
+  if [ -n "$binding" ]; then
+    rig_section_index "$binding" || return 2
+    tool=${RIG_SECTION_IDS[$RIG_INDEX]}
+    rig_preflight_tool_clis "$tool" "$binding" "$provider" ||
+      rig_lifecycle_unavailable cli-preflight-failed "tool '$tool' CLI preflight failed" || return
+  fi
   RIG_VALUE=$executable
   RIG_VALUE=$executable
 }
 
 rig_execute_lifecycle_task() {
-  local action provider binding executable adapter kind locator normalized
+  local action provider binding executable adapter kind locator normalized native_status tool
 
   action=$1
   provider=$2
@@ -558,6 +564,13 @@ rig_execute_lifecycle_task() {
       ;;
     *) return 2 ;;
   esac
+  native_status=$?
+  [ "$native_status" -eq 0 ] || return "$native_status"
+  if [ -n "$binding" ]; then
+    rig_section_index "$binding" || return 2
+    tool=${RIG_SECTION_IDS[$RIG_INDEX]}
+    rig_apply_tool_clis "$tool" "$binding" "$provider"
+  fi
 }
 
 rig_lifecycle_requires_person() {

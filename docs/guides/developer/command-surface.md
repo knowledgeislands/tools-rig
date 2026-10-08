@@ -10,6 +10,7 @@ Rig is authored as ordered Bash 3.2 modules beneath `src/rig/`. `scripts/assembl
 - `21-provider-state.bash`: native invocation, observations, inventory and receipts.
 - `22-observation.bash`: status and doctor, including verbose diagnostic evidence.
 - `23-application.bash`: apply and declared manager prerequisites.
+- `24-app-clis.bash`: named application companions, bounded link creation and native cask repair.
 - `30-commands.bash`: catalogue query helpers, diagnostic metadata and proven installation context, terminal-width-aware wrapped/stacked tables, and retained extension validation helpers.
 - `35-adoption.bash`: init, Homebrew discovery and reviewed capture proposals.
 - `40-publication-lifecycle.bash`: export and declaration-scoped upgrades.

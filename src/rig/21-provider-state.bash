@@ -487,6 +487,12 @@ rig_prepare_builtin_invocation() {
       rig_append_arguments "$binding" || return
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
       ;;
+    homebrew:cask:repair)
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=reinstall
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--cask
+      rig_append_arguments "$binding" || return
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
+      ;;
     homebrew:mas:observe)
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=list
       rig_append_arguments "$binding" || return
@@ -1238,6 +1244,7 @@ rig_preflight_provider() {
   tool=$1
   binding=$2
   provider=$3
+  rig_preflight_tool_clis "$tool" "$binding" "$provider" || return
   rig_provider_adapter "$provider" || return 2
   adapter=$RIG_VALUE
   rig_provider_has_capability "$provider" apply ||
@@ -1332,7 +1339,7 @@ rig_apply_direct_download() {
 }
 
 rig_apply_provider() {
-  local tool binding provider adapter executable
+  local tool binding provider adapter executable native_status
 
   tool=$1
   binding=$2
@@ -1350,4 +1357,7 @@ rig_apply_provider() {
     executable=$RIG_EXECUTABLE
     "$executable" "${RIG_INVOKE_ARGUMENTS[@]}" 1>&2
   fi
+  native_status=$?
+  [ "$native_status" -eq 0 ] || return "$native_status"
+  rig_apply_tool_clis "$tool" "$binding" "$provider"
 }
