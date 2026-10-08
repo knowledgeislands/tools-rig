@@ -11,7 +11,7 @@ blocks: []
 blocked_by: []
 baseline_ref: 082154bf8173ac65b3dfcde8397b21cb8c6b3799
 created_at: 2026-10-08T09:57:41Z
-updated_at: 2026-10-08T13:27:06Z
+updated_at: 2026-10-08T19:18:17Z
 ---
 
 # Manage app CLIs
@@ -36,7 +36,7 @@ The capability is limited to app-provided command-line companions and their inst
 
 ## Current state
 
-The approved companion capability is implemented and verified. Explicit commands stay inside their application entry, existing artefacts remain observation-only, and missing companions recover through native Homebrew cask repair or bounded link creation. CodexBar source adoption is prepared and healthy under an isolated copy of the full workstation configuration; applying that scoped declaration still requires the source repository's reviewed-diff approval.
+The approved companion capability is implemented and verified. Explicit commands stay inside their application entry, existing artefacts remain observation-only, and missing companions recover through native Homebrew cask repair or bounded link creation. The owner approved CodexBar adoption; its scoped chezmoi declaration is applied, committed and verified against the live workstation.
 
 ## Steps
 
@@ -81,7 +81,7 @@ Prepare the review packet here. The personal CodexBar source change is a separat
 
 ### Delivered
 
-Implemented the approved application CLI boundary without creating another catalogue item, adding an imperative hook or changing observation-only artefacts. The immutable baseline remains in frontmatter. CodexBar's companion declaration is prepared separately in the chezmoi source; no live configuration apply, native cask reinstall, push or release was performed during delivery.
+Implemented the approved application CLI boundary without creating another catalogue item, adding an imperative hook or changing observation-only artefacts. The immutable baseline remains in frontmatter. After delivery, the owner approved the reviewed CodexBar declaration; it was applied through a files-only, one-file chezmoi operation and verified live. No native cask reinstall, push or release was needed.
 
 ### Change Summary
 
@@ -97,7 +97,7 @@ The chezmoi repository's complete audit, Node test suite and Markdown gate passe
 
 ### Outstanding concerns
 
-The CodexBar source declaration still awaits explicit permission to apply the reviewed one-file chezmoi diff and run the post-apply read-only health checks. Native cask repair is proven through isolated installer fixtures; a healthy workstation did not require a real reinstall.
+CodexBar adoption is complete. Native cask repair is proven through isolated installer fixtures; the healthy workstation did not require a real reinstall. The implementation remains awaiting review rather than self-accepted.
 
 Existing governance warnings remain outside this CLI delivery: the repositories have no committed pre-commit gate, and chezmoi's roadmap audit cannot resolve the `ki-arcadia-principal` territory registry handle. They do not produce live Rig health findings. Unknown installed packages and applications remain informational inventory and were not adopted or removed.
 
@@ -107,9 +107,15 @@ The goal is met for explicitly declared bundled command links. Selection, native
 
 ### Mini recap
 
-Application companions now have explicit intent and verified reconciliation, while ordinary generated artefacts stay read-only. CodexBar is the first prepared adoption and its current command is healthy. Finish its scoped source apply only after approval; retain the behaviour in the accepted contract and user guide rather than duplicating it in Calendar notes.
+Application companions now have explicit intent and verified reconciliation, while ordinary generated artefacts stay read-only. CodexBar is the first live adoption: its source and rendered declarations agree, both existing command links remain healthy, and the scoped source change is committed. Retain the behaviour in the contract and user guide rather than duplicating it in Calendar notes.
 
 ## Discussion
+
+### Approved CodexBar adoption
+
+The owner approved the reviewed declaration after delivery. Chezmoi applied only the managed application fragment with scripts excluded. Source and live TOML agree exactly; Rig recognises the provider-owned command, and both existing CodexBar links resolve to the executable app helper. Live doctor reports zero findings and status reports zero missing, drifted, unavailable, unknown or unhealthy entries. The post-apply catalogue test passes; the complete chezmoi gate already passed for this exact source change. Informational unmanaged inventory remains outside this adoption.
+
+Source provenance: `chezmoi:dot_config/rig/conf.d/private_10-applications.toml` at `2f445efc6377bbd5e8f15a3f0f54656dd8e695a4`.
 
 ### Native installer ownership
 
