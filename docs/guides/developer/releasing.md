@@ -2,6 +2,10 @@
 
 The `ki-repo-tools` release-readiness checklist owns the common release review; this guide supplies Rig's exact candidate, installation, and downstream steps.
 
+## When to release
+
+Release timing follows the `ki-repo-tools` [release-on-demand policy](https://github.com/knowledgeislands/ki-agentic-harness/blob/main/skills/repo-structure/ki-repo-tools/references/standards-release-readiness.md#release-on-demand): hold releases by default and do not release after each change, and close delivered work without waiting for a release. The steps below apply only once a release is due under that policy.
+
 Expected public routes are:
 
 - `https://knowledgeislands.info/projects/rig/` for people;
