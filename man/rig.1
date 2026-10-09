@@ -1,4 +1,4 @@
-.TH RIG 1 "2026-10-03" "Knowledge Islands" "User Commands"
+.TH RIG 1 "2026-10-09" "Knowledge Islands" "User Commands"
 .SH NAME
 \&
 .PP
@@ -131,20 +131,22 @@ restarts, and other imperative actions.
 .SH INSTALLATION
 \&
 .PP
-Install the latest immutable release, currently v0.4.0:
+This checkout is the selected v0.5.0 release candidate, not yet a published
+release. The latest published release, v0.4.0, cannot read app CLI ownership
+fields. After v0.5.0 is published, install the immutable preview:
 .PP
 .nf
-curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.4.0/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.5.0/install.sh | bash
 .fi
 .PP
 Pin an exact release explicitly:
 .PP
 .nf
-curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.4.0/install.sh | bash -s -- v0.4.0
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.5.0/install.sh | bash -s -- v0.5.0
 .fi
 .PP
-These URLs name the latest documented immutable release. From a local
-checkout, run
+These installer URLs are not available before publication. From a local
+checkout now, run
 .B ./install.sh \-\-link
 to link both the executable and manual; the linked executable reports a
 development version marker until a release candidate is explicitly selected.

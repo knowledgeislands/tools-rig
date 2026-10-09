@@ -27,22 +27,22 @@ That makes Rig a manager of managers beneath a catalogue people can read.
 
 ## Install
 
-Rig is a pre-v1 public preview. The latest immutable release is `v0.4.0`:
+Rig is a pre-v1 public preview. This checkout is the selected `v0.5.0` release candidate, not yet a published release. After publication, install that exact immutable preview with:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.4.0/install.sh | bash -s -- v0.4.0
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.5.0/install.sh | bash -s -- v0.5.0
 ```
 
-That command installs the released `0.4.0` contract.
+That command becomes available when `v0.5.0` is published. The latest published release is `v0.4.0`, which rejects catalogues that declare app CLI ownership fields.
 
 To use the current checkout while developing or evaluating those changes, link both the executable and manual:
 
 ```sh
 ./install.sh --link
-rig --version # rig 0.4.0+dev
+rig --version # rig 0.5.0
 ```
 
-The development marker identifies an untagged checkout after the latest immutable release; it does not promise the next release number.
+Between releases the linked checkout reports a development marker such as `0.5.0+dev`; the marker identifies an untagged checkout after the latest immutable release and does not promise the next release number.
 
 ## Start here
 
