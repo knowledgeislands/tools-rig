@@ -2,12 +2,13 @@
 id: RIG-DIST-010
 area: DIST
 title: Release current catalogue reader
+project: mac-studio-bootstrap
 status: triage
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-09T15:54:23Z
-updated_at: 2026-10-09T15:54:23Z
+updated_at: 2026-10-09T21:18:32Z
 ---
 
 # RIG-DIST-010: Release Current Catalogue Reader
