@@ -26,7 +26,7 @@ Sol runs Homebrew `rig` 0.4.0, from tag `v0.4.0`. It rejects the current catalog
 rig: error: /Users/krisbrown/.config/rig/conf.d/10-applications.toml:249: unknown field 'cli.codexbar.source' in [tool.codexbar]
 ```
 
-Those fields arrived with [RIG-CORE-040](RIG-CORE-040-manage-app-clis.md) after `v0.4.0`. The laptop runs `0.4.0+dev` from this checkout and reads the catalogue. The catalogue also now ships the per-machine `core`, `laptop` and `studio` profiles, which a release must resolve. Until a release ships, this record blocks Rig apply on sol.
+Those fields arrived with RIG-CORE-040 after `v0.4.0`. The laptop runs `0.4.0+dev` from this checkout and reads the catalogue. The catalogue also now ships the per-machine `core`, `laptop` and `studio` profiles, which a release must resolve. Until a release ships, this record blocks Rig apply on sol.
 
 ## Boundary
 
