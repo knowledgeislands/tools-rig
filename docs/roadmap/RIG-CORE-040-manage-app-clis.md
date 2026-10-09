@@ -5,13 +5,12 @@ title: Manage app CLIs
 kind: deliver
 purpose: capability
 component: orchestration
-horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 082154bf8173ac65b3dfcde8397b21cb8c6b3799
 created_at: 2026-10-08T09:57:41Z
-updated_at: 2026-10-08T19:18:17Z
+updated_at: 2026-10-09T21:07:44Z
 ---
 
 # Manage app CLIs
@@ -108,6 +107,10 @@ The goal is met for explicitly declared bundled command links. Selection, native
 ### Mini recap
 
 Application companions now have explicit intent and verified reconciliation, while ordinary generated artefacts stay read-only. CodexBar is the first live adoption: its source and rendered declarations agree, both existing command links remain healthy, and the scoped source change is committed. Retain the behaviour in the contract and user guide rather than duplicating it in Calendar notes.
+
+## Done
+
+Accepted 2026-10-09 by Kris Brown on the review packet above (state-of-play decisions log, Decision 20: "Kris accepted every awaiting-review record on 2026-10-09", naming RIG-CORE-040). The outstanding concerns stand: the repositories still lack a committed pre-commit gate, and chezmoi's roadmap audit cannot resolve the `ki-arcadia-principal` territory registry handle.
 
 ## Discussion
 
