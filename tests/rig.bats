@@ -603,22 +603,23 @@ write_query_config() {
 @test "release surfaces distinguish immutable release from the current pre-1.0 baseline" {
   repo_root=$BATS_TEST_DIRNAME/..
 
-  grep -Fxq 'RIG_VERSION=0.5.0' "$repo_root/src/rig/00-runtime.bash"
-  grep -Fxq 'RIG_VERSION=0.5.0' "$repo_root/bin/rig"
+  grep -Fxq 'RIG_VERSION=0.5.0+dev' "$repo_root/src/rig/00-runtime.bash"
+  grep -Fxq 'RIG_VERSION=0.5.0+dev' "$repo_root/bin/rig"
   grep -Fxq '## Pre-1.0 baseline' "$repo_root/CHANGELOG.md"
   grep -Fxq -- '- `rig upgrade`' "$repo_root/CHANGELOG.md"
   ! grep -Eq '^## \[[0-9]+\.' "$repo_root/CHANGELOG.md"
   grep -Fq 'v0.5.0/install.sh' "$repo_root/README.md"
-  grep -Fq 'rig --version # rig 0.5.0' "$repo_root/README.md"
+  grep -Fq 'rig 0.5.0+dev' "$repo_root/README.md"
   grep -Fq 'v0.5.0/install.sh' "$repo_root/docs/guides/user/getting-started.md"
   grep -Fq 'reports `rig 0.5.0`' "$repo_root/docs/guides/user/getting-started.md"
+  grep -Fq 'rig 0.5.0+dev' "$repo_root/docs/guides/user/getting-started.md"
   grep -Fq 'v0.5.0/install.sh' "$repo_root/man/rig.1"
-  grep -Fq 'latest published release is `v0.4.0`' "$repo_root/README.md"
-  grep -Fq 'latest published release, `v0.4.0`' "$repo_root/docs/guides/user/getting-started.md"
-  grep -Fq 'latest published release, v0.4.0' "$repo_root/man/rig.1"
-  grep -Fq 'not yet a published release' "$repo_root/README.md"
-  grep -Fq 'not available before publication' "$repo_root/docs/guides/user/getting-started.md"
-  grep -Fq 'not available before publication' "$repo_root/man/rig.1"
+  grep -Fq 'latest immutable release is `v0.5.0`' "$repo_root/README.md"
+  grep -Fq 'latest immutable release, currently `v0.5.0`' "$repo_root/docs/guides/user/getting-started.md"
+  grep -Fq 'latest immutable release, currently v0.5.0' "$repo_root/man/rig.1"
+  ! grep -Fq 'not yet a published release' "$repo_root/README.md" || false
+  ! grep -Fq 'not available before publication' "$repo_root/docs/guides/user/getting-started.md" || false
+  ! grep -Fq 'not available before publication' "$repo_root/man/rig.1" || false
   grep -Fq 'development version marker' "$repo_root/man/rig.1"
   grep -Fq "grep -Eq '^[0-9]+\\.[0-9]+\\.[0-9]+$'" "$repo_root/.github/workflows/ci.yml"
 }
@@ -627,7 +628,7 @@ write_query_config() {
   run "$RIG" --version
 
   [ "$status" -eq 0 ]
-  [ "$output" = "rig 0.5.0" ]
+  [ "$output" = "rig 0.5.0+dev" ]
 }
 
 @test "doctor verbose reports stable runtime, default paths, and missing configuration" {
@@ -639,7 +640,7 @@ write_query_config() {
     "$RIG" doctor --verbose
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"$(printf 'Runtime:\n  Rig version: 0.5.0\n  Executable: %s\n  Bash version: %s\n  Selected platform: macos\nPaths:\n  Config home: %s/.config/rig\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/.config/rig/rig.toml (absent)\n  Fragment count: 0\n  Status: missing' "$RIG" "$BASH_VERSION" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME")" ]] || false
+  [[ "$output" == *"$(printf 'Runtime:\n  Rig version: 0.5.0+dev\n  Executable: %s\n  Bash version: %s\n  Selected platform: macos\nPaths:\n  Config home: %s/.config/rig\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/.config/rig/rig.toml (absent)\n  Fragment count: 0\n  Status: missing' "$RIG" "$BASH_VERSION" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME")" ]] || false
 }
 
 @test "doctor verbose follows XDG base directories" {
@@ -748,7 +749,7 @@ write_query_config() {
     XDG_DATA_HOME= XDG_STATE_HOME= XDG_CACHE_HOME= RIG_PLATFORM=macos "$RIG" doctor --verbose
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"$(printf 'Runtime:\n  Rig version: 0.5.0\n  Executable: %s\n  Bash version: %s\n  Selected platform: macos\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.toml\n  Fragment count: 2\n  Status: valid\n  Default profile: default\n  Selection mode: central\n  Profiles: 1\n  Tools: 1\n  Skills: 0\n  Managed resources: 0\n  Ports: 0\n  Tool variants: 0' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]] || false
+  [[ "$output" == *"$(printf 'Runtime:\n  Rig version: 0.5.0+dev\n  Executable: %s\n  Bash version: %s\n  Selected platform: macos\nPaths:\n  Config home: %s\n  Data home: %s/.local/share/rig\n  State home: %s/.local/state/rig\n  Cache home: %s/.cache/rig\nConfiguration:\n  Root config: %s/rig.toml\n  Fragment count: 2\n  Status: valid\n  Default profile: default\n  Selection mode: central\n  Profiles: 1\n  Tools: 1\n  Skills: 0\n  Managed resources: 0\n  Ports: 0\n  Tool variants: 0' "$RIG" "$BASH_VERSION" "$CONFIG_HOME" "$TEST_HOME" "$TEST_HOME" "$TEST_HOME" "$CONFIG_HOME")" ]] || false
 }
 
 @test "doctor verbose accepts fragment-only configuration and reports the optional root absent" {
@@ -1163,7 +1164,7 @@ write_query_config() {
   run "$install_bin/rig" --version
 
   [ "$status" -eq 0 ]
-  [ "$output" = "rig 0.5.0" ]
+  [ "$output" = "rig 0.5.0+dev" ]
 }
 
 @test "release installer validates both artifacts before installing either" {
@@ -1353,7 +1354,7 @@ Install the latest immutable Rig release, pin an exact release, or link this dev
   run bash -c '. "$1"; printf "sourced:%s\n" "$RIG_VERSION"' _ "$RIG"
 
   [ "$status" -eq 0 ]
-  [ "$output" = "sourced:0.5.0" ]
+  [ "$output" = "sourced:0.5.0+dev" ]
 }
 
 @test "configuration loads only the XDG root and bytewise ordered fragments" {
