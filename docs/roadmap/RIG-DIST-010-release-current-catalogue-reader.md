@@ -1,7 +1,7 @@
 ---
 id: RIG-DIST-010
 area: DIST
-title: Release a Rig that reads the current catalogue
+title: Release current catalogue reader
 status: triage
 blocks: []
 blocked_by: []
@@ -10,7 +10,7 @@ created_at: 2026-10-09T15:54:23Z
 updated_at: 2026-10-09T15:54:23Z
 ---
 
-# RIG-DIST-010: Release a Rig That Reads the Current Catalogue
+# RIG-DIST-010: Release Current Catalogue Reader
 
 ## Goal
 
