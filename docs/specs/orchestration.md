@@ -448,3 +448,13 @@ _Conformance:_ conforming
 _Verify:_ Terminal and stub fixtures cover validation/refresh argv, no-work and dry-run, refusal/non-terminal use, refresh failure, native failure, all catchable interruption signals, owner disappearance, child cleanup and progress ownership.
 
 _Evidence:_ `rig_sudo_start`, `rig_sudo_guard`, `rig_sudo_cleanup`, apply/capture/reconciliation cleanup and `tests/rig-sudo-session.bats` implement the owned session boundary.
+
+### RIG-ORCH-044 — Native default-application assignment
+
+Default applications MUST follow their catalogue tool in existing tools → skills → resources ordering and targeted prerequisite closure. A catalogue-only owner MAY satisfy the dependency only through its healthy matching application artifact; failed native installation MUST block assignment. The fixed adapter MUST use static JavaScript through macOS osascript, pass declarations as literal argv, observe through Launch Services, resolve extensions to content types and assign file types with all roles or URL schemes by bundle identifier. Apply MUST skip an already correct handler. A changed assignment MUST register the verified declared application, call the corresponding native setter and reobserve the effective result. Native failure, invalid evidence or an ineffective assignment MUST keep apply incomplete and disclose possible native confirmation. Rig MUST NOT bypass macOS consent, acquire duti/a runtime SDK, remove the previous app, change per-file overrides or reset handlers on deselection. Dry-run MUST NOT invoke handler copy, register or set functions.
+
+_Conformance:_ conforming
+
+_Verify:_ Isolated native/installer stubs prove exact selector arguments, install-before-assignment ordering, blocked failed owners, correct-handler no-op, dry-run/read-only boundaries, setter failure and declined/ineffective assignment. Compile and reflect the embedded bridge without calling live handler functions.
+
+_Evidence:_ `rig_default_application_native`, `rig_default_application_apply`, generic resource dispatch and `tests/rig-default-applications.bats` verify the fixed native boundary against available SDK signatures.

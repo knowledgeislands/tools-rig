@@ -15,6 +15,7 @@ RIG_DECLARATION_REGISTRY=(
   'service|setup|1|Services'
   'scheduled-job|setup|1|Scheduled jobs'
   'setting|setup|1|Settings'
+  'default-application|setup|1|Default applications'
   'dock|setup|1|Dock layouts'
   'port|setup|1|Private ports'
   'retired-application|observation|1|Retired applications'

@@ -1817,3 +1817,29 @@ Native terminal timestamp, revocation and authentication policies remain
 in force. No sudoers or askpass change is made. App Store sign-in and other
 non-sudo authentication remain outside this option. Unattended upgrade does
 not acquire this session.
+
+.SH DECLARED DEFAULT APPLICATIONS
+\&
+.PP
+Private [default-application.ID] resources require name, purpose, rationale,
+provider = macos-handlers, tool, bundle-id, kind, value and macOS platforms.
+Use uti, extension or scheme. Extensions accept one optional leading dot;
+schemes are lowercase without a colon. File types use all roles.
+.PP
+The owning catalogue tool must declare a healthy application artifact whose
+Info.plist bundle identifier matches. Central profiles select
+default-applications; item profiles use normal membership. Duplicate selected
+kind/value targets are rejected. Declare a native type once, by UTI or
+extension.
+.PP
+Doctor and status compare native handlers without assigning them. Apply follows
+tool installation, skips a correct handler, registers the verified app before
+assignment and checks the effective result. Native failure or pending
+confirmation
+keeps apply incomplete; macOS consent is never bypassed. Dry-run invokes no
+native handler operation. Linux reports unsupported state without native calls.
+.PP
+The adapter uses existing osascript/plutil and Launch Services, with no duti or
+runtime SDK dependency. RIG_OSASCRIPT and RIG_PLUTIL override native executable
+paths. Handler choices are private, are never retired or reset on deselection,
+and do not remove applications or change per-file Finder overrides.

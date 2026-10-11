@@ -78,7 +78,7 @@ _Evidence:_ `rig_add_field`, `rig_normalize_artifact_identity`, and `rig_expand_
 
 ### RIG-CONF-008 — Canonical table identities
 
-Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[skill.ID]`, `[profile.ID]`, `[provider.ID]`, `[service.ID]`, `[scheduled-job.ID]`, `[setting.ID]`, `[dock.ID]`, `[dock-item.ID]`, `[port.ID]`, `[retired-application.ID]`, `[remove.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`. Any other table shape MUST be rejected. Installation metadata MUST remain in its owning tool table.
+Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[skill.ID]`, `[profile.ID]`, `[provider.ID]`, `[service.ID]`, `[scheduled-job.ID]`, `[setting.ID]`, `[dock.ID]`, `[dock-item.ID]`, `[port.ID]`, `[retired-application.ID]`, `[remove.ID]`, `[default-application.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`. Any other table shape MUST be rejected. Installation metadata MUST remain in its owning tool table.
 
 _Conformance:_ conforming
 
@@ -281,3 +281,13 @@ _Conformance:_ conforming
 _Verify:_ Isolated removal fixtures exercise safe parsing, retained identity conflicts, duplicates, unsafe inputs, profile/platform filtering and native operations.
 
 _Evidence:_ `rig_validate_removal`, `rig_collect_removals` and `tests/rig-software-removal.bats` implement and verify the explicit authority boundary.
+
+### RIG-CONF-029 — Private default-application declarations
+
+`[default-application.ID]` MUST require `name`, `purpose`, `rationale`, fixed `provider = "macos-handlers"`, one application `tool`, `bundle-id`, `kind`, `value` and macOS-only `platforms`. `kind` MUST be `uti`, `extension` or `scheme`; content types and bundle IDs MUST use bounded dot-separated identifiers, extensions MUST be lowercase with one optional leading dot, and schemes MUST be lowercase without a colon. The owning tool MUST declare an application artifact. Central profiles MAY select `default-applications`; item `profiles` MUST retain existing membership and inheritance rules. The owner MUST participate in tool prerequisite selection. Selected duplicate normalised kind/value targets MUST fail before native work. Handler choices, bundle identifiers and application paths MUST remain private in public export.
+
+_Conformance:_ conforming
+
+_Verify:_ Isolated fixtures exercise valid selectors, invalid ownership/fields, profile/variant selection, duplicate targets, offline descriptions and public export privacy.
+
+_Evidence:_ `rig_validate_default_application`, `rig_default_application_identity`, profile/native-target resolution and `tests/rig-default-applications.bats` verify the declaration contract.

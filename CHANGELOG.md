@@ -24,6 +24,7 @@ Run `rig help COMMAND` or `rig COMMAND --help` for options and exact arguments.
 
 ### Capabilities
 
+- Private macOS default applications for UTI, extension and URL schemes, with owned-app verification and effective-result checks.
 - Explicit attended `apply --sudo` with native validation, owned noninteractive refresh and cleanup.
 - Explicit native software removal with default preview, confirmation and doctor classification; no implicit deletion.
 - macOS applications can declare self-managed updates. Healthy app artifacts satisfy presence across install sources; apply and upgrade skip self-updating apps, and doctor gives honest source evidence and manual correction guidance for foreign copies.

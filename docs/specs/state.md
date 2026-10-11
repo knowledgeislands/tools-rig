@@ -471,3 +471,13 @@ _Conformance:_ conforming
 _Verify:_ Isolated sudo fixtures assert native validation, refused and expired grants, stopped subsequent dispatch, normal failure and interruption results without a live privileged operation.
 
 _Evidence:_ `rig_sudo_guard`, `rig_command_apply_impl` and `tests/rig-sudo-session.bats` preserve honest outcomes.
+
+### RIG-STATE-044 — Declared default-application state
+
+Doctor/status MUST compare a selected default application with native Launch Services observations only after verifying its selected declared application artifact and matching Info.plist bundle identifier. Missing/damaged/mismatched applications MUST remain actionable and MUST NOT query or change handlers. A matching observed handler MUST be present; a differing or absent handler MUST be drifted; invalid or failed native observation MUST remain unknown/unavailable. Non-macOS selection MUST report unsupported state without native handler calls. Reads MUST NOT assign or register handlers. Handler state MUST NOT enter resource retirement receipts, reset on deselection or appear in public export.
+
+_Conformance:_ conforming
+
+_Verify:_ Stub fixtures cover healthy/drifted handlers, absence/damage/bundle mismatch, missing adapter, malformed/native-failed observations, unsupported Linux, read-only doctor/status and deselection without reset.
+
+_Evidence:_ `rig_default_application_app`, `rig_default_application_observe`, generic resource state and `tests/rig-default-applications.bats` preserve honest native evidence.

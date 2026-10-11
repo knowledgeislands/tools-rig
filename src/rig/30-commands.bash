@@ -532,7 +532,7 @@ rig_doctor_diagnostics() {
           profile) profiles=$((profiles + 1)) ;;
         tool) tools=$((tools + 1)) ;;
         skill) skills=$((skills + 1)) ;;
-          service|scheduled-job|setting|dock) resources=$((resources + 1)) ;;
+          service|scheduled-job|setting|dock|default-application) resources=$((resources + 1)) ;;
           port) ports=$((ports + 1)) ;;
         esac
         index=$((index + 1))
@@ -1569,7 +1569,7 @@ rig_resource_schedule_summary() {
 rig_print_profile_resource_tables() {
   local wanted label count section_name section_index id name provider desired schedule detail
 
-  for wanted in service scheduled-job setting dock; do
+  for wanted in service scheduled-job setting dock default-application; do
     count=0
     for section_name in "${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}"; do
       [ "${section_name%%.*}" = "$wanted" ] && count=$((count + 1))
@@ -1578,6 +1578,7 @@ rig_print_profile_resource_tables() {
       service) label=Services ;;
       scheduled-job) label='Scheduled jobs' ;;
       setting) label=Settings ;;
+      default-application) label='Default applications' ;;
       dock) label='Dock layouts' ;;
     esac
     printf '\n%s: %s\n' "$label" "$count"
@@ -1590,6 +1591,7 @@ rig_print_profile_resource_tables() {
       service) rig_table_add_column DESIRED 36 ;;
       scheduled-job) rig_table_add_column DESIRED 24; rig_table_add_column SCHEDULE 40 ;;
       setting) rig_table_add_column VALUE 64 ;;
+      default-application) rig_table_add_column HANDLER 64 ;;
       dock) rig_table_add_column ITEMS 8 ;;
     esac
     for section_name in "${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}"; do
@@ -1616,6 +1618,11 @@ rig_print_profile_resource_tables() {
         setting)
           rig_get_value "$section_name" value || return 2
           rig_table_add_row "$id" "$name" "$provider" "$RIG_VALUE"
+          ;;
+        default-application)
+          rig_default_application_identity "$section_name" || return; detail=$RIG_VALUE
+          rig_get_value "$section_name" bundle-id || return 2
+          rig_table_add_row "$id" "$name" "$provider" "$detail -> $RIG_VALUE"
           ;;
         dock)
           rig_collect_field_values "$section_name" item
@@ -1738,6 +1745,12 @@ rig_show_json() {
       setting)
         rig_get_value "$section_name" value || return 2
         rig_json_field ',' value "$RIG_VALUE"
+        ;;
+      default-application)
+        rig_get_value "$section_name" requires || return 2; rig_json_field ',' tool "$RIG_VALUE"
+        rig_get_value "$section_name" kind || return 2; rig_json_field ',' handler_kind "$RIG_VALUE"
+        rig_get_value "$section_name" value || return 2; rig_json_field ',' value "$RIG_VALUE"
+        rig_get_value "$section_name" bundle-id || return 2; rig_json_field ',' bundle_id "$RIG_VALUE"
         ;;
       dock)
         rig_collect_field_values "$section_name" item
@@ -1940,7 +1953,7 @@ rig_profile_contains_resource() {
       target=${RIG_FIELD_VALUES[$field_index]}
       case "$key" in
         profile|inherit) rig_profile_contains_resource "$target" "$wanted" && return 0 ;;
-        skill|service|scheduled-job|setting|dock|port) [ "$key.$target" = "$wanted" ] && return 0 ;;
+        skill|service|scheduled-job|setting|dock|default-application|port) [ "$key.$target" = "$wanted" ] && return 0 ;;
       esac
     fi
     field_index=$((field_index + 1))
@@ -2008,7 +2021,7 @@ rig_explain_resource() {
   id=${target#*:}
   [ "$target" != "$id" ] && rig_valid_id "$id" ||
     rig_fail "unknown resource '$target'" || return
-  case "$kind" in service|scheduled-job|setting|dock|port) ;; *)
+  case "$kind" in service|scheduled-job|setting|dock|default-application|port) ;; *)
     rig_fail "unknown resource '$target'" || return ;;
   esac
   section_name=$kind.$id
@@ -2024,6 +2037,7 @@ rig_explain_resource() {
     key=${RIG_FIELD_KEYS[$field_index]}
     value=${RIG_FIELD_VALUES[$field_index]}
     [ "$key" != resource-dependency ] || key=depends-on
+    if [ "$kind" = default-application ] && [ "$key" = requires ]; then key=tool; fi
     printf '%s=%s\n' "$key" "$value"
     field_index=$((field_index + 1))
   done
@@ -2080,7 +2094,7 @@ rig_command_explain_impl() {
   rig_load_config || return
   case "$tool" in
     skill:*) rig_explain_skill "$tool"; return ;;
-    service:*|scheduled-job:*|setting:*|dock:*|port:*) rig_explain_resource "$tool"; return ;;
+    service:*|scheduled-job:*|setting:*|dock:*|default-application:*|port:*) rig_explain_resource "$tool"; return ;;
   esac
   rig_valid_id "$tool" && rig_section_index "tool.$tool" ||
     rig_fail "unknown tool '$tool'" || return

@@ -5075,3 +5075,14 @@ artifacts = ["$HOME/bin/home-tool", "~/bin/tilde-tool", "/opt/rig/absolute-tool"
   [ "$status" -eq 0 ]
   [ ! -s "$outcome_file" ]
 }
+
+@test "isolation contains sudo and handler adapters before any invocation" {
+  case "$RIG_SUDO" in "$BATS_TEST_TMPDIR"/*) ;; *) false ;; esac || false
+  case "$RIG_OSASCRIPT" in "$BATS_TEST_TMPDIR"/*) ;; *) false ;; esac || false
+  run "$RIG_SUDO" -n -- fixture
+  [ "$status" -eq 1 ]
+  [ "$(cat "$RIG_SUDO.log")" = '-n -- fixture' ]
+  run "$RIG_OSASCRIPT" -l JavaScript -e fixture
+  [ "$status" -eq 1 ]
+  [ "$(cat "$RIG_OSASCRIPT.log")" = '-l JavaScript -e fixture' ]
+}

@@ -112,6 +112,12 @@ rig_test_isolate() {
   printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\n" "$*" >>"$0.log"' 'exit 1' >"$stub"
   chmod +x "$stub"
   export RIG_SUDO=$stub
+
+  stub=$BATS_TEST_TMPDIR/isolated-osascript
+  # shellcheck disable=SC2016
+  printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\n" "$*" >>"$0.log"' 'exit 1' >"$stub"
+  chmod +x "$stub"
+  export RIG_OSASCRIPT=$stub
 }
 
 rig_test_provider() {

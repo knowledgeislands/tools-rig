@@ -213,11 +213,13 @@ rig_command_help() {
     printf '%s\n' 'Records apply outcomes; later success clears the matching historical failure.'
     printf '%s\n' 'Healthy self-updating applications are satisfied without reinstalling; foreign managed copies require manual source review.'
     printf '%s\n' 'With --sudo, native validation precedes tasks and an owned noninteractive refresh stops at run exit.'
+    printf '%s\n' 'Declared default applications follow their installed app and verify the effective native handler.'
   fi
   case "$command" in
     status|doctor)
       printf '%s\n' '' 'Shows selected historical apply failures separately from current observations.' \
-        'Health checks do not assess available package updates.' ;;
+        'Health checks do not assess available package updates.' \
+    'Default-application checks verify the owned app and compare handlers without changing them.' ;;
     diag)
       printf '%s\n' '' 'Offline facts include installation provenance, runtime host and configuration presence.' \
         'Paths are included only with --full; configuration values are never printed.' ;;
@@ -803,6 +805,7 @@ RIG_DECLARATION_REGISTRY=(
   'service|setup|1|Services'
   'scheduled-job|setup|1|Scheduled jobs'
   'setting|setup|1|Settings'
+  'default-application|setup|1|Default applications'
   'dock|setup|1|Dock layouts'
   'port|setup|1|Private ports'
   'retired-application|observation|1|Retired applications'
@@ -1086,6 +1089,8 @@ rig_field_kind() {
     category:name|category:purpose|\
     retired-application:name|retired-application:bundle-id|\
     remove:name|remove:provider|remove:kind|remove:locator|\
+    default-application:name|default-application:purpose|default-application:rationale|\
+    default-application:provider|default-application:kind|default-application:value|default-application:bundle-id|\
     tool:name|tool:category|tool:purpose|tool:rationale|\
     skill:name|skill:purpose|skill:rationale|skill:authority|skill:source|\
     skill:source-skill|skill:trust|skill:public-source|\
@@ -1122,7 +1127,7 @@ rig_field_kind() {
     tool:install-platform|tool:install-argument|\
     skill:platform|skill:runtime|skill:requires|skill:member-profile|\
     profile:profile|profile:inherit|profile:tool|profile:skill|profile:service|profile:scheduled-job|\
-    profile:setting|profile:dock|profile:port|\
+    profile:setting|profile:dock|profile:port|profile:default-application|\
     provider:argument|provider:capability|provider:autoupdate-option|\
     binding:platform|binding:argument|\
     service:platform|service:requires|service:program|service:environment|service:member-profile|\
@@ -1132,6 +1137,7 @@ rig_field_kind() {
     scheduled-job:resource-dependency|scheduled-job:associated-application|\
     setting:platform|setting:requires|setting:member-profile|setting:resource-dependency|\
     dock:platform|dock:requires|dock:item|dock:member-profile|dock:resource-dependency|\
+    default-application:platform|default-application:requires|default-application:member-profile|\
     port:member-profile|remove:platform|remove:member-profile|\
     action:platform|action:argument|action:allow-argument|action:resource-kind)
       RIG_FIELD_KIND=repeatable
@@ -1196,6 +1202,8 @@ rig_toml_field() {
     category:name|category:purpose|profile:name|profile:purpose|profile:kind|\
     retired-application:name|retired-application:bundle-id|\
     remove:name|remove:provider|remove:kind|remove:locator|\
+    default-application:name|default-application:purpose|default-application:rationale|\
+    default-application:provider|default-application:kind|default-application:value|default-application:bundle-id|\
     tool:name|tool:category|tool:purpose|tool:rationale|\
     skill:name|skill:purpose|skill:rationale|skill:authority|skill:source|\
     skill:source-skill|skill:trust|skill:public-source|\
@@ -1259,6 +1267,10 @@ rig_toml_field() {
       RIG_TOML_FIELD_KEY=member-profile
       RIG_TOML_FIELD_TYPE=array
       ;;
+    default-application:tool) RIG_TOML_FIELD_KEY=requires ; RIG_TOML_FIELD_TYPE=string ;;
+    default-application:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
+    default-application:profiles) RIG_TOML_FIELD_KEY=member-profile ; RIG_TOML_FIELD_TYPE=array ;;
+    profile:default-applications) RIG_TOML_FIELD_KEY=default-application ; RIG_TOML_FIELD_TYPE=array ;;
     remove:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
     remove:profiles|port:profiles) RIG_TOML_FIELD_KEY=member-profile ; RIG_TOML_FIELD_TYPE=array ;;
     service:requires|scheduled-job:requires) RIG_TOML_FIELD_KEY=requires ; RIG_TOML_FIELD_TYPE=array ;;
@@ -1874,11 +1886,12 @@ rig_detect_profile_selection_mode() {
           rig_field_declared "$section_name" scheduled-job ||
           rig_field_declared "$section_name" setting ||
           rig_field_declared "$section_name" dock ||
-          rig_field_declared "$section_name" port; then
+          rig_field_declared "$section_name" port ||
+          rig_field_declared "$section_name" default-application; then
           central=1
         fi
         ;;
-    tool|skill|service|scheduled-job|setting|dock|port)
+    tool|skill|service|scheduled-job|setting|dock|default-application|port)
         if rig_field_declared "$section_name" member-profile; then
           item=1
         fi
@@ -1957,7 +1970,7 @@ rig_resource_reference() {
   case "$reference" in *:*) ;; *) return 1 ;; esac
   kind=${reference%%:*}
   id=${reference#*:}
-  case "$kind" in service|scheduled-job|setting|dock) ;; *) return 1 ;; esac
+  case "$kind" in service|scheduled-job|setting|dock|default-application) ;; *) return 1 ;; esac
   rig_valid_id "$id" || return 1
   rig_reference_exists "$kind" "$id" || return 1
   RIG_VALUE=$kind.$id
@@ -2034,7 +2047,7 @@ rig_validate_cycles() {
   RIG_VISIT_STATES=()
   index=0
   while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
-    case "${RIG_SECTION_TYPES[$index]}" in service|scheduled-job|setting|dock)
+    case "${RIG_SECTION_TYPES[$index]}" in service|scheduled-job|setting|dock|default-application)
       rig_resource_cycle_visit "${RIG_SECTION_NAMES[$index]}" || return
       ;;
     esac
@@ -2049,14 +2062,14 @@ rig_validate_provider_adapter() {
   adapter=$2
   case "$adapter" in
     custom) ;;
-    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|skills-cli|ki) ;;
+    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-handlers|skills-cli|ki) ;;
     *) rig_fail "[$section_name] has unsupported adapter '$adapter'" || return ;;
   esac
 }
 
 rig_builtin_provider_adapter() {
   case "$1" in
-    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|skills-cli|ki)
+    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-handlers|skills-cli|ki)
       RIG_VALUE=$1
       return 0
       ;;
@@ -2097,7 +2110,7 @@ rig_validate_binding_adapter() {
     custom:*) ;;
     homebrew:formula|homebrew:cask|homebrew:mas|uv:tool|mise:tool|npm:global|chezmoi:target) ;;
     direct-download:executable) ;;
-    launchd:*|macos-applications:*|macos-defaults:*|macos-dock:*|skills-cli:*|ki:*)
+    launchd:*|macos-applications:*|macos-defaults:*|macos-dock:*|macos-handlers:*|skills-cli:*|ki:*)
       rig_fail "[$section_name] adapter '$adapter' cannot install tools" || return
       ;;
     homebrew:*|uv:*|mise:*|npm:*|chezmoi:*|direct-download:*)
@@ -2779,6 +2792,7 @@ rig_validate_model() {
         rig_validate_references_for_field "$index" setting setting || return
         rig_validate_references_for_field "$index" dock dock || return
         rig_validate_references_for_field "$index" port port || return
+        rig_validate_references_for_field "$index" default-application default-application || return
         if rig_field_declared "$section_name" profile &&
           rig_field_declared "$section_name" inherit; then
           rig_fail "[$section_name] cannot combine 'profiles' with 'inherits'" || return
@@ -2792,6 +2806,9 @@ rig_validate_model() {
         rig_validate_resource "$section_name" "$section_type" || return
         rig_validate_references_for_field "$index" member-profile profile || return
         rig_validate_resource_dependencies "$section_name" "$index" || return
+        ;;
+      default-application)
+        rig_validate_default_application "$section_name" "$index" || return
         ;;
       setting)
         rig_validate_setting "$section_name" || return
@@ -3133,8 +3150,15 @@ rig_select_resource() {
   resource=$2
   platform=$3
   section_name=$kind.$resource
-  rig_resource_supports_platform "$section_name" "$platform" ||
-    rig_fail "$kind '$resource' does not support platform '$platform'" || return
+  if ! rig_resource_supports_platform "$section_name" "$platform"; then
+    if [ "$kind" = default-application ] && [ "$platform" != macos ]; then
+      if ! rig_array_contains "$section_name" "${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}"; then
+        RIG_SELECTED_RESOURCE_SECTIONS[${#RIG_SELECTED_RESOURCE_SECTIONS[@]}]=$section_name
+      fi
+      return 0
+    fi
+    rig_fail "$kind '$resource' does not support platform '$platform'"; return
+  fi
   if [ "${#RIG_SELECTED_RESOURCE_SECTIONS[@]}" -gt 0 ] &&
     rig_array_contains "$section_name" "${RIG_SELECTED_RESOURCE_SECTIONS[@]}"; then
     return 0
@@ -3352,7 +3376,7 @@ rig_select_item_memberships() {
     section_type=${RIG_SECTION_TYPES[$index]}
     section_name=${RIG_SECTION_NAMES[$index]}
     section_id=${RIG_SECTION_IDS[$index]}
-    case "$section_type" in tool|skill|service|scheduled-job|setting|dock|port) ;; *)
+    case "$section_type" in tool|skill|service|scheduled-job|setting|dock|default-application|port) ;; *)
       index=$((index + 1)); continue ;;
     esac
     if rig_item_selected_by_active_profiles "$section_name"; then
@@ -3388,6 +3412,7 @@ rig_select_central_profile() {
         scheduled-job) rig_select_resource scheduled-job "$target" "$platform" || return ;;
         setting) rig_select_resource setting "$target" "$platform" || return ;;
         dock) rig_select_resource dock "$target" "$platform" || return ;;
+        default-application) rig_select_resource default-application "$target" "$platform" || return ;;
         port) rig_select_port "$target" || return ;;
       esac
     fi
@@ -3478,6 +3503,10 @@ rig_resource_native_target() {
       rig_get_value "$section_name" key || return 2
       key=$RIG_VALUE
       RIG_VALUE=$provider:setting:$domain:$key
+      ;;
+    default-application)
+      rig_default_application_identity "$section_name" || return
+      RIG_VALUE=$provider:default-application:$RIG_VALUE
       ;;
     dock) RIG_VALUE=$provider:dock ;;
     *) return 1 ;;
@@ -3792,6 +3821,7 @@ rig_provider_has_capability() {
       macos-applications:inventory|\
       macos-defaults:resource-observe|macos-defaults:resource-apply|\
       macos-dock:resource-observe|macos-dock:resource-apply|\
+    macos-handlers:resource-observe|macos-handlers:resource-apply|\
       skills-cli:skill-observe|skills-cli:skill-apply|skills-cli:skill-update|skills-cli:skill-inventory|\
       ki:skill-apply|ki:skill-update)
         return 0
@@ -4880,6 +4910,10 @@ rig_preflight_resource() {
   adapter=$RIG_VALUE
   rig_provider_has_capability "$provider" "$capability" ||
     rig_fail "provider '$provider' does not declare capability '$capability'" || return
+  if [ "$adapter" = macos-handlers ]; then
+    rig_default_application_preflight
+    return
+  fi
   if [ "$adapter" = launchd ]; then
     rig_launchd_preflight_resource "$section_name" "$verb"
     return
@@ -4902,6 +4936,10 @@ rig_observe_resource() {
   local section_name provider adapter executable
 
   section_name=$1
+  if [ "${section_name%%.*}" = default-application ]; then
+    rig_default_application_observe "$section_name"
+    return
+  fi
   RIG_OBSERVATION=unknown
   RIG_OBSERVATION_DETAIL=-
   if ! rig_preflight_resource "$section_name" observe-resource; then
@@ -8574,6 +8612,16 @@ rig_resource_blocker() {
       tool=${RIG_FIELD_VALUES[$field_index]}
       if rig_plan_index "$tool"; then
         case "${RIG_PLAN_RESULTS[$RIG_INDEX]:-}" in completed|planned|neutral|observed) ;;
+          skipped)
+            if [ "${section_name%%.*}" = default-application ] &&
+              [ "${RIG_PLAN_DETAILS[$RIG_INDEX]:-}" = catalogue-only ]; then
+              rig_default_application_app "$section_name" || return
+              if [ "$RIG_DEFAULT_APPLICATION_STATE" = present ]; then
+                field_index=$((field_index + 1)); continue
+              fi
+            fi
+            RIG_VALUE=$tool; return 0
+            ;;
           *) RIG_VALUE=$tool; return 0 ;;
         esac
       fi
@@ -8605,6 +8653,7 @@ rig_resource_locator_summary() {
       rig_get_value "$section_name" key || return 2; key=$RIG_VALUE
       RIG_VALUE=$domain/$key
       ;;
+    default-application) rig_default_application_identity "$section_name" ;;
     dock) RIG_VALUE=${section_name#*.} ;;
     *) return 2 ;;
   esac
@@ -8623,6 +8672,7 @@ rig_apply_resource() {
     return
   fi
   case "$adapter" in
+    macos-handlers) rig_default_application_apply "$section_name"; return ;;
     macos-defaults) rig_setting_apply "$section_name"; return ;;
     macos-dock) rig_dock_apply "$section_name"; return ;;
   esac
@@ -8640,7 +8690,7 @@ rig_print_resource_projection() {
   rig_provider_adapter "$provider" || return 2
   adapter=$RIG_VALUE
   case "$adapter" in
-    launchd|macos-defaults|macos-dock)
+    launchd|macos-defaults|macos-dock|macos-handlers)
     RIG_INVOKE_ARGUMENTS=()
     rig_append_resource_fields "$section_name" || return
     index=0
@@ -8822,7 +8872,7 @@ rig_apply_select_targets() {
         RIG_APPLY_PORT_TARGETS[${#RIG_APPLY_PORT_TARGETS[@]}]=$target
         RIG_APPLY_DIRECT[${#RIG_APPLY_DIRECT[@]}]=$owner
         ;;
-      service:*|scheduled-job:*|setting:*|dock:*)
+      service:*|scheduled-job:*|setting:*|dock:*|default-application:*)
         section_name=${target/:/.}
         rig_array_contains "$section_name" "${RIG_RESOURCE_PLAN_SECTIONS[@]+"${RIG_RESOURCE_PLAN_SECTIONS[@]}"}" ||
           { syntax_error "unknown target '$target' in profile '$RIG_RESOLVED_PROFILE'"; return 2; }
@@ -10681,6 +10731,196 @@ rig_sudo_start() {
   RIG_SUDO_KEEPER_PID=$!
   printf 'Administrator session: native grant refreshed during this run.\n'
 }
+# rig-module: 29-default-applications
+# shellcheck shell=bash
+# Cross-module native observations and application paths are shared deliberately.
+# shellcheck disable=SC2004,SC2034
+
+# The embedded bridge is static JavaScript; declarations travel only as argv.
+# shellcheck disable=SC2016
+RIG_DEFAULT_HANDLER_SCRIPT='
+ObjC.import("Foundation");
+ObjC.import("CoreServices");
+function run(argv) {
+    var action = argv[0], kind = argv[1], value = argv[2];
+    var bundle = argv[3], path = argv[4], type, result, code;
+    function contentType() {
+        if (kind === "uti") return $(value);
+        type = $.UTTypeCreatePreferredIdentifierForTag($.kUTTagClassFilenameExtension, $(value), null);
+        if (!ObjC.unwrap(type)) throw new Error("extension content type unavailable");
+        return type;
+    }
+    if (action === "observe") {
+        result = kind === "scheme" ? $.LSCopyDefaultHandlerForURLScheme($(value)) :
+            $.LSCopyDefaultRoleHandlerForContentType(contentType(), $.kLSRolesAll);
+        result = ObjC.unwrap(result);
+        return result ? String(result) : "-";
+    }
+    if (action !== "apply") throw new Error("unsupported handler operation");
+    code = $.LSRegisterURL($.NSURL.fileURLWithPath($(path)), true);
+    if (code !== 0) throw new Error("application registration failed: " + code);
+    code = kind === "scheme" ? $.LSSetDefaultHandlerForURLScheme($(value), $(bundle)) :
+        $.LSSetDefaultRoleHandlerForContentType(contentType(), $.kLSRolesAll, $(bundle));
+    if (code !== 0) throw new Error("handler assignment failed: " + code);
+    return "assigned";
+}
+'
+
+rig_default_application_identity() {
+  local section kind value
+  section=$1
+  rig_get_value "$section" kind || return 2; kind=$RIG_VALUE
+  rig_get_value "$section" value || return 2; value=$RIG_VALUE
+  [ "$kind" != extension ] || value=${value#.}
+  RIG_VALUE=$kind:$value
+}
+
+rig_validate_default_application() {
+  local section index tool bundle field end found value kind
+  section=$1; index=$2
+  rig_require_field "$section" name || return
+  rig_require_field "$section" purpose || return
+  rig_require_field "$section" rationale || return
+  rig_require_field "$section" provider || return
+  [ "$RIG_VALUE" = macos-handlers ] || rig_fail "[$section] provider must be 'macos-handlers'" || return
+  rig_require_field "$section" requires || return; tool=$RIG_VALUE
+  rig_reference_exists tool "$tool" || rig_fail "[$section] unknown application tool '$tool'" || return
+  rig_require_field "$section" bundle-id || return; bundle=$RIG_VALUE
+  rig_retired_valid_bundle_id "$bundle" || rig_fail "[$section] invalid application bundle-id" || return
+  rig_require_field "$section" kind || return; kind=$RIG_VALUE
+  rig_require_field "$section" value || return; value=$RIG_VALUE
+  case "$kind" in
+    uti) rig_retired_valid_bundle_id "$value" || rig_fail "[$section] invalid UTI" || return ;;
+    extension)
+      value=${value#.}
+      case "$value" in ''|*[!a-z0-9_-]*) rig_fail "[$section] extension must be a lowercase extension with an optional leading dot"; return ;; esac
+      ;;
+    scheme)
+      case "$value" in ''|[!a-z]*|*[!a-z0-9+.-]*) rig_fail "[$section] scheme must be a lowercase URL scheme without a colon"; return ;; esac
+      ;;
+    *) rig_fail "[$section] kind must be 'uti', 'extension' or 'scheme'"; return ;;
+  esac
+  rig_validate_macos_platforms "$section" || return
+  rig_validate_references_for_field "$index" member-profile profile || return
+  # Installation is optional, but the catalogue must own an application artifact.
+  rig_section_index "tool.$tool" || return 2
+  field=${RIG_SECTION_FIELD_STARTS[$RIG_INDEX]}; end=${RIG_SECTION_FIELD_ENDS[$RIG_INDEX]}; found=0
+  while [ "$field" -lt "$end" ]; do
+    case "${RIG_FIELD_KEYS[$field]}" in artifact|variant:*:artifact)
+      case "${RIG_FIELD_VALUES[$field]}" in *.app|*.app/) found=1 ;; esac ;;
+    esac
+    field=$((field + 1))
+  done
+  [ "$found" -eq 1 ] || rig_fail "[$section] application tool requires a declared .app artifact" || return
+}
+
+rig_default_application_preflight() {
+  RIG_RESOURCE_PREFLIGHT_DETAIL=
+  if [ "${RIG_RESOLVED_PLATFORM:-}" != macos ]; then
+    RIG_RESOURCE_PREFLIGHT_DETAIL=unsupported-platform
+    return 1
+  fi
+  if ! rig_executable_available "${RIG_OSASCRIPT:-/usr/bin/osascript}" ||
+    ! rig_executable_available "${RIG_PLUTIL:-/usr/bin/plutil}"; then
+    RIG_RESOURCE_PREFLIGHT_DETAIL=handler-executable-unavailable
+    return 1
+  fi
+  RIG_VALUE=${RIG_OSASCRIPT:-/usr/bin/osascript}
+}
+
+rig_default_application_app() {
+  local section tool expected actual
+  section=$1
+  RIG_DEFAULT_APPLICATION_STATE=unavailable
+  RIG_DEFAULT_APPLICATION_DETAIL=application-artifact-unavailable
+  RIG_DEFAULT_APPLICATION_PATH=
+  rig_get_value "$section" requires || return 2; tool=$RIG_VALUE
+  rig_get_value "$section" bundle-id || return 2; expected=$RIG_VALUE
+  rig_application_artifact "$tool" || return 0
+  RIG_DEFAULT_APPLICATION_PATH=$RIG_APPLICATION_PATH
+  rig_observe_tool_artifacts "$tool" 1 || return
+  if [ "$RIG_ARTIFACT_STATE" != present ]; then
+    RIG_DEFAULT_APPLICATION_STATE=$RIG_ARTIFACT_STATE
+    RIG_DEFAULT_APPLICATION_DETAIL=application:$RIG_ARTIFACT_DETAIL
+    return 0
+  fi
+  if ! actual=$("${RIG_PLUTIL:-/usr/bin/plutil}" -extract CFBundleIdentifier raw -o - \
+    "$RIG_DEFAULT_APPLICATION_PATH/Contents/Info.plist" 2>/dev/null); then
+    RIG_DEFAULT_APPLICATION_STATE=unknown
+    RIG_DEFAULT_APPLICATION_DETAIL=application-bundle-id-unavailable
+  elif [ "$actual" != "$expected" ]; then
+    RIG_DEFAULT_APPLICATION_STATE=drifted
+    RIG_DEFAULT_APPLICATION_DETAIL=application-bundle-id-mismatch
+  else
+    RIG_DEFAULT_APPLICATION_STATE=present
+    RIG_DEFAULT_APPLICATION_DETAIL=-
+  fi
+}
+
+rig_default_application_native() {
+  local action section kind value bundle
+  action=$1; section=$2
+  rig_get_value "$section" kind || return 2; kind=$RIG_VALUE
+  rig_get_value "$section" value || return 2; value=$RIG_VALUE
+  rig_get_value "$section" bundle-id || return 2; bundle=$RIG_VALUE
+  [ "$kind" != extension ] || value=${value#.}
+  RIG_INVOKE_ARGUMENTS=(-l JavaScript -e "$RIG_DEFAULT_HANDLER_SCRIPT" -- \
+    "$action" "$kind" "$value" "$bundle" "$RIG_DEFAULT_APPLICATION_PATH")
+  rig_capture_invocation "${RIG_OSASCRIPT:-/usr/bin/osascript}"
+}
+
+rig_default_application_observe() {
+  local section bundle
+  section=$1
+  RIG_OBSERVATION=unavailable
+  RIG_OBSERVATION_DETAIL=-
+  if ! rig_default_application_preflight; then
+    RIG_OBSERVATION_DETAIL=$RIG_RESOURCE_PREFLIGHT_DETAIL
+    return 0
+  fi
+  rig_default_application_app "$section" || return
+  RIG_OBSERVATION=$RIG_DEFAULT_APPLICATION_STATE
+  RIG_OBSERVATION_DETAIL=$RIG_DEFAULT_APPLICATION_DETAIL
+  [ "$RIG_OBSERVATION" = present ] || return 0
+  rig_default_application_native observe "$section" || return
+  if [ "$RIG_NATIVE_STATUS" -ne 0 ]; then
+    RIG_OBSERVATION=unknown
+    RIG_OBSERVATION_DETAIL=handler-observation-failed:exit:$RIG_NATIVE_STATUS
+    return 0
+  fi
+  rig_get_value "$section" bundle-id || return 2; bundle=$RIG_VALUE
+  if [ "$RIG_CAPTURED_OUTPUT" = "$bundle" ]; then
+    RIG_OBSERVATION=present
+    RIG_OBSERVATION_DETAIL=-
+  elif [ "$RIG_CAPTURED_OUTPUT" = - ] || rig_retired_valid_bundle_id "$RIG_CAPTURED_OUTPUT"; then
+    RIG_OBSERVATION=drifted
+    RIG_OBSERVATION_DETAIL=handler-mismatch:current:$RIG_CAPTURED_OUTPUT:expected:$bundle
+  else
+    RIG_OBSERVATION=unknown
+    RIG_OBSERVATION_DETAIL=invalid-handler-response
+  fi
+}
+
+rig_default_application_apply() {
+  local section
+  section=$1
+  rig_default_application_observe "$section" || return
+  [ "$RIG_OBSERVATION" != present ] || return 0
+  case "$RIG_OBSERVATION_DETAIL" in handler-mismatch:*) ;; *)
+    printf 'rig: %s: %s\n' "$section" "$RIG_OBSERVATION_DETAIL" >&2; return 1 ;;
+  esac
+  rig_default_application_native apply "$section" || return
+  if [ "$RIG_NATIVE_STATUS" -ne 0 ]; then
+    printf 'rig: %s: native handler assignment failed (exit %s).\n' "$section" "$RIG_NATIVE_STATUS" >&2
+    return 1
+  fi
+  rig_default_application_observe "$section" || return
+  if [ "$RIG_OBSERVATION" != present ]; then
+    printf 'rig: %s: handler assignment not effective (%s); native confirmation may be required.\n' \
+      "$section" "$RIG_OBSERVATION_DETAIL" >&2
+    return 1
+  fi
+}
 # rig-module: 30-commands
 # shellcheck shell=bash
 # Cross-module state is intentionally consumed by later assembled modules.
@@ -11215,7 +11455,7 @@ rig_doctor_diagnostics() {
           profile) profiles=$((profiles + 1)) ;;
         tool) tools=$((tools + 1)) ;;
         skill) skills=$((skills + 1)) ;;
-          service|scheduled-job|setting|dock) resources=$((resources + 1)) ;;
+          service|scheduled-job|setting|dock|default-application) resources=$((resources + 1)) ;;
           port) ports=$((ports + 1)) ;;
         esac
         index=$((index + 1))
@@ -12252,7 +12492,7 @@ rig_resource_schedule_summary() {
 rig_print_profile_resource_tables() {
   local wanted label count section_name section_index id name provider desired schedule detail
 
-  for wanted in service scheduled-job setting dock; do
+  for wanted in service scheduled-job setting dock default-application; do
     count=0
     for section_name in "${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}"; do
       [ "${section_name%%.*}" = "$wanted" ] && count=$((count + 1))
@@ -12261,6 +12501,7 @@ rig_print_profile_resource_tables() {
       service) label=Services ;;
       scheduled-job) label='Scheduled jobs' ;;
       setting) label=Settings ;;
+      default-application) label='Default applications' ;;
       dock) label='Dock layouts' ;;
     esac
     printf '\n%s: %s\n' "$label" "$count"
@@ -12273,6 +12514,7 @@ rig_print_profile_resource_tables() {
       service) rig_table_add_column DESIRED 36 ;;
       scheduled-job) rig_table_add_column DESIRED 24; rig_table_add_column SCHEDULE 40 ;;
       setting) rig_table_add_column VALUE 64 ;;
+      default-application) rig_table_add_column HANDLER 64 ;;
       dock) rig_table_add_column ITEMS 8 ;;
     esac
     for section_name in "${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}"; do
@@ -12299,6 +12541,11 @@ rig_print_profile_resource_tables() {
         setting)
           rig_get_value "$section_name" value || return 2
           rig_table_add_row "$id" "$name" "$provider" "$RIG_VALUE"
+          ;;
+        default-application)
+          rig_default_application_identity "$section_name" || return; detail=$RIG_VALUE
+          rig_get_value "$section_name" bundle-id || return 2
+          rig_table_add_row "$id" "$name" "$provider" "$detail -> $RIG_VALUE"
           ;;
         dock)
           rig_collect_field_values "$section_name" item
@@ -12421,6 +12668,12 @@ rig_show_json() {
       setting)
         rig_get_value "$section_name" value || return 2
         rig_json_field ',' value "$RIG_VALUE"
+        ;;
+      default-application)
+        rig_get_value "$section_name" requires || return 2; rig_json_field ',' tool "$RIG_VALUE"
+        rig_get_value "$section_name" kind || return 2; rig_json_field ',' handler_kind "$RIG_VALUE"
+        rig_get_value "$section_name" value || return 2; rig_json_field ',' value "$RIG_VALUE"
+        rig_get_value "$section_name" bundle-id || return 2; rig_json_field ',' bundle_id "$RIG_VALUE"
         ;;
       dock)
         rig_collect_field_values "$section_name" item
@@ -12623,7 +12876,7 @@ rig_profile_contains_resource() {
       target=${RIG_FIELD_VALUES[$field_index]}
       case "$key" in
         profile|inherit) rig_profile_contains_resource "$target" "$wanted" && return 0 ;;
-        skill|service|scheduled-job|setting|dock|port) [ "$key.$target" = "$wanted" ] && return 0 ;;
+        skill|service|scheduled-job|setting|dock|default-application|port) [ "$key.$target" = "$wanted" ] && return 0 ;;
       esac
     fi
     field_index=$((field_index + 1))
@@ -12691,7 +12944,7 @@ rig_explain_resource() {
   id=${target#*:}
   [ "$target" != "$id" ] && rig_valid_id "$id" ||
     rig_fail "unknown resource '$target'" || return
-  case "$kind" in service|scheduled-job|setting|dock|port) ;; *)
+  case "$kind" in service|scheduled-job|setting|dock|default-application|port) ;; *)
     rig_fail "unknown resource '$target'" || return ;;
   esac
   section_name=$kind.$id
@@ -12707,6 +12960,7 @@ rig_explain_resource() {
     key=${RIG_FIELD_KEYS[$field_index]}
     value=${RIG_FIELD_VALUES[$field_index]}
     [ "$key" != resource-dependency ] || key=depends-on
+    if [ "$kind" = default-application ] && [ "$key" = requires ]; then key=tool; fi
     printf '%s=%s\n' "$key" "$value"
     field_index=$((field_index + 1))
   done
@@ -12763,7 +13017,7 @@ rig_command_explain_impl() {
   rig_load_config || return
   case "$tool" in
     skill:*) rig_explain_skill "$tool"; return ;;
-    service:*|scheduled-job:*|setting:*|dock:*|port:*) rig_explain_resource "$tool"; return ;;
+    service:*|scheduled-job:*|setting:*|dock:*|default-application:*|port:*) rig_explain_resource "$tool"; return ;;
   esac
   rig_valid_id "$tool" && rig_section_index "tool.$tool" ||
     rig_fail "unknown tool '$tool'" || return

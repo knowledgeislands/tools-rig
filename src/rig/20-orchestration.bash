@@ -95,6 +95,7 @@ rig_provider_has_capability() {
       macos-applications:inventory|\
       macos-defaults:resource-observe|macos-defaults:resource-apply|\
       macos-dock:resource-observe|macos-dock:resource-apply|\
+    macos-handlers:resource-observe|macos-handlers:resource-apply|\
       skills-cli:skill-observe|skills-cli:skill-apply|skills-cli:skill-update|skills-cli:skill-inventory|\
       ki:skill-apply|ki:skill-update)
         return 0
@@ -1183,6 +1184,10 @@ rig_preflight_resource() {
   adapter=$RIG_VALUE
   rig_provider_has_capability "$provider" "$capability" ||
     rig_fail "provider '$provider' does not declare capability '$capability'" || return
+  if [ "$adapter" = macos-handlers ]; then
+    rig_default_application_preflight
+    return
+  fi
   if [ "$adapter" = launchd ]; then
     rig_launchd_preflight_resource "$section_name" "$verb"
     return
@@ -1205,6 +1210,10 @@ rig_observe_resource() {
   local section_name provider adapter executable
 
   section_name=$1
+  if [ "${section_name%%.*}" = default-application ]; then
+    rig_default_application_observe "$section_name"
+    return
+  fi
   RIG_OBSERVATION=unknown
   RIG_OBSERVATION_DETAIL=-
   if ! rig_preflight_resource "$section_name" observe-resource; then

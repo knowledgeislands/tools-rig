@@ -213,11 +213,13 @@ rig_command_help() {
     printf '%s\n' 'Records apply outcomes; later success clears the matching historical failure.'
     printf '%s\n' 'Healthy self-updating applications are satisfied without reinstalling; foreign managed copies require manual source review.'
     printf '%s\n' 'With --sudo, native validation precedes tasks and an owned noninteractive refresh stops at run exit.'
+    printf '%s\n' 'Declared default applications follow their installed app and verify the effective native handler.'
   fi
   case "$command" in
     status|doctor)
       printf '%s\n' '' 'Shows selected historical apply failures separately from current observations.' \
-        'Health checks do not assess available package updates.' ;;
+        'Health checks do not assess available package updates.' \
+    'Default-application checks verify the owned app and compare handlers without changing them.' ;;
     diag)
       printf '%s\n' '' 'Offline facts include installation provenance, runtime host and configuration presence.' \
         'Paths are included only with --full; configuration values are never printed.' ;;
