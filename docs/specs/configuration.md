@@ -78,7 +78,7 @@ _Evidence:_ `rig_add_field`, `rig_normalize_artifact_identity`, and `rig_expand_
 
 ### RIG-CONF-008 — Canonical table identities
 
-Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[skill.ID]`, `[profile.ID]`, `[provider.ID]`, `[service.ID]`, `[scheduled-job.ID]`, `[setting.ID]`, `[dock.ID]`, `[dock-item.ID]`, `[port.ID]`, `[retired-application.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`. Any other table shape MUST be rejected. Installation metadata MUST remain in its owning tool table.
+Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[skill.ID]`, `[profile.ID]`, `[provider.ID]`, `[service.ID]`, `[scheduled-job.ID]`, `[setting.ID]`, `[dock.ID]`, `[dock-item.ID]`, `[port.ID]`, `[retired-application.ID]`, `[remove.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`. Any other table shape MUST be rejected. Installation metadata MUST remain in its owning tool table.
 
 _Conformance:_ conforming
 
@@ -271,3 +271,13 @@ _Conformance:_ conforming
 _Verify:_ Isolated Bats fixtures parse complete, partial, unsafe and unsupported declarations, select platform variants, reject competing destinations, explain private intent and inspect public export privacy.
 
 _Evidence:_ `rig_toml_cli_field`, `rig_validate_tool_clis`, `rig_validate_selected_cli_destinations` and `tests/rig-app-clis.bats` implement the explicit companion boundary.
+
+### RIG-CONF-028 — Explicit native software removal
+
+Private `[remove.ID]` declarations MUST require `name`, `provider`, `kind`, `locator` and `platforms`, and MAY specify `profiles` with default-profile membership otherwise. Supported identities MUST be Homebrew formula/cask/mas, uv tool, npm global or mise tool. Cask/mas platforms MUST be macOS only and mas IDs MUST be numeric. Removal MUST reject option/control-character locators, provider arguments, duplicate normalised identities and any identity still declared by a tool installation anywhere in the catalogue. Removal declarations MUST NOT enter public export or ordinary apply/upgrade plans.
+
+_Conformance:_ conforming
+
+_Verify:_ Isolated removal fixtures exercise safe parsing, retained identity conflicts, duplicates, unsafe inputs, profile/platform filtering and native operations.
+
+_Evidence:_ `rig_validate_removal`, `rig_collect_removals` and `tests/rig-software-removal.bats` implement and verify the explicit authority boundary.

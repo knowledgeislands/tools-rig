@@ -246,6 +246,7 @@ rig_field_kind() {
     rig:schema|rig:default-profile|rig:bootstrap-profile|\
     category:name|category:purpose|\
     retired-application:name|retired-application:bundle-id|\
+    remove:name|remove:provider|remove:kind|remove:locator|\
     tool:name|tool:category|tool:purpose|tool:rationale|\
     skill:name|skill:purpose|skill:rationale|skill:authority|skill:source|\
     skill:source-skill|skill:trust|skill:public-source|\
@@ -292,7 +293,7 @@ rig_field_kind() {
     scheduled-job:resource-dependency|scheduled-job:associated-application|\
     setting:platform|setting:requires|setting:member-profile|setting:resource-dependency|\
     dock:platform|dock:requires|dock:item|dock:member-profile|dock:resource-dependency|\
-    port:member-profile|\
+    port:member-profile|remove:platform|remove:member-profile|\
     action:platform|action:argument|action:allow-argument|action:resource-kind)
       RIG_FIELD_KIND=repeatable
       ;;
@@ -355,6 +356,7 @@ rig_toml_field() {
     rig:default-profile|rig:bootstrap-profile|\
     category:name|category:purpose|profile:name|profile:purpose|profile:kind|\
     retired-application:name|retired-application:bundle-id|\
+    remove:name|remove:provider|remove:kind|remove:locator|\
     tool:name|tool:category|tool:purpose|tool:rationale|\
     skill:name|skill:purpose|skill:rationale|skill:authority|skill:source|\
     skill:source-skill|skill:trust|skill:public-source|\
@@ -418,7 +420,8 @@ rig_toml_field() {
       RIG_TOML_FIELD_KEY=member-profile
       RIG_TOML_FIELD_TYPE=array
       ;;
-    port:profiles) RIG_TOML_FIELD_KEY=member-profile ; RIG_TOML_FIELD_TYPE=array ;;
+    remove:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
+    remove:profiles|port:profiles) RIG_TOML_FIELD_KEY=member-profile ; RIG_TOML_FIELD_TYPE=array ;;
     service:requires|scheduled-job:requires) RIG_TOML_FIELD_KEY=requires ; RIG_TOML_FIELD_TYPE=array ;;
     service:depends-on|scheduled-job:depends-on|setting:depends-on|dock:depends-on)
       RIG_TOML_FIELD_KEY='resource-dependency'
@@ -1885,6 +1888,9 @@ rig_validate_model() {
 
     case "$section_type" in
       rig) ;;
+      remove)
+        rig_validate_removal "$section_name" "$index" || return
+        ;;
       retired-application)
         rig_validate_retired_application "$section_name" "$index" || return
         ;;

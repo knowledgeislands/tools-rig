@@ -1400,6 +1400,9 @@ rig_command_doctor() {
   local index section_name state detail port owner action skill authority format information config_finding config_loaded
   local verbose profile_seen format_seen checks_passed checks_skipped checks_total checks_coverage
 
+  local unmanaged_requested removal_findings
+  unmanaged_requested=0
+  removal_findings=
   profile=
   format=text
   verbose=0
@@ -1432,6 +1435,11 @@ rig_command_doctor() {
         esac
         format_seen=1
         shift 2
+        ;;
+      --unmanaged)
+        [ "$unmanaged_requested" -eq 0 ] || rig_command_syntax_error doctor || return
+        unmanaged_requested=1
+        shift
         ;;
       --verbose)
         [ "$verbose" -eq 0 ] || rig_command_syntax_error doctor || return
@@ -1547,12 +1555,26 @@ rig_command_doctor() {
     done
     skill_findings=${skill_findings%$'\n'}
   fi
+  rig_observe_removals || return
+  removal_findings=$RIG_REMOVAL_FINDINGS
+  findings=$((findings + RIG_REMOVAL_FINDING_COUNT))
   rig_doctor_incompatible_tools "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   incompatible=$RIG_COUNT
   information=$RIG_VALUE
   if [ -n "$RIG_APPLICATION_INFORMATION" ]; then
     information="${information}${information:+$'\n'}$RIG_APPLICATION_INFORMATION"
     fi
+  if [ "$unmanaged_requested" -eq 1 ]; then
+    rig_collect_unmanaged || return
+    index=0
+    while [ "$index" -lt "${#RIG_UNMANAGED_IDENTITIES[@]}" ]; do
+      information="${information}${information:+$'\n'}  undeclared: ${RIG_UNMANAGED_IDENTITIES[$index]}; owner=${RIG_UNMANAGED_PROVIDERS[$index]}; action=review-only"
+      index=$((index + 1))
+    done
+    for detail in "${RIG_UNMANAGED_PROBLEMS[@]+"${RIG_UNMANAGED_PROBLEMS[@]}"}"; do
+      information="${information}${information:+$'\n'}  inventory-unavailable: $detail"
+    done
+  fi
   rig_doctor_competing_autoupdate "$RIG_RESOLVED_PLATFORM"
   if [ -n "$RIG_VALUE" ]; then
     if [ -n "$information" ]; then
@@ -1587,7 +1609,7 @@ rig_command_doctor() {
   if [ "$config_loaded" -eq 1 ]; then
     checks_total=$((checks_total + ${#RIG_PLAN_TOOLS[@]} + ${#RIG_RESOURCE_PLAN_SECTIONS[@]} + \
       ${#RIG_STALE_RESOURCE_IDS[@]} + ${#RIG_SELECTED_PORTS[@]} + ${#RIG_SELECTED_SKILLS[@]} + \
-      ${#RIG_APPLY_FAILURE_KEYS[@]} + incompatible))
+      ${#RIG_APPLY_FAILURE_KEYS[@]} + ${#RIG_REMOVALS[@]} + incompatible))
     checks_skipped=$((RIG_DOCTOR_CATALOGUE_ONLY + incompatible))
     checks_coverage=configuration,xdg,tools,resources,ports,skills,apply-history
   else
@@ -1620,6 +1642,8 @@ rig_command_doctor() {
     rig_json_lines "$xdg_findings"
     printf ',"tools":'
     rig_json_lines "$tool_findings"
+    printf ',"removals":'
+    rig_json_lines "$removal_findings"
     printf ',"resources":'
     rig_json_lines "$resource_findings"
     printf ',"ports":'
@@ -1651,6 +1675,9 @@ rig_command_doctor() {
   fi
   if [ -n "$tool_findings" ]; then
     printf 'Tool findings:\n%s\n' "$tool_findings"
+  fi
+  if [ -n "$removal_findings" ]; then
+    printf 'Removal findings:\n%s\n' "$removal_findings"
   fi
   if [ -n "$resource_findings" ]; then
     printf 'Resource findings:\n%s\n' "$resource_findings"

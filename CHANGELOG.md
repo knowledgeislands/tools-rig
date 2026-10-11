@@ -12,6 +12,7 @@ This is the consolidated Pre-1.0 baseline for Rig's current command surface and 
 - `rig status`
 - `rig capture`
 - `rig apply`
+- `rig remove`
 - `rig upgrade`
 - `rig doctor`
 - `rig diag`
@@ -23,6 +24,7 @@ Run `rig help COMMAND` or `rig COMMAND --help` for options and exact arguments.
 
 ### Capabilities
 
+- Explicit native software removal with default preview, confirmation and doctor classification; no implicit deletion.
 - macOS applications can declare self-managed updates. Healthy app artifacts satisfy presence across install sources; apply and upgrade skip self-updating apps, and doctor gives honest source evidence and manual correction guidance for foreign copies.
 - Applications can declare named CLI companions within the same tool entry. Status and doctor check their executable and expected link; apply and upgrade reconcile them through their Homebrew cask or explicit missing-link materialisation, preserving conflicting paths.
 - A readable catalogue declares tools, user-level agent skills, managed services and scheduled jobs, typed machine settings, Dock layout, private ports, relationships, providers, and profiles. Profiles select a machine or role setup; provider observations produce expected-versus-observed state.

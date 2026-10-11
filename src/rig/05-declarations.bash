@@ -18,6 +18,7 @@ RIG_DECLARATION_REGISTRY=(
   'dock|setup|1|Dock layouts'
   'port|setup|1|Private ports'
   'retired-application|observation|1|Retired applications'
+  'remove|supporting|1|Software removals'
   'dock-item|component|1|Dock items'
   'rig|supporting|0|Rig configuration'
   'category|supporting|1|Categories'

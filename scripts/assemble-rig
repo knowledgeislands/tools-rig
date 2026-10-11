@@ -23,6 +23,7 @@ assemble() {
     24-app-clis.bash \
     25-apply-history.bash \
     26-retired-applications.bash \
+    27-software-removal.bash \
     30-commands.bash \
     35-adoption.bash \
     40-publication-lifecycle.bash \

@@ -7,12 +7,12 @@ kind: deliver
 purpose: capability
 component: cli
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: a6946472afd7e8e382613ee8aa0065bc7dd7729f
 created_at: 2026-10-09T06:38:35Z
-updated_at: 2026-10-11T09:33:00Z
+updated_at: 2026-10-11T09:50:32Z
 ---
 
 # RIG-CORE-041: Unwanted Software Removal
@@ -46,10 +46,10 @@ Kris selected and approved bounded planning and delivery under tools-burndown De
 
 ## Steps
 
-- [ ] Add validated private `[remove.ID]` declarations with native identity, platform and optional profile membership; reject conflicts with retained tool installations and unsafe provider arguments.
-- [ ] Add default-preview `rig remove`, requiring `--apply` and confirmation of its displayed preview, with fresh observations and independent native outcomes.
-- [ ] Add doctor removal findings and opt-in `--unmanaged` information, preserving declared drift and retired-application observation semantics.
-- [ ] Align specifications, guide, help and manual; verify isolated native fixtures and the full local gate, then prepare the six-part Review packet.
+- [x] Add validated private `[remove.ID]` declarations with native identity, platform and optional profile membership; reject conflicts with retained tool installations and unsafe provider arguments.
+- [x] Add default-preview `rig remove`, requiring `--apply` and confirmation of its displayed preview, with fresh observations and independent native outcomes.
+- [x] Add doctor removal findings and opt-in `--unmanaged` information, preserving declared drift and retired-application observation semantics.
+- [x] Align specifications, guide, help and manual; verify isolated native fixtures and the full local gate, then prepare the six-part Review packet.
 
 ## Files touched
 
@@ -80,6 +80,32 @@ Explain preview and explicit native removal, inventory opt-in and retained-data 
 ### Roadmap
 
 Keep this identity and stop at Awaiting review; do not capture, accept or prune work.
+
+## Review
+
+### Delivered
+
+Delivered the approved explicit native removal and doctor-classification contract from immutable baseline `a6946472afd7e8e382613ee8aa0065bc7dd7729f`. No personal removal list, live uninstall, retained-data cleanup, Dock/profile delivery or acceptance is included.
+
+### Change Summary
+
+Added private validated `[remove.ID]` declarations and default-preview `rig remove`, with explicit `--apply`, displayed confirmation, fresh native observations and per-item outcomes. Fixed native adapters cover Homebrew formula/cask/App Store, uv, npm and mise. Retained identities, including npm/mise version selectors, and unsafe provider arguments are rejected. Doctor distinguishes pending declared removals, opt-in informational undeclared inventory and existing declared drift. Help/completions, manual, guide, changelog and configuration/state/orchestration specifications describe the same boundary. Sudo calls are contained by an inert test helper override.
+
+### Verification
+
+The complete developer-guide gate passed on the final delivery, including repository audit (zero failures and one pre-existing missing committed-hook warning), ShellCheck, Bash syntax, deterministic assembly, benchmark, bounded native version smoke, all 484 Bats cases, mandoc lint and diff whitespace checks. The complete Bats run used hostile inherited XDG state and proved its marker and directory contents remained untouched. Fourteen focused removal fixtures, eight projection cases and six command-surface checks passed independently. ShellCheck was repeated for the final assembled payload and runtime help module after completion alignment. The final two-second reference benchmark passed. The rendered manual and actual source/documentation/test diff were inspected; no protected path changed.
+
+### Outstanding concerns
+
+No required delivery check remains failing. The existing missing committed-hook warning remains; no hook was installed or bypassed. Native managers retain uninstall semantics and may perform their own hooks; Rig adds no force, zap or application-data deletion. App Store removal requires an existing administrator grant and refuses noninteractive sudo denial. No live uninstall or authentication was exercised.
+
+### Post-change review
+
+The public surface meets the captured boundary: explicit declarations alone authorise previewed and confirmed native uninstall, absence skips and uncertainty refuses deletion, while independent native failures retain incomplete outcomes. Deselection, ordinary apply/upgrade and retired traces never generate removals. Fresh-observation and retained-version fixtures cover the consequential race and identity boundaries. The actual runtime and documentation diff was reviewed; no protected path changed.
+
+### Mini recap
+
+Explicit removal and the three doctor classifications are delivered for Kris's acceptance review. Specifications and the existing user command guide retain the durable contract; personal removal choices stay in their source thread. No new record, automatic retired declaration, closure or pruning is proposed.
 
 ## Discussion
 

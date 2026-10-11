@@ -1779,3 +1779,21 @@ Managed mismatches skip installation and upgrade.
 To correct a source, quit the app, review removal of the existing copy,
 run rig apply and sign in again if needed. App Management may require an
 administrator. Rig never deletes, adopts or replaces a foreign bundle itself.
+
+.SH EXPLICIT SOFTWARE REMOVAL
+\&
+.PP
+Private [remove.ID] tables require name, provider, kind, locator and platforms;
+optional profiles select membership. Retained tool identities, duplicate
+removals, provider arguments and unsafe locators are rejected.
+.PP
+rig remove defaults to preview. --apply displays its preview and requires
+literal remove confirmation before rechecking presence and invoking native
+uninstall. --target limits selection. Missing items skip; uncertain evidence
+refuses; native failures remain visible. Homebrew formula/cask/mas, uv tool,
+npm global and mise tool are supported. App Store removal uses only an existing
+sudo grant with -n. Rig adds no force, zap or retained-data cleanup.
+.PP
+Doctor reports pending declared removals as findings. doctor --unmanaged
+adds undeclared-anywhere inventory as information. Apply, upgrade, deselection
+and retired-application traces never authorise software removal.

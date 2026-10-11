@@ -967,6 +967,7 @@ rig_binding_declares_locator() {
 
   provider=$1
   identity=$2
+  rig_removal_identity_declared "$provider" "$identity" && return 0
   if [ "$provider" = homebrew ]; then
     case "$identity" in
       formula:*|cask:*) rig_homebrew_identity_declared "$identity"; return ;;

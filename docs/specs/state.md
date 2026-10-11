@@ -451,3 +451,13 @@ _Conformance:_ conforming
 _Verify:_ run isolated application-policy and source fixtures.
 
 _Evidence:_ `rig_application_policy`, `rig_observe_application` and `rig_application_apply_skip`; `tests/rig-application-updates.bats` covers public observation and mutation outcomes.
+
+### RIG-STATE-042 — Software removal health and inventory
+
+Doctor MUST report selected declared removals still present as `removal-pending` findings, missing removals as healthy and unavailable/unknown evidence as findings. It MUST retain declared tool drift and source-mismatch classification. Only `doctor --unmanaged` MUST query undeclared-anywhere inventory, presenting it as review-only information without changing health. Explicit removals MUST be excluded from undeclared inventory. Retired-application traces MUST remain separate informational observations and MUST NOT approve deletion.
+
+_Conformance:_ conforming
+
+_Verify:_ Isolated fixtures distinguish present, absent and unknown removals, opt-in undeclared inventory, explicit removal exclusions and retained ordinary doctor behaviour.
+
+_Evidence:_ `rig_command_doctor`, `rig_removal_identity_declared` and `tests/rig-software-removal.bats` verify the three classifications.

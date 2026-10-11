@@ -527,7 +527,7 @@ write_query_config() {
   run "$RIG" --help
   [ "$status" -eq 0 ]
   [[ "$output" == *"Describe and manage a person's working setup."* ]] || false
-  for command in init repair show status capture apply upgrade doctor diag export help completion; do
+  for command in init repair show status capture apply remove upgrade doctor diag export help completion; do
     [[ "$output" == *"  $command"* ]] || false
   done
   for command in list explain bootstrap update maintain run paths; do
@@ -576,7 +576,7 @@ write_query_config() {
   repo_root=$BATS_TEST_DIRNAME/..
   bash_completion=$("$RIG" completion bash)
   zsh_completion=$("$RIG" completion zsh)
-  for command in init repair show status capture apply upgrade doctor diag export help completion; do
+  for command in init repair show status capture apply remove upgrade doctor diag export help completion; do
     grep -Fq "\`rig $command" "$repo_root/docs/guides/user/commands.md"
     grep -Fq "rig $command" "$repo_root/man/rig.1"
     [[ "$bash_completion" == *" $command"* ]] || false
@@ -681,7 +681,7 @@ write_query_config() {
   run "$RIG" completion bash
   [ "$status" -eq 0 ]
   [[ "$output" == *'complete -F _rig rig'* ]] || false
-  [[ "$output" == *'init repair show status capture apply upgrade doctor diag export help completion'* ]] || false
+  [[ "$output" == *'init repair show status capture apply remove upgrade doctor diag export help completion'* ]] || false
   [[ "$output" == *'--all --category --format'* ]] || false
   [[ "$output" == *'--verbose'* ]] || false
   for command in list explain bootstrap update maintain run; do
@@ -732,7 +732,7 @@ write_query_config() {
   ' _ "$RIG"
   [ "$status" -eq 0 ]
   [[ "$output" == *'show:--help --profile --all --category --format'* ]] || false
-  [[ "$output" == *'doctor:--help --profile --verbose --format'* ]] || false
+  [[ "$output" == *'doctor:--help --profile --unmanaged --verbose --format'* ]] || false
   [[ "$output" == *'capture:--help --provider --profile --dry-run --output --category --purpose --rationale'* ]] || false
   run zsh -f -c 'eval "$("$1" completion zsh)"; (( $+functions[_rig] ))' _ "$RIG"
   [ "$status" -eq 0 ]
@@ -2507,7 +2507,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
 
   run "$RIG" doctor --help
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Usage: rig doctor [--profile NAME] [--verbose] [--format text|json]"* ]] || false
+  [[ "$output" == *"Usage: rig doctor [--profile NAME] [--unmanaged] [--verbose] [--format text|json]"* ]] || false
 }
 
 @test "custom provider ABI preserves versioned literal argument boundaries" {

@@ -138,6 +138,7 @@ print_help() {
     '  status      Compare expected and observed tool, skill, and resource state.' \
     '  capture     Discover installed items and propose additive declarations.' \
     '  apply       Materialise the selected setup and its prerequisites.' \
+    '  remove      Preview explicitly declared native software removals.' \
     '  upgrade     Upgrade selected provider-managed tools and skills.' \
     '  doctor      Check whether Rig can operate.' \
     '  diag        Print share-safe environment facts.' \
@@ -158,7 +159,8 @@ rig_command_options() {
     show) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--all||Browse all catalogue tools.||' '--category|ID|Limit tools to a category.|category id|' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
     completion) ;;
     status) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--problems||Show only entries needing attention.||' '--unmanaged||Include observed items not declared by an installation.||' '--retired||Include private, informational retired-application evidence.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
-    doctor) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--verbose||Include runtime and configuration diagnostics.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
+    remove) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--target|ID|Limit to one declared removal.||' '--dry-run||Preview native removals; this is the default.||' '--apply||Confirm the displayed preview before native uninstall.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
+    doctor) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--unmanaged||Include undeclared inventory as information.||' '--verbose||Include runtime and configuration diagnostics.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
     apply) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--scope|SCOPE|Restrict to tools, skills, resources, or all.|tools skills resources all|' '--target|ID|Apply one selected entry; repeat for several targets.||' '--dry-run||Print the plan without invoking providers.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
     upgrade) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--dry-run||Print the plan without invoking providers.||' '--unattended||Give native stdin EOF, skip App Store upgrades, and record outcomes.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
     capture) printf '%s\n' '--provider|NAME|Select an inventory provider.|homebrew|' '--profile|NAME|Select the profile for proposed membership.|profile name|' '--dry-run||Inspect and preview without writing a proposal.||' '--output|PATH|Write a new proposal outside active configuration.|path|' '--category|ID|Declare the category for selected items.|category id|' '--purpose|TEXT|Declare the purpose for selected items.|text|' '--rationale|TEXT|Declare the rationale for selected items.|text|' ;;
@@ -231,7 +233,7 @@ rig_command_help() {
     printf '  %-20s %s\n' "$option${value:+ $value}" "$description"
   done < <(rig_command_options "$command")
   case "$command" in
-    init|repair|status|doctor|diag|apply|upgrade|capture|export)
+    init|repair|status|doctor|diag|apply|remove|upgrade|capture|export)
       printf '%s\n' '' 'Exit status: 0 on success, 1 on an operational problem, 2 on usage error.' ;;
   esac
   printf '\nExample: rig %s\n' "$(rig_command_example "$command")"
@@ -246,6 +248,7 @@ rig_command_example() {
     doctor) printf 'doctor --verbose' ;;
     diag) printf 'diag' ;;
     apply) printf 'apply --dry-run' ;;
+    remove) printf 'remove --dry-run' ;;
     upgrade) printf 'upgrade --dry-run' ;;
     capture) printf 'capture --provider homebrew --dry-run' ;;
     export) printf 'export --profile public --output ./public' ;;
@@ -340,7 +343,7 @@ rig_outcome_report() {
           result=unhealthy
         fi
         ;;
-      init|apply|upgrade|capture|export)
+      init|apply|remove|upgrade|capture|export)
         if [ "$status" -eq 0 ]; then
           result=succeeded
         elif [ "$status" -eq 1 ]; then
@@ -720,19 +723,19 @@ print_bash_completion() {
     '  current=${COMP_WORDS[COMP_CWORD]}' \
     '  command=${COMP_WORDS[1]:-}' \
     '  if [ "$COMP_CWORD" -eq 1 ]; then' \
-    '    COMPREPLY=($(compgen -W "-h --help -V --version init repair show status capture apply upgrade doctor diag export help completion" -- "$current"))' \
+    '    COMPREPLY=($(compgen -W "-h --help -V --version init repair show status capture apply remove upgrade doctor diag export help completion" -- "$current"))' \
     '    return' \
     '  fi' \
     '  case "$command" in'
   local command words
-  for command in init repair show status capture apply upgrade doctor diag export completion; do
+  for command in init repair show status capture apply remove upgrade doctor diag export completion; do
     words=$(rig_command_completion_words "$command")
     # shellcheck disable=SC2016
     printf '    %s) COMPREPLY=($(compgen -W "%s" -- "$current")) ;;\n' "$command" "$words"
   done
   # shellcheck disable=SC2016
   printf '%s\n' \
-    '    help) COMPREPLY=($(compgen -W "-h --help init repair show status capture apply upgrade doctor diag export help completion" -- "$current")) ;;' \
+    '    help) COMPREPLY=($(compgen -W "-h --help init repair show status capture apply remove upgrade doctor diag export help completion" -- "$current")) ;;' \
     '  esac' \
     '}' \
     'complete -F _rig rig'
@@ -754,6 +757,7 @@ print_zsh_completion() {
     "    'status:compare expected and observed state'" \
     "    'capture:discover installed items and propose additive declarations'" \
     "    'apply:materialise the selected setup and its prerequisites'" \
+    "    'remove:preview explicitly declared native removals'" \
     "    'upgrade:upgrade selected provider-managed tools and skills'" \
     "    'doctor:check whether Rig can operate'" \
     "    'diag:print share-safe environment facts'" \
@@ -767,12 +771,12 @@ print_zsh_completion() {
     '    argument)' \
     '      case $words[2] in'
   local command arguments
-  for command in init repair show status capture apply upgrade doctor diag export completion; do
+  for command in init repair show status capture apply remove upgrade doctor diag export completion; do
     arguments=$(rig_command_zsh_arguments "$command")
     printf '        %s) _arguments%s ;;\n' "$command" "$arguments"
   done
   printf '%s\n' \
-    "        help) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:command:(init repair show status capture apply upgrade doctor diag export help completion)' ;;" \
+    "        help) _arguments '(-h --help)'{-h,--help}'[show command help]' '1:command:(init repair show status capture apply remove upgrade doctor diag export help completion)' ;;" \
     '      esac' \
     '      ;;' \
     '  esac' \

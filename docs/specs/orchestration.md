@@ -428,3 +428,13 @@ _Conformance:_ conforming
 _Verify:_ run isolated application-policy and source fixtures.
 
 _Evidence:_ `rig_application_policy`, `rig_observe_application` and `rig_application_apply_skip`; `tests/rig-application-updates.bats` covers public observation and mutation outcomes.
+
+### RIG-ORCH-042 — Previewed explicit native removal
+
+`rig remove` MUST preview selected explicit removal declarations by default. Mutation MUST require `--apply`, display its selected native-removal preview before literal `remove` confirmation and reobserve presence after confirmation. Refusal, EOF, undeclared targets and uncertain observations MUST remove nothing. Missing items MUST skip; independent native outcomes MUST remain visible and failures MUST keep an incomplete result. Native commands MUST be `brew uninstall --formula|--cask LOCATOR`, `uv tool uninstall NAME`, `npm uninstall --global LOCATOR`, `mise uninstall LOCATOR`, or existing-grant-only `sudo -n -- mas uninstall ID`. Rig MUST NOT acquire privilege, add force/zap/data deletion, infer removal from deselection, or automatically add retired-application declarations. Native managers retain their own uninstall semantics.
+
+_Conformance:_ conforming
+
+_Verify:_ Stub fixtures assert exact argv, preview/refusal/confirmation, missing and unknown observations, privilege refusal, independent outcomes and absence of implicit uninstall.
+
+_Evidence:_ `rig_command_remove_impl`, `rig_remove_native` and `tests/rig-software-removal.bats` cover the fixed native contract.

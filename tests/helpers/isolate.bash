@@ -106,6 +106,12 @@ rig_test_isolate() {
   printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\\n" "$*" >>"$0.log"' 'exit 0' >"$stub"
   chmod +x "$stub"
   export RIG_KILLALL=$stub
+
+  stub=$BATS_TEST_TMPDIR/isolated-sudo
+  # shellcheck disable=SC2016
+  printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\n" "$*" >>"$0.log"' 'exit 1' >"$stub"
+  chmod +x "$stub"
+  export RIG_SUDO=$stub
 }
 
 rig_test_provider() {

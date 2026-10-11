@@ -116,3 +116,23 @@ For a macOS Homebrew cask or App Store application, put `updates = "self"` besid
 For a cask with an application artifact and no explicit policy, Rig reads Homebrew's local `auto_updates` metadata through macOS `plutil`. Invalid or unavailable metadata is an unavailable finding. Set `updates = "managed"` to override that default and avoid the metadata lookup; set `"self"` to make the choice explicit. This does not change the application's own update settings.
 
 When the app is present but its manager does not record it, doctor shows an App Store receipt, residual Homebrew Caskroom evidence or an unclassified source. Absence of a receipt does not prove a hand install. This source detail is information for a self-updating app and a finding for a managed one. A managed mismatch is skipped by apply and upgrade rather than sent to an installer that may refuse. To change its source, quit the app, review removal of its existing copy using the owning system, run `rig apply` and sign in again if needed. App Management restrictions may require an administrator's intervention; Rig never removes or adopts the bundle and never deletes application data.
+
+## Explicit software removal
+
+Declare unwanted software separately from retained catalogue tools:
+
+```toml
+[remove.obsolete]
+name = "Obsolete application"
+provider = "homebrew"
+kind = "cask"
+locator = "obsolete"
+platforms = ["macos"]
+profiles = ["default"]
+```
+
+`rig remove --dry-run` previews selected declarations; plain `rig remove` does the same. `rig remove --target obsolete --apply` displays the exact preview and requires typing `remove` before native uninstall. It rechecks presence, skips absent items and refuses uncertain observations. A removal identity cannot still be declared by any retained tool installation. Provider arguments are forbidden for removals. No confirmation bypass exists.
+
+Supported native removals are Homebrew formula/cask/mas, uv tool, npm global and mise tool. App Store removal needs an already authorised sudo grant; Rig uses `sudo -n` and never prompts for one. Native managers own uninstall behaviour. Rig adds no force, zap or retained-data cleanup. Apply, upgrade, deselection and retired-application traces never authorise software removal.
+
+Doctor reports selected removals still present as findings. `rig doctor --unmanaged` additionally reports undeclared-anywhere inventory as information; it neither fails health for undeclared items nor treats profile exclusion as removal authority. Existing declared drift and source mismatches keep their own findings. Removal declarations remain private.

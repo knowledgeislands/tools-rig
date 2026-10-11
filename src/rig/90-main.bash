@@ -28,12 +28,12 @@ main() {
   command_name=${1:-help}
   rig_progress_reset
   case "$command_name" in
-    init|repair|show|status|doctor|diag|apply|upgrade|capture|export|help|completion)
+    init|repair|show|status|doctor|diag|apply|remove|upgrade|capture|export|help|completion)
       RIG_PROGRESS_COMMAND=$command_name ;;
   esac
   rig_dock_reset_snapshot
   case "$command_name" in
-    init|status|doctor|apply|upgrade|capture|export)
+    init|status|doctor|apply|remove|upgrade|capture|export)
       RIG_PROGRESS_CONTEXT=operational
       ;;
     *) RIG_PROGRESS_CONTEXT=query ;;
@@ -54,7 +54,7 @@ main() {
         2)
           case "$2" in
             -h|--help|help) ;;
-            init|repair|show|status|doctor|diag|apply|upgrade|capture|export|completion)
+            init|repair|show|status|doctor|diag|apply|remove|upgrade|capture|export|completion)
               rig_command_help "$2"; return ;;
             *) syntax_error "unknown command: $2" || return ;;
           esac ;;
@@ -93,6 +93,10 @@ main() {
     apply)
       shift
       rig_command_apply "$@"
+      ;;
+    remove)
+      shift
+      rig_buffer_mutation_report remove rig_command_remove_impl "$@"
       ;;
     upgrade)
       shift
