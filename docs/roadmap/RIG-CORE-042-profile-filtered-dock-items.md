@@ -2,13 +2,13 @@
 id: RIG-CORE-042
 area: CORE
 title: Profile-filtered Dock items
-project: mac-studio-bootstrap
+initiative: rig
 status: triage
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-09T15:03:37Z
-updated_at: 2026-10-09T21:18:32Z
+updated_at: 2026-10-11T01:55:56Z
 ---
 
 # RIG-CORE-042: Profile-Filtered Dock Items

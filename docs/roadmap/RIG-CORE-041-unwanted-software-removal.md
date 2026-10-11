@@ -2,13 +2,13 @@
 id: RIG-CORE-041
 area: CORE
 title: Unwanted software removal
-project: mac-studio-bootstrap
+initiative: rig
 status: triage
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-09T06:38:35Z
-updated_at: 2026-10-09T21:18:32Z
+updated_at: 2026-10-11T01:55:56Z
 ---
 
 # RIG-CORE-041: Unwanted Software Removal
