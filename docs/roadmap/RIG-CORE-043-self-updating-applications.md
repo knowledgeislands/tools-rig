@@ -3,12 +3,16 @@ id: RIG-CORE-043
 area: CORE
 title: Self-updating applications
 initiative: rig
-status: triage
+kind: deliver
+purpose: capability
+component: cli
+horizon: now
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-10T15:29:43Z
-updated_at: 2026-10-11T01:55:56Z
+updated_at: 2026-10-11T09:00:00Z
 ---
 
 # RIG-CORE-043: Self-Updating Applications
@@ -38,7 +42,52 @@ What Rig does today:
 - **In:** a per-tool declaration that an application maintains its own version; for such tools, satisfaction by the declared artifact regardless of version or install source; install only when the artifact is missing; `rig upgrade` skipping the tool with a visible per-task outcome; doctor reporting only absence; doctor reporting a tool whose present copy came from a different source than declared (App Store, hand install, or a self-updated Homebrew copy), with the steps to swap it for the declared source; a default from Homebrew's cask `auto_updates` metadata with the declaration as override; spec, guide, help and manual alignment.
 - **Out:** formulae, and tools whose versions are pinned or declared (for example `bun` through mise), which keep their declared versions; changing an application's own update settings; adopting or re-registering a foreign installation with Homebrew (`brew install --adopt`), unless planning chooses it; Rig deleting, moving or replacing any application itself, including a foreign copy it reports (it only shows the steps), and any other removal, which belongs to RIG-CORE-041; Kris's own catalogue entries, which belong in the chezmoi source.
 
+## Current state
+
+Selected by Kris under tools-burndown Decisions 1, 3 and 4 on 2026-10-11, with this task explicitly approving bounded adoption, routine planning choices and implementation. The source threads retain personal catalogue alignment and screen/restart work. No competing delivery owns this record; RIG-CORE-042 remains protected. Current observations rely on native-manager presence and can misclassify healthy application bundles.
+
+## Steps
+
+- [ ] Add validated tool/variant `updates = "self" | "managed"` for macOS Homebrew cask and App Store applications, requiring a declared application artifact for explicit self updates.
+- [ ] Add local artifact satisfaction, Homebrew metadata default and honest source evidence; retain missing/damaged/unknown results and disclose manual source-swap guidance without deleting anything.
+- [ ] Skip satisfied application installs and self-managed upgrades with visible outcomes, preserving failure for unresolved managed source mismatches.
+- [ ] Align specifications, user guidance, help and manual; verify fixtures and the complete local gate, inspect the diff and prepare the review packet.
+
+## Files touched
+
+`src/rig/10-configuration.bash`, `src/rig/21-provider-state.bash`, `src/rig/22-observation.bash`, `src/rig/23-application.bash`, `src/rig/30-commands.bash`, `src/rig/40-publication-lifecycle.bash`, assembled `bin/rig`, focused application tests, catalogue/state/orchestration specifications, user configuration and command guides, and `man/rig.1`.
+
+## Verify
+
+Run isolated application fixtures for explicit and metadata-derived self updates, managed override, absent/damaged artifacts, App Store receipts, residual Caskroom evidence, unclassified source, skipped apply/upgrade, honest doctor and Linux/formula rejection. Run the complete gate in `docs/guides/developer/README.md`, plus the reference benchmark and rendered manual inspection. Existing missing committed-hook warning is recorded separately; no required executable check may fail.
+
+## Dependencies / blocks
+
+No build dependency. Deliver before removal so its existing inventory can recognise declared application artifacts. No personal configuration, Dock, provider adoption or removal is authorised.
+
+## Documentation impact
+
+### Decision Records
+
+No separate architectural decision is needed: this is the captured narrow artifact-presence exception; routine choices and owner authority remain here.
+
+### Specifications
+
+Document update policy, narrow application evidence exception, source findings and visible skip outcomes in the existing catalogue, state and orchestration areas.
+
+### Guides
+
+Explain declarations, metadata behaviour and manual source correction in the existing user guides and align help/manual.
+
+### Roadmap
+
+Retain this identity for review. RIG-CORE-041 can reuse classification; no record is created, accepted or pruned.
+
 ## Discussion
+
+### Approved routine choices
+
+Explicit update policy wins over cask metadata. Metadata is read only for macOS casks with declared application artifacts, with Homebrew auto-update disabled; failure to obtain or parse a default is an unavailable result, never silently managed. Existing `plutil` is an optional macOS adapter dependency. Explicit self updates require app artifacts and leave formulae, Linux and pinned native versions alone. App Store self updates require an explicit declaration. Receipt and residual Caskroom evidence are labelled as evidence; lack of either is an unclassified foreign source, never proof of a hand installation. Doctor gives manual quit/remove/reapply/sign-in guidance and names App Management restrictions without constructing a destructive shell command. No adoption is attempted.
 
 ### Candidate direction
 
