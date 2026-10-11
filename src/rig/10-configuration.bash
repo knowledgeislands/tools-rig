@@ -4,6 +4,7 @@
 # shellcheck disable=SC2004,SC2034,SC2094
 
 rig_model_reset() {
+  RIG_HAS_APPLICATION_UPDATES=0
   RIG_SECTION_NAMES=()
   RIG_SECTION_TYPES=()
   RIG_SECTION_IDS=()
@@ -250,7 +251,7 @@ rig_field_kind() {
     skill:source-skill|skill:trust|skill:public-source|\
     profile:name|profile:purpose|profile:kind|\
     tool:install-provider|tool:install-kind|tool:install-locator|\
-    tool:install-destination|tool:install-checksum|\
+    tool:install-destination|tool:install-checksum|tool:updates|tool:variant:*:updates|\
     tool:cli:*:source|tool:cli:*:destination|tool:cli:*:owner|\
     tool:variant:*:cli:*:source|tool:variant:*:cli:*:destination|tool:variant:*:cli:*:owner|\
     provider:adapter|provider:command|provider:executable|provider:manifest|\
@@ -316,6 +317,7 @@ rig_toml_variant_field() {
   case "$field" in
     platforms) canonical=platform; RIG_TOML_FIELD_TYPE=array ;;
     artifacts) canonical=artifact; RIG_TOML_FIELD_TYPE=array ;;
+    updates) canonical=updates; RIG_TOML_FIELD_TYPE=string; RIG_HAS_APPLICATION_UPDATES=1 ;;
     install.provider) canonical=install-provider; RIG_TOML_FIELD_TYPE=string ;;
     install.kind) canonical=install-kind; RIG_TOML_FIELD_TYPE=string ;;
     install.locator) canonical=install-locator; RIG_TOML_FIELD_TYPE=string ;;
@@ -344,6 +346,11 @@ rig_toml_field() {
     rig:schema)
       RIG_TOML_FIELD_KEY=schema
       RIG_TOML_FIELD_TYPE=integer
+      ;;
+    tool:updates)
+      RIG_TOML_FIELD_KEY=updates
+      RIG_TOML_FIELD_TYPE=string
+      RIG_HAS_APPLICATION_UPDATES=1
       ;;
     rig:default-profile|rig:bootstrap-profile|\
     category:name|category:purpose|profile:name|profile:purpose|profile:kind|\
@@ -1906,6 +1913,9 @@ rig_validate_model() {
       fi
       rig_validate_tool_variants "$section_name" "$index" || return
       rig_validate_tool_clis "$section_name" || return
+      if [ "$RIG_HAS_APPLICATION_UPDATES" -eq 1 ]; then
+        rig_validate_application_updates "$section_name" "$index" || return
+      fi
       rig_validate_references_for_field "$index" requires tool || return
         rig_validate_references_for_field "$index" related tool || return
         rig_validate_references_for_field "$index" alternative tool || return

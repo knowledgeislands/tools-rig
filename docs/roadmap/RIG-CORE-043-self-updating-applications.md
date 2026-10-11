@@ -7,12 +7,12 @@ kind: deliver
 purpose: capability
 component: cli
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 11d9de69d70071875a6a7ae789e51eb1c9e8dff2
 created_at: 2026-10-10T15:29:43Z
-updated_at: 2026-10-11T09:00:00Z
+updated_at: 2026-10-11T09:30:01Z
 ---
 
 # RIG-CORE-043: Self-Updating Applications
@@ -48,10 +48,10 @@ Selected by Kris under tools-burndown Decisions 1, 3 and 4 on 2026-10-11, with t
 
 ## Steps
 
-- [ ] Add validated tool/variant `updates = "self" | "managed"` for macOS Homebrew cask and App Store applications, requiring a declared application artifact for explicit self updates.
-- [ ] Add local artifact satisfaction, Homebrew metadata default and honest source evidence; retain missing/damaged/unknown results and disclose manual source-swap guidance without deleting anything.
-- [ ] Skip satisfied application installs and self-managed upgrades with visible outcomes, preserving failure for unresolved managed source mismatches.
-- [ ] Align specifications, user guidance, help and manual; verify fixtures and the complete local gate, inspect the diff and prepare the review packet.
+- [x] Add validated tool/variant `updates = "self" | "managed"` for macOS Homebrew cask and App Store applications, requiring a declared application artifact for explicit self updates.
+- [x] Add local artifact satisfaction, Homebrew metadata default and honest source evidence; retain missing/damaged/unknown results and disclose manual source-swap guidance without deleting anything.
+- [x] Skip satisfied application installs and self-managed upgrades with visible outcomes, preserving failure for unresolved managed source mismatches.
+- [x] Align specifications, user guidance, help and manual; verify fixtures and the complete local gate, inspect the diff and prepare the review packet.
 
 ## Files touched
 
@@ -82,6 +82,32 @@ Explain declarations, metadata behaviour and manual source correction in the exi
 ### Roadmap
 
 Retain this identity for review. RIG-CORE-041 can reuse classification; no record is created, accepted or pruned.
+
+## Review
+
+### Delivered
+
+Implemented the approved generic application satisfaction and source-classification boundary from immutable baseline `11d9de69d70071875a6a7ae789e51eb1c9e8dff2`. Personal catalogue alignment, Dock/profile work, application deletion/adoption and live machine changes remain excluded. The assembled executable and isolated public-command fixtures are the resulting evidence.
+
+### Change Summary
+
+Added validated tool/variant update policy, local cask metadata defaults, app-specific artifact satisfaction and source evidence in the configuration/provider modules. Observation retains source detail and informational self-update treatment. Apply skips healthy self-updating bundles and blocks managed source mismatches; upgrade records successful self-update skips, including unattended reports. Satisfied apps permit dependent work. The command help, manual, consolidated changelog, user command guide and catalogue/state/orchestration specifications describe the same contract. Fourteen focused fixtures cover the boundary. No material scope departure occurred.
+
+### Verification
+
+The complete `docs/guides/developer/README.md` gate passed on the final runtime: repository audit (zero failures, one pre-existing missing committed-hook warning), ShellCheck, Bash syntax, deterministic assembly, five-second benchmark, bounded native version smoke, all 470 Bats tests, mandoc lint and `git diff --check`. The 14 application fixtures passed separately after the dry-run and companion-artifact edge cases were tightened. The rendered manual was inspected. Runtime/source and documentation diffs were reviewed; no protected path changed. The two-second reference benchmark also passed (`show-item`, `show`, `show-all`: 2 seconds each; batched status: 6 seconds within its 8-second budget). A declaration-presence fast path removes the extra validation scan from catalogues without explicit update fields; the full 470-test gate was repeated after that final runtime change.
+
+### Outstanding concerns
+
+No required gate or captured delivery requirement remains failing. The repository already lacks a committed pre-commit gate; this delivery does not install or bypass one. Source labels identify observable evidence, not certified provenance; a missing receipt is deliberately unclassified. No live installation or source swap was performed.
+
+### Post-change review
+
+The goal is met through the public command surface: intact self-updating applications are satisfied across sources, their installer and updater are not invoked, managed foreign copies carry corrective guidance and an incomplete mutation outcome, and absence/damage/metadata failure remain honest. The exception is limited to macOS application installations and retains native version management elsewhere. Passing regression coverage and final diff review support Kris's acceptance review; no acceptance is inferred.
+
+### Mini recap
+
+Application policy, satisfaction, source classification and visible skips are delivered and verified. The existing specs and user guide retain the durable contract; RIG-CORE-041 can reuse the classification without waiting for lifecycle closure. Kris owns acceptance and any personal adoption. No new work record or knowledge promotion is proposed.
 
 ## Discussion
 

@@ -744,9 +744,10 @@ rig_resolve_artifact_link() {
 rig_observe_tool_artifacts() {
   local tool section_name section_index field_index field_end declared artifact variant artifact_key
   local state detail rank candidate_state candidate_detail candidate_rank info_plist
-  local macos_dir app_exec app_exec_found resolved evidence
+  local macos_dir app_exec app_exec_found resolved evidence application_only
 
   tool=$1
+  application_only=${2:-0}
   section_name=tool.$tool
   rig_section_index "$section_name" || return 2
   section_index=$RIG_INDEX
@@ -763,6 +764,9 @@ rig_observe_tool_artifacts() {
       [ -n "$variant" ] && [ "${RIG_FIELD_KEYS[$field_index]}" = "$artifact_key" ];
     }; then
       declared=${RIG_FIELD_VALUES[$field_index]}
+      if [ "$application_only" -eq 1 ]; then
+        case "$declared" in *.app|*.app/) ;; *) field_index=$((field_index + 1)); continue ;; esac
+      fi
       rig_normalize_artifact_identity "$declared"
       artifact=$RIG_VALUE
       candidate_state=
@@ -1360,4 +1364,214 @@ rig_apply_provider() {
   native_status=$?
   [ "$native_status" -eq 0 ] || return "$native_status"
   rig_apply_tool_clis "$tool" "$binding" "$provider"
+}
+
+# Update policy is a narrow macOS application exception, never a version manager.
+rig_validate_application_updates() {
+  local section section_index index end key prefix value kind provider artifact_count item path
+  section=$1
+  section_index=$2
+  index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$index" -lt "$end" ]; do
+    key=${RIG_FIELD_KEYS[$index]}
+    case "$key" in
+      updates|variant:*:updates)
+        value=${RIG_FIELD_VALUES[$index]}
+        case "$value" in self|managed) ;; *) rig_fail "[$section] $key must be self or managed"; return ;; esac
+        prefix=${key%updates}
+        rig_get_value "$section" "${prefix}install-kind" || rig_fail "[$section] $key requires an application installation" || return
+        kind=$RIG_VALUE
+        rig_get_value "$section" "${prefix}install-provider" || return 2
+        provider=$RIG_VALUE
+        rig_provider_adapter "$provider" || return 2
+        case "$RIG_VALUE:$kind" in homebrew:cask|homebrew:mas) ;; *)
+          rig_fail "[$section] $key supports only macOS cask or App Store applications"; return ;;
+        esac
+        item=1
+        while rig_get_value "$section" "${prefix}platform" "$item"; do
+          [ "$RIG_VALUE" = macos ] || rig_fail "[$section] $key supports only macOS" || return
+          item=$((item + 1))
+        done
+        artifact_count=0
+        item=1
+        while rig_get_value "$section" "${prefix}artifact" "$item"; do
+          path=$RIG_VALUE
+          case "$path" in *.app|*.app/) artifact_count=$((artifact_count + 1)) ;; esac
+          item=$((item + 1))
+        done
+        if [ "$value" = self ] && [ "$artifact_count" -eq 0 ]; then
+          rig_fail "[$section] $key=self requires a declared application artifact"; return
+        fi
+        ;;
+    esac
+    index=$((index + 1))
+  done
+}
+
+rig_application_artifact() {
+  local tool variant item key path
+  tool=$1
+  RIG_APPLICATION_PATH=
+  rig_selected_variant_for_tool "$tool" || true
+  variant=$RIG_VALUE
+  for key in artifact "variant:$variant:artifact"; do
+    item=1
+    while rig_get_value "tool.$tool" "$key" "$item"; do
+      path=$RIG_VALUE
+      case "$path" in
+        *.app|*.app/)
+          rig_normalize_artifact_identity "$path"
+          RIG_APPLICATION_PATH=${RIG_VALUE%/}
+          return 0
+          ;;
+      esac
+      item=$((item + 1))
+    done
+  done
+  return 1
+}
+
+rig_application_policy() {
+  local tool binding provider adapter kind variant locator executable metadata plutil value
+  tool=$1
+  binding=$2
+  provider=$3
+  RIG_APPLICATION_PATH=
+  RIG_APPLICATION_POLICY=managed
+  RIG_APPLICATION_ERROR=
+  [ "${RIG_RESOLVED_PLATFORM:-}" = macos ] || return 0
+  rig_provider_adapter "$provider" || return 2
+  adapter=$RIG_VALUE
+  rig_get_value "$binding" kind || return 2
+  kind=$RIG_VALUE
+  case "$adapter:$kind" in homebrew:cask|homebrew:mas) ;; *) return 0 ;; esac
+  rig_application_artifact "$tool" || return 0
+  rig_selected_variant_for_tool "$tool" || true
+  variant=$RIG_VALUE
+  if { [ -n "$variant" ] && rig_get_value "tool.$tool" "variant:$variant:updates"; } ||
+    rig_get_value "tool.$tool" updates; then
+    RIG_APPLICATION_POLICY=$RIG_VALUE
+    return 0
+  fi
+  [ "$kind" = cask ] || return 0
+  rig_get_value "$binding" locator || return 2
+  locator=$RIG_VALUE
+  rig_provider_executable "$provider" "$adapter" "$kind" || return 2
+  executable=$RIG_VALUE
+  RIG_INVOKE_ARGUMENTS=()
+  rig_append_arguments "provider.$provider" || return 2
+  RIG_INVOKE_ARGUMENTS+=(info --json=v2 --cask "$locator")
+  plutil=${RIG_PLUTIL:-/usr/bin/plutil}
+  if ! rig_executable_available "$executable" || ! rig_executable_available "$plutil"; then
+    RIG_APPLICATION_ERROR=application-metadata-unavailable
+    return 0
+  fi
+  # Metadata is a local read. Never let an observation refresh Homebrew.
+  metadata=$(HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_FROM_API=1 "$executable" "${RIG_INVOKE_ARGUMENTS[@]}" 2>/dev/null) || {
+    RIG_APPLICATION_ERROR=application-metadata-unavailable; return 0;
+  }
+  value=$(printf '%s' "$metadata" | "$plutil" -extract casks.0.auto_updates raw -o - - 2>/dev/null) || {
+    RIG_APPLICATION_ERROR=application-metadata-invalid; return 0;
+  }
+  case "$value" in
+    true) RIG_APPLICATION_POLICY=self ;;
+    false) RIG_APPLICATION_POLICY=managed ;;
+    *) RIG_APPLICATION_ERROR=application-metadata-invalid ;;
+  esac
+}
+
+rig_application_source_detail() {
+  local binding provider kind locator executable caskroom path source
+  binding=$1
+  provider=$2
+  path=$RIG_APPLICATION_PATH
+  source=unclassified
+  if [ -d "$path/Contents/_MASReceipt" ]; then
+    source='app-store-receipt'
+  else
+    rig_get_value "$binding" kind || return 2
+    kind=$RIG_VALUE
+    if [ "$kind" = cask ]; then
+      rig_get_value "$binding" locator || return 2
+      locator=$RIG_VALUE
+      rig_provider_executable "$provider" homebrew cask || return 2
+      executable=$RIG_VALUE
+      RIG_INVOKE_ARGUMENTS=()
+      rig_append_arguments "provider.$provider" || return 2
+      RIG_INVOKE_ARGUMENTS+=(--caskroom "$locator")
+      caskroom=$(HOMEBREW_NO_AUTO_UPDATE=1 "$executable" "${RIG_INVOKE_ARGUMENTS[@]}" 2>/dev/null) || caskroom=
+      case "$caskroom" in /*)
+        if [ -d "$caskroom" ]; then source='residual-homebrew-caskroom'; fi ;;
+      esac
+    fi
+  fi
+  RIG_APPLICATION_DETAIL="source-mismatch:$source; quit app, review removal of the existing copy (App Management may require administrator rights), run rig apply, sign in again"
+}
+
+rig_observe_application() {
+  local tool binding provider native_state native_detail
+  tool=$1
+  binding=$2
+  provider=$3
+  native_state=$RIG_OBSERVATION
+  native_detail=$RIG_OBSERVATION_DETAIL
+  rig_application_policy "$tool" "$binding" "$provider" || return
+  [ -n "$RIG_APPLICATION_PATH" ] || return 0
+  if [ -n "$RIG_APPLICATION_ERROR" ]; then
+    RIG_OBSERVATION=unavailable
+    RIG_OBSERVATION_DETAIL=$RIG_APPLICATION_ERROR
+    return 0
+  fi
+  rig_observe_tool_artifacts "$tool" 1 || return
+  if [ "$RIG_APPLICATION_POLICY" = self ]; then
+    RIG_OBSERVATION=$RIG_ARTIFACT_STATE
+    RIG_OBSERVATION_DETAIL=$RIG_ARTIFACT_DETAIL
+    if [ "$RIG_ARTIFACT_STATE" = present ]; then
+      RIG_OBSERVATION_DETAIL=self-updating
+      if [ "$native_state" = missing ]; then
+        rig_application_source_detail "$binding" "$provider" || return
+        RIG_OBSERVATION_DETAIL="self-updating;$RIG_APPLICATION_DETAIL"
+      elif [ "$native_state" != present ]; then
+        RIG_OBSERVATION_DETAIL="self-updating;source-unavailable:$native_detail"
+      fi
+    fi
+  elif [ "$native_state" = missing ] && [ "$RIG_ARTIFACT_STATE" = present ]; then
+    rig_application_source_detail "$binding" "$provider" || return
+    RIG_OBSERVATION=drifted
+    RIG_OBSERVATION_DETAIL=$RIG_APPLICATION_DETAIL
+  fi
+}
+
+# Return zero only when this app must be left to its own updater or source review.
+rig_application_apply_skip() {
+  local tool binding provider kind adapter
+  tool=$1
+  binding=$2
+  provider=$3
+  RIG_APPLICATION_SKIP_FAILURE=0
+  RIG_APPLICATION_SKIP_DETAIL=
+  rig_provider_adapter "$provider" || return 1
+  adapter=$RIG_VALUE
+  rig_get_value "$binding" kind || return 1
+  kind=$RIG_VALUE
+  case "$adapter:$kind:${RIG_RESOLVED_PLATFORM:-}" in homebrew:cask:macos|homebrew:mas:macos) ;; *) return 1 ;; esac
+  rig_application_artifact "$tool" || return 1
+  rig_observe_provider "$tool" "$binding" "$provider" || return 1
+  rig_observe_application "$tool" "$binding" "$provider" || return 1
+  if [ "$RIG_APPLICATION_POLICY" = self ] && [ "$RIG_OBSERVATION" != present ] &&
+    [ "$RIG_OBSERVATION" != missing ]; then
+    RIG_APPLICATION_SKIP_DETAIL=$RIG_OBSERVATION_DETAIL
+    RIG_APPLICATION_SKIP_FAILURE=1
+    return 0
+  fi
+  case "$RIG_OBSERVATION:$RIG_OBSERVATION_DETAIL" in
+    present:self-updating*) RIG_APPLICATION_SKIP_DETAIL=$RIG_OBSERVATION_DETAIL; return 0 ;;
+    drifted:source-mismatch:*|unavailable:application-metadata-*)
+      RIG_APPLICATION_SKIP_DETAIL=$RIG_OBSERVATION_DETAIL
+      RIG_APPLICATION_SKIP_FAILURE=1
+      return 0
+      ;;
+  esac
+  return 1
 }

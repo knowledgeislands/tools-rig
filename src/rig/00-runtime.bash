@@ -209,6 +209,7 @@ rig_command_help() {
     printf '%s\n' '' 'Reconciles the selection; applying resources may restart applications mid-run.'
     printf '%s\n' 'Explicit app CLI companions follow their installer; provider-owned repair may reinstall its cask.'
     printf '%s\n' 'Records apply outcomes; later success clears the matching historical failure.'
+    printf '%s\n' 'Healthy self-updating applications are satisfied without reinstalling; foreign managed copies require manual source review.'
   fi
   case "$command" in
     status|doctor)
@@ -220,6 +221,7 @@ rig_command_help() {
   esac
   if [ "$command" = upgrade ]; then
     printf '%s\n' '' 'Interactive progress uses an owned footer and compact native-batch handoffs.'
+    printf '%s\n' 'Self-updating applications are reported as skipped; Rig never upgrades or adopts their bundles.'
     printf '%s\n' 'Unattended mode sets Homebrew NONINTERACTIVE=1; native failures keep their results.' \
       'It does not prevent terminal or graphical authentication or impose a time limit.'
   fi

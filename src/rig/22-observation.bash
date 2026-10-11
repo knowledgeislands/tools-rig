@@ -1300,17 +1300,18 @@ rig_observe_plan() {
         RIG_PLAN_RESULTS[$index]=failed
       else
       rig_observe_provider "$tool" "$binding" "$provider" || return
+      rig_observe_application "$tool" "$binding" "$provider" || return
       state=$RIG_OBSERVATION
       detail=$RIG_OBSERVATION_DETAIL
       if [ "$state" = present ]; then
         rig_observe_tool_artifacts "$tool" || return
         state=$RIG_ARTIFACT_STATE
-        detail=$RIG_ARTIFACT_DETAIL
+        [ "$RIG_ARTIFACT_DETAIL" = - ] || detail=$RIG_ARTIFACT_DETAIL
       fi
       if [ "$state" = present ]; then
         rig_observe_tool_clis "$tool" || return
         state=$RIG_CLI_STATE
-        detail=$RIG_CLI_DETAIL
+        [ "$RIG_CLI_DETAIL" = - ] || detail=$RIG_CLI_DETAIL
       fi
       if [ "$state" = present ] || [ "$state" = missing ] || [ "$state" = drifted ]; then
           RIG_PLAN_RESULTS[$index]=observed
@@ -1328,6 +1329,7 @@ rig_observe_plan() {
     else
       case "$state:$detail" in
         missing:*) RIG_OBSERVATION_DETAIL=run-rig-apply ;;
+        drifted:source-mismatch:*) RIG_OBSERVATION_DETAIL=manual-source-review ;;
         drifted:*) RIG_OBSERVATION_DETAIL=review-then-run-rig-apply ;;
         unknown:blocked-by:*) RIG_OBSERVATION_DETAIL=resolve-${detail#blocked-by:} ;;
         unavailable:unsupported-capability:*) RIG_OBSERVATION_DETAIL=declare-observe-capability ;;
@@ -1346,6 +1348,16 @@ rig_observe_plan() {
     index=$((index + 1))
   done
   rig_progress_finish
+  RIG_APPLICATION_INFORMATION=
+  index=0
+  while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
+    case "${RIG_PLAN_STATES[$index]}:${RIG_PLAN_DETAILS[$index]}" in
+      present:self-updating*)
+        RIG_APPLICATION_INFORMATION="${RIG_APPLICATION_INFORMATION}  ${RIG_PLAN_TOOLS[$index]}: ${RIG_PLAN_DETAILS[$index]}; action=none"$'\n' ;;
+    esac
+    index=$((index + 1))
+  done
+  RIG_APPLICATION_INFORMATION=${RIG_APPLICATION_INFORMATION%$'\n'}
   RIG_VALUE=${findings_output%$'\n'}
   RIG_DOCTOR_FINDINGS=$findings
   RIG_DOCTOR_PRESENT=$present
@@ -1538,6 +1550,9 @@ rig_command_doctor() {
   rig_doctor_incompatible_tools "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   incompatible=$RIG_COUNT
   information=$RIG_VALUE
+  if [ -n "$RIG_APPLICATION_INFORMATION" ]; then
+    information="${information}${information:+$'\n'}$RIG_APPLICATION_INFORMATION"
+    fi
   rig_doctor_competing_autoupdate "$RIG_RESOLVED_PLATFORM"
   if [ -n "$RIG_VALUE" ]; then
     if [ -n "$information" ]; then

@@ -647,6 +647,25 @@ rig_run_lifecycle_tasks() {
     rig_progress_begin "$provider:$label"
     if [ "${RIG_LIFECYCLE_SUPPORTED[$index]}" -eq 1 ]; then
       binding=${RIG_LIFECYCLE_BINDINGS[$index]}
+      if [ "$action" = upgrade ] && [[ "$binding" != skill.* ]]; then
+        rig_application_policy "${RIG_LIFECYCLE_TOOLS[$index]}" "$binding" "$provider" || return
+        if [ -n "$RIG_APPLICATION_ERROR" ]; then
+          RIG_LIFECYCLE_EXECUTABLES[$index]=-
+          RIG_LIFECYCLE_DETAILS[$index]=$RIG_APPLICATION_ERROR
+          index=$((index + 1))
+          continue
+        elif [ "$RIG_APPLICATION_POLICY" = self ]; then
+          RIG_LIFECYCLE_EXECUTABLES[$index]=-
+          RIG_LIFECYCLE_DETAILS[$index]=self-updating
+          index=$((index + 1))
+          continue
+        elif rig_application_apply_skip "${RIG_LIFECYCLE_TOOLS[$index]}" "$binding" "$provider"; then
+          RIG_LIFECYCLE_EXECUTABLES[$index]=-
+          RIG_LIFECYCLE_DETAILS[$index]=$RIG_APPLICATION_SKIP_DETAIL
+          index=$((index + 1))
+          continue
+        fi
+      fi
       RIG_LIFECYCLE_PREFLIGHT_DETAIL=
       RIG_LIFECYCLE_PREFLIGHT_SOFT=1
       rig_preflight_lifecycle_task "$action" "$provider" "$binding"
@@ -697,6 +716,10 @@ rig_run_lifecycle_tasks() {
     row=
     if [ "$supported" -ne 1 ]; then
       row=$(printf '%s\t%s\tskipped\tunsupported-%s' "$label" "$provider" "$action")
+      printf '%s\n' "$row"
+      skipped=$((skipped + 1))
+    elif [ "${RIG_LIFECYCLE_DETAILS[$index]-}" = self-updating ]; then
+      row=$(printf '%s\t%s\tskipped\tself-updating' "$label" "$provider")
       printf '%s\n' "$row"
       skipped=$((skipped + 1))
     elif [ -n "${RIG_LIFECYCLE_DETAILS[$index]-}" ]; then

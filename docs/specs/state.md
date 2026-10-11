@@ -26,7 +26,7 @@ _Evidence:_ `rig_command_status` accepts only the five state tokens and maps inv
 
 ### RIG-STATE-003 — Provider-owned evidence
 
-Rig MUST derive observed state from the selected provider without creating a competing persistent installation database.
+Rig MUST derive observed state from the selected provider without creating a competing persistent installation database, with only the narrow declared application-artifact exception in RIG-STATE-041.
 
 _Conformance:_ conforming
 
@@ -441,3 +441,13 @@ _Conformance:_ conforming
 _Verify:_ Bats observes missing, healthy, dangling, non-executable, relative, wrong-target and conflicted companions through status and doctor, and compares the structured missing state without filesystem mutation.
 
 _Evidence:_ `rig_observe_cli`, `rig_observe_tool_clis` and `tests/rig-app-clis.bats` refine existing per-tool observations without creating new catalogue entries.
+
+### RIG-STATE-041 — Application satisfaction and source evidence
+
+A self-updating application installation MUST be satisfied by healthy declared `.app` artifacts regardless of native-manager presence or version. Other artifact and companion health MUST remain independently observable without triggering reinstallation of an intact self-updating application. Missing, damaged and unavailable artifact evidence MUST retain their respective findings. A healthy application that the selected manager reports missing MUST carry source-mismatch detail based on an App Store receipt, residual Caskroom evidence or an explicitly unclassified source; self-updating applications MUST keep that detail informational and managed applications MUST report drift. Doctor MUST offer manual source correction without invoking deletion or adoption.
+
+_Conformance:_ conforming
+
+_Verify:_ run isolated application-policy and source fixtures.
+
+_Evidence:_ `rig_application_policy`, `rig_observe_application` and `rig_application_apply_skip`; `tests/rig-application-updates.bats` covers public observation and mutation outcomes.

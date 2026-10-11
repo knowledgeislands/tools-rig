@@ -239,15 +239,19 @@ rig_run_skill_apply() {
 }
 
 rig_preflight_apply() {
-  local scope index section_name native_status
+  local scope index section_name native_status dry_run
 
   scope=${1:-all}
+  dry_run=${2:-0}
   if [ "$scope" = tools ] || [ "$scope" = all ]; then
     index=0
     while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
       if [ -n "${RIG_PLAN_BINDINGS[$index]}" ]; then
-        rig_preflight_provider "${RIG_PLAN_TOOLS[$index]}" \
-          "${RIG_PLAN_BINDINGS[$index]}" "${RIG_PLAN_PROVIDERS[$index]}" || return
+        if [ "$dry_run" -eq 1 ] || ! rig_application_apply_skip "${RIG_PLAN_TOOLS[$index]}" \
+          "${RIG_PLAN_BINDINGS[$index]}" "${RIG_PLAN_PROVIDERS[$index]}"; then
+          rig_preflight_provider "${RIG_PLAN_TOOLS[$index]}" \
+            "${RIG_PLAN_BINDINGS[$index]}" "${RIG_PLAN_PROVIDERS[$index]}" || return
+        fi
       fi
       index=$((index + 1))
     done
@@ -754,7 +758,7 @@ rig_command_apply_impl() {
   RIG_APPLY_ALLOW_DEFERRED_SKILLS=1
   rig_progress_start preflight 1
   rig_progress_begin 'selected plan'
-  if rig_preflight_apply "$scope"; then
+  if rig_preflight_apply "$scope" "$dry_run"; then
     native_status=0
   else
     native_status=$?
@@ -815,6 +819,12 @@ rig_command_apply_impl() {
       skipped=$((skipped + 1))
       operational_failure=1
       rig_progress_result skipped "$provider:$tool" declaration
+    elif rig_application_apply_skip "$tool" "$binding" "$provider"; then
+      RIG_PLAN_RESULTS[$index]=skipped
+      RIG_PLAN_DETAILS[$index]=$RIG_APPLICATION_SKIP_DETAIL
+      skipped=$((skipped + 1))
+      [ "$RIG_APPLICATION_SKIP_FAILURE" -eq 0 ] || operational_failure=1
+      rig_progress_result skipped "$provider:$tool" declaration
     else
       # A deferred prerequisite must have produced the executable before
       # this consumer can run. Keep independent declarations advancing.
@@ -843,6 +853,10 @@ rig_command_apply_impl() {
     row_scope=$RIG_VALUE
     printf '%s\t%s\t%s\t%s\t%s\n' "$tool" "$provider" \
       "${RIG_PLAN_RESULTS[$index]}" "${RIG_PLAN_DETAILS[$index]}" "$row_scope"
+    # A healthy self-updating app satisfies dependants although its install was skipped.
+    case "${RIG_PLAN_RESULTS[$index]}:${RIG_PLAN_DETAILS[$index]}" in
+      skipped:self-updating*) RIG_PLAN_RESULTS[$index]=observed ;;
+    esac
     index=$((index + 1))
   done
   rig_run_skill_apply "$dry_run" || return

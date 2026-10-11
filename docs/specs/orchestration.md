@@ -58,7 +58,7 @@ _Evidence:_ `rig_validate_cycles` rejects profile and required-tool cycles befor
 
 ### RIG-ORCH-003 — Native provider authority
 
-Rig MUST delegate observation and state changes to the selected provider rather than maintain a competing package or installation database.
+Rig MUST delegate observation and state changes to the selected provider rather than maintain a competing package or installation database, with the narrow application presence and updater exception in RIG-ORCH-041.
 
 _Conformance:_ conforming
 
@@ -241,7 +241,7 @@ _Evidence:_ `rig_launchd_observe_resource`, `rig_launchd_apply_resource`, `rig_l
 
 ### RIG-ORCH-024 — Declaration-scoped upgrades
 
-`rig upgrade` MUST advance selected Homebrew, uv, mise and npm tools and supported Skills CLI skills through fixed native operations. It MUST NOT invoke Homebrew Bundle or provider-wide maintenance. Unavailable executables and unsupported operations MUST remain visible per task, while independent work continues. Native dependencies MAY change as part of a declared provider operation; Rig MUST NOT remove unknown packages or dispatch a second package list.
+`rig upgrade` MUST advance selected provider-managed Homebrew, uv, mise and npm tools and supported Skills CLI skills through fixed native operations. It MUST NOT invoke Homebrew Bundle or provider-wide maintenance. Unavailable executables and unsupported operations MUST remain visible per task, while independent work continues. Native dependencies MAY change as part of a declared provider operation; Rig MUST NOT remove unknown packages or dispatch a second package list.
 
 _Conformance:_ conforming
 
@@ -418,3 +418,13 @@ _Conformance:_ conforming
 _Verify:_ Bats fixtures prove installation order, conditional native repair, healthy repetition, read-only previews, conflict preservation, permissions, native and ineffective-repair failures, post-upgrade repair and cleanup of a directory arriving during link creation.
 
 _Evidence:_ `rig_preflight_tool_clis` and `rig_apply_tool_clis` join the existing provider and upgrade boundaries; `tests/rig-app-clis.bats` supplies isolated filesystem and native-installer evidence.
+
+### RIG-ORCH-041 — Application updater authority
+
+Apply MUST skip a healthy self-updating application without invoking its installer and MUST install it only when its artifact is missing. A managed application source mismatch or damaged self-updating artifact MUST skip mutation with an incomplete outcome. Upgrade MUST report self-updating applications as successful skips in attended and unattended runs, and MUST NOT invoke their upgrade or adopt operations. A satisfied self-updating application MUST satisfy dependencies of subsequent tasks.
+
+_Conformance:_ conforming
+
+_Verify:_ run isolated application-policy and source fixtures.
+
+_Evidence:_ `rig_application_policy`, `rig_observe_application` and `rig_application_apply_skip`; `tests/rig-application-updates.bats` covers public observation and mutation outcomes.

@@ -85,3 +85,13 @@ _Conformance:_ conforming
 _Verify:_ Bats resolves the same tool identifier to different native providers on macOS and Linux and reports only the active platform's variant artifacts.
 
 _Evidence:_ `rig_validate_tool_variants`, `rig_select_compatible_variant`, and `rig_collect_tool_artifacts` preserve one tool identity; `tests/rig-human-config.bats` exercises both platform projections.
+
+### RIG-CAT-009 — Application update policy
+
+A macOS Homebrew cask or App Store tool MAY declare `updates = "self"` or `"managed"` on its installation-bearing tool or selected variant. Explicit self updates MUST require a declared application artifact; formulae and non-macOS platforms MUST reject this field. An explicit policy MUST override Homebrew cask `auto_updates` metadata; only casks with declared application artifacts use that metadata default, and unavailable or invalid metadata MUST remain visible rather than selecting a guessed policy.
+
+_Conformance:_ conforming
+
+_Verify:_ run isolated application-policy and source fixtures.
+
+_Evidence:_ `rig_application_policy`, `rig_observe_application` and `rig_application_apply_skip`; `tests/rig-application-updates.bats` covers public observation and mutation outcomes.

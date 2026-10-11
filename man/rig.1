@@ -1758,3 +1758,24 @@ stderr line.
 .BR npm (1),
 .BR shasum (1),
 .BR uv (1)
+
+.SH SELF-UPDATING APPLICATIONS
+\&
+.PP
+For macOS Homebrew casks and App Store applications,
+.B updates
+may be self or managed beside the installation fields, including a variant.
+Explicit self updates require a declared application artifact.
+A healthy bundle satisfies presence regardless of manager version or source;
+apply installs only when absent and upgrade reports a successful skip.
+Damaged bundles remain findings and are not reinstalled automatically.
+A cask with an app artifact and no policy uses local Homebrew auto_updates
+metadata via plutil; unavailable metadata is an unavailable result.
+An explicit managed policy overrides this default.
+Doctor distinguishes App Store receipts, residual Caskroom evidence and an
+unclassified foreign source. Source mismatch is informational for self-updating
+apps and drift for managed apps.
+Managed mismatches skip installation and upgrade.
+To correct a source, quit the app, review removal of the existing copy,
+run rig apply and sign in again if needed. App Management may require an
+administrator. Rig never deletes, adopts or replaces a foreign bundle itself.
