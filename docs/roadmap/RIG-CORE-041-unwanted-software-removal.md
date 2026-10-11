@@ -87,7 +87,6 @@ Keep this identity and stop at Awaiting review; do not capture, accept or prune 
 
 Use separate private `[remove.ID]` declarations as explicit removal authority, without receipt gating. Only selected platform/profile declarations are actionable; retained installation identities anywhere in the catalogue forbid removal. Support native Homebrew formula/cask/App Store, uv, npm and mise uninstall operations; reject custom executables and arbitrary provider arguments. App Store removal uses only an existing noninteractive sudo grant and never acquires one. Preview is the default; `--apply` repeats the selected preview before requiring literal `remove`, and reobserves presence after confirmation. Missing items skip, uncertain evidence refuses, failures remain visible. Native tools retain uninstall semantics; Rig requests no zap or data cleanup. Doctor reports declared pending removals as findings, undeclared-anywhere inventory only under `--unmanaged` as information, and drift through existing observations. Deselection, apply, upgrade and retired-application traces never approve package deletion. No automatic retired declaration is created.
 
-
 Open questions for planning:
 
 - **Removal list shape.** A separate `[remove.ID]` table, a `remove = true` or `state = "absent"` field on an existing tool, or `[retired-application]` gaining a provider identity. A field on the tool keeps catalogue identity and history in one place; a separate list mirrors `.chezmoiremove` and keeps removed things out of the catalogue and public view.
