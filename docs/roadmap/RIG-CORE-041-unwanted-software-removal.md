@@ -6,13 +6,12 @@ initiative: rig
 kind: deliver
 purpose: capability
 component: cli
-horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: a6946472afd7e8e382613ee8aa0065bc7dd7729f
 created_at: 2026-10-09T06:38:35Z
-updated_at: 2026-10-11T10:36:20Z
+updated_at: 2026-10-11T11:13:09Z
 ---
 
 # RIG-CORE-041: Unwanted Software Removal
@@ -129,7 +128,17 @@ Explicit removal and the three doctor classifications are delivered for Kris's a
 
 The bounded retained-uv correction and its direct regressions are ready for independent review in this same record. No new capability or work record was created; the original immutable baseline and Awaiting review state are retained.
 
+## Done
+
+Accepted 2026-10-11 by Kris Brown on the review packet above.
+
 ## Discussion
+
+### Human acceptance
+
+Kris Brown approved this exact completed record under tools-burndown Decision 6 (2026-10-11): "Yeah, if you've done them, I'm happy to accept them, and we can get them pruned as well, and just keep going until you can get as much of this sorted out and done." The rig-close task binds that standing human grant to RIG-CORE-041, RIG-CORE-043, RIG-CORE-044 and RIG-CORE-045, conditional on complete verified delivery. This records Kris's approval against the six-part Review above; it is not agent self-acceptance. Decisions 1, 3 and 4 bound delivery, and Decision 5 still protects master-owned configuration. Pruning remains separately subject to committed Done state and reference/trade preflight.
+
+Acceptance review independently inspected the published correction `d0eda6b26b73f864ca4e7e201be7380eeea545d9` against its immutable parent `e028775d9cf7393f359b133f4ba4d88cd93353aa`. Named requirements, extras, version selectors and ASCII case/separator aliases protect retained uv distributions; ambiguous sources refuse before observation or mutation. All 18 inert removal regressions passed again. The original full-suite timing failure, unchanged-baseline timing reproduction and passing focused/reference reruns remain honestly recorded in Verification; neither budgets nor guards were weakened. The current record, adapter and authoring audits pass, and no captured requirement remains failing.
 
 ### Retained uv identity protection
 

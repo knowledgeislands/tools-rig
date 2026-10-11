@@ -6,13 +6,12 @@ initiative: rig
 kind: deliver
 purpose: capability
 component: cli
-horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 2b450ee38a02ffc01eaf798fc0510ee215c995f6
 created_at: 2026-10-10T16:40:00Z
-updated_at: 2026-10-11T10:02:54Z
+updated_at: 2026-10-11T11:13:09Z
 ---
 
 # RIG-CORE-044: Single Sudo Prompt
@@ -101,7 +100,17 @@ For an explicitly requested attended session under native terminal timestamp pol
 
 The single initial native validation and owned grant lifetime are delivered for Kris's review. Durable behaviour lives in the existing specifications and command guide, with routine choices and authority here. Personal attended-run use stays with its source thread. No new record, acceptance, release or pruning is proposed.
 
+## Done
+
+Accepted 2026-10-11 by Kris Brown on the review packet above.
+
 ## Discussion
+
+### Human acceptance
+
+Kris Brown approved this exact completed record under tools-burndown Decision 6 (2026-10-11): "Yeah, if you've done them, I'm happy to accept them, and we can get them pruned as well, and just keep going until you can get as much of this sorted out and done." The rig-close task binds that standing human grant to RIG-CORE-041, RIG-CORE-043, RIG-CORE-044 and RIG-CORE-045, conditional on complete verified delivery. This records Kris's approval against the six-part Review above; it is not agent self-acceptance. Decisions 1, 3 and 4 bound delivery, and Decision 5 still protects master-owned configuration. Pruning remains separately subject to committed Done state and reference/trade preflight.
+
+Acceptance review checked all completed Steps, the exact six-part Review, immutable baseline ancestry and the independent delivery-review recommendation against the committed delivery and current record. The current adapter and authoring audits pass. Required delivery gates and meaningful isolated fixtures are evidenced above; no captured requirement remains failing. The documented native-policy limits and pre-existing non-blocking hook warning are preserved.
 
 ### Approved routine choices
 

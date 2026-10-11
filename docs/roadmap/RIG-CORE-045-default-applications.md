@@ -6,13 +6,12 @@ initiative: rig
 kind: deliver
 purpose: capability
 component: cli
-horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 82ef601351989860b2004ad202901fe8d0969763
 created_at: 2026-10-11T03:58:00Z
-updated_at: 2026-10-11T10:21:31Z
+updated_at: 2026-10-11T11:13:09Z
 ---
 
 # RIG-CORE-045: Default Applications
@@ -101,7 +100,17 @@ Missing, damaged or mismatched apps cannot reach handler query/set operations. I
 
 Default-application declarations, honest observations and ordered native assignment are delivered for Kris's review. Durable behaviour lives in the existing specifications and user guide; captured scope, routine choices and authority remain here. Personal configuration stays in its source thread. No acceptance, release, pruning or new work record is proposed.
 
+## Done
+
+Accepted 2026-10-11 by Kris Brown on the review packet above.
+
 ## Discussion
+
+### Human acceptance
+
+Kris Brown approved this exact completed record under tools-burndown Decision 6 (2026-10-11): "Yeah, if you've done them, I'm happy to accept them, and we can get them pruned as well, and just keep going until you can get as much of this sorted out and done." The rig-close task binds that standing human grant to RIG-CORE-041, RIG-CORE-043, RIG-CORE-044 and RIG-CORE-045, conditional on complete verified delivery. This records Kris's approval against the six-part Review above; it is not agent self-acceptance. Decisions 1, 3 and 4 bound delivery, and Decision 5 still protects master-owned configuration. Pruning remains separately subject to committed Done state and reference/trade preflight.
+
+Acceptance review checked all completed Steps, the exact six-part Review, immutable baseline ancestry and the independent delivery-review recommendation against the committed delivery and current record. The current adapter and authoring audits pass. Required delivery gates and meaningful isolated fixtures are evidenced above; no captured requirement remains failing. The documented native-policy limits and pre-existing non-blocking hook warning are preserved.
 
 ### Approved routine choices
 
