@@ -461,3 +461,13 @@ _Conformance:_ conforming
 _Verify:_ Isolated fixtures distinguish present, absent and unknown removals, opt-in undeclared inventory, explicit removal exclusions and retained ordinary doctor behaviour.
 
 _Evidence:_ `rig_command_doctor`, `rig_removal_identity_declared` and `tests/rig-software-removal.bats` verify the three classifications.
+
+### RIG-STATE-043 — Administrator-session outcomes
+
+An attended sudo authorisation refusal, unusable native grant or refresh failure MUST keep apply incomplete. Refusal/non-terminal use MUST return an operational problem before task dispatch. A refresh failure MUST disclose that further dispatch stopped; it MUST NOT claim unstarted tasks completed. Interruption MUST retain existing signal exit status and completed/inflight history semantics. Rig MUST NOT treat an administrator grant as installation evidence, persist it in Rig state or alter ordinary/unattended outcome contracts.
+
+_Conformance:_ conforming
+
+_Verify:_ Isolated sudo fixtures assert native validation, refused and expired grants, stopped subsequent dispatch, normal failure and interruption results without a live privileged operation.
+
+_Evidence:_ `rig_sudo_guard`, `rig_command_apply_impl` and `tests/rig-sudo-session.bats` preserve honest outcomes.

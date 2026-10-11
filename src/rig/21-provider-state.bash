@@ -106,6 +106,7 @@ rig_reconciliation_signal() {
   exit_code=$1
   trap - HUP INT TERM
   rig_progress_interrupted
+  rig_sudo_cleanup
   rig_release_reconciliation_lock || true
   exit "$exit_code"
 }
@@ -161,7 +162,7 @@ rig_acquire_reconciliation_lock() {
   fi
   RIG_RECONCILIATION_LOCK=$lock
   RIG_RECONCILIATION_LOCK_ACQUIRED=1
-  trap 'rig_progress_cleanup; rig_release_reconciliation_lock' EXIT
+  trap 'rig_sudo_cleanup; rig_progress_cleanup; rig_release_reconciliation_lock' EXIT
   trap 'rig_reconciliation_signal 129' HUP
   trap 'rig_reconciliation_signal 130' INT
   trap 'rig_reconciliation_signal 143' TERM

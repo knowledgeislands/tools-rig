@@ -7,12 +7,12 @@ kind: deliver
 purpose: capability
 component: cli
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 2b450ee38a02ffc01eaf798fc0510ee215c995f6
 created_at: 2026-10-10T16:40:00Z
-updated_at: 2026-10-11T09:51:07Z
+updated_at: 2026-10-11T10:02:54Z
 ---
 
 # RIG-CORE-044: Single Sudo Prompt
@@ -40,10 +40,10 @@ Kris approved bounded adoption, routine planning and delivery under tools-burndo
 
 ## Steps
 
-- [ ] Add explicit attended `apply --sudo` and determine from its scoped plan whether any native work may use the requested grant; dry-run and empty/satisfied selections do not authenticate.
-- [ ] Validate the native grant before dispatch, refresh it noninteractively for the owned run and clean up the keeper on normal, failed and interrupted exits without storing a password or invalidating other native grants.
-- [ ] Refuse a non-attended or unusable grant before dispatch; stop further tasks after refresh failure while allowing an inflight native operation to settle.
-- [ ] Align specification, guide, help and manual; run isolated terminal/stub refusal, refresh, failure and signal fixtures plus the full local gate and prepare the Review packet.
+- [x] Add explicit attended `apply --sudo` and determine from its scoped plan whether any native work may use the requested grant; dry-run and empty/satisfied selections do not authenticate.
+- [x] Validate the native grant before dispatch, refresh it noninteractively for the owned run and clean up the keeper on normal, failed and interrupted exits without storing a password or invalidating other native grants.
+- [x] Refuse a non-attended or unusable grant before dispatch; stop further tasks after refresh failure while allowing an inflight native operation to settle.
+- [x] Align specification, guide, help and manual; run isolated terminal/stub refusal, refresh, failure and signal fixtures plus the full local gate and prepare the Review packet.
 
 ## Files touched
 
@@ -74,6 +74,32 @@ Explain `apply --sudo`, native password entry, supported terminal timestamp poli
 ### Roadmap
 
 Keep this identity, immutable baseline and Review packet. Stop at Awaiting review without acceptance, closure or pruning.
+
+## Review
+
+### Delivered
+
+Delivered the approved attended sudo-session boundary from immutable baseline `2b450ee38a02ffc01eaf798fc0510ee215c995f6`. The privilege hint is explicit `apply --sudo`; no personal configuration, live authentication/privileged operation, sudoers change or unattended expansion is included.
+
+### Change Summary
+
+Added native validation before task/progress ownership, immediate noninteractive reuse validation and a bounded owned refresh loop. Scoped empty, preview and satisfied-app selections do not authenticate. Refusal/non-terminal use prevents task dispatch; failed refresh stops further tasks after inflight native work settles. Capture and reconciliation traps plus normal completion stop and wait for the keeper and sleep child; owner disappearance stops uncatchable-exit refresh. The CLI help, manual, user guide, changelog and orchestration/state specs describe the same contract. Ten terminal/stub fixtures cover the boundary.
+
+### Verification
+
+The complete developer-guide gate passed: repository audit (zero failures and one pre-existing missing committed-hook warning), ShellCheck, Bash syntax, deterministic assembly, benchmark, bounded native version smoke, all 494 Bats cases, mandoc lint and diff whitespace checks. All ten focused terminal/stub sudo cases passed separately, including progress restoration, immediate refusal, loss of refresh, native failure, HUP/INT/TERM and uncatchable backend disappearance. They verify that refresh stops and no owned sleep child survives. The two-second reference benchmark passed on recheck after an earlier coarse wall-clock miss. The rendered manual, exact copied module and actual source/documentation diff were inspected; no protected path changed.
+
+### Outstanding concerns
+
+No required delivery check remains failing. Native terminal timestamp, revocation and authentication policies remain authoritative; this cannot promise away custom sudo rules, non-sudo sign-in or graphical consent. No password was read, stored or supplied, and no live grant was acquired. The pre-existing missing committed-hook warning remains; nothing installed or bypassed a hook.
+
+### Post-change review
+
+For an explicitly requested attended session under native terminal timestamp policy, initial validation precedes work and later refresh is noninteractive. Refusal and lost refresh keep apply incomplete, subsequent dispatch stops, and normal/failure/HUP/INT/TERM cleanup leaves no keeper or sleep child. The owner-disappearance fixture covers the uncatchable exit boundary. Native operations retain their semantics and other grants are not invalidated. Actual source and document diffs were reviewed; protected paths remain untouched.
+
+### Mini recap
+
+The single initial native validation and owned grant lifetime are delivered for Kris's review. Durable behaviour lives in the existing specifications and command guide, with routine choices and authority here. Personal attended-run use stays with its source thread. No new record, acceptance, release or pruning is proposed.
 
 ## Discussion
 

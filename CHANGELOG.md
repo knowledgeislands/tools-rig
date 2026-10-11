@@ -24,6 +24,7 @@ Run `rig help COMMAND` or `rig COMMAND --help` for options and exact arguments.
 
 ### Capabilities
 
+- Explicit attended `apply --sudo` with native validation, owned noninteractive refresh and cleanup.
 - Explicit native software removal with default preview, confirmation and doctor classification; no implicit deletion.
 - macOS applications can declare self-managed updates. Healthy app artifacts satisfy presence across install sources; apply and upgrade skip self-updating apps, and doctor gives honest source evidence and manual correction guidance for foreign copies.
 - Applications can declare named CLI companions within the same tool entry. Status and doctor check their executable and expected link; apply and upgrade reconcile them through their Homebrew cask or explicit missing-link materialisation, preserving conflicting paths.

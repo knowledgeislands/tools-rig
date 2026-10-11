@@ -161,7 +161,7 @@ rig_command_options() {
     status) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--problems||Show only entries needing attention.||' '--unmanaged||Include observed items not declared by an installation.||' '--retired||Include private, informational retired-application evidence.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
     remove) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--target|ID|Limit to one declared removal.||' '--dry-run||Preview native removals; this is the default.||' '--apply||Confirm the displayed preview before native uninstall.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
     doctor) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--unmanaged||Include undeclared inventory as information.||' '--verbose||Include runtime and configuration diagnostics.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
-    apply) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--scope|SCOPE|Restrict to tools, skills, resources, or all.|tools skills resources all|' '--target|ID|Apply one selected entry; repeat for several targets.||' '--dry-run||Print the plan without invoking providers.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
+    apply) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--scope|SCOPE|Restrict to tools, skills, resources, or all.|tools skills resources all|' '--target|ID|Apply one selected entry; repeat for several targets.||' '--dry-run||Print the plan without invoking providers.||' '--sudo||Authorise and refresh native sudo for this attended run.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
     upgrade) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--dry-run||Print the plan without invoking providers.||' '--unattended||Give native stdin EOF, skip App Store upgrades, and record outcomes.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
     capture) printf '%s\n' '--provider|NAME|Select an inventory provider.|homebrew|' '--profile|NAME|Select the profile for proposed membership.|profile name|' '--dry-run||Inspect and preview without writing a proposal.||' '--output|PATH|Write a new proposal outside active configuration.|path|' '--category|ID|Declare the category for selected items.|category id|' '--purpose|TEXT|Declare the purpose for selected items.|text|' '--rationale|TEXT|Declare the rationale for selected items.|text|' ;;
     export) printf '%s\n' '--profile|NAME|Select the view profile to export.|profile name|required' '--output|DIRECTORY|Write the public data tree here.|directory|required' '--title|TEXT|Set the exported document title.|title|' '--base-url|URL|Set the published document canonical URL.|url|' ;;
@@ -212,6 +212,7 @@ rig_command_help() {
     printf '%s\n' 'Explicit app CLI companions follow their installer; provider-owned repair may reinstall its cask.'
     printf '%s\n' 'Records apply outcomes; later success clears the matching historical failure.'
     printf '%s\n' 'Healthy self-updating applications are satisfied without reinstalling; foreign managed copies require manual source review.'
+    printf '%s\n' 'With --sudo, native validation precedes tasks and an owned noninteractive refresh stops at run exit.'
   fi
   case "$command" in
     status|doctor)
@@ -663,6 +664,7 @@ rig_progress_signal() {
   exit_code=$1
   trap - HUP INT TERM
   rig_progress_interrupted
+  rig_sudo_cleanup
   exit "$exit_code"
 }
 
@@ -5070,6 +5072,7 @@ rig_reconciliation_signal() {
   exit_code=$1
   trap - HUP INT TERM
   rig_progress_interrupted
+  rig_sudo_cleanup
   rig_release_reconciliation_lock || true
   exit "$exit_code"
 }
@@ -5125,7 +5128,7 @@ rig_acquire_reconciliation_lock() {
   fi
   RIG_RECONCILIATION_LOCK=$lock
   RIG_RECONCILIATION_LOCK_ACQUIRED=1
-  trap 'rig_progress_cleanup; rig_release_reconciliation_lock' EXIT
+  trap 'rig_sudo_cleanup; rig_progress_cleanup; rig_release_reconciliation_lock' EXIT
   trap 'rig_reconciliation_signal 129' HUP
   trap 'rig_reconciliation_signal 130' INT
   trap 'rig_reconciliation_signal 143' TERM
@@ -8435,6 +8438,7 @@ rig_run_skill_apply() {
   printf '\nSKILL\tAUTHORITY\tRESULT\tDETAIL\tSCOPE\n'
   index=0
   while [ "$index" -lt "${#RIG_SELECTED_SKILLS[@]}" ]; do
+    [ "$dry_run" -eq 1 ] || rig_sudo_guard || return
     skill=${RIG_SELECTED_SKILLS[$index]}
     rig_get_value "skill.$skill" authority || return 2
     authority=$RIG_VALUE
@@ -8893,7 +8897,8 @@ rig_command_apply_impl() {
   local profile scope dry_run profile_seen scope_seen dry_run_seen index tool binding provider
   local blocker native_status planned completed failed skipped operational_failure
   local section_name section_index kind id locator resource_total lock_acquired exit_code
-  local row_scope
+  local row_scope sudo_requested
+  sudo_requested=0
 
   profile=
   scope=all
@@ -8935,6 +8940,11 @@ rig_command_apply_impl() {
         { rig_command_syntax_error apply; return; }
         dry_run=1
         dry_run_seen=1
+        shift
+        ;;
+      --sudo)
+        [ "$sudo_requested" -eq 0 ] || { rig_command_syntax_error apply; return; }
+        sudo_requested=1
         shift
         ;;
       --target)
@@ -9017,6 +9027,7 @@ rig_command_apply_impl() {
   rig_history_prepare "$RIG_RESOLVED_PLATFORM" || return
   rig_progress_result succeeded 'selected plan'
   rig_progress_finish
+  if [ "$sudo_requested" -eq 1 ]; then rig_sudo_start "$dry_run" || return; fi
   printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   if [ "${#RIG_APPLY_TARGETS[@]}" -gt 0 ]; then
     printf 'Operation scope: target (dependencies marked separately)\n'
@@ -9045,6 +9056,7 @@ rig_command_apply_impl() {
 
   index=0
   while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
+    [ "$dry_run" -eq 1 ] || rig_sudo_guard || return
     tool=${RIG_PLAN_TOOLS[$index]}
     binding=${RIG_PLAN_BINDINGS[$index]}
     provider=${RIG_PLAN_PROVIDERS[$index]}
@@ -9120,6 +9132,7 @@ rig_command_apply_impl() {
   RIG_RESOURCE_PLAN_DETAILS=()
   index=0
   while [ "$index" -lt "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" ]; do
+    [ "$dry_run" -eq 1 ] || rig_sudo_guard || return
     section_name=${RIG_RESOURCE_PLAN_SECTIONS[$index]}
     rig_section_index "$section_name" || return 2
     section_index=$RIG_INDEX
@@ -9176,6 +9189,7 @@ rig_command_apply_impl() {
   done
   index=0
   while [ "$index" -lt "${#RIG_STALE_RESOURCE_IDS[@]}" ]; do
+    [ "$dry_run" -eq 1 ] || rig_sudo_guard || return
     provider=${RIG_STALE_RESOURCE_PROVIDERS[$index]}
     kind=${RIG_STALE_RESOURCE_KINDS[$index]}
     id=${RIG_STALE_RESOURCE_IDS[$index]}
@@ -9204,6 +9218,8 @@ rig_command_apply_impl() {
     fi
     index=$((index + 1))
   done
+  rig_sudo_cleanup
+  [ "$dry_run" -eq 1 ] || rig_sudo_guard || return
   if [ "$dry_run" -eq 0 ] && [ "$operational_failure" -eq 0 ] && [ "$resource_total" -gt 0 ]; then
     rig_write_resource_receipt "$RIG_RESOLVED_PLATFORM" || {
       rig_fail 'cannot update resource reconciliation receipt' || return
@@ -10578,6 +10594,93 @@ rig_command_remove_impl() {
   if [ "$failed" -gt 0 ]; then rig_outcome_note incomplete "completed=$completed failed=$failed"; return 1; fi
   rig_outcome_note succeeded "completed=$completed"
 }
+# rig-module: 28-sudo-session
+# shellcheck shell=bash
+# Cross-module apply state is intentionally shared.
+# shellcheck disable=SC2034
+RIG_SUDO_KEEPER_PID=
+RIG_SUDO_FAILED=0
+
+rig_sudo_cleanup() {
+  local keeper
+  keeper=${RIG_SUDO_KEEPER_PID:-}
+  RIG_SUDO_KEEPER_PID=
+  if [ -n "$keeper" ]; then
+    kill -TERM "$keeper" 2>/dev/null || true
+    wait "$keeper" 2>/dev/null || true
+  fi
+}
+
+rig_sudo_guard() {
+  [ "${RIG_SUDO_FAILED:-0}" -eq 0 ] || {
+    rig_sudo_cleanup
+    printf 'rig: administrator session refresh failed; no further tasks dispatched.\n' >&2
+    rig_outcome_note incomplete 'administrator-session-refresh-failed'
+    return 1
+  }
+}
+
+rig_sudo_start() {
+  local dry_run index tool binding provider needed executable interval owner
+  dry_run=$1
+  needed=0
+  if [ "$dry_run" -eq 1 ]; then
+    printf 'Administrator session: preview only; no authentication.\n'
+    return 0
+  fi
+  index=0
+  while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
+    tool=${RIG_PLAN_TOOLS[$index]}
+    binding=${RIG_PLAN_BINDINGS[$index]}
+    provider=${RIG_PLAN_PROVIDERS[$index]}
+    if [ -n "$binding" ] && ! rig_application_apply_skip "$tool" "$binding" "$provider"; then needed=1; fi
+    index=$((index + 1))
+  done
+  if [ "${#RIG_SELECTED_SKILLS[@]}" -gt 0 ] || [ "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" -gt 0 ] ||
+    [ "${#RIG_STALE_RESOURCE_IDS[@]}" -gt 0 ]; then needed=1; fi
+  if [ "$needed" -eq 0 ]; then
+    printf 'Administrator session: no prompt needed; no native work requires the requested grant.\n'
+    return 0
+  fi
+  [ -t 0 ] || { rig_fail 'apply --sudo requires an attended terminal'; return 1; }
+  executable=${RIG_SUDO:-sudo}
+  rig_executable_available "$executable" || { rig_fail 'sudo executable unavailable'; return 1; }
+  interval=${RIG_SUDO_REFRESH_SECONDS:-30}
+  case "$interval" in ''|*[!0-9]*|???*) rig_fail 'RIG_SUDO_REFRESH_SECONDS must be an integer from 1 to 60'; return 2 ;; esac
+  [ "$interval" -ge 1 ] && [ "$interval" -le 60 ] || { rig_fail 'RIG_SUDO_REFRESH_SECONDS must be an integer from 1 to 60'; return 2; }
+  # Bash 3.2 lacks BASHPID. The transient /bin/sh is a child of the command
+  # substitution, whose parent is this captured backend shell (not main's $$).
+  owner=$(/bin/sh -c 'ps -p "$PPID" -o ppid=') || return 1
+  owner=${owner//[[:space:]]/}
+  case "$owner" in ''|0|*[!0-9]*) rig_fail 'cannot identify administrator-session owner'; return 1 ;; esac
+  rig_progress_cleanup
+  printf 'rig: authorise administrator rights once for this attended run.\n' >&2
+  "$executable" -v || { rig_outcome_note incomplete 'administrator-authorisation-refused'; return 1; }
+  "$executable" -n -v </dev/null || { rig_outcome_note incomplete 'administrator-grant-not-reusable'; return 1; }
+  RIG_SUDO_FAILED=0
+  trap 'RIG_SUDO_FAILED=1' USR1
+  (
+    sleeper=
+    trap 'if [ -n "$sleeper" ]; then kill "$sleeper" 2>/dev/null || true; wait "$sleeper" 2>/dev/null || true; fi' EXIT
+    trap 'exit 0' HUP INT TERM
+    while kill -0 "$owner" 2>/dev/null; do
+      sleep "$interval" &
+      sleeper=$!
+      if ! wait "$sleeper"; then
+        kill -USR1 "$owner" 2>/dev/null || true
+        exit 1
+      fi
+      sleeper=
+      kill -0 "$owner" 2>/dev/null || exit 0
+      if ! "$executable" -n -v </dev/null; then
+        kill -USR1 "$owner" 2>/dev/null || true
+        exit 1
+      fi
+    done
+  ) </dev/null >/dev/null 2>&1 &
+  RIG_SUDO_KEEPER_PID=$!
+  printf 'Administrator session: native grant refreshed during this run.\n'
+}
 # rig-module: 30-commands
 # shellcheck shell=bash
 # Cross-module state is intentionally consumed by later assembled modules.
@@ -11831,7 +11934,7 @@ rig_capture_report_context() {
     # parent, owns any footer drawn while assembling a mutation report.
     rig_progress_reset
     RIG_PROGRESS_COMMAND=$progress_command
-    trap rig_progress_cleanup EXIT
+    trap 'rig_sudo_cleanup; rig_progress_cleanup' EXIT
     trap 'rig_progress_signal 129' HUP
     trap 'rig_progress_signal 130' INT
     trap 'rig_progress_signal 143' TERM

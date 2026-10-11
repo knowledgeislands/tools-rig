@@ -438,3 +438,13 @@ _Conformance:_ conforming
 _Verify:_ Stub fixtures assert exact argv, preview/refusal/confirmation, missing and unknown observations, privilege refusal, independent outcomes and absence of implicit uninstall.
 
 _Evidence:_ `rig_command_remove_impl`, `rig_remove_native` and `tests/rig-software-removal.bats` cover the fixed native contract.
+
+### RIG-ORCH-043 — Attended native sudo session
+
+Only explicit `apply --sudo` MUST acquire an administrator grant, and only when scoped selected work may use it. Preview, empty and fully satisfied selections MUST explain that no prompt is needed and MUST NOT authenticate. Actual work MUST require terminal stdin and perform native `sudo -v` once, before the next progress footer and before any task, followed by `sudo -n -v` to check grant reuse. Rig MUST NOT read, store, pipe or supply a password. An owned loop MUST refresh only with `sudo -n -v`, every 30 seconds by default, with a validated 1–60 second `RIG_SUDO_REFRESH_SECONDS` override. Normal, failed and catchable interrupted exits MUST stop and wait for the keeper and sleep child; an absent backend owner MUST stop refresh. Cleanup MUST NOT invalidate other native grants. Refusal or an unusable grant MUST dispatch no task; refresh failure MUST stop further tasks after any inflight native operation settles. Native timestamp, revocation and authentication policies remain authoritative; no sudoers or askpass change is permitted.
+
+_Conformance:_ conforming
+
+_Verify:_ Terminal and stub fixtures cover validation/refresh argv, no-work and dry-run, refusal/non-terminal use, refresh failure, native failure, all catchable interruption signals, owner disappearance, child cleanup and progress ownership.
+
+_Evidence:_ `rig_sudo_start`, `rig_sudo_guard`, `rig_sudo_cleanup`, apply/capture/reconciliation cleanup and `tests/rig-sudo-session.bats` implement the owned session boundary.

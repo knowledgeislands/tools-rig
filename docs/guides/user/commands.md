@@ -136,3 +136,11 @@ profiles = ["default"]
 Supported native removals are Homebrew formula/cask/mas, uv tool, npm global and mise tool. App Store removal needs an already authorised sudo grant; Rig uses `sudo -n` and never prompts for one. Native managers own uninstall behaviour. Rig adds no force, zap or retained-data cleanup. Apply, upgrade, deselection and retired-application traces never authorise software removal.
 
 Doctor reports selected removals still present as findings. `rig doctor --unmanaged` additionally reports undeclared-anywhere inventory as information; it neither fails health for undeclared items nor treats profile exclusion as removal authority. Existing declared drift and source mismatches keep their own findings. Removal declarations remain private.
+
+## An attended administrator session
+
+Use `rig apply --sudo` when selected native work may need administrator rights. This explicit option is the privilege hint; Rig does not guess from a cask or request a grant during ordinary apply. Scoped empty plans and healthy self-updating applications need no session. `--dry-run --sudo` only explains the preview and does not authenticate.
+
+For actual work, terminal stdin is required. Before the first task and its progress footer, native sudo validates once and checks that the grant is reusable. Enter any requested password directly into sudo; Rig never reads, stores or supplies it. The owned loop refreshes noninteractively every 30 seconds while the run lasts; `RIG_SUDO_REFRESH_SECONDS` accepts 1–60 seconds when a shorter interval is needed. Run completion, refusal, failure and catchable interruption stop the keeper and its sleep child. Cleanup leaves the native timestamp to expire normally and never runs `sudo -k`.
+
+Refusal or an unusable grant stops before tasks. Lost refresh stops subsequent dispatch after the current native operation returns; Rig does not forcibly terminate an installer. This uses native terminal timestamps and honours native sudo policy. Revocation, custom timestamp rules, App Store sign-in, other authentication and macOS graphical consent remain native decisions; the option cannot bypass them. Unattended upgrade retains its existing contract and does not accept `--sudo`.

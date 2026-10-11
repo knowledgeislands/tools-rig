@@ -161,7 +161,7 @@ rig_command_options() {
     status) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--problems||Show only entries needing attention.||' '--unmanaged||Include observed items not declared by an installation.||' '--retired||Include private, informational retired-application evidence.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
     remove) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--target|ID|Limit to one declared removal.||' '--dry-run||Preview native removals; this is the default.||' '--apply||Confirm the displayed preview before native uninstall.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
     doctor) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--unmanaged||Include undeclared inventory as information.||' '--verbose||Include runtime and configuration diagnostics.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
-    apply) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--scope|SCOPE|Restrict to tools, skills, resources, or all.|tools skills resources all|' '--target|ID|Apply one selected entry; repeat for several targets.||' '--dry-run||Print the plan without invoking providers.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
+    apply) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--scope|SCOPE|Restrict to tools, skills, resources, or all.|tools skills resources all|' '--target|ID|Apply one selected entry; repeat for several targets.||' '--dry-run||Print the plan without invoking providers.||' '--sudo||Authorise and refresh native sudo for this attended run.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
     upgrade) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--dry-run||Print the plan without invoking providers.||' '--unattended||Give native stdin EOF, skip App Store upgrades, and record outcomes.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
     capture) printf '%s\n' '--provider|NAME|Select an inventory provider.|homebrew|' '--profile|NAME|Select the profile for proposed membership.|profile name|' '--dry-run||Inspect and preview without writing a proposal.||' '--output|PATH|Write a new proposal outside active configuration.|path|' '--category|ID|Declare the category for selected items.|category id|' '--purpose|TEXT|Declare the purpose for selected items.|text|' '--rationale|TEXT|Declare the rationale for selected items.|text|' ;;
     export) printf '%s\n' '--profile|NAME|Select the view profile to export.|profile name|required' '--output|DIRECTORY|Write the public data tree here.|directory|required' '--title|TEXT|Set the exported document title.|title|' '--base-url|URL|Set the published document canonical URL.|url|' ;;
@@ -212,6 +212,7 @@ rig_command_help() {
     printf '%s\n' 'Explicit app CLI companions follow their installer; provider-owned repair may reinstall its cask.'
     printf '%s\n' 'Records apply outcomes; later success clears the matching historical failure.'
     printf '%s\n' 'Healthy self-updating applications are satisfied without reinstalling; foreign managed copies require manual source review.'
+    printf '%s\n' 'With --sudo, native validation precedes tasks and an owned noninteractive refresh stops at run exit.'
   fi
   case "$command" in
     status|doctor)
@@ -663,6 +664,7 @@ rig_progress_signal() {
   exit_code=$1
   trap - HUP INT TERM
   rig_progress_interrupted
+  rig_sudo_cleanup
   exit "$exit_code"
 }
 

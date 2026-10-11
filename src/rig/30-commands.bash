@@ -1251,7 +1251,7 @@ rig_capture_report_context() {
     # parent, owns any footer drawn while assembling a mutation report.
     rig_progress_reset
     RIG_PROGRESS_COMMAND=$progress_command
-    trap rig_progress_cleanup EXIT
+    trap 'rig_sudo_cleanup; rig_progress_cleanup' EXIT
     trap 'rig_progress_signal 129' HUP
     trap 'rig_progress_signal 130' INT
     trap 'rig_progress_signal 143' TERM

@@ -1797,3 +1797,23 @@ sudo grant with -n. Rig adds no force, zap or retained-data cleanup.
 Doctor reports pending declared removals as findings. doctor --unmanaged
 adds undeclared-anywhere inventory as information. Apply, upgrade, deselection
 and retired-application traces never authorise software removal.
+
+.SH ATTENDED ADMINISTRATOR SESSION
+\&
+.PP
+apply --sudo explicitly requests an attended native grant for scoped work.
+Preview, empty and satisfied selections do not authenticate. Actual work
+requires terminal stdin. Native sudo -v validates once before tasks and
+progress ownership; sudo -n -v checks reuse and refreshes noninteractively.
+Rig never reads, stores or supplies a password.
+.PP
+Refresh defaults to 30 seconds. RIG_SUDO_REFRESH_SECONDS accepts 1 to 60.
+Completion, failure and catchable interruption stop and wait for the keeper
+and its sleep child. A missing backend owner stops refresh. Cleanup never
+invalidates native grants. Refusal or an unusable grant dispatches nothing;
+refresh failure stops further tasks after the current native operation returns.
+.PP
+Native terminal timestamp, revocation and authentication policies remain
+in force. No sudoers or askpass change is made. App Store sign-in and other
+non-sudo authentication remain outside this option. Unattended upgrade does
+not acquire this session.

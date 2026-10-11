@@ -187,6 +187,7 @@ rig_run_skill_apply() {
   printf '\nSKILL\tAUTHORITY\tRESULT\tDETAIL\tSCOPE\n'
   index=0
   while [ "$index" -lt "${#RIG_SELECTED_SKILLS[@]}" ]; do
+    [ "$dry_run" -eq 1 ] || rig_sudo_guard || return
     skill=${RIG_SELECTED_SKILLS[$index]}
     rig_get_value "skill.$skill" authority || return 2
     authority=$RIG_VALUE
@@ -645,7 +646,8 @@ rig_command_apply_impl() {
   local profile scope dry_run profile_seen scope_seen dry_run_seen index tool binding provider
   local blocker native_status planned completed failed skipped operational_failure
   local section_name section_index kind id locator resource_total lock_acquired exit_code
-  local row_scope
+  local row_scope sudo_requested
+  sudo_requested=0
 
   profile=
   scope=all
@@ -687,6 +689,11 @@ rig_command_apply_impl() {
         { rig_command_syntax_error apply; return; }
         dry_run=1
         dry_run_seen=1
+        shift
+        ;;
+      --sudo)
+        [ "$sudo_requested" -eq 0 ] || { rig_command_syntax_error apply; return; }
+        sudo_requested=1
         shift
         ;;
       --target)
@@ -769,6 +776,7 @@ rig_command_apply_impl() {
   rig_history_prepare "$RIG_RESOLVED_PLATFORM" || return
   rig_progress_result succeeded 'selected plan'
   rig_progress_finish
+  if [ "$sudo_requested" -eq 1 ]; then rig_sudo_start "$dry_run" || return; fi
   printf 'Profile: %s\nPlatform: %s\n' "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   if [ "${#RIG_APPLY_TARGETS[@]}" -gt 0 ]; then
     printf 'Operation scope: target (dependencies marked separately)\n'
@@ -797,6 +805,7 @@ rig_command_apply_impl() {
 
   index=0
   while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
+    [ "$dry_run" -eq 1 ] || rig_sudo_guard || return
     tool=${RIG_PLAN_TOOLS[$index]}
     binding=${RIG_PLAN_BINDINGS[$index]}
     provider=${RIG_PLAN_PROVIDERS[$index]}
@@ -872,6 +881,7 @@ rig_command_apply_impl() {
   RIG_RESOURCE_PLAN_DETAILS=()
   index=0
   while [ "$index" -lt "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" ]; do
+    [ "$dry_run" -eq 1 ] || rig_sudo_guard || return
     section_name=${RIG_RESOURCE_PLAN_SECTIONS[$index]}
     rig_section_index "$section_name" || return 2
     section_index=$RIG_INDEX
@@ -928,6 +938,7 @@ rig_command_apply_impl() {
   done
   index=0
   while [ "$index" -lt "${#RIG_STALE_RESOURCE_IDS[@]}" ]; do
+    [ "$dry_run" -eq 1 ] || rig_sudo_guard || return
     provider=${RIG_STALE_RESOURCE_PROVIDERS[$index]}
     kind=${RIG_STALE_RESOURCE_KINDS[$index]}
     id=${RIG_STALE_RESOURCE_IDS[$index]}
@@ -956,6 +967,8 @@ rig_command_apply_impl() {
     fi
     index=$((index + 1))
   done
+  rig_sudo_cleanup
+  [ "$dry_run" -eq 1 ] || rig_sudo_guard || return
   if [ "$dry_run" -eq 0 ] && [ "$operational_failure" -eq 0 ] && [ "$resource_total" -gt 0 ]; then
     rig_write_resource_receipt "$RIG_RESOLVED_PLATFORM" || {
       rig_fail 'cannot update resource reconciliation receipt' || return
