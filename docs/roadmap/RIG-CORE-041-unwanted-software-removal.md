@@ -8,7 +8,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-09T06:38:35Z
-updated_at: 2026-10-11T01:55:56Z
+updated_at: 2026-10-11T03:17:44Z
 ---
 
 # RIG-CORE-041: Unwanted Software Removal
@@ -45,3 +45,4 @@ Open questions for planning:
 - **Doctor severity and cost.** Whether doctor runs the inventory by default (a Homebrew and application scan on every doctor run) or only under a flag; whether case (b) is a warning that does not fail doctor, which needs a real warning tier and a decision about exit status for unattended callers such as the chezmoi `rig-update` job.
 - **Uninstall action.** A `rig remove` or `rig apply --remove` that acts only on the declared list, previews with `--dry-run`, refuses anything not declared for removal, and reports per-item native outcomes. Whether removal should be receipt-gated, so Rig only uninstalls what it can show it installed, or trust the explicit declaration.
 - **Retirement overlap.** Whether a removed application should automatically gain the retired-application report afterwards, so trace review follows uninstall without a second declaration.
+- **A first real list is waiting.** The owner's private configuration repository already holds a decided removal list of about 25 applications and packages across two Macs, from the 2026-10-09 machine comparison. It moves into the removal declaration this record defines once that exists, and stays out of this public repository.
