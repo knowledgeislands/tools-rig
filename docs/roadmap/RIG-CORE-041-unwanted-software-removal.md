@@ -3,12 +3,16 @@ id: RIG-CORE-041
 area: CORE
 title: Unwanted software removal
 initiative: rig
-status: triage
+kind: deliver
+purpose: capability
+component: cli
+horizon: now
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-09T06:38:35Z
-updated_at: 2026-10-11T03:17:44Z
+updated_at: 2026-10-11T09:33:00Z
 ---
 
 # RIG-CORE-041: Unwanted Software Removal
@@ -36,7 +40,53 @@ chezmoi's [`.chezmoiremove`](https://www.chezmoi.io/reference/special-files/chez
 - **In:** the doctor classification of (a), (b) and (c); a declared removal list (a new declaration kind, or an extension of `[retired-application]`); an opt-in removal action with a dry run, per provider, using each native manager's own uninstall; how this relates to the retired-application report and receipt-backed retirement; spec, guide, help and manual alignment.
 - **Out:** automatic uninstall on deselection or during `apply` or `upgrade`; deleting retained application data (the retired-application report's "no observation is deletion approval" stays); Kris's own removal list, which belongs in the chezmoi source; the per-machine profile layout (DOTFILES-UE-075 in the chezmoi repository).
 
+## Current state
+
+Kris selected and approved bounded planning and delivery under tools-burndown Decisions 1, 3 and 4. RIG-CORE-043 supplies honest source classification. No competing delivery owns this record; personal removals and RIG-CORE-042 remain protected.
+
+## Steps
+
+- [ ] Add validated private `[remove.ID]` declarations with native identity, platform and optional profile membership; reject conflicts with retained tool installations and unsafe provider arguments.
+- [ ] Add default-preview `rig remove`, requiring `--apply` and confirmation of its displayed preview, with fresh observations and independent native outcomes.
+- [ ] Add doctor removal findings and opt-in `--unmanaged` information, preserving declared drift and retired-application observation semantics.
+- [ ] Align specifications, guide, help and manual; verify isolated native fixtures and the full local gate, then prepare the six-part Review packet.
+
+## Files touched
+
+Configuration, declaration registry, provider inventory, doctor, runtime help and dispatcher modules; a new removal module; assembled executable and assembly manifest; isolated removal tests and sudo containment stub; configuration/state/orchestration specs, user command guide, manual and changelog.
+
+## Verify
+
+Fixture tests prove default preview, refusal/EOF, explicit confirmation, undeclared-target rejection, duplicate/retained identity rejection, profile/platform filtering, no automatic uninstall, native argv and independent failure, honest doctor cases and inventory information. Run the developer guide's complete gate and the suite with hostile inherited XDG state when changing isolation. Review the actual diff and committed path roster.
+
+## Dependencies / blocks
+
+RIG-CORE-043 delivered application classification. No acceptance dependency. No live uninstall, data cleanup, native authentication or personal declaration changes are authorised.
+
+## Documentation impact
+
+### Decision Records
+
+Routine choices and owner authority are recorded here; no separate architectural decision is required.
+
+### Specifications
+
+Specify the private removal declaration, confirmation boundary, native command matrix and three doctor classifications.
+
+### Guides
+
+Explain preview and explicit native removal, inventory opt-in and retained-data boundary; align command help and manual.
+
+### Roadmap
+
+Keep this identity and stop at Awaiting review; do not capture, accept or prune work.
+
 ## Discussion
+
+### Approved routine choices
+
+Use separate private `[remove.ID]` declarations as explicit removal authority, without receipt gating. Only selected platform/profile declarations are actionable; retained installation identities anywhere in the catalogue forbid removal. Support native Homebrew formula/cask/App Store, uv, npm and mise uninstall operations; reject custom executables and arbitrary provider arguments. App Store removal uses only an existing noninteractive sudo grant and never acquires one. Preview is the default; `--apply` repeats the selected preview before requiring literal `remove`, and reobserves presence after confirmation. Missing items skip, uncertain evidence refuses, failures remain visible. Native tools retain uninstall semantics; Rig requests no zap or data cleanup. Doctor reports declared pending removals as findings, undeclared-anywhere inventory only under `--unmanaged` as information, and drift through existing observations. Deselection, apply, upgrade and retired-application traces never approve package deletion. No automatic retired declaration is created.
+
 
 Open questions for planning:
 
