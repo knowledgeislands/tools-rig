@@ -10348,12 +10348,66 @@ rig_removal_supported() {
   return 1
 }
 
+# uv installs requirements but uninstalls distribution names. Accept only named
+# requirements whose identity is explicit; paths, URLs and other ambiguous
+# sources must block removal rather than guess which retained tool they own.
+rig_removal_uv_identity() {
+  local identity suffix extras name_pattern version_pattern index
+  local uppercase=ABCDEFGHIJKLMNOPQRSTUVWXYZ lowercase=abcdefghijklmnopqrstuvwxyz LC_ALL=C
+  name_pattern='[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?'
+  version_pattern='(===|==|!=|~=|<=|>=|<|>)[[:blank:]]*[A-Za-z0-9.*+!_-]+'
+  rig_trim "$1"
+  if ! [[ "$RIG_VALUE" =~ ^($name_pattern)(.*)$ ]]; then
+    rig_fail 'uv removal cannot safely establish a distribution identity'; return
+  fi
+  identity=${BASH_REMATCH[1]}
+  suffix=${BASH_REMATCH[3]}
+  rig_trim "$suffix"
+  suffix=$RIG_VALUE
+  if [[ "$suffix" = \[* ]]; then
+    extras="^\[[[:blank:]]*$name_pattern([[:blank:]]*,[[:blank:]]*$name_pattern)*[[:blank:]]*\]"
+    if ! [[ "$suffix" =~ $extras ]]; then
+      rig_fail 'uv removal cannot safely establish a distribution identity'; return
+    fi
+    suffix=${suffix#*\]}
+    rig_trim "$suffix"
+    suffix=$RIG_VALUE
+  fi
+  if [[ "$suffix" = \(*\) ]]; then
+    suffix=${suffix#\(}; suffix=${suffix%\)}
+    rig_trim "$suffix"
+    suffix=$RIG_VALUE
+    [ -n "$suffix" ] || { rig_fail 'uv removal cannot safely establish a distribution identity'; return; }
+  fi
+  if [ -n "$suffix" ] && ! [[ "$suffix" =~ ^$version_pattern([[:blank:]]*,[[:blank:]]*$version_pattern)*[[:blank:]]*$ ]]; then
+    rig_fail 'uv removal cannot safely establish a distribution identity'; return
+  fi
+  # Python distribution identity is case-insensitive and treats each run of
+  # hyphens, underscores and full stops as one hyphen. Stay Bash 3.2 compatible.
+  index=0
+  while [ "$index" -lt 26 ]; do
+    identity=${identity//"${uppercase:$index:1}"/"${lowercase:$index:1}"}
+    index=$((index + 1))
+  done
+  # A bare archive filename can also look like a valid distribution name.
+  # Its filename is not evidence of the distribution installed from it.
+  case "$identity" in
+    *.whl|*.zip|*.tar|*.tar.gz|*.tar.bz2|*.tar.xz|*.tgz)
+      rig_fail 'uv removal cannot safely establish a distribution identity'; return ;;
+  esac
+  identity=${identity//_/-}
+  identity=${identity//./-}
+  while [[ "$identity" = *--* ]]; do identity=${identity//--/-}; done
+  RIG_VALUE=$identity
+}
+
 # Compare the native package identity, not a version selector that an uninstall
 # may ignore. Conservatively protect every retained version of the same tool.
 rig_removal_normalize_identity() {
   local adapter kind locator
   adapter=$1; kind=$2; locator=$3
   case "$adapter:$kind" in
+    uv:tool) rig_removal_uv_identity "$locator" || return ;;
     homebrew:formula|homebrew:cask)
       rig_homebrew_normalize_identity "$kind:$locator"
       RIG_VALUE=${RIG_VALUE#*:}
@@ -10391,6 +10445,8 @@ rig_validate_removal() {
   fi
   case "$locator" in -*) rig_fail "[$section] removal locator must not be an option"; return ;; esac
   case "$locator" in *[[:cntrl:]]*) rig_fail "[$section] removal locator must not contain control characters"; return ;; esac
+  rig_removal_normalize_identity "$adapter" "$kind" "$locator" || return
+  locator=$RIG_VALUE
   rig_field_count "$index" platform
   [ "$RIG_COUNT" -gt 0 ] || rig_fail "[$section] requires platforms" || return
   if [ "$adapter" = homebrew ] && { [ "$kind" = cask ] || [ "$kind" = mas ]; }; then
@@ -10414,9 +10470,9 @@ rig_validate_removal() {
         rig_get_value "$other" locator || return 2
         other_locator=$RIG_VALUE
         if [ "$kind" = "$other_kind" ]; then
-          rig_removal_normalize_identity "$adapter" "$kind" "$locator"
+          rig_removal_normalize_identity "$adapter" "$kind" "$locator" || return
           locator=$RIG_VALUE
-          rig_removal_normalize_identity "$adapter" "$kind" "$other_locator"
+          rig_removal_normalize_identity "$adapter" "$kind" "$other_locator" || return
           [ "$locator" != "$RIG_VALUE" ] || rig_fail "[$section] cannot remove an installation still declared by $other" || return
         fi
       fi
@@ -10428,9 +10484,9 @@ rig_validate_removal() {
       if [ "$other_adapter" = "$adapter" ] && rig_get_value "$other" kind && [ "$RIG_VALUE" = "$kind" ] &&
         rig_get_value "$other" locator; then
         other_locator=$RIG_VALUE
-        rig_removal_normalize_identity "$adapter" "$kind" "$locator"
+        rig_removal_normalize_identity "$adapter" "$kind" "$locator" || return
         locator=$RIG_VALUE
-        rig_removal_normalize_identity "$adapter" "$kind" "$other_locator"
+        rig_removal_normalize_identity "$adapter" "$kind" "$other_locator" || return
         [ "$locator" != "$RIG_VALUE" ] || rig_fail "[$section] duplicates removal $other" || return
       fi
     fi
@@ -10469,7 +10525,7 @@ rig_removal_identity_declared() {
         locator=$RIG_VALUE
         rig_provider_adapter "$provider" || return 2
         adapter=$RIG_VALUE
-        rig_removal_normalize_identity "$adapter" "$kind" "$locator"
+        rig_removal_normalize_identity "$adapter" "$kind" "$locator" || return 2
         locator=$RIG_VALUE
         if [ "$adapter" = homebrew ]; then locator=$kind:$locator; fi
         [ "$locator" != "$identity" ] || return 0
@@ -10529,7 +10585,7 @@ rig_remove_native() {
       return
       ;;
     uv:tool)
-      rig_removal_normalize_identity "$adapter" "$kind" "$locator"
+      rig_removal_normalize_identity "$adapter" "$kind" "$locator" || return 2
       RIG_INVOKE_ARGUMENTS+=(tool uninstall "$RIG_VALUE") ;;
     npm:global) RIG_INVOKE_ARGUMENTS+=(uninstall --global "$locator") ;;
     mise:tool) RIG_INVOKE_ARGUMENTS+=(uninstall "$locator") ;;

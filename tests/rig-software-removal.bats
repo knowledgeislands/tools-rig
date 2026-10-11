@@ -298,3 +298,115 @@ TOML
     [ ! -s "$RIG_TEST_PROVIDER_LOG" ]
   done
 }
+
+write_uv_config() {
+  local removal retained
+  removal=$1; retained=$2
+  cat >"$RIG_CONFIG_HOME/rig.toml" <<TOML
+[rig]
+default-profile = "default"
+[profile.default]
+name = "Fixture"
+[profile.other]
+name = "Unselected"
+[remove.obsolete]
+name = "Obsolete"
+provider = "uv"
+kind = "tool"
+locator = "$removal"
+platforms = ["macos"]
+[category.core]
+name = "Core"
+purpose = "Fixture"
+[tool.retained]
+name = "Retained"
+category = "core"
+purpose = "Fixture"
+rationale = "Fixture"
+platforms = ["linux"]
+profiles = ["other"]
+install.provider = "uv"
+install.kind = "tool"
+install.locator = "$retained"
+TOML
+}
+
+@test "retained uv requirements reject preview and confirmed apply before provider observations" {
+  rig_test_provider uv
+  local retained command expected_status
+  for retained in 'subject==1.0' 'subject[cli]' 'subject[cli]==1.0' \
+    'subject [cli, test] >= 1.0, != 2.*, < 3' 'subject (~=1.0)' \
+    'SUBJECT===1.0+local' 'subject!=1.0' 'subject>1.0' 'subject<=2.0'; do
+    write_uv_config subject "$retained"
+    for command in preview apply doctor; do
+      expected_status=2
+      case "$command" in
+        preview) run "$RIG" remove --dry-run ;;
+        apply) run bash -c 'printf "remove\n" | "$1" remove --apply' _ "$RIG" ;;
+        doctor) expected_status=1; run "$RIG" doctor ;;
+      esac
+      [ "$status" -eq "$expected_status" ] || { printf '%s %s: status=%s\n%s\n' "$retained" "$command" "$status" "$output"; false; }
+      [[ "$output" == *'still declared'* ]] || false
+      [ ! -s "$RIG_TEST_PROVIDER_LOG" ]
+    done
+  done
+}
+
+@test "uv case separator and extras aliases protect retained and duplicate native identities" {
+  rig_test_provider uv
+  local retained
+  for retained in 'Subject_Name[cli]==1.0' 'SUBJECT..__--NAME >= 1.0' 'subject.name'; do
+    write_uv_config subject-name "$retained"
+    run "$RIG" remove --dry-run
+    [ "$status" -eq 2 ]
+    [[ "$output" == *'still declared'* ]] || false
+    [ ! -s "$RIG_TEST_PROVIDER_LOG" ]
+  done
+  write_uv_config 'Subject_Name[cli]==2.0' 'different==1.0'
+  cat >>"$RIG_CONFIG_HOME/rig.toml" <<'TOML'
+[remove.duplicate]
+name = "Duplicate"
+provider = "uv"
+kind = "tool"
+locator = "subject-name"
+platforms = ["macos"]
+TOML
+  run "$RIG" remove --dry-run
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'duplicates removal'* ]] || false
+  [ ! -s "$RIG_TEST_PROVIDER_LOG" ]
+}
+
+@test "ambiguous uv retained and removal locators fail closed before observation or native mutation" {
+  rig_test_provider uv
+  local locator placement
+  for locator in './subject' '/fixture/subject.whl' 'https://fixture.invalid/subject.whl' \
+    'git+https://fixture.invalid/subject' 'subject @ https://fixture.invalid/subject.whl' \
+    'subject-1.0-py3-none-any.whl' 'subject-1.0.tar.gz' 'subject-1.0.zip' \
+    'subject; python_version > 3' 'subject[cli' 'subject[]' 'subject=='; do
+    for placement in retained removal; do
+      case "$placement" in
+        retained) write_uv_config unrelated "$locator" ;;
+        removal) write_uv_config "$locator" different ;;
+      esac
+      run bash -c 'printf "remove\n" | "$1" remove --apply' _ "$RIG"
+      [ "$status" -eq 2 ]
+      [[ "$output" == *'cannot safely establish a distribution identity'* ]] || false
+      [ ! -s "$RIG_TEST_PROVIDER_LOG" ]
+    done
+  done
+}
+
+@test "distinct retained uv requirement does not block explicit native removal" {
+  rig_test_provider uv
+  write_uv_config subject 'different[cli]>=1.0,<2.0'
+  rig_test_provider_response uv 'tool list' 0 'subject v1.0'
+  rig_test_provider_response uv 'tool uninstall subject' 0 -
+  run "$RIG" remove --dry-run
+  [ "$status" -eq 0 ]
+  [ "$(cat "$RIG_TEST_PROVIDER_LOG")" = 'uv|tool list' ]
+  : >"$RIG_TEST_PROVIDER_LOG"
+  run bash -c 'printf "remove\n" | "$1" remove --apply' _ "$RIG"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$RIG_TEST_PROVIDER_LOG")" = $'uv|tool list\nuv|tool list\nuv|tool uninstall subject' ]
+}
