@@ -1,14 +1,14 @@
 ---
-id: PDR-KI-RIG-001
+id: PDR-KI-TOOL-RIG-001
 title: 'Catalogue-led Working Setup'
 date: 2026-09-30
 status: current
 decision_type: product
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/pdr
-decision_depends_on: [GDR-KI-RIG-001]
+decision_depends_on: [GDR-KI-TOOL-RIG-001]
 ---
 
-# PDR-KI-RIG-001: Catalogue-led Working Setup
+# PDR-KI-TOOL-RIG-001: Catalogue-led Working Setup
 
 ## Context
 
@@ -34,4 +34,4 @@ Portable schema, lifecycle, built-in adapters, state comparison, queries, and pu
 
 ## References
 
-- [GDR-KI-RIG-001](GDR-KI-RIG-001-adopting-decision-records.md) — establishes the decision collection.
+- [GDR-KI-TOOL-RIG-001](GDR-KI-TOOL-RIG-001-adopting-decision-records.md) — establishes the decision collection.

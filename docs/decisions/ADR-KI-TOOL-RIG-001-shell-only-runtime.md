@@ -1,14 +1,14 @@
 ---
-id: ADR-KI-RIG-001
+id: ADR-KI-TOOL-RIG-001
 title: Shell-only Runtime
 date: 2026-09-22
 status: current
 decision_type: architecture
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/adr
-decision_depends_on: [PDR-KI-RIG-001]
+decision_depends_on: [PDR-KI-TOOL-RIG-001]
 ---
 
-# ADR-KI-RIG-001: Shell-only Runtime
+# ADR-KI-TOOL-RIG-001: Shell-only Runtime
 
 ## Context
 
@@ -26,4 +26,4 @@ Rig can run on a macOS or Linux machine where Bash is available. The implementat
 
 ## References
 
-- [PDR-KI-RIG-001](PDR-KI-RIG-001-catalogue-led-working-setup.md) — defines providers as independent native authorities beneath the catalogue.
+- [PDR-KI-TOOL-RIG-001](PDR-KI-TOOL-RIG-001-catalogue-led-working-setup.md) — defines providers as independent native authorities beneath the catalogue.

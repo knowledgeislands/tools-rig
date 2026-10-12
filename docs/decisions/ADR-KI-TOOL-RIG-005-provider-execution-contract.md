@@ -1,18 +1,18 @@
 ---
-id: ADR-KI-RIG-005
+id: ADR-KI-TOOL-RIG-005
 title: 'Provider Execution Contract'
 date: 2026-09-30
 status: current
 decision_type: architecture
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/adr
-decision_depends_on: [PDR-KI-RIG-001, ADR-KI-RIG-003, XDR-KI-RIG-001]
+decision_depends_on: [PDR-KI-TOOL-RIG-001, ADR-KI-TOOL-RIG-003, XDR-KI-TOOL-RIG-001]
 ---
 
-# ADR-KI-RIG-005: Provider Execution Contract
+# ADR-KI-TOOL-RIG-005: Provider Execution Contract
 
 ## Context
 
-Rig resolves profiles into tools, skills, and managed resources, then asks native systems to observe or materialise that intent. Built-in managers and external extensions need one public state model without turning Rig into a competing package database. External executables also cross the trust boundary established by XDR-KI-RIG-001.
+Rig resolves profiles into tools, skills, and managed resources, then asks native systems to observe or materialise that intent. Built-in managers and external extensions need one public state model without turning Rig into a competing package database. External executables also cross the trust boundary established by XDR-KI-TOOL-RIG-001.
 
 Provider work must preserve native argument boundaries, distinguish observation from mutation, disclose the breadth of consequential operations, and fail predictably. Ordinary users should not have to configure Rig's internal adapter registry or invocation protocol.
 
@@ -36,6 +36,6 @@ Native dependency effects remain provider-owned, while Rig identifies the declar
 
 ## References
 
-- [PDR-KI-RIG-001](PDR-KI-RIG-001-catalogue-led-working-setup.md) — establishes the manager-of-managers product boundary.
-- [ADR-KI-RIG-003](ADR-KI-RIG-003-declarative-configuration-grammar.md) — keeps ordinary configuration declarative.
-- [XDR-KI-RIG-001](XDR-KI-RIG-001-executable-provider-boundary.md) — establishes executable trust transitions.
+- [PDR-KI-TOOL-RIG-001](PDR-KI-TOOL-RIG-001-catalogue-led-working-setup.md) — establishes the manager-of-managers product boundary.
+- [ADR-KI-TOOL-RIG-003](ADR-KI-TOOL-RIG-003-declarative-configuration-grammar.md) — keeps ordinary configuration declarative.
+- [XDR-KI-TOOL-RIG-001](XDR-KI-TOOL-RIG-001-executable-provider-boundary.md) — establishes executable trust transitions.

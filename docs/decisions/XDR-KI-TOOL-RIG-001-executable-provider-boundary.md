@@ -1,14 +1,14 @@
 ---
-id: XDR-KI-RIG-001
+id: XDR-KI-TOOL-RIG-001
 title: 'Executable Provider Boundary'
 date: 2026-09-30
 status: current
 decision_type: security
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/xdr
-decision_depends_on: [PDR-KI-RIG-001, ADR-KI-RIG-003]
+decision_depends_on: [PDR-KI-TOOL-RIG-001, ADR-KI-TOOL-RIG-003]
 ---
 
-# XDR-KI-RIG-001: Executable Provider Boundary
+# XDR-KI-TOOL-RIG-001: Executable Provider Boundary
 
 ## Context
 
@@ -34,5 +34,5 @@ The exact operation allow-lists, observation formats, lifecycle commands, and di
 
 ## References
 
-- [PDR-KI-RIG-001](PDR-KI-RIG-001-catalogue-led-working-setup.md) — defines the declarative product boundary.
-- [ADR-KI-RIG-003](ADR-KI-RIG-003-declarative-configuration-grammar.md) — establishes inert configuration.
+- [PDR-KI-TOOL-RIG-001](PDR-KI-TOOL-RIG-001-catalogue-led-working-setup.md) — defines the declarative product boundary.
+- [ADR-KI-TOOL-RIG-003](ADR-KI-TOOL-RIG-003-declarative-configuration-grammar.md) — establishes inert configuration.

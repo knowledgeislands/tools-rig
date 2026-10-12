@@ -1,14 +1,14 @@
 ---
-id: ADR-KI-RIG-002
+id: ADR-KI-TOOL-RIG-002
 title: 'XDG Directory Contract'
 date: 2026-09-22
 status: current
 decision_type: architecture
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/adr
-decision_depends_on: [ADR-KI-RIG-001]
+decision_depends_on: [ADR-KI-TOOL-RIG-001]
 ---
 
-# ADR-KI-RIG-002: XDG Directory Contract
+# ADR-KI-TOOL-RIG-002: XDG Directory Contract
 
 ## Context
 
@@ -30,5 +30,5 @@ The installer cannot derive an executable destination from XDG alone, so its `~/
 
 ## References
 
-- [ADR-KI-RIG-001](ADR-KI-RIG-001-shell-only-runtime.md) — establishes the portable core constraint.
+- [ADR-KI-TOOL-RIG-001](ADR-KI-TOOL-RIG-001-shell-only-runtime.md) — establishes the portable core constraint.
 - [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html) — defines the base-directory model.

@@ -1,5 +1,5 @@
 ---
-id: KI-RIG-CORE-042
+id: KI-TOOL-RIG-CORE-042
 area: CORE
 title: Profile-filtered Dock items
 initiative: rig
@@ -11,7 +11,7 @@ created_at: 2026-10-09T15:03:37Z
 updated_at: 2026-10-11T01:55:56Z
 ---
 
-# KI-RIG-CORE-042: Profile-Filtered Dock Items
+# KI-TOOL-RIG-CORE-042: Profile-Filtered Dock Items
 
 ## Goal
 
@@ -19,7 +19,7 @@ One Dock layout declares a single ordered list of items for every machine, and e
 
 ## Context
 
-Kris asked for this on 2026-10-09 while splitting his Rig into `core`, `laptop` and `studio` profiles (mac-studio-bootstrap thread, Decision 13, answers 6 and 7): "identical on both except where an app is not on both, but even then the place where it would be is consistent - so one order but items might be machine specific". The consumer is [DOTFILES-UE-075](https://github.com/krisb/dotfiles/blob/4817b1947e10e047413288464280061a141de7ab/docs/roadmap/DOTFILES-UE-075-sol-tailscale-daemon-exception.md) in the chezmoi source, which owns the profile split and the personal Dock declaration.
+Kris asked for this on 2026-10-09 while splitting his Rig into `core`, `laptop` and `studio` profiles (mac-studio-bootstrap thread, Decision 13, answers 6 and 7): "identical on both except where an app is not on both, but even then the place where it would be is consistent - so one order but items might be machine specific". The consumer is [KB-DOTFILES-UE-075](https://github.com/krisb/dotfiles/blob/4817b1947e10e047413288464280061a141de7ab/docs/roadmap/KB-DOTFILES-UE-075-sol-tailscale-daemon-exception.md) in the chezmoi source, which owns the profile split and the personal Dock declaration.
 
 What Rig does today:
 
@@ -32,7 +32,7 @@ The workaround without this record is a chezmoi template that renders one Dock l
 ## Boundary
 
 - **In:** an optional link from a Dock item to the membership that decides whether it shows; filtering a layout's items by the resolved profile while keeping declared order; `rig show`, `rig status`, `rig doctor`, `rig apply --dry-run` and `rig apply` agreeing on the filtered list; validation and specification changes; tests.
-- **Out:** choosing the personal Dock order or memberships (DOTFILES-UE-075); filtering by what is installed rather than what is declared, which would make the Dock depend on observed state; removing apps.
+- **Out:** choosing the personal Dock order or memberships (KB-DOTFILES-UE-075); filtering by what is installed rather than what is declared, which would make the Dock depend on observed state; removing apps.
 
 ## Discussion
 

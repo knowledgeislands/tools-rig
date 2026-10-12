@@ -1,14 +1,14 @@
 ---
-id: ADR-KI-RIG-006
+id: ADR-KI-TOOL-RIG-006
 title: 'Declarative Operational Resources'
 date: 2026-09-30
 status: current
 decision_type: architecture
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/adr
-decision_depends_on: [PDR-KI-RIG-001, ADR-KI-RIG-003, ADR-KI-RIG-005, XDR-KI-RIG-001]
+decision_depends_on: [PDR-KI-TOOL-RIG-001, ADR-KI-TOOL-RIG-003, ADR-KI-TOOL-RIG-005, XDR-KI-TOOL-RIG-001]
 ---
 
-# ADR-KI-RIG-006: Declarative Operational Resources
+# ADR-KI-TOOL-RIG-006: Declarative Operational Resources
 
 ## Context
 
@@ -34,7 +34,7 @@ Personal values stay in private configuration. Portable resource schema and buil
 
 ## References
 
-- [PDR-KI-RIG-001](PDR-KI-RIG-001-catalogue-led-working-setup.md) — establishes the catalogue and profile model.
-- [ADR-KI-RIG-003](ADR-KI-RIG-003-declarative-configuration-grammar.md) — establishes inert declarations.
-- [ADR-KI-RIG-005](ADR-KI-RIG-005-provider-execution-contract.md) — establishes orchestration and provider ownership.
-- [XDR-KI-RIG-001](XDR-KI-RIG-001-executable-provider-boundary.md) — defines external execution boundaries.
+- [PDR-KI-TOOL-RIG-001](PDR-KI-TOOL-RIG-001-catalogue-led-working-setup.md) — establishes the catalogue and profile model.
+- [ADR-KI-TOOL-RIG-003](ADR-KI-TOOL-RIG-003-declarative-configuration-grammar.md) — establishes inert declarations.
+- [ADR-KI-TOOL-RIG-005](ADR-KI-TOOL-RIG-005-provider-execution-contract.md) — establishes orchestration and provider ownership.
+- [XDR-KI-TOOL-RIG-001](XDR-KI-TOOL-RIG-001-executable-provider-boundary.md) — defines external execution boundaries.

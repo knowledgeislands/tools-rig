@@ -1,6 +1,6 @@
 # Personal-site publication — RIG-PUB
 
-This area of the [Rig Specifications](index.md) defines the public projection established by [ADR-KI-RIG-004](../decisions/ADR-KI-RIG-004-static-publication-projection.md).
+This area of the [Rig Specifications](index.md) defines the public projection established by [ADR-KI-TOOL-RIG-004](../decisions/ADR-KI-TOOL-RIG-004-static-publication-projection.md).
 
 ## Projection
 
