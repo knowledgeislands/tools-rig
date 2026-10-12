@@ -3,12 +3,17 @@ id: KI-TOOL-RIG-CORE-042
 area: CORE
 title: Profile-filtered Dock items
 initiative: rig
-status: triage
+kind: deliver
+horizon: hold
+status: draft
+hold:
+  reason: parked
+  condition: Kris explicitly releases local planning through Rig mac-studio-bootstrap.
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-09T15:03:37Z
-updated_at: 2026-10-11T01:55:56Z
+updated_at: 2026-10-12T07:13:21Z
 ---
 
 # KI-TOOL-RIG-CORE-042: Profile-Filtered Dock Items
@@ -42,3 +47,7 @@ The workaround without this record is a chezmoi template that renders one Dock l
 - **Reporting.** `rig show dock:ID --profile NAME` and the dry run should list the omitted items and why, so a missing icon is explainable without reading the catalogue.
 - **Status equality.** Observation compares the live Dock with the filtered list, so the laptop's current 38-item Dock must stay `present` when nothing it selects changes.
 - **Specifications touched.** RIG-CONF-018 (item fields), RIG-ORCH-027 (unchanged rule, but note filtering happens before the one-layout check), and RIG-STATE-021 (Dock observation and dry-run disclosure).
+
+### Adoption and hold approval
+
+Kris approved adoption in tools-burndown Decision 11 (12 October 2026): "I approve your recommendation, I can review it further later". This record is adopted as Deliver / draft on Hold. Local planning remains held until Kris explicitly releases it through Rig mac-studio-bootstrap. Adoption grants no planning, implementation, acceptance or release authority.
