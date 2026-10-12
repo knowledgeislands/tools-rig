@@ -4,23 +4,20 @@ area: CORE
 title: Profile-filtered Dock items
 initiative: rig
 kind: deliver
-horizon: hold
+horizon: next
 status: draft
-hold:
-  reason: parked
-  condition: Kris explicitly releases local planning through Rig mac-studio-bootstrap.
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-09T15:03:37Z
-updated_at: 2026-10-12T07:13:21Z
+updated_at: 2026-10-12T17:10:40Z
 ---
 
 # KI-TOOL-RIG-CORE-042: Profile-Filtered Dock Items
 
 ## Goal
 
-One Dock layout declares a single ordered list of items for every machine, and each resolved profile shows only the items it selects, in the same relative order. A machine without an app gets no gap and no preflight failure; a machine with it gets it in its usual place.
+One Dock layout declares a single ordered list of items for every machine, and each resolved profile shows only the items it selects, in the same relative order. An app excluded by the resolved profile leaves no gap or missing-path preflight failure; a selected app keeps its relative place and remains an observable error if its path is missing.
 
 ## Context
 
@@ -39,15 +36,93 @@ The workaround without this record is a chezmoi template that renders one Dock l
 - **In:** an optional link from a Dock item to the membership that decides whether it shows; filtering a layout's items by the resolved profile while keeping declared order; `rig show`, `rig status`, `rig doctor`, `rig apply --dry-run` and `rig apply` agreeing on the filtered list; validation and specification changes; tests.
 - **Out:** choosing the personal Dock order or memberships (KB-DOTFILES-UE-075); filtering by what is installed rather than what is declared, which would make the Dock depend on observed state; removing apps.
 
+## Current state
+
+Source inspection at `bbe1d86cae434ffc72d8b0f21ec64055e9efb5d8` grounds this proposed plan; it is not an implementation baseline. The record is draft Next, every delivery step remains unchecked, and `baseline_ref` remains null until implementation is authorised. No filtering feature or new behavioural test has been delivered during planning.
+
+- [Configuration and profile resolution](../../src/rig/10-configuration.bash) accept no Dock-item `tool` field. `rig_resolve_profile` completes inherited central or item-owned tool membership, platform filtering and transitive requirements before returning. Use that final selected-tool set, not a direct profile label or an installation observation.
+- [Dock orchestration](../../src/rig/20-orchestration.bash) reads every raw `item` in `rig_dock_expected_paths`, `rig_dock_observe_attributes` and `rig_dock_apply`. `rig_append_resource_fields` also projects the unfiltered layout. Filtering only expected paths would leave mutation and reporting inconsistent.
+- [Apply sequencing](../../src/rig/23-application.bash) preflights resources before tool execution, then executes tools before resources. `rig_resource_blocker` checks explicit `requires` and `depends-on`; `rig_select_resource` expands explicit requirements into tool selection. A new implicit requirement could select otherwise excluded apps, block catalogue-only tools despite an existing app path, and still cannot promise installation repairs an initially missing Dock path in the same run.
+- [Command presentation](../../src/rig/30-commands.bash) rejects an item target combined with `--profile`; `rig_explain_dock_items` lists raw items. Profile resource text/JSON and [status/doctor reporting](../../src/rig/22-observation.bash) do not expose a shared Dock inclusion/exclusion projection.
+- [Existing macOS fixtures](../../tests/rig-macos.bats) and [Dock observation fixtures](../../tests/rig-dock-observation.bats) already inject native commands. They establish current behaviour, not evidence for this proposed feature.
+
+## Steps
+
+- [ ] After Kris approves this plan, re-read authority and source, establish the immutable implementation baseline through `ki-implement`, and retain the agreed boundary. Stop for review if source drift changes the dependency or preflight assumptions below.
+- [ ] Extend scalar field recognition, TOML mapping and `rig_validate_dock_item` for optional `tool = "ID"`; require a valid existing tool identifier even on an excluded or unused item. Keep kind/path and folder validation unchanged, and keep item-owned `profiles` unsupported.
+- [ ] Add one shared Dock-item resolution/projection helper over the completed profile/platform tool selection. Walk declared `items` in source order; include unlinked items and linked items whose tool is selected, including tools selected transitively. Retain excluded IDs and reasons separately. Do not mutate authored items, select tools from links, or use filesystem/provider state for membership. Reset per-command state and protect saved values from `RIG_VALUE` clobbering.
+- [ ] Route expected paths, folder-attribute observation, preflight, native add order and dry-run resource fields through that same included-item projection. An empty included list is valid: comparison expects an empty Dock, preflight checks no blank path, and fixture apply removes all items with no add calls. Preserve the one-selected-layout-per-provider conflict rule even when a layout filters to empty.
+- [ ] Add profile-aware `rig show dock:ID --profile NAME` in text and JSON, using the default resolved profile when the Dock target has no profile option. Display declared positions, compact included positions, linked tool and exclusion reasons; an unselected target layout is explained as unselected without entering execution. Preserve other target-option restrictions. Share the item selection/exclusion details with resolved-profile show, status, doctor and apply/dry-run reports, while retaining their existing envelopes and state/exit semantics.
+- [ ] Preserve selected missing-path failure before any Dock mutation, with `dock-item-path-missing` identifying the item/path in apply and dry-run. Status/doctor must expose missing selected path evidence as unhealthy rather than imply agreement from an icon alone. Excluded missing paths and folder attributes cause no health failure. Keep explicit `requires`/`depends-on` blocking and existing tool-before-resource sequencing; do not add implicit tool prerequisites.
+- [ ] Add isolated public-command Bats coverage with shared catalogue/native fixtures and exact invocation assertions for the verification cases below; retain existing Dock path, URL, order, folder-attribute and snapshot regressions.
+- [ ] Align the existing specifications, operational/profile/command guides, command-local help, manual and active changelog; assemble `bin/rig` from authored modules, then run the permitted offline developer gate and assemble an honest implementation review packet. Native-provider smoke and live apply remain outside this plan's execution authority.
+
+## Files touched
+
+This preparation changes only this canonical roadmap record. Expected later delivery scope:
+
+- [Runtime help and command metadata](../../src/rig/00-runtime.bash), [configuration](../../src/rig/10-configuration.bash), [Dock orchestration](../../src/rig/20-orchestration.bash), [observation reports](../../src/rig/22-observation.bash), [apply projection](../../src/rig/23-application.bash), [show/explain](../../src/rig/30-commands.bash), and assembled [executable](../../bin/rig). Keep the authored version unchanged unless separately required; add no runtime dependency.
+- New `tests/rig-dock-profiles.bats`; existing [macOS tests](../../tests/rig-macos.bats), [Dock observation tests](../../tests/rig-dock-observation.bats), [profile-authority tests](../../tests/rig-profile-authority.bats), and [command-surface tests](../../tests/rig-cli-surface.bats) for affected regressions. Reuse [test isolation](../../tests/helpers/isolate.bash) without changing its containment contract.
+- [Configuration](../specs/configuration.md), [orchestration](../specs/orchestration.md) and [state](../specs/state.md) specifications; [operational resources](../guides/user/operational-resources.md), [profiles](../guides/user/profiles.md) and [commands](../guides/user/commands.md) guides; [README command overview](../../README.md), [manual](../../man/rig.1) and [changelog](../../CHANGELOG.md) where affected.
+
+## Verify
+
+These are planned delivery checks, not results of this planning unit. Each Bats `setup` starts with `rig_test_isolate`; use only test-owned HOME/XDG/Rig roots, applications and state, exact native/provider fakes, and the inert launchd domain. Assert native logs as well as output so a real preference write cannot masquerade as a contained result.
+
+- **Membership and order:** declare `items = ["system", "shared", "laptop-only", "studio-only", "downloads"]`. Leave `system` and `downloads` unlinked; link the other items to tools with matching IDs. Select `shared` in `core`, with `laptop` and `studio` inheriting `core` and selecting their respective extra tool. For both central profiles and item-owned tool membership, assert laptop includes `[system, shared, laptop-only, downloads]` and excludes `studio-only`; studio includes `[system, shared, studio-only, downloads]` and excludes `laptop-only`. Both use compact positions 1–4 and retain declared positions for explanation; transitive selected tools qualify in a separate fixture. Changing catalogue tool sorting never reorders Dock items, and legacy items without links preserve their complete original list.
+- **Platform and validation:** a Linux-only linked tool is excluded from a macOS Dock with a platform reason; a supported tool absent from the resolved selection gets a profile-selection reason. Selecting a macOS Dock on Linux still follows existing resource-platform refusal. Unknown, empty, malformed or non-string links fail validation before any native invocation, even if the item would be excluded. `dock-item.profiles` remains rejected.
+- **Command parity:** invoke show (target/default/explicit profile and resolved profile, text/JSON), status (text/JSON), doctor, dry-run and fake apply on the same fixture. Assert identical included IDs/order and excluded IDs/reasons across reports; native add calls match included expanded paths exactly. Read-only commands and dry-run log no defaults write/delete, dockutil add/remove or killall call.
+- **Observation and failure:** an exact filtered Dock is `present`; genuine order or included folder-attribute drift is unhealthy, and excluded folder attributes are never queried. A selected missing app remains included, produces visible missing-path failure in dry-run/apply and unhealthy status/doctor evidence, and performs no Dock mutation. A missing excluded app succeeds. An all-excluded layout observes/applies the empty sequence without checking an empty path. Two selected layouts still conflict before native invocation.
+- **Dependency regression:** links never expand membership or prerequisites; all-scope fake apply retains tools-before-Dock order, while resources-only apply never installs linked tools. Explicit requirements still select transitive tools and suppress dependent Dock mutation on failure. A catalogue-only linked tool with an existing path is included without an implicit blocker. Initial missing-path preflight remains an error even if a selected tool's fake install could later create the app; this plan does not move preflight.
+
+Run focused fixtures with stdin closed:
+
+```sh
+bats tests/rig-dock-profiles.bats tests/rig-macos.bats tests/rig-dock-observation.bats tests/rig-profile-authority.bats tests/rig-cli-surface.bats </dev/null
+```
+
+Then use [Develop Rig's single complete command list](../guides/developer/README.md#verify-the-repository): full repository audit, ShellCheck, Bash syntax, assembly drift, fixture benchmark, complete isolated Bats suite, mandoc and diff checks. Use the two-second benchmark budget for resolution/query changes and inspect rendered manual changes. Every `ki` call in this run uses the authorised config-restoring wrapper. Do not run native-provider smoke, live macOS apply, sol or SSH operations under this grant; report that withheld gate explicitly rather than claiming a complete operational check. No planning audit or existing regression run proves the unimplemented feature.
+
+## Dependencies / blocks
+
+The existing `blocks: []` and `blocked_by: []` remain unchanged. Local portable implementation has no dependency on the Studio restart, personal catalogue/order edits or the chezmoi consumer. Decision 15 satisfies the named Hold release condition; owner approval of this concrete plan is the remaining readiness gate. The published principal/mac-studio checkpoints still describe the earlier Hold and are owner-owned; this unit records the later exact approval here and does not mutate either checkpoint.
+
+## Documentation impact
+
+### Decision Records
+
+No new Decision Record is proposed: this is a bounded extension of existing profile and resource contracts. Keep the reviewed linkage/prerequisite rationale here until accepted behaviour is carried by the existing specifications; a wider dependency/preflight redesign would require renewed owner review.
+
+### Specifications
+
+Extend RIG-CONF-018 with tool-link validation, RIG-STATE-021 with filtered projection and missing-selected-path diagnostics, and the existing Dock observation contract RIG-STATE-036 with filtered paths/attributes. Preserve RIG-ORCH-027's layout-level conflict rule; document filtering after final tool selection, not as a way to merge layouts or bypass conflicts. Keep RIG-ORCH-020's explicit tool prerequisites and RIG-ORCH-030's resource sequencing unchanged. Preserve existing requirement IDs and truthful conformance/evidence; do not claim proposed behaviour already conforms.
+
+### Guides
+
+Explain the optional tool link, inherited/platform membership, stable relative order, omitted-item reasons, profile-aware Dock show and selected missing-path error in existing user guides. Align help, manual, emitted completion metadata and changelog where the show option combination/output changes. Use synthetic examples; personal configuration stays with its owner.
+
+### Roadmap
+
+Retain this record as draft Next for review; no Ready, implementation, acceptance, prune or release is performed during preparation. The existing chezmoi consumer owns any later personal declaration adoption. No new record or owner-checkpoint mutation is needed.
+
 ## Discussion
 
-- **Proposed shape.** `[dock-item.ID]` MAY declare `tool = "ID"`. The resolved layout includes the item only when the resolved profile selects that tool for the active platform; an item without `tool` (system apps, folders) is always included. This reuses the tool's existing membership, so Kris labels an app once. Validation rejects an unknown tool.
-- **Alternative.** Item-owned `profiles` on `[dock-item.ID]`, following [RIG-CONF-020](../specs/configuration.md). More general (it covers items with no tool), but labels the same fact twice and needs a different rule for an omitted array, since "omitted means the default profile" would be wrong for Dock items. Decide whether to offer both, `tool` first.
-- **Requires.** Decide whether a linked item's tool should join the layout's `requires` automatically, so apply installs the app before the Dock step, or stay ordering-only.
-- **Reporting.** `rig show dock:ID --profile NAME` and the dry run should list the omitted items and why, so a missing icon is explainable without reading the catalogue.
-- **Status equality.** Observation compares the live Dock with the filtered list, so the laptop's current 38-item Dock must stay `present` when nothing it selects changes.
-- **Specifications touched.** RIG-CONF-018 (item fields), RIG-ORCH-027 (unchanged rule, but note filtering happens before the one-layout check), and RIG-STATE-021 (Dock observation and dry-run disclosure).
+### Proposed contract for owner review
+
+Recommend optional `tool = "ID"` on a Dock item, with membership determined by the final resolved profile/platform tool set and order determined only by the layout's declared `items`. Unlinked system apps/folders remain included. Do not add item-owned profiles: they duplicate app membership and introduce omitted-array policy without a demonstrated need. The link does not infer an application path from tool installation metadata.
+
+Exclusion reporting names the item, linked tool and either unsupported platform or absence from resolved profile selection, with platform exclusion taking precedence. Preserve original declared positions for explanation and compact included positions for execution. Filesystem observations affect health and preflight only; they never decide inclusion.
+
+### Prerequisites and first-run behaviour
+
+Recommend **filter/order-only linkage, with no automatic prerequisites**. Current resources already run after the tool phase. Turning every linked tool into `requires` would defeat profile exclusion by selecting the whole shared list; even conditional implicit dependencies add blocking semantics to catalogue-only applications. Owners who need installation/failure dependencies can continue declaring explicit layout `requires`, understanding that those tools become selected on every profile selecting that layout. Linking alone does not promise a successful install-before-Dock first run because current resource preflight runs before installation. A selected missing path must stay an observable error, and changing that preflight order is out of this bounded plan.
+
+### Approval boundary
+
+Kris should approve the tool-link-only schema, final-selection membership, filter/order-only dependency choice and the verification contract above before this record becomes Ready. That later approval permits local fixture-backed delivery, not personal Dock/order/configuration changes or live provider/host operations. If automatic conditional prerequisites or item-owned profiles are preferred, revise this draft before implementation.
 
 ### Adoption and hold approval
 
-Kris approved adoption in tools-burndown Decision 11 (12 October 2026): "I approve your recommendation, I can review it further later". This record is adopted as Deliver / draft on Hold. Local planning remains held until Kris explicitly releases it through Rig mac-studio-bootstrap. Adoption grants no planning, implementation, acceptance or release authority.
+Kris approved adoption in tools-burndown Decision 11 (12 October 2026): "I approve your recommendation, I can review it further later". That approval adopted the record as Deliver / draft on Hold, pending explicit local-planning release through Rig mac-studio-bootstrap. Adoption itself granted no planning, implementation, acceptance or release authority.
+
+Kris explicitly released this record from Hold in tools-burndown Decision 15 (12 October 2026): "lets get this done, no need to park it". Under `ki-next`, the destination is Deliver / draft Next, with the hold mapping removed and existing classification and dependencies preserved. This supersedes the Decision 11 planning hold only: prepare a reviewable canonical local plan under `ki-plan`, then obtain explicit plan approval before Ready or implementation. It grants no personal Dock/configuration change, macOS apply, sol operation, acceptance, pruning, or release.
