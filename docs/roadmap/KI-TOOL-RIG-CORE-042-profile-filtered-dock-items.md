@@ -5,12 +5,12 @@ title: Profile-filtered Dock items
 initiative: rig
 kind: deliver
 horizon: next
-status: draft
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-09T15:03:37Z
-updated_at: 2026-10-12T17:10:40Z
+updated_at: 2026-10-12T19:57:24Z
 ---
 
 # KI-TOOL-RIG-CORE-042: Profile-Filtered Dock Items
@@ -103,7 +103,7 @@ Explain the optional tool link, inherited/platform membership, stable relative o
 
 ### Roadmap
 
-Retain this record as draft Next for review; no Ready, implementation, acceptance, prune or release is performed during preparation. The existing chezmoi consumer owns any later personal declaration adoption. No new record or owner-checkpoint mutation is needed.
+Kris approved the plan on 12 October 2026, so the record is Ready at Next. No implementation, acceptance, prune or release has been performed. The existing chezmoi consumer owns any later personal declaration adoption. No new record or owner-checkpoint mutation is needed.
 
 ## Discussion
 
@@ -126,3 +126,7 @@ Kris should approve the tool-link-only schema, final-selection membership, filte
 Kris approved adoption in tools-burndown Decision 11 (12 October 2026): "I approve your recommendation, I can review it further later". That approval adopted the record as Deliver / draft on Hold, pending explicit local-planning release through Rig mac-studio-bootstrap. Adoption itself granted no planning, implementation, acceptance or release authority.
 
 Kris explicitly released this record from Hold in tools-burndown Decision 15 (12 October 2026): "lets get this done, no need to park it". Under `ki-next`, the destination is Deliver / draft Next, with the hold mapping removed and existing classification and dependencies preserved. This supersedes the Decision 11 planning hold only: prepare a reviewable canonical local plan under `ki-plan`, then obtain explicit plan approval before Ready or implementation. It grants no personal Dock/configuration change, macOS apply, sol operation, acceptance, pruning, or release.
+
+### Plan approval
+
+On 12 October 2026 Kris approved this plan as written (state-of-play thread, Decision 147): the tool-link-only schema, final-selection membership, the filter/order-only dependency choice and the verification contract above. The record moves to `ready` at Next. The approval permits local, fixture-backed delivery through `ki-implement` only; it grants no personal Dock, order or configuration change, no macOS apply, no `sol` or other live host operation, and no acceptance, pruning or release.
