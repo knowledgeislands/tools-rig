@@ -1,14 +1,14 @@
 ---
-id: ADR-RIG-003
+id: ADR-KI-RIG-003
 title: 'Declarative Configuration Grammar'
 date: 2026-09-22
 status: current
 decision_type: architecture
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/adr
-decision_depends_on: [PDR-RIG-001, ADR-RIG-001, ADR-RIG-002]
+decision_depends_on: [PDR-KI-RIG-001, ADR-KI-RIG-001, ADR-KI-RIG-002]
 ---
 
-# ADR-RIG-003: Declarative Configuration Grammar
+# ADR-KI-RIG-003: Declarative Configuration Grammar
 
 ## Context
 
@@ -34,7 +34,7 @@ Ordinary configuration states intent and native ownership. Adapter selection, ca
 
 ## References
 
-- [PDR-RIG-001](PDR-RIG-001-catalogue-led-working-setup.md) — establishes the catalogue-led declarative model.
-- [ADR-RIG-001](ADR-RIG-001-shell-only-runtime.md) — requires a Bash 3.2-compatible dependency-free core.
-- [ADR-RIG-002](ADR-RIG-002-xdg-directory-contract.md) — defines the XDG application-directory contract.
-- [XDR-RIG-001](XDR-RIG-001-executable-provider-boundary.md) — defines executable trust transitions.
+- [PDR-KI-RIG-001](PDR-KI-RIG-001-catalogue-led-working-setup.md) — establishes the catalogue-led declarative model.
+- [ADR-KI-RIG-001](ADR-KI-RIG-001-shell-only-runtime.md) — requires a Bash 3.2-compatible dependency-free core.
+- [ADR-KI-RIG-002](ADR-KI-RIG-002-xdg-directory-contract.md) — defines the XDG application-directory contract.
+- [XDR-KI-RIG-001](XDR-KI-RIG-001-executable-provider-boundary.md) — defines executable trust transitions.

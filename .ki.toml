@@ -14,10 +14,10 @@ harnesses = [
 repo_type = "project"
 primary_shape = "ki-repo-tools"
 repository = "https://github.com/knowledgeislands/tools-rig"
-title = "Rig"
-capital = "https://github.com/knowledgeislands/ki-arcadia-principal"
+title = "rig"
+capital = "https://github.com/knowledgeislands/ki-principal"
 description = "Describe and manage a person's working setup through catalogues, profiles, providers, and machine state."
-repo_code = "RIG"
+repo_code = "KI-RIG"
 supported_runtimes = [
   "claude-code",
   "claude-desktop",

@@ -1,6 +1,6 @@
 # Profile and provider orchestration — RIG-ORCH
 
-This area of the [Rig Specifications](index.md) defines profile and provider orchestration beneath the catalogue model in [PDR-RIG-001](../decisions/PDR-RIG-001-catalogue-led-working-setup.md). Provider execution follows [ADR-RIG-005](../decisions/ADR-RIG-005-provider-execution-contract.md) and the trust boundary in [XDR-RIG-001](../decisions/XDR-RIG-001-executable-provider-boundary.md).
+This area of the [Rig Specifications](index.md) defines profile and provider orchestration beneath the catalogue model in [PDR-KI-RIG-001](../decisions/PDR-KI-RIG-001-catalogue-led-working-setup.md). Provider execution follows [ADR-KI-RIG-005](../decisions/ADR-KI-RIG-005-provider-execution-contract.md) and the trust boundary in [XDR-KI-RIG-001](../decisions/XDR-KI-RIG-001-executable-provider-boundary.md).
 
 ## Profiles
 

@@ -1,6 +1,6 @@
 # Expected and observed state — RIG-STATE
 
-This area of the [Rig Specifications](index.md) defines comparison and application beneath [PDR-RIG-001](../decisions/PDR-RIG-001-catalogue-led-working-setup.md), [ADR-RIG-005](../decisions/ADR-RIG-005-provider-execution-contract.md), and the execution boundary in [XDR-RIG-001](../decisions/XDR-RIG-001-executable-provider-boundary.md).
+This area of the [Rig Specifications](index.md) defines comparison and application beneath [PDR-KI-RIG-001](../decisions/PDR-KI-RIG-001-catalogue-led-working-setup.md), [ADR-KI-RIG-005](../decisions/ADR-KI-RIG-005-provider-execution-contract.md), and the execution boundary in [XDR-KI-RIG-001](../decisions/XDR-KI-RIG-001-executable-provider-boundary.md).
 
 ## Observation
 
@@ -218,7 +218,7 @@ _Conformance:_ conforming
 
 _Verify:_ Bats tests XDG and Rig state overrides, first write, exact content, profile deselection, catalogue deletion, retention of a declared row a narrow selection omits, rename transfer, malformed records, unsafe targets, native failure preservation, atomic replacement, and empty successful receipts.
 
-_Evidence:_ receipt helpers read a bounded four-field format, compare each row against the catalogue through `rig_declared_resource_has_locator`, preflight the filesystem boundary, write a mode-restricted sibling temporary file, and rename only after success; [ADR-RIG-008](../decisions/ADR-RIG-008-catalogue-scoped-resource-retirement.md) records why retirement follows the catalogue rather than the selection.
+_Evidence:_ receipt helpers read a bounded four-field format, compare each row against the catalogue through `rig_declared_resource_has_locator`, preflight the filesystem boundary, write a mode-restricted sibling temporary file, and rename only after success; [ADR-KI-RIG-008](../decisions/ADR-KI-RIG-008-catalogue-scoped-resource-retirement.md) records why retirement follows the catalogue rather than the selection.
 
 ### RIG-STATE-021 — Typed machine-resource state
 
@@ -250,7 +250,7 @@ _Conformance:_ conforming
 
 _Verify:_ Bats covers missing, unsafe, structurally damaged, broken-executable, and healthy application artifacts without invoking a generator, and covers a link into a healthy application, a dangling link, a link into a damaged application, a cyclic link, a relative link target, and a link to an unsupported target.
 
-_Evidence:_ `rig_observe_tool_artifacts` and `rig_resolve_artifact_link` implement the state contract; [ADR-RIG-007](../decisions/ADR-RIG-007-resolved-artifact-link-evidence.md) records the evidence boundary; `tests/rig-artifacts.bats` supplies isolated filesystem evidence.
+_Evidence:_ `rig_observe_tool_artifacts` and `rig_resolve_artifact_link` implement the state contract; [ADR-KI-RIG-007](../decisions/ADR-KI-RIG-007-resolved-artifact-link-evidence.md) records the evidence boundary; `tests/rig-artifacts.bats` supplies isolated filesystem evidence.
 
 ### RIG-STATE-024 — Declaration-kind deselection
 

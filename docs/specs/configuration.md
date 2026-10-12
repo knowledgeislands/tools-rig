@@ -1,6 +1,6 @@
 # Declarative configuration — RIG-CONF
 
-This area of the [Rig Specifications](index.md) defines the inert TOML configuration contract established by [ADR-RIG-003](../decisions/ADR-RIG-003-declarative-configuration-grammar.md) and protected by [XDR-RIG-001](../decisions/XDR-RIG-001-executable-provider-boundary.md).
+This area of the [Rig Specifications](index.md) defines the inert TOML configuration contract established by [ADR-KI-RIG-003](../decisions/ADR-KI-RIG-003-declarative-configuration-grammar.md) and protected by [XDR-KI-RIG-001](../decisions/XDR-KI-RIG-001-executable-provider-boundary.md).
 
 ## Files and versioning
 

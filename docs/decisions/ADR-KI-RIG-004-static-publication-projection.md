@@ -1,14 +1,14 @@
 ---
-id: ADR-RIG-004
+id: ADR-KI-RIG-004
 title: 'Static Publication Projection'
 date: 2026-09-22
 status: current
 decision_type: architecture
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/adr
-decision_depends_on: [PDR-RIG-001, ADR-RIG-003, XDR-RIG-001]
+decision_depends_on: [PDR-KI-RIG-001, ADR-KI-RIG-003, XDR-KI-RIG-001]
 ---
 
-# ADR-RIG-004: Static Publication Projection
+# ADR-KI-RIG-004: Static Publication Projection
 
 ## Context
 
@@ -36,6 +36,6 @@ Schema consumers select support by the top-level format version. Presentation, t
 
 ## References
 
-- [PDR-RIG-001](PDR-RIG-001-catalogue-led-working-setup.md) — establishes the private catalogue as authority.
-- [ADR-RIG-003](ADR-RIG-003-declarative-configuration-grammar.md) — establishes inert local configuration.
-- [XDR-RIG-001](XDR-RIG-001-executable-provider-boundary.md) — defines the disclosure boundary that separates declarative queries from trusted execution.
+- [PDR-KI-RIG-001](PDR-KI-RIG-001-catalogue-led-working-setup.md) — establishes the private catalogue as authority.
+- [ADR-KI-RIG-003](ADR-KI-RIG-003-declarative-configuration-grammar.md) — establishes inert local configuration.
+- [XDR-KI-RIG-001](XDR-KI-RIG-001-executable-provider-boundary.md) — defines the disclosure boundary that separates declarative queries from trusted execution.

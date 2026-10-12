@@ -1,6 +1,6 @@
 # Runtime portability — RIG-PORT
 
-This area of the [Rig Specifications](index.md) defines the installed runtime and persistent-path contract. It follows [ADR-RIG-001](../decisions/ADR-RIG-001-shell-only-runtime.md) and [ADR-RIG-002](../decisions/ADR-RIG-002-xdg-directory-contract.md).
+This area of the [Rig Specifications](index.md) defines the installed runtime and persistent-path contract. It follows [ADR-KI-RIG-001](../decisions/ADR-KI-RIG-001-shell-only-runtime.md) and [ADR-KI-RIG-002](../decisions/ADR-KI-RIG-002-xdg-directory-contract.md).
 
 ## Runtime
 

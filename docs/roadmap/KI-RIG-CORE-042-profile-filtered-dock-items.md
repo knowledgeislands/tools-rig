@@ -1,5 +1,5 @@
 ---
-id: RIG-CORE-042
+id: KI-RIG-CORE-042
 area: CORE
 title: Profile-filtered Dock items
 initiative: rig
@@ -11,7 +11,7 @@ created_at: 2026-10-09T15:03:37Z
 updated_at: 2026-10-11T01:55:56Z
 ---
 
-# RIG-CORE-042: Profile-Filtered Dock Items
+# KI-RIG-CORE-042: Profile-Filtered Dock Items
 
 ## Goal
 

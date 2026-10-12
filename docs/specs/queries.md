@@ -1,6 +1,6 @@
 # Catalogue queries — RIG-QUERY
 
-This area of the [Rig Specifications](index.md) defines read-only ways to answer catalogue questions under [PDR-RIG-001](../decisions/PDR-RIG-001-catalogue-led-working-setup.md) and within the non-execution boundary established by [XDR-RIG-001](../decisions/XDR-RIG-001-executable-provider-boundary.md).
+This area of the [Rig Specifications](index.md) defines read-only ways to answer catalogue questions under [PDR-KI-RIG-001](../decisions/PDR-KI-RIG-001-catalogue-led-working-setup.md) and within the non-execution boundary established by [XDR-KI-RIG-001](../decisions/XDR-KI-RIG-001-executable-provider-boundary.md).
 
 ## Resolved views
 

@@ -1,4 +1,4 @@
-# Rig
+# rig
 
 Rig is a declarative description and manager of a person's working setup. It gives tools, agent skills, managed resources, and private port allocations one understandable catalogue, then compares that declared intent with the machine in front of you.
 

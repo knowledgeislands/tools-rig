@@ -1,4 +1,4 @@
-# Working in Rig
+# Working in rig
 
 Rig is one standalone command-line tool. The runtime entry point is `bin/rig`; keep it compatible with Bash 3.2 and do not introduce a runtime dependency beyond Bash.
 

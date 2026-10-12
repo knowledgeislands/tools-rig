@@ -1,14 +1,14 @@
 ---
-id: ADR-RIG-008
+id: ADR-KI-RIG-008
 title: 'Catalogue-Scoped Resource Retirement'
 date: 2026-10-05
 status: current
 decision_type: architecture
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/adr
-decision_depends_on: [PDR-RIG-001, ADR-RIG-003, ADR-RIG-006]
+decision_depends_on: [PDR-KI-RIG-001, ADR-KI-RIG-003, ADR-KI-RIG-006]
 ---
 
-# ADR-RIG-008: Catalogue-Scoped Resource Retirement
+# ADR-KI-RIG-008: Catalogue-Scoped Resource Retirement
 
 ## Context
 
@@ -36,6 +36,6 @@ Deliberate teardown requires a reviewable catalogue change, not merely a differe
 
 ## References
 
-- [PDR-RIG-001](PDR-RIG-001-catalogue-led-working-setup.md) — establishes the catalogue as the declaration of a working setup.
-- [ADR-RIG-003](ADR-RIG-003-declarative-configuration-grammar.md) — establishes profiles as catalogue subsets.
-- [ADR-RIG-006](ADR-RIG-006-declarative-operational-resources.md) — establishes declaration as desired state and the receipt as managed identity.
+- [PDR-KI-RIG-001](PDR-KI-RIG-001-catalogue-led-working-setup.md) — establishes the catalogue as the declaration of a working setup.
+- [ADR-KI-RIG-003](ADR-KI-RIG-003-declarative-configuration-grammar.md) — establishes profiles as catalogue subsets.
+- [ADR-KI-RIG-006](ADR-KI-RIG-006-declarative-operational-resources.md) — establishes declaration as desired state and the receipt as managed identity.

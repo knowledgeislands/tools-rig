@@ -1,6 +1,6 @@
 # Catalogue — RIG-CAT
 
-This area of the [Rig Specifications](index.md) defines the catalogue that [PDR-RIG-001](../decisions/PDR-RIG-001-catalogue-led-working-setup.md) makes Rig's primary product concept.
+This area of the [Rig Specifications](index.md) defines the catalogue that [PDR-KI-RIG-001](../decisions/PDR-KI-RIG-001-catalogue-led-working-setup.md) makes Rig's primary product concept.
 
 ## Categories and tools
 
