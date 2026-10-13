@@ -206,7 +206,7 @@ profiles = ["studio"]
 - **FW-MATCH.** Match tailnet addresses on source and destination, never an interface. Recommend yes, for the evidence above.
 - **FW-PERSIST.** Use a Rig-owned LaunchDaemon loading a `com.apple/` child anchor at boot and on `/etc/pf.conf` change, never editing `/etc/pf.conf`. Recommend yes. Alternative: also re-assert every 15 minutes (`StartInterval`) to self-heal after a VPN client flushes pf, at the cost of a repeating root job; recommend adding it only if the NordVPN live check fails.
 - **FW-DOCTOR.** Accept that unprivileged doctor reports files, daemon and listener exposure, and states kernel rules as unverified, instead of adding a privileged doctor. Recommend yes: doctor stays read-only and promptless.
-- **FW-LINUX.** Linux is an explicit non-goal here, with the schema left open for a later provider once a Linux profile exists. Recommend yes.
+- **FW-LINUX.** Linux is an explicit non-goal here, with the schema left open for a later provider once a Linux profile exists. Recommend yes. Kris later approved that provider as [KI-TOOL-RIG-CORE-051](KI-TOOL-RIG-CORE-051-linux-tailnet-only-firewall.md) (Decision 51).
 
 ### Approval boundary
 
