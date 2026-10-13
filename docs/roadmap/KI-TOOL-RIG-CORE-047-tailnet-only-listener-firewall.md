@@ -5,12 +5,12 @@ title: Tailnet-only listener firewall
 initiative: rig
 kind: deliver
 horizon: next
-status: draft
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-13T22:48:41Z
-updated_at: 2026-10-13T22:48:41Z
+updated_at: 2026-10-13T22:55:42Z
 ---
 
 # KI-TOOL-RIG-CORE-047: Tailnet-Only Listener Firewall
@@ -107,7 +107,7 @@ Add "Restrict a listener to the tailnet" to [operational resources](../guides/us
 
 ### Roadmap
 
-Kris approved adoption in Decision 48, so this record is Deliver / draft at Next. It becomes Ready only after Kris approves this plan.
+Kris approved adoption in Decision 48 and this plan in Decision 49, so this record is Deliver / ready at Next.
 
 ## Discussion
 
@@ -156,3 +156,7 @@ Approving this plan moves the record to Ready and permits local, fixture-backed 
 ### Adoption approval
 
 Kris approved the split, adoption and planning to Ready in mac-studio-bootstrap Decision 48 (13 October 2026): "FIREWALL: B" - build the tailnet-only Screen Sharing firewall properly in Rig now, not by hand on `sol`. That adopted this record as Deliver / draft at Next under the Rig Initiative and authorised read-only evidence from `sol`. It grants no implementation.
+
+### Plan approval
+
+On 13 October 2026 Kris approved this plan as written (mac-studio-bootstrap Decision 49): "we can at least accept what has been suggested ... ironed out for getting on with it". The decisions are FW-PLAN approve; FW-SHAPE yes; FW-MATCH yes; FW-PERSIST yes, with no periodic re-load yet; FW-DOCTOR yes; FW-LINUX yes, for a later record. The record moves to `ready` at Next. The approval permits local, fixture-backed delivery through `ki-implement` to Awaiting review only; it grants no personal declaration, no `rig apply` on `terra` or `sol`, no live pf operation, and no acceptance, pruning or release.
