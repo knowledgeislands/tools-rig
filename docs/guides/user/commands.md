@@ -145,6 +145,10 @@ For actual work, terminal stdin is required. Before the first task and its progr
 
 Refusal or an unusable grant stops before tasks. Lost refresh stops subsequent dispatch after the current native operation returns; Rig does not forcibly terminate an installer. This uses native terminal timestamps and honours native sudo policy. Revocation, custom timestamp rules, App Store sign-in, other authentication and macOS graphical consent remain native decisions; the option cannot bypass them. Unattended upgrade retains its existing contract and does not accept `--sudo`.
 
+## Declared firewall restrictions
+
+[Restrict a listener to the tailnet](operational-resources.md#restrict-a-listener-to-the-tailnet) with a `[firewall.ID]` declaration. `rig show firewall:ID` lists its ports, allowed sources, pf anchor, files and observed state. Status and doctor observe without administrator rights and report kernel rules as unverified. `rig apply --dry-run` prints the rendered rules, files and commands. Only `rig apply --sudo` changes a firewall; without it, a firewall that needs work is skipped with `administrator-grant-required`. A present firewall needs no prompt.
+
 ## Declared default applications
 
 [Declare default applications](default-applications.md) to map a UTI, extension or URL scheme to a catalogue application's bundle identifier. `rig show default-application:notes` explains private intent offline. Doctor/status verify the installed app identity and report handler drift without changing it. `rig apply --dry-run` describes the resource; `rig apply --target default-application:notes` installs any missing declared owner prerequisite before native assignment. Apply verifies the effective handler after the native setter; failure or pending macOS confirmation keeps the run incomplete. Linux reports unsupported state. Export and deselection never publish or reset handler choices.

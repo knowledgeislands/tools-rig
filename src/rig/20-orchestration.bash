@@ -96,6 +96,7 @@ rig_provider_has_capability() {
       macos-defaults:resource-observe|macos-defaults:resource-apply|\
       macos-dock:resource-observe|macos-dock:resource-apply|\
     macos-handlers:resource-observe|macos-handlers:resource-apply|\
+      macos-pf:resource-observe|macos-pf:resource-apply|macos-pf:resource-retire|\
       skills-cli:skill-observe|skills-cli:skill-apply|skills-cli:skill-update|skills-cli:skill-inventory|\
       ki:skill-apply|ki:skill-update)
         return 0
@@ -1188,6 +1189,10 @@ rig_preflight_resource() {
     rig_default_application_preflight
     return
   fi
+  if [ "$adapter" = macos-pf ]; then
+    rig_firewall_preflight "$section_name" "$verb"
+    return
+  fi
   if [ "$adapter" = launchd ]; then
     rig_launchd_preflight_resource "$section_name" "$verb"
     return
@@ -1212,6 +1217,10 @@ rig_observe_resource() {
   section_name=$1
   if [ "${section_name%%.*}" = default-application ]; then
     rig_default_application_observe "$section_name"
+    return
+  fi
+  if [ "${section_name%%.*}" = firewall ]; then
+    rig_firewall_observe "$section_name"
     return
   fi
   RIG_OBSERVATION=unknown

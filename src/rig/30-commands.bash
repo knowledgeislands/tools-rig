@@ -532,7 +532,7 @@ rig_doctor_diagnostics() {
           profile) profiles=$((profiles + 1)) ;;
         tool) tools=$((tools + 1)) ;;
         skill) skills=$((skills + 1)) ;;
-          service|scheduled-job|setting|dock|default-application) resources=$((resources + 1)) ;;
+          service|scheduled-job|setting|dock|default-application|firewall) resources=$((resources + 1)) ;;
           port) ports=$((ports + 1)) ;;
         esac
         index=$((index + 1))
@@ -1569,7 +1569,7 @@ rig_resource_schedule_summary() {
 rig_print_profile_resource_tables() {
   local wanted label count section_name section_index id name provider desired schedule detail
 
-  for wanted in service scheduled-job setting dock default-application; do
+  for wanted in service scheduled-job setting dock default-application firewall; do
     count=0
     for section_name in "${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}"; do
       [ "${section_name%%.*}" = "$wanted" ] && count=$((count + 1))
@@ -1580,6 +1580,7 @@ rig_print_profile_resource_tables() {
       setting) label=Settings ;;
       default-application) label='Default applications' ;;
       dock) label='Dock layouts' ;;
+      firewall) label='Firewall restrictions' ;;
     esac
     printf '\n%s: %s\n' "$label" "$count"
     [ "$count" -gt 0 ] || continue
@@ -1593,6 +1594,7 @@ rig_print_profile_resource_tables() {
       setting) rig_table_add_column VALUE 64 ;;
       default-application) rig_table_add_column HANDLER 64 ;;
       dock) rig_table_add_column ITEMS 8 ;;
+      firewall) rig_table_add_column PORTS 40 ;;
     esac
     for section_name in "${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}"; do
       [ "${section_name%%.*}" = "$wanted" ] || continue
@@ -1628,6 +1630,11 @@ rig_print_profile_resource_tables() {
           rig_collect_field_values "$section_name" item
           detail=${#RIG_QUERY_ITEMS[@]}
           rig_table_add_row "$id" "$name" "$provider" "$detail"
+          ;;
+        firewall)
+          rig_collect_field_values "$section_name" port
+          rig_join_query_items
+          rig_table_add_row "$id" "$name" "$provider" "$RIG_VALUE"
           ;;
       esac
     done
@@ -1751,6 +1758,19 @@ rig_show_json() {
         rig_get_value "$section_name" kind || return 2; rig_json_field ',' handler_kind "$RIG_VALUE"
         rig_get_value "$section_name" value || return 2; rig_json_field ',' value "$RIG_VALUE"
         rig_get_value "$section_name" bundle-id || return 2; rig_json_field ',' bundle_id "$RIG_VALUE"
+        ;;
+      firewall)
+        rig_get_value "$section_name" locator || return 2; rig_json_field ',' locator "$RIG_VALUE"
+        rig_collect_field_values "$section_name" port
+        printf ',"ports":['
+        index=0
+        while [ "$index" -lt "${#RIG_QUERY_ITEMS[@]}" ]; do
+          [ "$index" -eq 0 ] || printf ','
+          rig_json_escape "${RIG_QUERY_ITEMS[$index]}"
+          printf '"%s"' "$RIG_VALUE"
+          index=$((index + 1))
+        done
+        printf '],"allow":["tailnet"]'
         ;;
       dock)
         rig_collect_field_values "$section_name" item
@@ -1953,7 +1973,7 @@ rig_profile_contains_resource() {
       target=${RIG_FIELD_VALUES[$field_index]}
       case "$key" in
         profile|inherit) rig_profile_contains_resource "$target" "$wanted" && return 0 ;;
-        skill|service|scheduled-job|setting|dock|default-application|port) [ "$key.$target" = "$wanted" ] && return 0 ;;
+        skill|service|scheduled-job|setting|dock|default-application|firewall|port) [ "$key.$target" = "$wanted" ] && return 0 ;;
       esac
     fi
     field_index=$((field_index + 1))
@@ -2021,7 +2041,7 @@ rig_explain_resource() {
   id=${target#*:}
   [ "$target" != "$id" ] && rig_valid_id "$id" ||
     rig_fail "unknown resource '$target'" || return
-  case "$kind" in service|scheduled-job|setting|dock|default-application|port) ;; *)
+  case "$kind" in service|scheduled-job|setting|dock|default-application|firewall|port) ;; *)
     rig_fail "unknown resource '$target'" || return ;;
   esac
   section_name=$kind.$id
@@ -2043,6 +2063,9 @@ rig_explain_resource() {
   done
   if [ "$kind" = dock ]; then
     rig_explain_dock_items "$section_name" || return
+  fi
+  if [ "$kind" = firewall ]; then
+    rig_explain_firewall "$section_name" || return
   fi
   if [ "$kind" = service ]; then
     rig_get_value "$section_name" restart-policy || printf '%s\n' 'restart-policy=never'
@@ -2094,7 +2117,7 @@ rig_command_explain_impl() {
   rig_load_config || return
   case "$tool" in
     skill:*) rig_explain_skill "$tool"; return ;;
-    service:*|scheduled-job:*|setting:*|dock:*|default-application:*|port:*) rig_explain_resource "$tool"; return ;;
+    service:*|scheduled-job:*|setting:*|dock:*|default-application:*|firewall:*|port:*) rig_explain_resource "$tool"; return ;;
   esac
   rig_valid_id "$tool" && rig_section_index "tool.$tool" ||
     rig_fail "unknown tool '$tool'" || return

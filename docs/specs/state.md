@@ -464,13 +464,13 @@ _Evidence:_ `rig_command_doctor`, `rig_removal_identity_declared` and `tests/rig
 
 ### RIG-STATE-043 — Administrator-session outcomes
 
-An attended sudo authorisation refusal, unusable native grant or refresh failure MUST keep apply incomplete. Refusal/non-terminal use MUST return an operational problem before task dispatch. A refresh failure MUST disclose that further dispatch stopped; it MUST NOT claim unstarted tasks completed. Interruption MUST retain existing signal exit status and completed/inflight history semantics. Rig MUST NOT treat an administrator grant as installation evidence, persist it in Rig state or alter ordinary/unattended outcome contracts.
+An attended sudo authorisation refusal, unusable native grant or refresh failure MUST keep apply incomplete. Refusal/non-terminal use MUST return an operational problem before task dispatch. A refresh failure MUST disclose that further dispatch stopped; it MUST NOT claim unstarted tasks completed. Interruption MUST retain existing signal exit status and completed/inflight history semantics. Rig MUST NOT treat an administrator grant as installation evidence, persist it in Rig state or alter ordinary/unattended outcome contracts. A selected firewall that needs work, or a stale firewall receipt row, MUST be `skipped` with `administrator-grant-required` and keep apply incomplete when no grant exists, without any native mutation; a present firewall needs no grant.
 
 _Conformance:_ conforming
 
 _Verify:_ Isolated sudo fixtures assert native validation, refused and expired grants, stopped subsequent dispatch, normal failure and interruption results without a live privileged operation.
 
-_Evidence:_ `rig_sudo_guard`, `rig_command_apply_impl` and `tests/rig-sudo-session.bats` preserve honest outcomes.
+_Evidence:_ `rig_sudo_guard`, `rig_command_apply_impl` and `tests/rig-sudo-session.bats` preserve honest outcomes; `rig_firewall_apply_ready` and `tests/rig-firewall.bats` cover the firewall grant outcome.
 
 ### RIG-STATE-044 — Declared default-application state
 
@@ -481,3 +481,13 @@ _Conformance:_ conforming
 _Verify:_ Stub fixtures cover healthy/drifted handlers, absence/damage/bundle mismatch, missing adapter, malformed/native-failed observations, unsupported Linux, read-only doctor/status and deselection without reset.
 
 _Evidence:_ `rig_default_application_app`, `rig_default_application_observe`, generic resource state and `tests/rig-default-applications.bats` preserve honest native evidence.
+
+### RIG-STATE-045 — Unprivileged firewall evidence
+
+Status, doctor and `show firewall:ID` MUST observe a selected firewall without `sudo` or `pfctl`: the rendered anchor and daemon files compared byte for byte with those on disk, the daemon's `launchctl print system/LOCATOR` load state and last exit code, and a read-only `netstat -an` listener snapshot. Matching files and a loaded daemon whose last exit is 0 or absent MUST be `present` with the detail `kernel-rules-unverified`, because loaded pf rules need root to read. Absent files and an unloaded daemon MUST be `missing`; any other difference MUST be `drifted` with the reasons `anchor-missing`, `anchor-changed`, `daemon-missing`, `daemon-changed`, `daemon-not-loaded` or `daemon-last-exit:N`. A declared port listening on every address MUST add `exposed-beyond-tailnet` when the restriction is not present; a present restriction with such a listener stays healthy. A symlinked or non-regular managed file or a missing or failed `netstat` MUST report `unavailable`, and an unreadable launchd state `unknown`. Selection MUST refuse a firewall on a non-macOS platform; observation reached there MUST report `unavailable`. The `netstat` source MUST serve only firewall observation and MUST NOT change the listener snapshot RIG-ORCH-031 defines.
+
+_Conformance:_ conforming
+
+_Verify:_ Isolated fixtures cover present, missing, each drift reason, exposure with and without a present restriction, netstat failure, an unsafe anchor and launchd failure, and assert that no read-only command logs `sudo`, `pfctl`, a launchd load or unload, or a file write.
+
+_Evidence:_ `rig_firewall_observe`, `rig_firewall_exposed_ports`, `rig_firewall_load_state` and `tests/rig-firewall.bats` implement the evidence boundary.

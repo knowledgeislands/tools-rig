@@ -4,6 +4,7 @@
 # shellcheck disable=SC2034
 RIG_SUDO_KEEPER_PID=
 RIG_SUDO_FAILED=0
+RIG_SUDO_GRANTED=0
 
 rig_sudo_cleanup() {
   local keeper
@@ -25,9 +26,10 @@ rig_sudo_guard() {
 }
 
 rig_sudo_start() {
-  local dry_run index tool binding provider needed executable interval owner
+  local dry_run index tool binding provider needed executable interval owner section_name
   dry_run=$1
   needed=0
+  RIG_SUDO_GRANTED=0
   if [ "$dry_run" -eq 1 ]; then
     printf 'Administrator session: preview only; no authentication.\n'
     return 0
@@ -40,8 +42,15 @@ rig_sudo_start() {
     if [ -n "$binding" ] && ! rig_application_apply_skip "$tool" "$binding" "$provider"; then needed=1; fi
     index=$((index + 1))
   done
-  if [ "${#RIG_SELECTED_SKILLS[@]}" -gt 0 ] || [ "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" -gt 0 ] ||
-    [ "${#RIG_STALE_RESOURCE_IDS[@]}" -gt 0 ]; then needed=1; fi
+  if [ "${#RIG_SELECTED_SKILLS[@]}" -gt 0 ] || [ "${#RIG_STALE_RESOURCE_IDS[@]}" -gt 0 ]; then needed=1; fi
+  # A firewall needs root only when its unprivileged observation is not
+  # present; every other selected resource keeps the established rule.
+  for section_name in "${RIG_RESOURCE_PLAN_SECTIONS[@]+"${RIG_RESOURCE_PLAN_SECTIONS[@]}"}"; do
+    [ "$needed" -eq 0 ] || break
+    if [ "${section_name%%.*}" != firewall ]; then needed=1; continue; fi
+    rig_firewall_observe "$section_name" || return
+    [ "$RIG_OBSERVATION" = present ] || needed=1
+  done
   if [ "$needed" -eq 0 ]; then
     printf 'Administrator session: no prompt needed; no native work requires the requested grant.\n'
     return 0
@@ -83,5 +92,6 @@ rig_sudo_start() {
     done
   ) </dev/null >/dev/null 2>&1 &
   RIG_SUDO_KEEPER_PID=$!
+  RIG_SUDO_GRANTED=1
   printf 'Administrator session: native grant refreshed during this run.\n'
 }

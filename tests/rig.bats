@@ -5086,3 +5086,15 @@ artifacts = ["$HOME/bin/home-tool", "~/bin/tilde-tool", "/opt/rig/absolute-tool"
   [ "$status" -eq 1 ]
   [ "$(cat "$RIG_OSASCRIPT.log")" = '-l JavaScript -e fixture' ]
 }
+
+@test "isolation contains the firewall adapter before any invocation" {
+  case "$RIG_SYSTEM_ROOT" in "$BATS_TEST_TMPDIR"/*) ;; *) false ;; esac || false
+  case "$RIG_PFCTL" in "$BATS_TEST_TMPDIR"/*) ;; *) false ;; esac || false
+  case "$RIG_NETSTAT_COMMAND" in "$BATS_TEST_TMPDIR"/*) ;; *) false ;; esac || false
+  run "$RIG_PFCTL" -s rules
+  [ "$status" -eq 1 ]
+  [ "$(cat "$RIG_PFCTL.log")" = '-s rules' ]
+  run "$RIG_NETSTAT_COMMAND" -an
+  [ "$status" -eq 1 ]
+  [ "$(cat "$RIG_NETSTAT_COMMAND.log")" = '-an' ]
+}

@@ -14,6 +14,7 @@ Rig describes your working setup and compares it with the machine. Its supported
 - **Scheduled jobs:** declare and reconcile jobs with calendar or interval schedules through macOS launchd.
 - **Settings:** compare and apply typed macOS preferences, such as Finder options or a screenshot location.
 - **Default applications:** declare which installed application opens a content type, extension or URL scheme on macOS. See [Declare default applications](default-applications.md).
+- **Firewall restrictions:** keep chosen macOS listener ports reachable only from loopback and your tailnet. See [Restrict a listener to the tailnet](operational-resources.md#restrict-a-listener-to-the-tailnet).
 - **Dock layouts:** compare and apply an ordered macOS Dock containing applications and folders.
 - **Private ports:** record TCP allocations and check listener ownership and scope. Rig does not open, reserve or close ports.
 - **Retired applications:** observe explicitly declared macOS application traces after retirement. These records are observation-only and do not remove retained files. See [Review retired applications](retired-applications.md).

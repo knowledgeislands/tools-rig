@@ -151,6 +151,54 @@ Rig validates resolved item paths before replacing a selected Dock layout. The s
 
 Status and doctor compare paths and order, then any folder `view` and `display` values you explicitly declared. An omitted attribute is not constrained. A manually changed declared view or display is drift, with a detail naming the item; inaccessible or ambiguous native evidence is unknown, not agreement. Observation reads one shared native Dock snapshot when needed and never changes the Dock. Check the reported difference and your intended declaration before applying a replacement layout.
 
+## Restrict a listener to the tailnet
+
+Some macOS listeners, such as Screen Sharing on port 5900, bind every address and offer no setting to bind one interface. A `[firewall.ID]` declaration keeps chosen ports reachable from loopback and from other devices on your tailnet, and blocks them from any other network:
+
+```toml
+[firewall.screen-sharing-tailnet]
+name = "Screen Sharing on the tailnet only"
+purpose = "Keep remote screen sessions off shared networks"
+rationale = "Screen Sharing listens on every address and macOS cannot bind it to one interface"
+provider = "macos-pf"
+locator = "org.example.rig.firewall.screen-sharing"
+platforms = ["macos"]
+ports = ["tcp:5900", "udp:5900"]
+allow = ["tailnet"]
+```
+
+`tailnet` means Tailscale's fixed address ranges, `100.64.0.0/10` and `fd7a:115c:a1e0::/48`. A connection passes only when both its source and destination are in the same range, so a device on a local network that happens to hold a `100.64.0.0/10` address cannot reach the port. Each port is `tcp:N` or `udp:N`. Rig rejects port 22 for either protocol, because SSH is how you undo a mistake. `allow` accepts no other value, and the locator is a reverse-DNS label outside `com.apple`.
+
+Rig writes two root-owned files and touches nothing else:
+
+- `/etc/pf.anchors/LOCATOR`, a pf anchor with four rules per port: pass on `lo0`, pass IPv4 tailnet to tailnet, pass IPv6 tailnet to tailnet, then block.
+- `/Library/LaunchDaemons/LOCATOR.plist`, a system LaunchDaemon that loads the anchor as `com.apple/LOCATOR` at every boot and whenever `/etc/pf.conf` changes.
+
+Rig never edits `/etc/pf.conf`, never uses the application firewall, and never flushes an anchor it does not own. The anchor sits beneath Apple's own `com.apple/*` anchor point, so a macOS update that restores `/etc/pf.conf` removes nothing Rig owns, and the daemon reloads the anchor afterwards.
+
+Before you apply a firewall for the first time, keep this rollback to hand. It needs no Rig and works over SSH:
+
+```sh
+sudo launchctl bootout system/LOCATOR
+sudo pfctl -a com.apple/LOCATOR -F all
+```
+
+The first command stops the daemon reloading the anchor; the second removes the loaded rules. The files stay until you delete the declaration and apply again, or remove them yourself.
+
+Preview the rendered rules, files and commands, then apply with an attended administrator session:
+
+```sh
+rig show firewall:screen-sharing-tailnet
+rig apply --target firewall:screen-sharing-tailnet --dry-run
+rig apply --target firewall:screen-sharing-tailnet --sudo
+```
+
+Without `--sudo`, apply leaves a firewall that needs work untouched and reports it as skipped with `administrator-grant-required`. With the grant, Rig checks the rendered anchor with `pfctl -n` before installing anything, installs the files, loads the daemon, loads the anchor, then rereads the loaded rules and fails unless they match. A correct firewall needs no grant and no prompt.
+
+Status and doctor never use administrator rights. They compare both files with what Rig would render, read the daemon's load state and last exit code, and check whether a declared port listens on every address. A matching firewall reports `present` with `kernel-rules-unverified`, because reading loaded pf rules needs root; `apply --sudo` checks them on every run. A port listening on every address while the firewall is missing or drifted adds `exposed-beyond-tailnet`.
+
+Deleting the declaration and applying with `--sudo` unloads the daemon, flushes only Rig's anchor and removes its two files. pf stays enabled: other components may rely on it, and Apple's anchors alone filter nothing. Removing the firewall from a profile while the catalogue still declares it retires nothing. Firewalls are macOS only.
+
 ## Select and inspect the workstation
 
 A workstation is a complete profile, not a provider:
@@ -171,6 +219,7 @@ rig show scheduled-job:good-morning
 rig show setting:show-file-extensions
 rig show dock:primary
 rig show port:example-api
+rig show firewall:screen-sharing-tailnet
 rig status --profile workstation
 rig doctor --profile workstation
 rig apply --profile workstation --dry-run
@@ -192,7 +241,7 @@ depends-on = ["setting:show-file-extensions"]
 depends-on = ["service:example-daemon"]
 ```
 
-Supported prefixes are `service:`, `scheduled-job:`, `setting:`, and `dock:`. Rig selects dependencies transitively and produces a deterministic dependency-first plan. Missing targets and cycles fail during configuration loading. A failed resource blocks only its transitive dependants; independent resources remain available.
+Supported prefixes are `service:`, `scheduled-job:`, `setting:`, `dock:`, and `firewall:`. Rig selects dependencies transitively and produces a deterministic dependency-first plan. Missing targets and cycles fail during configuration loading. A failed resource blocks only its transitive dependants; independent resources remain available.
 
 Dependencies cannot contain conditions, commands, or lifecycle hooks.
 

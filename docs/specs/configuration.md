@@ -78,7 +78,7 @@ _Evidence:_ `rig_add_field`, `rig_normalize_artifact_identity`, and `rig_expand_
 
 ### RIG-CONF-008 — Canonical table identities
 
-Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[skill.ID]`, `[profile.ID]`, `[provider.ID]`, `[service.ID]`, `[scheduled-job.ID]`, `[setting.ID]`, `[dock.ID]`, `[dock-item.ID]`, `[port.ID]`, `[retired-application.ID]`, `[remove.ID]`, `[default-application.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`. Any other table shape MUST be rejected. Installation metadata MUST remain in its owning tool table.
+Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[skill.ID]`, `[profile.ID]`, `[provider.ID]`, `[service.ID]`, `[scheduled-job.ID]`, `[setting.ID]`, `[dock.ID]`, `[dock-item.ID]`, `[port.ID]`, `[retired-application.ID]`, `[remove.ID]`, `[default-application.ID]`, `[firewall.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`. Any other table shape MUST be rejected. Installation metadata MUST remain in its owning tool table.
 
 _Conformance:_ conforming
 
@@ -291,3 +291,13 @@ _Conformance:_ conforming
 _Verify:_ Isolated fixtures exercise valid selectors, invalid ownership/fields, profile/variant selection, duplicate targets, offline descriptions and public export privacy.
 
 _Evidence:_ `rig_validate_default_application`, `rig_default_application_identity`, profile/native-target resolution and `tests/rig-default-applications.bats` verify the declaration contract.
+
+### RIG-CONF-030 — Tailnet-only firewall declarations
+
+`[firewall.ID]` MUST require `name`, `purpose`, `rationale`, fixed `provider = "macos-pf"`, a reverse-DNS `locator` outside `com.apple`, a non-empty `ports` list, `allow = ["tailnet"]` and macOS-only `platforms`. Each port MUST be `tcp:N` or `udp:N` with N from 1 to 65535 and no leading zero; ports MUST be unique within the declaration, and `tcp:22` and `udp:22` MUST be rejected because SSH is the recovery path. `allow` MUST accept no other source. A firewall MAY declare `requires`, `depends-on` and item `profiles`; central profiles MAY select `firewalls`. Locators MUST be unique across firewall declarations. Every rejection MUST happen before any native invocation.
+
+_Conformance:_ conforming
+
+_Verify:_ Isolated fixtures reject a wrong provider or platform, malformed, duplicate or SSH ports, any other `allow` value, missing ports, unknown requirements and a duplicate locator, each with an empty native-command log.
+
+_Evidence:_ `rig_validate_firewall`, `rig_firewall_locator_valid` and `rig_firewall_port_valid` enforce the declaration; `tests/rig-firewall.bats` covers every rejection.

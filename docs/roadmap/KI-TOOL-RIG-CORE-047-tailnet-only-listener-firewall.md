@@ -4,13 +4,13 @@ area: CORE
 title: Tailnet-only listener firewall
 initiative: rig
 kind: deliver
-horizon: next
-status: ready
+horizon: now
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 39499cd6566b2fa02f9c66476eda53f052ccb351
 created_at: 2026-10-13T22:48:41Z
-updated_at: 2026-10-13T22:55:42Z
+updated_at: 2026-10-13T23:35:15Z
 ---
 
 # KI-TOOL-RIG-CORE-047: Tailnet-Only Listener Firewall
@@ -47,16 +47,16 @@ Evidence gathered read-only on 2026-10-13 (`sol` was still on macOS 26.5.2, buil
 
 ## Steps
 
-- [ ] After Kris approves this plan, re-read authority and source, establish the immutable implementation baseline through `ki-implement`, and keep the agreed boundary. Stop for review if source drift changes the resource, sudo or retirement assumptions below.
-- [ ] Register `firewall` as a setup declaration and add the `macos-pf` built-in provider. Validate the shape in [Proposed contract](#proposed-contract-for-owner-review): required text fields, `provider = "macos-pf"`, `platforms = ["macos"]`, a reverse-DNS `locator`, non-empty unique `ports` of the form `tcp:N` or `udp:N` with N in 1–65535, `allow = ["tailnet"]` as the only accepted value, and the shared `requires`, `depends-on` and `profiles` fields. Reject `tcp:22` and `udp:22`. Add locator uniqueness and a native-target conflict for two selected firewall declarations naming the same protocol and port (extend [RIG-ORCH-027](../specs/orchestration.md)).
-- [ ] Render deterministically from the declaration, never from a template the person supplies: the anchor rule file and a system LaunchDaemon property list, each opening with the existing "Managed by rig" ownership comment. The anchor passes the declared ports on `lo0` and between tailnet addresses (source and destination both in `100.64.0.0/10`, or both in `fd7a:115c:a1e0::/48`), then blocks the declared ports from anywhere else. Every rendered rule names a declared port; there is no rule without a port match and no outbound rule.
-- [ ] Observe without privilege: rendered and on-disk anchor file and daemon property list compared byte for byte; `launchctl print system/LOCATOR` for load state and last exit code; and a new fixed read-only `netstat -an` listener source (injectable as `RIG_NETSTAT_COMMAND`) for whether each declared port is listening on all addresses. Report `present`, `missing`, `drifted`, or `unavailable` per [RIG-STATE-021](../specs/state.md), with the drift reasons in [Proposed contract](#proposed-contract-for-owner-review). Read-only commands never call `sudo` or `pfctl`.
-- [ ] Apply only under `rig apply --sudo`, through the existing attended grant with `sudo -n`; without the grant, or in an unattended run, report the resource `incomplete` with `administrator-grant-required` and touch nothing. Order: validate the rendered anchor with `pfctl -n -f FILE`; install the anchor file and property list root-owned `0644`; `launchctl bootstrap system` (bootout first when replacing, using the existing release wait); load and enable with `pfctl -E -a com.apple/LOCATOR -f FILE`; re-read the loaded anchor with `pfctl -a com.apple/LOCATOR -s rules` and fail unless it matches the rendered rules. A correct, loaded resource is a no-op. Never write `/etc/pf.conf`, never call `socketfilterfw`, never flush any anchor but Rig's own.
-- [ ] Retire under ADR-KI-TOOL-RIG-008 when the catalogue no longer declares the locator: `launchctl bootout system/LOCATOR`, `pfctl -a com.apple/LOCATOR -F all`, then remove the property list and anchor file. Do not disable pf with `-X`: pf stays enabled with Apple's default anchors only until the next restart, which filters nothing. Profile deselection alone does not retire, as for every resource.
-- [ ] Extend `sudo` need detection in `rig_sudo_start` so a firewall that needs work counts, and a satisfied one does not prompt. Dry-run prints the rendered rules, files and commands with no `sudo`, `pfctl`, `launchctl` or file write.
-- [ ] Add `rig show firewall:ID` and `rig explain` text and JSON, listing ports, the allowed sources it expands to, locator, file paths and the observed state.
-- [ ] Add isolated public-command Bats coverage in `tests/rig-firewall.bats` with stubbed `sudo`, `pfctl`, `launchctl` and `netstat`, and the system paths redirected into the test tree by an override the isolation helper sets (`RIG_SYSTEM_ROOT`, defaulting to `/`), so no test can reach `/Library/LaunchDaemons` or `/etc`. Cover every case in [Verify](#verify).
-- [ ] Align specifications, guides, help, manual and the active changelog; assemble `bin/rig`; run the permitted offline gate and assemble an honest review packet. The live acceptance checks below remain outside the delivery grant and are reported as withheld.
+- [x] After Kris approves this plan, re-read authority and source, establish the immutable implementation baseline through `ki-implement`, and keep the agreed boundary. Stop for review if source drift changes the resource, sudo or retirement assumptions below.
+- [x] Register `firewall` as a setup declaration and add the `macos-pf` built-in provider. Validate the shape in [Proposed contract](#proposed-contract-for-owner-review): required text fields, `provider = "macos-pf"`, `platforms = ["macos"]`, a reverse-DNS `locator`, non-empty unique `ports` of the form `tcp:N` or `udp:N` with N in 1–65535, `allow = ["tailnet"]` as the only accepted value, and the shared `requires`, `depends-on` and `profiles` fields. Reject `tcp:22` and `udp:22`. Add locator uniqueness and a native-target conflict for two selected firewall declarations naming the same protocol and port (extend [RIG-ORCH-027](../specs/orchestration.md)).
+- [x] Render deterministically from the declaration, never from a template the person supplies: the anchor rule file and a system LaunchDaemon property list, each opening with the existing "Managed by rig" ownership comment. The anchor passes the declared ports on `lo0` and between tailnet addresses (source and destination both in `100.64.0.0/10`, or both in `fd7a:115c:a1e0::/48`), then blocks the declared ports from anywhere else. Every rendered rule names a declared port; there is no rule without a port match and no outbound rule.
+- [x] Observe without privilege: rendered and on-disk anchor file and daemon property list compared byte for byte; `launchctl print system/LOCATOR` for load state and last exit code; and a new fixed read-only `netstat -an` listener source (injectable as `RIG_NETSTAT_COMMAND`) for whether each declared port is listening on all addresses. Report `present`, `missing`, `drifted`, or `unavailable` per [RIG-STATE-021](../specs/state.md), with the drift reasons in [Proposed contract](#proposed-contract-for-owner-review). Read-only commands never call `sudo` or `pfctl`.
+- [x] Apply only under `rig apply --sudo`, through the existing attended grant with `sudo -n`; without the grant, or in an unattended run, report the resource `incomplete` with `administrator-grant-required` and touch nothing. Order: validate the rendered anchor with `pfctl -n -f FILE`; install the anchor file and property list root-owned `0644`; `launchctl bootstrap system` (bootout first when replacing, using the existing release wait); load and enable with `pfctl -E -a com.apple/LOCATOR -f FILE`; re-read the loaded anchor with `pfctl -a com.apple/LOCATOR -s rules` and fail unless it matches the rendered rules. A correct, loaded resource is a no-op. Never write `/etc/pf.conf`, never call `socketfilterfw`, never flush any anchor but Rig's own.
+- [x] Retire under ADR-KI-TOOL-RIG-008 when the catalogue no longer declares the locator: `launchctl bootout system/LOCATOR`, `pfctl -a com.apple/LOCATOR -F all`, then remove the property list and anchor file. Do not disable pf with `-X`: pf stays enabled with Apple's default anchors only until the next restart, which filters nothing. Profile deselection alone does not retire, as for every resource.
+- [x] Extend `sudo` need detection in `rig_sudo_start` so a firewall that needs work counts, and a satisfied one does not prompt. Dry-run prints the rendered rules, files and commands with no `sudo`, `pfctl`, `launchctl` or file write.
+- [x] Add `rig show firewall:ID` and `rig explain` text and JSON, listing ports, the allowed sources it expands to, locator, file paths and the observed state.
+- [x] Add isolated public-command Bats coverage in `tests/rig-firewall.bats` with stubbed `sudo`, `pfctl`, `launchctl` and `netstat`, and the system paths redirected into the test tree by an override the isolation helper sets (`RIG_SYSTEM_ROOT`, defaulting to `/`), so no test can reach `/Library/LaunchDaemons` or `/etc`. Cover every case in [Verify](#verify).
+- [x] Align specifications, guides, help, manual and the active changelog; assemble `bin/rig`; run the permitted offline gate and assemble an honest review packet. The live acceptance checks below remain outside the delivery grant and are reported as withheld.
 
 ## Files touched
 
@@ -108,6 +108,65 @@ Add "Restrict a listener to the tailnet" to [operational resources](../guides/us
 ### Roadmap
 
 Kris approved adoption in Decision 48 and this plan in Decision 49, so this record is Deliver / ready at Next.
+
+## Review
+
+### Delivered
+
+Delivered within the approved boundary from baseline `39499cd6566b2fa02f9c66476eda53f052ccb351`, using fixtures only. Rig now accepts a `[firewall.ID]` declaration with the built-in `macos-pf` provider. It renders a `com.apple/LOCATOR` child anchor and a system LaunchDaemon, observes them without privilege, applies and retires them only under `apply --sudo`, and leaves `/etc/pf.conf`, the application firewall and other anchors alone. Proposed [ADR-KI-TOOL-RIG-009](../decisions/ADR-KI-TOOL-RIG-009-system-domain-resources-under-an-attended-grant.md) records the system-domain decision.
+
+Excluded, as the approval requires: no personal declaration, no `rig apply` on `terra` or `sol`, no live pf, `sudo` or `launchctl` operation, and no acceptance, pruning or release. The live acceptance checks in [Verify](#verify) are withheld for Kris's separate approval.
+
+### Change Summary
+
+- **New module** `src/rig/29-firewall.bash`: validation, rendering, unprivileged observation, preflight, apply, retirement, dry-run projection and explanation. Assembled into `bin/rig` after `29-default-applications.bash`.
+- **Registry and configuration** (`05-declarations.bash`, `10-configuration.bash`): the `firewall` setup kind, its fields, profile `firewalls`, membership and dependency references, the `macos-pf` built-in adapter, and a native-target conflict on a shared protocol and port.
+- **Orchestration, receipts and apply** (`20-orchestration.bash`, `21-provider-state.bash`, `23-application.bash`): capability, preflight, observation, apply, projection and retirement dispatch; a firewall needing work without a grant is `skipped` with `administrator-grant-required` and keeps the run incomplete.
+- **Sudo session** (`28-sudo-session.bash`): a firewall counts as grant-needing work only when its observation is not present; `RIG_SUDO_GRANTED` marks a live grant.
+- **Commands** (`30-commands.bash`, `00-runtime.bash`): show tables with a ports column, item explanation, JSON, doctor counts and help text.
+- **Tests**: new `tests/rig-firewall.bats` (10 tests); `tests/helpers/isolate.bash` now roots `RIG_SYSTEM_ROOT` in the test tree and refuses `pfctl` and `netstat` by default; a new isolation guard in `tests/rig.bats`.
+- **Documentation**: specifications (new RIG-CONF-030 and RIG-STATE-045; RIG-CONF-008, RIG-ORCH-023, RIG-ORCH-027, RIG-ORCH-043 and RIG-STATE-043 extended), the operational-resources, commands and getting-started guides, README, manual, changelog, and the proposed ADR with its index entry.
+
+Deviations and interpretations for review:
+
+- **RIG-CONF-030, not 029.** The plan named RIG-CONF-029, which default applications already hold.
+- **`com.apple.*` locators rejected.** Added so a declaration cannot collide with Apple's own labels or anchors.
+- **`rig explain` is `rig show firewall:ID`.** Rig has no `explain` command; the item explanation in text and JSON carries the ports, allowed sources, anchor, files and observed state.
+- **Linux.** Selection already refuses a macOS-only resource on Linux (status exits 2), as the Boundary requires; observation reports `unavailable` only defensively if reached.
+- **Grant and reread.** When a grant exists for other work, a present firewall's loaded rules are reread and reloaded on mismatch. A fully satisfied selection still prompts for nothing.
+- **Observation dispatch** lives in `20-orchestration.bash`, so `22-observation.bash` was not changed.
+
+### Verification
+
+All commands were run locally on 14 October 2026 with stdin closed. No live `sudo`, `pfctl`, `launchctl` load or unload, or Rig apply was run.
+
+- Focused set, `bats tests/rig-firewall.bats tests/rig-sudo-session.bats tests/rig-profile-authority.bats tests/rig-cli-surface.bats </dev/null`: 33 of 33 passed.
+- Complete gate from [Develop Rig](../guides/developer/README.md#verify-the-repository):
+  - `ki repo audit --repo .`: no failures. One existing warning (HOOK-1, no committed pre-commit gate) is unrelated.
+  - `shellcheck` and `bash -n` on every listed script: clean.
+  - `scripts/assemble-rig --check`: current.
+  - `scripts/benchmark-rig`: all within budget (status 6 s of 8 s).
+  - `scripts/smoke-native-providers`: read-only version probes only, all passed. It never touches pf.
+  - `bats tests/ </dev/null`: 528 of 528 passed.
+  - `mandoc -T lint man/rig.1`: clean.
+  - `git diff --check`: clean.
+- Hostile isolation run, `XDG_STATE_HOME` and `XDG_CONFIG_HOME` pointed at outside directories: 528 of 528 passed, and the hostile state directory stayed empty.
+- `tests/rig-firewall.bats` covers every Verify case except live acceptance. Its sudo fixture refuses any install or removal outside `RIG_SYSTEM_ROOT`, and every test asserts that no log names `/etc/pf.conf`, `socketfilterfw`, `pfctl -d` or `-X`.
+
+### Outstanding concerns
+
+- The rule normalisation that compares `pfctl -a … -s rules` output with the rendered anchor is proven only against a fixture. Real `pfctl` display formatting must be confirmed in live acceptance; a mismatch would fail apply safely rather than leave rules unloaded.
+- Live acceptance on `terra` and `sol` is withheld and unrun: tailnet SSH and `vnc://`, LAN refusal, survival across restart, and NordVPN on `sol`.
+- If a future macOS drops Apple's `com.apple/*` anchor point, the anchor stops being evaluated and only `apply --sudo` notices. This residual risk is recorded in the ADR.
+- `rig show ITEM --format json` uses the existing generic label converter, which splits raw `key=value` lines such as `port=tcp:5900` at the colon. This is pre-existing behaviour shared by every resource kind, and was left unchanged as outside this record.
+
+### Post-change review
+
+The goal is met in code: a declared listener port can be restricted to loopback and the tailnet with Rig-owned files only, and the adapter never names `/etc/pf.conf` or `socketfilterfw` in any test log. Scope held to the record's files, apart from the module numbering and the unchanged `22-observation.bash`. Regression risk is concentrated in two shared paths: the sudo-need rule and the apply loop's new grant branch. Both are covered by the full suite, including the existing sudo-session tests. Acceptance readiness: ready for code review now; ready for live acceptance only after Kris approves it and the personal declaration exists in the chezmoi source.
+
+### Mini recap
+
+Built the `macos-pf` firewall resource with fixture-only proof: validation, golden rendering, the read-only boundary, every observation state, the exact apply argv, no-op, parse and reread failures, grant refusal and retirement order. Proposed learning route: none automatically. If live acceptance shows `pfctl` displays rules differently from the fixture, adjust the normalisation in a follow-up record rather than widening this one.
 
 ## Discussion
 

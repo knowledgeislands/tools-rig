@@ -26,6 +26,7 @@ assemble() {
     27-software-removal.bash \
     28-sudo-session.bash \
     29-default-applications.bash \
+    29-firewall.bash \
     30-commands.bash \
     35-adoption.bash \
     40-publication-lifecycle.bash \

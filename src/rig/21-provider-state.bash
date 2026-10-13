@@ -245,7 +245,7 @@ rig_load_resource_receipt() {
     [ -n "$provider$kind$id$locator$extra" ]; do
     [ -z "$extra" ] && rig_valid_id "$provider" && rig_valid_id "$id" ||
       rig_fail "invalid resource receipt record: $receipt" || return
-    case "$kind" in service|scheduled-job) ;; *)
+    case "$kind" in service|scheduled-job|firewall) ;; *)
       rig_fail "invalid resource receipt kind '$kind': $receipt" || return ;;
     esac
     [ -n "$locator" ] || rig_fail "invalid empty resource receipt locator: $receipt" || return
@@ -280,6 +280,10 @@ rig_prepare_retire_invocation() {
     rig_launchd_preflight_retirement "$locator"
     return
   fi
+  if [ "$adapter" = macos-pf ]; then
+    rig_firewall_preflight_retirement "$locator"
+    return
+  fi
   [ "$adapter" = custom ] || return 2
   rig_custom_provider_executable "$provider" || return 2
   executable=$RIG_VALUE
@@ -301,6 +305,10 @@ rig_retire_resource() {
   adapter=$RIG_VALUE
   if [ "$adapter" = launchd ]; then
     rig_launchd_retire_resource "$locator"
+    return
+  fi
+  if [ "$adapter" = macos-pf ]; then
+    rig_firewall_retire "$locator"
     return
   fi
   rig_prepare_retire_invocation "$provider" "$kind" "$id" "$locator" || return
@@ -328,7 +336,7 @@ rig_write_resource_receipt() {
     section_index=$RIG_INDEX
     kind=${RIG_SECTION_TYPES[$section_index]}
     id=${RIG_SECTION_IDS[$section_index]}
-    case "$kind" in service|scheduled-job) ;; *) continue ;; esac
+    case "$kind" in service|scheduled-job|firewall) ;; *) continue ;; esac
     rig_get_value "$section_name" provider || { rm -f "$temporary"; umask "$old_umask"; return 2; }
     provider=$RIG_VALUE
     rig_get_value "$section_name" locator || { rm -f "$temporary"; umask "$old_umask"; return 2; }

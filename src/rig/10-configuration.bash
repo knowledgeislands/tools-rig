@@ -249,6 +249,7 @@ rig_field_kind() {
     remove:name|remove:provider|remove:kind|remove:locator|\
     default-application:name|default-application:purpose|default-application:rationale|\
     default-application:provider|default-application:kind|default-application:value|default-application:bundle-id|\
+    firewall:name|firewall:purpose|firewall:rationale|firewall:provider|firewall:locator|\
     tool:name|tool:category|tool:purpose|tool:rationale|\
     skill:name|skill:purpose|skill:rationale|skill:authority|skill:source|\
     skill:source-skill|skill:trust|skill:public-source|\
@@ -285,7 +286,7 @@ rig_field_kind() {
     tool:install-platform|tool:install-argument|\
     skill:platform|skill:runtime|skill:requires|skill:member-profile|\
     profile:profile|profile:inherit|profile:tool|profile:skill|profile:service|profile:scheduled-job|\
-    profile:setting|profile:dock|profile:port|profile:default-application|\
+    profile:setting|profile:dock|profile:port|profile:default-application|profile:firewall|\
     provider:argument|provider:capability|provider:autoupdate-option|\
     binding:platform|binding:argument|\
     service:platform|service:requires|service:program|service:environment|service:member-profile|\
@@ -296,6 +297,8 @@ rig_field_kind() {
     setting:platform|setting:requires|setting:member-profile|setting:resource-dependency|\
     dock:platform|dock:requires|dock:item|dock:member-profile|dock:resource-dependency|\
     default-application:platform|default-application:requires|default-application:member-profile|\
+    firewall:platform|firewall:requires|firewall:member-profile|firewall:resource-dependency|\
+    firewall:port|firewall:allow|\
     port:member-profile|remove:platform|remove:member-profile|\
     action:platform|action:argument|action:allow-argument|action:resource-kind)
       RIG_FIELD_KIND=repeatable
@@ -362,6 +365,7 @@ rig_toml_field() {
     remove:name|remove:provider|remove:kind|remove:locator|\
     default-application:name|default-application:purpose|default-application:rationale|\
     default-application:provider|default-application:kind|default-application:value|default-application:bundle-id|\
+    firewall:name|firewall:purpose|firewall:rationale|firewall:provider|firewall:locator|\
     tool:name|tool:category|tool:purpose|tool:rationale|\
     skill:name|skill:purpose|skill:rationale|skill:authority|skill:source|\
     skill:source-skill|skill:trust|skill:public-source|\
@@ -429,6 +433,13 @@ rig_toml_field() {
     default-application:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
     default-application:profiles) RIG_TOML_FIELD_KEY=member-profile ; RIG_TOML_FIELD_TYPE=array ;;
     profile:default-applications) RIG_TOML_FIELD_KEY=default-application ; RIG_TOML_FIELD_TYPE=array ;;
+    firewall:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
+    firewall:requires) RIG_TOML_FIELD_KEY=requires ; RIG_TOML_FIELD_TYPE=array ;;
+    firewall:depends-on) RIG_TOML_FIELD_KEY='resource-dependency' ; RIG_TOML_FIELD_TYPE=array ;;
+    firewall:profiles) RIG_TOML_FIELD_KEY=member-profile ; RIG_TOML_FIELD_TYPE=array ;;
+    firewall:ports) RIG_TOML_FIELD_KEY=port ; RIG_TOML_FIELD_TYPE=array ;;
+    firewall:allow) RIG_TOML_FIELD_KEY=allow ; RIG_TOML_FIELD_TYPE=array ;;
+    profile:firewalls) RIG_TOML_FIELD_KEY=firewall ; RIG_TOML_FIELD_TYPE=array ;;
     remove:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
     remove:profiles|port:profiles) RIG_TOML_FIELD_KEY=member-profile ; RIG_TOML_FIELD_TYPE=array ;;
     service:requires|scheduled-job:requires) RIG_TOML_FIELD_KEY=requires ; RIG_TOML_FIELD_TYPE=array ;;
@@ -1045,11 +1056,12 @@ rig_detect_profile_selection_mode() {
           rig_field_declared "$section_name" setting ||
           rig_field_declared "$section_name" dock ||
           rig_field_declared "$section_name" port ||
-          rig_field_declared "$section_name" default-application; then
+          rig_field_declared "$section_name" default-application ||
+          rig_field_declared "$section_name" firewall; then
           central=1
         fi
         ;;
-    tool|skill|service|scheduled-job|setting|dock|default-application|port)
+    tool|skill|service|scheduled-job|setting|dock|default-application|firewall|port)
         if rig_field_declared "$section_name" member-profile; then
           item=1
         fi
@@ -1128,7 +1140,7 @@ rig_resource_reference() {
   case "$reference" in *:*) ;; *) return 1 ;; esac
   kind=${reference%%:*}
   id=${reference#*:}
-  case "$kind" in service|scheduled-job|setting|dock|default-application) ;; *) return 1 ;; esac
+  case "$kind" in service|scheduled-job|setting|dock|default-application|firewall) ;; *) return 1 ;; esac
   rig_valid_id "$id" || return 1
   rig_reference_exists "$kind" "$id" || return 1
   RIG_VALUE=$kind.$id
@@ -1205,7 +1217,7 @@ rig_validate_cycles() {
   RIG_VISIT_STATES=()
   index=0
   while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
-    case "${RIG_SECTION_TYPES[$index]}" in service|scheduled-job|setting|dock|default-application)
+    case "${RIG_SECTION_TYPES[$index]}" in service|scheduled-job|setting|dock|default-application|firewall)
       rig_resource_cycle_visit "${RIG_SECTION_NAMES[$index]}" || return
       ;;
     esac
@@ -1220,14 +1232,14 @@ rig_validate_provider_adapter() {
   adapter=$2
   case "$adapter" in
     custom) ;;
-    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-handlers|skills-cli|ki) ;;
+    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-handlers|macos-pf|skills-cli|ki) ;;
     *) rig_fail "[$section_name] has unsupported adapter '$adapter'" || return ;;
   esac
 }
 
 rig_builtin_provider_adapter() {
   case "$1" in
-    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-handlers|skills-cli|ki)
+    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-handlers|macos-pf|skills-cli|ki)
       RIG_VALUE=$1
       return 0
       ;;
@@ -1268,7 +1280,7 @@ rig_validate_binding_adapter() {
     custom:*) ;;
     homebrew:formula|homebrew:cask|homebrew:mas|uv:tool|mise:tool|npm:global|chezmoi:target) ;;
     direct-download:executable) ;;
-    launchd:*|macos-applications:*|macos-defaults:*|macos-dock:*|macos-handlers:*|skills-cli:*|ki:*)
+    launchd:*|macos-applications:*|macos-defaults:*|macos-dock:*|macos-handlers:*|macos-pf:*|skills-cli:*|ki:*)
       rig_fail "[$section_name] adapter '$adapter' cannot install tools" || return
       ;;
     homebrew:*|uv:*|mise:*|npm:*|chezmoi:*|direct-download:*)
@@ -1951,6 +1963,7 @@ rig_validate_model() {
         rig_validate_references_for_field "$index" dock dock || return
         rig_validate_references_for_field "$index" port port || return
         rig_validate_references_for_field "$index" default-application default-application || return
+        rig_validate_references_for_field "$index" firewall firewall || return
         if rig_field_declared "$section_name" profile &&
           rig_field_declared "$section_name" inherit; then
           rig_fail "[$section_name] cannot combine 'profiles' with 'inherits'" || return
@@ -1967,6 +1980,11 @@ rig_validate_model() {
         ;;
       default-application)
         rig_validate_default_application "$section_name" "$index" || return
+        ;;
+      firewall)
+        rig_validate_firewall "$section_name" "$index" || return
+        rig_validate_references_for_field "$index" member-profile profile || return
+        rig_validate_resource_dependencies "$section_name" "$index" || return
         ;;
       setting)
         rig_validate_setting "$section_name" || return
@@ -2534,7 +2552,7 @@ rig_select_item_memberships() {
     section_type=${RIG_SECTION_TYPES[$index]}
     section_name=${RIG_SECTION_NAMES[$index]}
     section_id=${RIG_SECTION_IDS[$index]}
-    case "$section_type" in tool|skill|service|scheduled-job|setting|dock|default-application|port) ;; *)
+    case "$section_type" in tool|skill|service|scheduled-job|setting|dock|default-application|firewall|port) ;; *)
       index=$((index + 1)); continue ;;
     esac
     if rig_item_selected_by_active_profiles "$section_name"; then
@@ -2571,6 +2589,7 @@ rig_select_central_profile() {
         setting) rig_select_resource setting "$target" "$platform" || return ;;
         dock) rig_select_resource dock "$target" "$platform" || return ;;
         default-application) rig_select_resource default-application "$target" "$platform" || return ;;
+        firewall) rig_select_resource firewall "$target" "$platform" || return ;;
         port) rig_select_port "$target" || return ;;
       esac
     fi
@@ -2667,6 +2686,10 @@ rig_resource_native_target() {
       RIG_VALUE=$provider:default-application:$RIG_VALUE
       ;;
     dock) RIG_VALUE=$provider:dock ;;
+    firewall)
+      rig_get_value "$section_name" locator || return 2
+      RIG_VALUE=$provider:locator:$RIG_VALUE
+      ;;
     *) return 1 ;;
   esac
 }
@@ -2686,6 +2709,10 @@ rig_validate_selected_native_targets() {
       other_target=$RIG_VALUE
       [ "$target" != "$other_target" ] ||
         rig_fail "[$other] conflicts with [$section_name] at native target '$target'" || return
+      if [ "${section_name%%.*}.${other%%.*}" = firewall.firewall ] &&
+        rig_firewall_shared_port "$section_name" "$other"; then
+        rig_fail "[$other] conflicts with [$section_name] at native target 'macos-pf:port:$RIG_VALUE'" || return
+      fi
       scan=$((scan + 1))
     done
     index=$((index + 1))

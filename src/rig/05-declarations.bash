@@ -17,6 +17,7 @@ RIG_DECLARATION_REGISTRY=(
   'setting|setup|1|Settings'
   'default-application|setup|1|Default applications'
   'dock|setup|1|Dock layouts'
+  'firewall|setup|1|Firewall restrictions'
   'port|setup|1|Private ports'
   'retired-application|observation|1|Retired applications'
   'remove|supporting|1|Software removals'

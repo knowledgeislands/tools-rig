@@ -17,7 +17,7 @@ Rig configuration owns desired package selection; Homebrew, uv, mise and npm are
 - A **catalogue** records the identity, purpose, rationale, relationships, and supported platforms of each tool.
 - An **application CLI** declares a bundled command within its app's tool entry, so missing commands can be checked and restored through the native installer or explicit link materialisation.
 - A **skill** records a user-level agent capability and the native authority responsible for it.
-- A **managed resource** records desired services, scheduled jobs, typed machine settings, and semantic layouts.
+- A **managed resource** records desired services, scheduled jobs, typed machine settings, semantic layouts, and tailnet-only firewall restrictions.
 - A **private port** records stable TCP intent without opening, reserving, or publishing a socket.
 - A **profile** selects a complete machine or role setup, or a non-appliable view such as a public subset.
 - A **provider** is the native system that materialises or observes declared intent.

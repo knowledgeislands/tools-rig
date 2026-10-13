@@ -1843,3 +1843,36 @@ The adapter uses existing osascript/plutil and Launch Services, with no duti or
 runtime SDK dependency. RIG_OSASCRIPT and RIG_PLUTIL override native executable
 paths. Handler choices are private, are never retired or reset on deselection,
 and do not remove applications or change per-file Finder overrides.
+
+.SH DECLARED FIREWALL RESTRICTIONS
+\&
+.PP
+Private [firewall.ID] resources require name, purpose, rationale,
+provider = macos-pf, a reverse-DNS locator outside com.apple, ports,
+allow = ["tailnet"] and macOS platforms. Each port is tcp:N or udp:N with N
+from 1 to 65535. Port 22 is rejected for either protocol because SSH is the
+recovery path. Central profiles select firewalls; item profiles use normal
+membership. Two selected firewalls restricting the same protocol and port are
+rejected.
+.PP
+Each declared port accepts loopback and connections whose source and
+destination are both in 100.64.0.0/10 or both in fd7a:115c:a1e0::/48, and is
+blocked from anywhere else. Rig owns /etc/pf.anchors/LOCATOR, loaded as the pf
+anchor com.apple/LOCATOR, and /Library/LaunchDaemons/LOCATOR.plist, which
+reloads it at boot and whenever /etc/pf.conf changes. Rig never edits
+/etc/pf.conf, calls socketfilterfw, disables pf or flushes another anchor.
+.PP
+Doctor, status and show observe without administrator rights: file content,
+daemon load state and last exit code, and listeners on every address through
+netstat -an. A matching firewall is present with kernel-rules-unverified.
+Only apply --sudo changes a firewall: pfctl -n first, root-owned file
+installation, launchctl bootstrap system, pfctl -E, then a reread that must
+match. Without the grant a firewall needing work is skipped with
+administrator-grant-required. Retirement boots out the daemon, flushes only
+its anchor and removes its two files, leaving pf enabled.
+.PP
+Emergency rollback needs no Rig:
+sudo launchctl bootout system/LOCATOR and
+sudo pfctl -a com.apple/LOCATOR -F all.
+RIG_PFCTL, RIG_LAUNCHCTL and RIG_NETSTAT_COMMAND override native executable
+paths, and RIG_SYSTEM_ROOT roots the managed system paths for fixtures.

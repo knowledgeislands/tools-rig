@@ -384,6 +384,7 @@ rig_apply_resource() {
   fi
   case "$adapter" in
     macos-handlers) rig_default_application_apply "$section_name"; return ;;
+    macos-pf) rig_firewall_apply "$section_name"; return ;;
     macos-defaults) rig_setting_apply "$section_name"; return ;;
     macos-dock) rig_dock_apply "$section_name"; return ;;
   esac
@@ -401,6 +402,7 @@ rig_print_resource_projection() {
   rig_provider_adapter "$provider" || return 2
   adapter=$RIG_VALUE
   case "$adapter" in
+    macos-pf) rig_firewall_print_projection "$section_name"; return ;;
     launchd|macos-defaults|macos-dock|macos-handlers)
     RIG_INVOKE_ARGUMENTS=()
     rig_append_resource_fields "$section_name" || return
@@ -583,7 +585,7 @@ rig_apply_select_targets() {
         RIG_APPLY_PORT_TARGETS[${#RIG_APPLY_PORT_TARGETS[@]}]=$target
         RIG_APPLY_DIRECT[${#RIG_APPLY_DIRECT[@]}]=$owner
         ;;
-      service:*|scheduled-job:*|setting:*|dock:*|default-application:*)
+      service:*|scheduled-job:*|setting:*|dock:*|default-application:*|firewall:*)
         section_name=${target/:/.}
         rig_array_contains "$section_name" "${RIG_RESOURCE_PLAN_SECTIONS[@]+"${RIG_RESOURCE_PLAN_SECTIONS[@]}"}" ||
           { syntax_error "unknown target '$target' in profile '$RIG_RESOLVED_PROFILE'"; return 2; }
@@ -921,6 +923,12 @@ rig_command_apply_impl() {
       skipped=$((skipped + 1))
       operational_failure=1
       rig_progress_result skipped "$provider:$kind.$id" declaration
+    elif [ "$kind" = firewall ] && ! rig_firewall_apply_ready "$section_name"; then
+      RIG_RESOURCE_PLAN_RESULTS[$index]=skipped
+      RIG_RESOURCE_PLAN_DETAILS[$index]=$RIG_VALUE
+      skipped=$((skipped + 1))
+      operational_failure=1
+      rig_progress_result skipped "$provider:$kind.$id" declaration
     else
       rig_history_begin "$kind:$id" "$provider"
       rig_apply_resource "$section_name"
@@ -963,6 +971,11 @@ rig_command_apply_impl() {
     elif [ "$dry_run" -eq 1 ]; then
       printf '%s\t%s\t%s\tplanned\tretire:%s\tdeclaration\n' "$id" "$kind" "$provider" "$locator"
       planned=$((planned + 1))
+    elif [ "$kind" = firewall ] && [ "${RIG_SUDO_GRANTED:-0}" -ne 1 ]; then
+      printf '%s\t%s\t%s\tskipped\tadministrator-grant-required\tdeclaration\n' "$id" "$kind" "$provider"
+      skipped=$((skipped + 1))
+      operational_failure=1
+      rig_progress_result skipped "retire $provider:$kind.$id" declaration
     else
       rig_retire_resource "$provider" "$kind" "$id" "$locator"
       native_status=$?
