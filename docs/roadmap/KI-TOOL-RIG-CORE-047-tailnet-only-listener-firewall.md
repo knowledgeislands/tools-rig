@@ -21,14 +21,14 @@ A profile declares that named remote-access listeners, Screen Sharing first, acc
 
 ## Context
 
-Kris asked for remote access to be managed by Rig on 2026-10-13 (mac-studio-bootstrap Decision 45), and chose to build the tailnet-only Screen Sharing firewall properly in Rig now rather than hand-fix `sol` (Decision 48, after Decision 47 deferred the hand fix to Rig). This record is the firewall slice split out of [KI-TOOL-RIG-CORE-046](KI-TOOL-RIG-CORE-046-remote-access-and-continuity.md), which keeps Screen Sharing on or off, allowed users, Handoff, Universal Clipboard and Universal Control.
+Kris asked for remote access to be managed by Rig on 2026-10-13 (mac-studio-bootstrap Decision 45), and chose to build the tailnet-only Screen Sharing firewall properly in Rig now rather than hand-fix `sol` (Decision 48, after Decision 47 deferred the hand fix to Rig). This record is the firewall slice split out of [KI-TOOL-RIG-CORE-046](https://github.com/knowledgeislands/tools-rig/blob/5d7af1c5101d19438aff80973b483c227255a907/docs/roadmap/KI-TOOL-RIG-CORE-046-remote-access-and-continuity.md), which keeps Screen Sharing on or off, allowed users, Handoff, Universal Clipboard and Universal Control.
 
 macOS Screen Sharing has no per-interface setting: launchd holds its socket on every address, IPv4 and IPv6, whenever the service is enabled. With the application firewall off, anyone on a shared network can reach port 5900 and try the account password. The person's two Macs are `terra` (MacBook, `laptop` profile, Tailscale through the Homebrew `tailscaled` daemon) and `sol` (Mac Studio, `studio` profile, Tailscale.app). The manual steps and the current advice to turn Screen Sharing off on shared networks are in the chezmoi source's macOS workstation guide, "Remote access" section.
 
 ## Boundary
 
 - **In:** a new `firewall` resource kind with a built-in `macos-pf` provider; declaration validation; read-only observation in `rig status` and `rig doctor`; `rig apply --sudo` install and repair; catalogue-scoped retirement under [ADR-KI-TOOL-RIG-008](../decisions/ADR-KI-TOOL-RIG-008-catalogue-scoped-resource-retirement.md); `rig show` and `rig explain` presentation; specification, guide, help, manual, changelog and test alignment.
-- **Out:** turning Screen Sharing on or off and choosing its users ([KI-TOOL-RIG-CORE-046](KI-TOOL-RIG-CORE-046-remote-access-and-continuity.md)); SSH server settings, keys and port 22, which this record never filters; the macOS application firewall (`socketfilterfw`), which Rig neither enables nor reads as part of this resource; installing or configuring Tailscale; arbitrary CIDR allow-lists, outbound rules, NAT or general firewall management; editing `/etc/pf.conf` or Apple's `/etc/pf.anchors/com.apple`; any personal declaration, which belongs to the person's Rig configuration in the chezmoi source.
+- **Out:** turning Screen Sharing on or off and choosing its users ([KI-TOOL-RIG-CORE-046](https://github.com/knowledgeislands/tools-rig/blob/5d7af1c5101d19438aff80973b483c227255a907/docs/roadmap/KI-TOOL-RIG-CORE-046-remote-access-and-continuity.md)); SSH server settings, keys and port 22, which this record never filters; the macOS application firewall (`socketfilterfw`), which Rig neither enables nor reads as part of this resource; installing or configuring Tailscale; arbitrary CIDR allow-lists, outbound rules, NAT or general firewall management; editing `/etc/pf.conf` or Apple's `/etc/pf.anchors/com.apple`; any personal declaration, which belongs to the person's Rig configuration in the chezmoi source.
 - **Linux, explicit non-goal for this record.** No Linux profile exists yet. The declaration below is provider-neutral, so a later record can add a `linux-nftables` (or `ufw`) provider that filters on `tailscale0` without changing the schema. On Linux, a selected `macos-pf` declaration is refused by the existing resource-platform rule.
 
 ## Current state
@@ -60,7 +60,7 @@ Evidence gathered read-only on 2026-10-13 (`sol` was still on macOS 26.5.2, buil
 
 ## Files touched
 
-Planning changes this record, [KI-TOOL-RIG-CORE-046](KI-TOOL-RIG-CORE-046-remote-access-and-continuity.md) and [the issue ledger](_ISSUES.md) only. Expected delivery scope:
+Planning changes this record, [KI-TOOL-RIG-CORE-046](https://github.com/knowledgeislands/tools-rig/blob/5d7af1c5101d19438aff80973b483c227255a907/docs/roadmap/KI-TOOL-RIG-CORE-046-remote-access-and-continuity.md) and [the issue ledger](_ISSUES.md) only. Expected delivery scope:
 
 - [Declarations](../../src/rig/05-declarations.bash), [runtime help](../../src/rig/00-runtime.bash), [configuration](../../src/rig/10-configuration.bash), [orchestration](../../src/rig/20-orchestration.bash), [observation](../../src/rig/22-observation.bash), [application](../../src/rig/23-application.bash), [sudo session](../../src/rig/28-sudo-session.bash), [commands](../../src/rig/30-commands.bash), a new `src/rig/2N-firewall.bash` module, and the assembled [executable](../../bin/rig).
 - New `tests/rig-firewall.bats`; [isolation helper](../../tests/helpers/isolate.bash) (system-root redirect and `sudo`/`pfctl`/`netstat` stubs); [sudo-session tests](../../tests/rig-sudo-session.bats), [profile-authority tests](../../tests/rig-profile-authority.bats) and [command-surface tests](../../tests/rig-cli-surface.bats) where shared behaviour changes.
@@ -89,7 +89,7 @@ Then run [Develop Rig's complete gate](../guides/developer/README.md#verify-the-
 
 ## Dependencies / blocks
 
-`blocks: []` and `blocked_by: []`. Delivery needs no machine, profile or chezmoi change. The personal `[firewall.*]` declaration and the chezmoi guide's pointer move to this record belong to the chezmoi source after delivery. [KI-TOOL-RIG-CORE-046](KI-TOOL-RIG-CORE-046-remote-access-and-continuity.md) is independent: either can land first.
+`blocks: []` and `blocked_by: []`. Delivery needs no machine, profile or chezmoi change. The personal `[firewall.*]` declaration and the chezmoi guide's pointer move to this record belong to the chezmoi source after delivery. [KI-TOOL-RIG-CORE-046](https://github.com/knowledgeislands/tools-rig/blob/5d7af1c5101d19438aff80973b483c227255a907/docs/roadmap/KI-TOOL-RIG-CORE-046-remote-access-and-continuity.md) is independent: either can land first.
 
 ## Documentation impact
 
@@ -206,7 +206,7 @@ profiles = ["studio"]
 - **FW-MATCH.** Match tailnet addresses on source and destination, never an interface. Recommend yes, for the evidence above.
 - **FW-PERSIST.** Use a Rig-owned LaunchDaemon loading a `com.apple/` child anchor at boot and on `/etc/pf.conf` change, never editing `/etc/pf.conf`. Recommend yes. Alternative: also re-assert every 15 minutes (`StartInterval`) to self-heal after a VPN client flushes pf, at the cost of a repeating root job; recommend adding it only if the NordVPN live check fails.
 - **FW-DOCTOR.** Accept that unprivileged doctor reports files, daemon and listener exposure, and states kernel rules as unverified, instead of adding a privileged doctor. Recommend yes: doctor stays read-only and promptless.
-- **FW-LINUX.** Linux is an explicit non-goal here, with the schema left open for a later provider once a Linux profile exists. Recommend yes. Kris later approved that provider as [KI-TOOL-RIG-CORE-051](KI-TOOL-RIG-CORE-051-linux-tailnet-only-firewall.md) (Decision 51).
+- **FW-LINUX.** Linux is an explicit non-goal here, with the schema left open for a later provider once a Linux profile exists. Recommend yes. Kris later approved that provider as [KI-TOOL-RIG-CORE-051](https://github.com/knowledgeislands/tools-rig/blob/5d7af1c5101d19438aff80973b483c227255a907/docs/roadmap/KI-TOOL-RIG-CORE-051-linux-tailnet-only-firewall.md) (Decision 51).
 
 ### Approval boundary
 
