@@ -5,13 +5,12 @@ title: Mise observed executables
 purpose: corrective
 initiative: rig
 kind: deliver
-status: awaiting-review
-horizon: now
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: d6be83747f504b1aad3f79b9e153f8a4c4e75ca2
 created_at: 2026-10-13T23:36:16Z
-updated_at: 2026-10-14T08:50:19Z
+updated_at: 2026-10-14T08:54:00Z
 ---
 
 # Mise Observed Executables
@@ -135,6 +134,10 @@ The goal is met: `rust` with `["rustc", "cargo"]` and `cargo:cargo-nextest` with
 ### Mini recap
 
 Added `install.executables` for mise tools with validation, per-executable observation with first-failure reporting and a versionless default, fixture and validation tests, and the specification, manual and changelog updates. Proposed learning route: none.
+
+## Done
+
+Accepted 2026-10-14 by Kris Brown on the review packet above (state-of-play decisions log, Decision 170: "RIG050-ACCEPT accept KI-TOOL-RIG-CORE-050").
 
 ## Discussion
 
