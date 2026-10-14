@@ -293,7 +293,7 @@ assert_no_global_firewall() {
   [ "$(cat "$ANCHOR")" = "$(golden_anchor)" ]
   [ "$(cat "$DAEMON")" = "$(golden_daemon)" ]
   local listing
-  listing=$(cd "$RIG_SYSTEM_ROOT" && /usr/bin/find . -type f | /usr/bin/sort)
+  listing=$(cd "$RIG_SYSTEM_ROOT" && /usr/bin/find . -type f | LC_ALL=C /usr/bin/sort)
   [ "$listing" = $'./Library/LaunchDaemons/org.rig.test.screen-sharing.plist\n./etc/pf.anchors/org.rig.test.screen-sharing' ] ||
     { printf 'system root files:\n%s\n' "$listing" >&3; false; }
   run "$RIG" show firewall:screen-sharing
