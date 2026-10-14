@@ -283,12 +283,13 @@ rig_field_kind() {
     retired-application:application-path|retired-application:data-path|retired-application:package-path|\
     tool:platform|tool:requires|tool:related|tool:alternative|tool:artifact|tool:member-profile|\
     tool:variant:*:platform|tool:variant:*:artifact|tool:variant:*:install-argument|\
-    tool:install-platform|tool:install-argument|\
+    tool:variant:*:install-executable|\
+    tool:install-platform|tool:install-argument|tool:install-executable|\
     skill:platform|skill:runtime|skill:requires|skill:member-profile|\
     profile:profile|profile:inherit|profile:tool|profile:skill|profile:service|profile:scheduled-job|\
     profile:setting|profile:dock|profile:port|profile:default-application|profile:firewall|\
     provider:argument|provider:capability|provider:autoupdate-option|\
-    binding:platform|binding:argument|\
+    binding:platform|binding:argument|binding:observe-executable|\
     service:platform|service:requires|service:program|service:environment|service:member-profile|\
     service:resource-dependency|service:associated-application|\
     scheduled-job:platform|scheduled-job:requires|scheduled-job:program|\
@@ -331,6 +332,7 @@ rig_toml_variant_field() {
     install.destination) canonical=install-destination; RIG_TOML_FIELD_TYPE=string ;;
     install.checksum) canonical=install-checksum; RIG_TOML_FIELD_TYPE=string ;;
     install.arguments) canonical=install-argument; RIG_TOML_FIELD_TYPE=array ;;
+    install.executables) canonical=install-executable; RIG_TOML_FIELD_TYPE=array ;;
     *) return 1 ;;
   esac
   RIG_TOML_FIELD_KEY=variant:$variant:$canonical
@@ -415,6 +417,7 @@ rig_toml_field() {
     skill:profiles) RIG_TOML_FIELD_KEY=member-profile ; RIG_TOML_FIELD_TYPE=array ;;
     tool:install.platforms) RIG_TOML_FIELD_KEY=install-platform ; RIG_TOML_FIELD_TYPE=array ;;
     tool:install.arguments) RIG_TOML_FIELD_KEY=install-argument ; RIG_TOML_FIELD_TYPE=array ;;
+    tool:install.executables) RIG_TOML_FIELD_KEY=install-executable ; RIG_TOML_FIELD_TYPE=array ;;
     profile:profiles) RIG_TOML_FIELD_KEY=profile ; RIG_TOML_FIELD_TYPE=array ;;
     profile:inherits) RIG_TOML_FIELD_KEY=inherit ; RIG_TOML_FIELD_TYPE=array ;;
     profile:tools) RIG_TOML_FIELD_KEY=tool ; RIG_TOML_FIELD_TYPE=array ;;
@@ -916,6 +919,7 @@ rig_synthesise_binding_fields() {
       "$prefix"install-platform) target=platform ;;
       "$prefix"platform) [ -z "$prefix" ] || target=platform ;;
       "$prefix"install-argument) target=argument ;;
+      "$prefix"install-executable) target=observe-executable ;;
     esac
     [ -z "$target" ] ||
       rig_add_field "$binding_index" "$target" "$value" '<derived install>' 0 || return
@@ -1266,6 +1270,7 @@ rig_provider_exists() {
 
 rig_validate_binding_adapter() {
   local section_name provider adapter kind locator destination checksum digest
+  local field_index field_end executable
 
   section_name=$1
   provider=$2
@@ -1325,6 +1330,23 @@ rig_validate_binding_adapter() {
       rig_fail "[$section_name] destination and checksum are only valid for direct-download installations" || return
     fi
   fi
+
+  rig_section_index "$section_name" || return 2
+  field_index=${RIG_SECTION_FIELD_STARTS[$RIG_INDEX]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$RIG_INDEX]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = observe-executable ]; then
+      [ "$adapter:$kind" = mise:tool ] ||
+        rig_fail "[$section_name] install.executables is only valid for mise tool installations" || return
+      executable=${RIG_FIELD_VALUES[$field_index]}
+      case "$executable" in
+        ''|-*|*/*|*$'\t'*|*$'\n'*)
+          rig_fail "[$section_name] install.executables has invalid executable name '$executable'" || return
+          ;;
+      esac
+    fi
+    field_index=$((field_index + 1))
+  done
 }
 
 rig_validate_calendar_entry() {
@@ -1935,7 +1957,8 @@ rig_validate_model() {
           rig_get_value "$section_name" install-destination ||
           rig_get_value "$section_name" install-checksum ||
           rig_get_value "$section_name" install-platform ||
-          rig_get_value "$section_name" install-argument; then
+          rig_get_value "$section_name" install-argument ||
+          rig_get_value "$section_name" install-executable; then
           rig_fail "[$section_name] install metadata requires install.provider" || return
         fi
       fi

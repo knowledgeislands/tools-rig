@@ -34,6 +34,14 @@ write_fixture_catalogue() {
     'tools = ["sample"]' >"$CONFIG_HOME/rig.toml"
 }
 
+add_fixture_install_line() {
+  local line catalogue
+  line=$1
+  catalogue=$CONFIG_HOME/rig.toml
+  awk -v extra="$line" '{ print } /^install\.locator = / { print extra }' "$catalogue" >"$catalogue.new"
+  mv "$catalogue.new" "$catalogue"
+}
+
 @test "provider fixture controls Homebrew observation on both platforms" {
   local platform
   write_fixture_catalogue homebrew formula sample
@@ -113,4 +121,75 @@ write_fixture_catalogue() {
   run env RIG_CONFIG_HOME="$CONFIG_HOME" "$RIG" status
   [[ "$output" =~ sample[[:space:]]+homebrew[[:space:]]+unknown[[:space:]]+exit:99 ]] || false
   grep -Fqx 'brew|list --formula --versions sample' "$RIG_TEST_PROVIDER_LOG" || false
+}
+
+@test "mise observes each declared executable and installs the locator" {
+  local platform
+  rig_test_provider mise
+  for platform in macos linux; do
+    write_fixture_catalogue mise tool rust
+    add_fixture_install_line 'install.executables = ["rustc", "cargo"]'
+    : >"$RIG_TEST_PROVIDER_TABLE"
+    : >"$RIG_TEST_PROVIDER_LOG"
+    rig_test_provider_response mise 'which rustc' 0 /tmp/rig-fixture-rustc
+    rig_test_provider_response mise 'which cargo' 0 /tmp/rig-fixture-cargo
+    run env RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM="$platform" "$RIG" status
+    [[ "$output" =~ sample[[:space:]]+mise[[:space:]]+present[[:space:]]+- ]] || false
+    grep -Fqx 'mise|which rustc' "$RIG_TEST_PROVIDER_LOG" || false
+    grep -Fqx 'mise|which cargo' "$RIG_TEST_PROVIDER_LOG" || false
+    : >"$RIG_TEST_PROVIDER_TABLE"
+    rig_test_provider_response mise 'which rustc' 0 /tmp/rig-fixture-rustc
+    rig_test_provider_response mise 'which cargo' 1 -
+    run env RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM="$platform" "$RIG" status
+    [[ "$output" =~ sample[[:space:]]+mise[[:space:]]+missing[[:space:]]+missing-executable:cargo ]] || false
+    : >"$RIG_TEST_PROVIDER_TABLE"
+    rig_test_provider_response mise 'which rustc' 1 -
+    rig_test_provider_response mise 'which cargo' 1 -
+    run env RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM="$platform" "$RIG" status
+    [[ "$output" =~ sample[[:space:]]+mise[[:space:]]+missing[[:space:]]+missing-executable:rustc ]] || false
+    : >"$RIG_TEST_PROVIDER_TABLE"
+    rig_test_provider_response mise 'which rustc' 4 -
+    run env RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM="$platform" "$RIG" status
+    [[ "$output" =~ sample[[:space:]]+mise[[:space:]]+unknown[[:space:]]+exit:4 ]] || false
+  done
+  ! grep -Fqx 'mise|which rust' "$RIG_TEST_PROVIDER_LOG" || false
+}
+
+@test "mise cargo backend observes its executable and applies the full locator" {
+  rig_test_provider mise
+  write_fixture_catalogue mise tool cargo:cargo-nextest
+  add_fixture_install_line 'install.executables = ["cargo-nextest"]'
+  rig_test_provider_response mise 'which cargo-nextest' 1 -
+  rig_test_provider_response mise 'install cargo:cargo-nextest' 0 -
+  run env RIG_CONFIG_HOME="$CONFIG_HOME" "$RIG" status
+  [[ "$output" =~ sample[[:space:]]+mise[[:space:]]+missing[[:space:]]+missing-executable:cargo-nextest ]] || false
+  run env RIG_CONFIG_HOME="$CONFIG_HOME" "$RIG" apply
+  grep -Fqx 'mise|which cargo-nextest' "$RIG_TEST_PROVIDER_LOG" || false
+  grep -Fqx 'mise|install cargo:cargo-nextest' "$RIG_TEST_PROVIDER_LOG" || false
+  ! grep -Fq 'which cargo:' "$RIG_TEST_PROVIDER_LOG" || false
+  [ "$(wc -l <"$RIG_TEST_PROVIDER_LOG")" -eq "$(grep -Fxc -e 'mise|which cargo-nextest' -e 'mise|install cargo:cargo-nextest' "$RIG_TEST_PROVIDER_LOG")" ] || false
+}
+
+@test "mise default observation strips only a locator version" {
+  rig_test_provider mise
+  write_fixture_catalogue mise tool node@22
+  rig_test_provider_response mise 'which node' 0 /tmp/rig-fixture-node
+  rig_test_provider_response mise 'install node@22' 0 -
+  run env RIG_CONFIG_HOME="$CONFIG_HOME" "$RIG" status
+  [[ "$output" =~ sample[[:space:]]+mise[[:space:]]+present[[:space:]]+- ]] || false
+  grep -Fqx 'mise|which node' "$RIG_TEST_PROVIDER_LOG" || false
+  write_fixture_catalogue mise tool npm:@scope/name@1.2
+  : >"$RIG_TEST_PROVIDER_TABLE"
+  : >"$RIG_TEST_PROVIDER_LOG"
+  rig_test_provider_response mise 'which npm:@scope/name' 1 -
+  run env RIG_CONFIG_HOME="$CONFIG_HOME" "$RIG" status
+  [[ "$output" =~ sample[[:space:]]+mise[[:space:]]+missing[[:space:]]+- ]] || false
+  grep -Fqx 'mise|which npm:@scope/name' "$RIG_TEST_PROVIDER_LOG" || false
+  write_fixture_catalogue mise tool npm:@scope/name
+  : >"$RIG_TEST_PROVIDER_TABLE"
+  : >"$RIG_TEST_PROVIDER_LOG"
+  rig_test_provider_response mise 'which npm:@scope/name' 0 /tmp/rig-fixture-name
+  run env RIG_CONFIG_HOME="$CONFIG_HOME" "$RIG" status
+  [[ "$output" =~ sample[[:space:]]+mise[[:space:]]+present[[:space:]]+- ]] || false
+  grep -Fqx 'mise|which npm:@scope/name' "$RIG_TEST_PROVIDER_LOG" || false
 }

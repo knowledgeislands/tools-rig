@@ -5,13 +5,13 @@ title: Mise observed executables
 purpose: corrective
 initiative: rig
 kind: deliver
-status: ready
-horizon: next
+status: awaiting-review
+horizon: now
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: d6be83747f504b1aad3f79b9e153f8a4c4e75ca2
 created_at: 2026-10-13T23:36:16Z
-updated_at: 2026-10-14T08:35:40Z
+updated_at: 2026-10-14T08:50:19Z
 ---
 
 # Mise Observed Executables
@@ -44,11 +44,11 @@ Grounded at `620e0b9` on 14 October 2026.
 
 ## Steps
 
-- [ ] Add `install.executables` and `variant.ID.install.executables`, a string array, to the TOML field maps and the tool key allow-lists; copy it to the binding as `observe-executable` (distinct from the provider `executable` key) in `rig_synthesise_binding_fields`; include it in the "requires install.provider" guard.
-- [ ] In `rig_validate_binding_adapter`, accept `executables` only for `mise:tool`, reject it for every other adapter and kind, and reject an empty element, a tab or newline, a leading `-`, or a `/`.
-- [ ] Observation: for `mise:tool`, observe each named executable in order with `mise which [ARGUMENTS] EXECUTABLE`. With no `executables`, observe one executable: the locator with a trailing `@VERSION` removed (`rust`, `cargo:cargo-nextest`, `node@22` → `node`), so existing catalogues keep their current command except for a versioned locator. Aggregate: every executable present → `present`; any exit 1 → `missing` with detail `missing-executable:NAME` for the first missing; any other exit → `unknown` with `exit:N`. Apply, upgrade and remove keep the full locator.
-- [ ] Bats tests in `tests/rig-provider-fixtures.bats`: `rust` with `executables = ["rustc", "cargo"]` is present only when both `which` calls succeed and missing with the first failing name otherwise; `cargo:cargo-nextest` with one executable observes `which cargo-nextest` and applies `install cargo:cargo-nextest`; a versioned locator without the field observes the bare name; the unversioned default command is unchanged. Validation tests in `tests/rig-model-boundaries.bats` reject the field on a non-mise kind, without `install.provider`, and with an unsafe element.
-- [ ] Update the specification, manual and changelog (below), run `scripts/assemble-rig`, and run the complete local gate in [Develop Rig](../guides/developer/README.md#verify-the-repository).
+- [x] Add `install.executables` and `variant.ID.install.executables`, a string array, to the TOML field maps and the tool key allow-lists; copy it to the binding as `observe-executable` (distinct from the provider `executable` key) in `rig_synthesise_binding_fields`; include it in the "requires install.provider" guard.
+- [x] In `rig_validate_binding_adapter`, accept `executables` only for `mise:tool`, reject it for every other adapter and kind, and reject an empty element, a tab or newline, a leading `-`, or a `/`.
+- [x] Observation: for `mise:tool`, observe each named executable in order with `mise which [ARGUMENTS] EXECUTABLE`. With no `executables`, observe one executable: the locator with a trailing `@VERSION` removed (`rust`, `cargo:cargo-nextest`, `node@22` → `node`), so existing catalogues keep their current command except for a versioned locator. Aggregate: every executable present → `present`; any exit 1 → `missing` with detail `missing-executable:NAME` for the first missing; any other exit → `unknown` with `exit:N`. Apply, upgrade and remove keep the full locator.
+- [x] Bats tests in `tests/rig-provider-fixtures.bats`: `rust` with `executables = ["rustc", "cargo"]` is present only when both `which` calls succeed and missing with the first failing name otherwise; `cargo:cargo-nextest` with one executable observes `which cargo-nextest` and applies `install cargo:cargo-nextest`; a versioned locator without the field observes the bare name; the unversioned default command is unchanged. Validation tests in `tests/rig-model-boundaries.bats` reject the field on a non-mise kind, without `install.provider`, and with an unsafe element.
+- [x] Update the specification, manual and changelog (below), run `scripts/assemble-rig`, and run the complete local gate in [Develop Rig](../guides/developer/README.md#verify-the-repository).
 
 ## Files touched
 
@@ -84,6 +84,57 @@ None beyond the `install.*` field list in `man/rig.1`; no user guide documents p
 ### Roadmap
 
 This record only. `CHANGELOG.md` gains one capability line.
+
+## Review
+
+### Delivered
+
+Delivered within the approved boundary from baseline `d6be83747f504b1aad3f79b9e153f8a4c4e75ca2`, using provider fixtures only. A mise `tool` installation, at tool or variant level, now accepts `install.executables`; Rig observes each named executable with `mise which`, and without the field observes the locator with a trailing `@VERSION` removed. Install, upgrade and removal keep the full locator.
+
+Excluded, as planned: no change to install, upgrade or removal commands, no reading of mise's global manifest, no other provider kind, no apply against the live workstation, and no release.
+
+### Change Summary
+
+- **Configuration** (`src/rig/10-configuration.bash`): `install.executables` and `variant.ID.install.executables` map to `install-executable`, copy to the binding as `observe-executable`, join the "install metadata requires install.provider" guard, and are validated in `rig_validate_binding_adapter`: mise `tool` only, no leading `-`, `/`, tab or newline. The TOML reader already refuses an empty array element.
+- **Observation** (`src/rig/21-provider-state.bash`, `src/rig/00-runtime.bash`): new `rig_mise_observation_executables` and `rig_observe_mise_tool`; `rig_prepare_builtin_invocation` takes the observed executable for `mise:tool:observe`. Each `mise which` call still goes through the per-invocation observation cache.
+- **Tests**: three fixture tests in `tests/rig-provider-fixtures.bats` and one validation test in `tests/rig-model-boundaries.bats`.
+- **Documentation**: RIG-ORCH-017, RIG-CONF-010 and RIG-CONF-013, `man/rig.1`, and one `CHANGELOG.md` line. `bin/rig` regenerated.
+
+Interpretations for review:
+
+- **Horizon moved from Next to Now**, as delivery start requires.
+- **Scoped package names keep their `@`.** The versionless default removes only a trailing `@VERSION` after a non-empty name that does not end in `:` and a version without `/`, so `npm:@scope/name` is observed unchanged and `npm:@scope/name@1.2` as `npm:@scope/name`.
+- **`missing-executable:NAME` only when the field is declared.** The default single observation keeps its existing `missing` with no detail, so the unversioned default output is unchanged.
+- **Observation stops at the first non-zero exit**, so a later executable is not called once the outcome is known.
+
+### Verification
+
+All commands ran locally on 14 October 2026 with stdin closed. No live mise call or Rig apply was run against the workstation.
+
+- Complete gate from [Develop Rig](../guides/developer/README.md#verify-the-repository):
+  - `ki repo audit --repo .`: no failures; the existing HOOK-1 warning (no committed pre-commit gate) is unrelated.
+  - `shellcheck` and `bash -n` on every listed script: clean.
+  - `scripts/assemble-rig --check`: current, so `bin/rig` is byte-identical to the assembled modules.
+  - `scripts/benchmark-rig`: within budget (show 2 s of 5 s, show-all 2 s of 5 s, status 6 s of 8 s).
+  - `scripts/smoke-native-providers`: read-only version probes, 6 of 6 passed.
+  - `bats tests/ </dev/null`: 543 of 543 passed, including the four new tests.
+  - `mandoc -T lint man/rig.1`: clean.
+  - `git diff --check`: clean.
+- The cargo-backend fixture asserts that its provider log holds only `which cargo-nextest` and `install cargo:cargo-nextest`, so no undeclared mise call ran; the `rust` fixture asserts `which rust` is never called.
+
+### Outstanding concerns
+
+- The versionless default changes the observed command only for a versioned locator, which was previously always `missing`; no existing correct observation changes.
+- A backend whose plain tool name is not an executable, such as `ubi:owner/repo@v1` observed as `ubi:owner/repo`, still needs `install.executables`. That is the field's purpose and is documented.
+- The chezmoi workstation needs a Rig release containing this change before its catalogue can declare `rust` and `cargo:` tools. No release was made.
+
+### Post-change review
+
+The goal is met: `rust` with `["rustc", "cargo"]` and `cargo:cargo-nextest` with `["cargo-nextest"]` are observable and installable through Rig, and a versioned locator observes its bare name. Scope held to the planned files plus the runtime global in `00-runtime.bash`. Regression risk is confined to mise observation, which now has its own path; the existing mise fixture test and the full suite pass unchanged. Ready for code review.
+
+### Mini recap
+
+Added `install.executables` for mise tools with validation, per-executable observation with first-failure reporting and a versionless default, fixture and validation tests, and the specification, manual and changelog updates. Proposed learning route: none.
 
 ## Discussion
 

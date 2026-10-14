@@ -1205,8 +1205,14 @@ fields plus
 .B install.platforms
 and
 .B install.arguments
-string arrays. A tool with no install provider is catalogue-only. Destination
-and checksum are restricted to direct-download installations.
+string arrays. A mise
+.B tool
+installation also accepts an
+.B install.executables
+string array naming the executables Rig observes; each name must not start
+with a hyphen or contain a slash, tab or newline. A tool with no install
+provider is catalogue-only. Destination and checksum are restricted to
+direct-download installations.
 .PP
 The optional tool
 .B artifacts
@@ -1495,7 +1501,7 @@ mas list
 mas install LOCATOR
 uv tool list
 uv tool install LOCATOR
-mise which LOCATOR
+mise which EXECUTABLE
 mise install LOCATOR
 npm list --global --depth=0 LOCATOR
 npm install --global LOCATOR
@@ -1511,6 +1517,15 @@ precede the locator. Each configured value remains one literal argument. An
 allowed explicit
 .B executable
 replaces the adapter default.
+.PP
+mise observes each
+.B install.executables
+name in order and reports the tool present only when every name resolves; the
+first unresolved name is reported as
+.BR missing-executable:NAME .
+Without the field, mise observes the locator with any trailing
+.B @VERSION
+removed. Install, upgrade and removal always use the full locator.
 .PP
 A
 .B direct-download

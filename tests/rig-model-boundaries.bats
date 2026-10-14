@@ -81,6 +81,61 @@ run_diag() {
   done
 }
 
+write_executables_model() {
+  printf '%s\n' \
+    '[rig]' 'schema = 1' 'default-profile = "default"' \
+    '[category.core]' 'name = "Core"' 'purpose = "Core tools"' \
+    '[tool.subject]' 'name = "Subject"' 'category = "core"' 'purpose = "Observe executables"' \
+    'rationale = "Binary names differ from the locator"' 'platforms = ["macos"]' \
+    "$@" \
+    '[profile.default]' 'tools = ["subject"]' >"$CONFIG_HOME/rig.toml"
+}
+
+@test "install.executables is valid only on a mise tool with safe names" {
+  local name
+
+  write_executables_model 'install.provider = "mise"' 'install.kind = "tool"' \
+    'install.locator = "rust"' 'install.executables = ["rustc", "cargo"]'
+  run_diag
+  [ "$status" -eq 0 ] || false
+
+  write_executables_model 'variant.mac.platforms = ["macos"]' 'variant.mac.install.provider = "mise"' \
+    'variant.mac.install.kind = "tool"' 'variant.mac.install.locator = "rust"' \
+    'variant.mac.install.executables = ["rustc"]'
+  run_diag
+  [ "$status" -eq 0 ] || false
+
+  write_executables_model 'install.provider = "homebrew"' 'install.kind = "formula"' \
+    'install.locator = "rust"' 'install.executables = ["rustc"]'
+  run_diag
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'install.executables is only valid for mise tool installations'* ]] || false
+
+  write_executables_model 'install.executables = ["rustc"]'
+  run_diag
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'install metadata requires install.provider'* ]] || false
+
+  write_executables_model 'variant.mac.platforms = ["macos"]' 'variant.mac.install.executables = ["rustc"]'
+  run_diag
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"variant 'mac' install metadata requires install.provider"* ]] || false
+
+  for name in '-rustc' 'bin/rustc' 'rust\tc' 'rust\nc'; do
+    write_executables_model 'install.provider = "mise"' 'install.kind = "tool"' \
+      'install.locator = "rust"' "install.executables = [\"$name\"]"
+    run_diag
+    [ "$status" -eq 2 ]
+    [[ "$output" == *'install.executables has invalid executable name'* ]] || false
+  done
+
+  write_executables_model 'install.provider = "mise"' 'install.kind = "tool"' \
+    'install.locator = "rust"' 'install.executables = [""]'
+  run_diag
+  [ "$status" -eq 2 ]
+  [[ "$output" == *'array values must not be empty'* ]] || false
+}
+
 @test "action tables reject built-in providers including launchd" {
   local provider
 

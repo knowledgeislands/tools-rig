@@ -98,7 +98,7 @@ _Evidence:_ `rig_validate_model` and adoption migration fixtures validate root f
 
 ### RIG-CONF-010 — Catalogue fields
 
-Schema 1 category tables MUST require string `name` and `purpose`. Tool tables MUST require string `name`, `category`, `purpose`, and `rationale`, MUST require a non-empty `platforms` string array, and MAY contain `requires`, `related`, `alternatives`, and `artifacts` string arrays. A materialised non-variant tool MUST co-locate string `install.provider`, `install.kind`, and `install.locator`; it MAY contain string `install.destination` and `install.checksum` and string arrays `install.platforms` and `install.arguments`. `install.provider` MUST name a built-in provider identity or an explicitly declared external provider. A tool without `install.provider` is catalogue-only and MUST NOT contain any other `install.*` field.
+Schema 1 category tables MUST require string `name` and `purpose`. Tool tables MUST require string `name`, `category`, `purpose`, and `rationale`, MUST require a non-empty `platforms` string array, and MAY contain `requires`, `related`, `alternatives`, and `artifacts` string arrays. A materialised non-variant tool MUST co-locate string `install.provider`, `install.kind`, and `install.locator`; it MAY contain string `install.destination` and `install.checksum` and string arrays `install.platforms`, `install.arguments`, and `install.executables`. `install.provider` MUST name a built-in provider identity or an explicitly declared external provider. A tool without `install.provider` is catalogue-only and MUST NOT contain any other `install.*` field.
 
 _Conformance:_ conforming
 
@@ -128,13 +128,13 @@ _Evidence:_ `rig_validate_model`, `rig_builtin_provider_adapter`, model-boundary
 
 ### RIG-CONF-013 — Installation fields
 
-Tool installation metadata MUST reference one built-in or explicitly declared external provider and MUST obey that provider's native kind contract. Built-in kinds MUST include Homebrew `formula`, `cask`, and `mas`; uv `tool`; mise `tool`; npm `global`; chezmoi `target`; and direct-download `executable`. `install.destination` and `install.checksum` MUST be valid only for `direct-download` installations. Homebrew `mas` locators MUST be numeric application identities. Direct-download installations MUST use an HTTPS locator, an absolute expanded destination, and a checksum containing `sha256:` followed by exactly 64 lowercase hexadecimal characters.
+Tool installation metadata MUST reference one built-in or explicitly declared external provider and MUST obey that provider's native kind contract. Built-in kinds MUST include Homebrew `formula`, `cask`, and `mas`; uv `tool`; mise `tool`; npm `global`; chezmoi `target`; and direct-download `executable`. `install.destination` and `install.checksum` MUST be valid only for `direct-download` installations. `install.executables`, at tool or variant level, MUST be valid only for mise `tool` installations, and each element MUST be non-empty and MUST NOT begin with `-` or contain `/`, a tab, or a newline. Homebrew `mas` locators MUST be numeric application identities. Direct-download installations MUST use an HTTPS locator, an absolute expanded destination, and a checksum containing `sha256:` followed by exactly 64 lowercase hexadecimal characters.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats tests resolve every built-in kind without provider boilerplate and reject unknown providers, partial installation declarations, incompatible kinds, unsafe downloads, malformed checksums, and invalid Mac App Store identities.
 
-_Evidence:_ `rig_validate_model` owns the exact tool-installation kind matrix and rejects resource-only built-ins; `tests/rig.bats`, `tests/rig-lifecycle.bats`, and `tests/rig-model-boundaries.bats` cover the accepted and rejected classes.
+_Evidence:_ `rig_validate_model` owns the exact tool-installation kind matrix and rejects resource-only built-ins; `rig_validate_binding_adapter` restricts `install.executables`; `tests/rig.bats`, `tests/rig-lifecycle.bats`, and `tests/rig-model-boundaries.bats` cover the accepted and rejected classes, including `install.executables is valid only on a mise tool with safe names`.
 
 ### RIG-CONF-014 — ~~Publication fields~~ (deprecated)
 

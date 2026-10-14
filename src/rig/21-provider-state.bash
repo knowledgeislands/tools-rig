@@ -468,6 +468,7 @@ rig_prepare_builtin_invocation() {
   verb=$1
   binding=$2
   provider=$3
+  observation_locator=${4:-}
   rig_provider_adapter "$provider" || return 2
   adapter=$RIG_VALUE
   rig_get_value "$binding" kind || return 2
@@ -533,7 +534,7 @@ rig_prepare_builtin_invocation() {
     mise:tool:observe)
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=which
       rig_append_arguments "$binding" || return
-      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$observation_locator
       ;;
     mise:tool:apply)
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=install
@@ -855,6 +856,75 @@ rig_observe_tool_artifacts() {
   RIG_ARTIFACT_DETAIL=$detail
 }
 
+# mise which takes an executable name, so a mise tool observes each declared
+# install.executables name, or by default its locator without a trailing @VERSION.
+rig_mise_observation_executables() {
+  local binding locator name version section_index field_index field_end
+
+  binding=$1
+  locator=$2
+  RIG_OBSERVE_EXECUTABLES=()
+  RIG_OBSERVE_EXECUTABLES_DECLARED=0
+  rig_section_index "$binding" || return 2
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = observe-executable ]; then
+      RIG_OBSERVE_EXECUTABLES[${#RIG_OBSERVE_EXECUTABLES[@]}]=${RIG_FIELD_VALUES[$field_index]}
+    fi
+    field_index=$((field_index + 1))
+  done
+  if [ "${#RIG_OBSERVE_EXECUTABLES[@]}" -gt 0 ]; then
+    RIG_OBSERVE_EXECUTABLES_DECLARED=1
+    return 0
+  fi
+  # A scoped package such as npm:@scope/name keeps its @; only a version is removed.
+  name=${locator%@*}
+  version=${locator##*@}
+  RIG_OBSERVE_EXECUTABLES[0]=$locator
+  [ "$name" != "$locator" ] && [ -n "$version" ] || return 0
+  case "$name" in ''|*:) return 0 ;; esac
+  case "$version" in */*) return 0 ;; esac
+  RIG_OBSERVE_EXECUTABLES[0]=$name
+}
+
+rig_observe_mise_tool() {
+  local binding provider locator executable name
+  local -a names
+
+  binding=$1
+  provider=$2
+  locator=$3
+  rig_mise_observation_executables "$binding" "$locator" || return 2
+  names=("${RIG_OBSERVE_EXECUTABLES[@]}")
+  for name in "${names[@]}"; do
+    rig_prepare_builtin_invocation observe "$binding" "$provider" "$name" || return 2
+    executable=$RIG_EXECUTABLE
+    if ! rig_executable_available "$executable"; then
+      RIG_OBSERVATION=unavailable
+      RIG_OBSERVATION_DETAIL='executable-unavailable'
+      return 0
+    fi
+    rig_capture_observation_invocation "$executable"
+    case "$RIG_NATIVE_STATUS" in
+      0) ;;
+      1)
+        RIG_OBSERVATION=missing
+        [ "$RIG_OBSERVE_EXECUTABLES_DECLARED" -eq 0 ] ||
+          RIG_OBSERVATION_DETAIL=missing-executable:$name
+        return 0
+        ;;
+      *)
+        RIG_OBSERVATION=unknown
+        RIG_OBSERVATION_DETAIL=exit:$RIG_NATIVE_STATUS
+        return 0
+        ;;
+    esac
+  done
+  RIG_OBSERVATION=present
+}
+
 rig_observe_provider() {
   local tool binding provider adapter kind locator observation_locator executable checksum expected destination
 
@@ -923,6 +993,11 @@ rig_observe_provider() {
     return 0
   fi
 
+  if [ "$adapter:$kind" = mise:tool ]; then
+    rig_observe_mise_tool "$binding" "$provider" "$locator"
+    return
+  fi
+
   rig_prepare_builtin_invocation observe "$binding" "$provider" || return 2
   executable=$RIG_EXECUTABLE
   if ! rig_executable_available "$executable"; then
@@ -934,7 +1009,6 @@ rig_observe_provider() {
   if [ "$RIG_NATIVE_STATUS" -ne 0 ]; then
     if [ "$adapter:$kind:$RIG_NATIVE_STATUS" = homebrew:formula:1 ] ||
       [ "$adapter:$kind:$RIG_NATIVE_STATUS" = homebrew:cask:1 ] ||
-      [ "$adapter:$kind:$RIG_NATIVE_STATUS" = mise:tool:1 ] ||
       [ "$adapter:$kind:$RIG_NATIVE_STATUS" = npm:global:1 ]; then
       RIG_OBSERVATION=missing
     else
@@ -944,7 +1018,7 @@ rig_observe_provider() {
     return 0
   fi
   case "$adapter:$kind" in
-    homebrew:formula|homebrew:cask|mise:tool|npm:global) RIG_OBSERVATION=present ;;
+    homebrew:formula|homebrew:cask|npm:global) RIG_OBSERVATION=present ;;
     homebrew:mas|uv:tool)
       rig_normalize_provider_identity "$adapter" "$kind" "$locator"
       observation_locator=$RIG_VALUE

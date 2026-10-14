@@ -104,7 +104,7 @@ Built-in adapters MUST preserve each provider argument and tool `install.argumen
 - Homebrew `cask`: `brew list --cask --versions OBSERVED_IDENTITY` to observe and `brew install --cask LOCATOR` to apply.
 - Homebrew `mas`: `mas list` with exact numeric identity matching to observe and `mas install LOCATOR` to apply.
 - uv `tool`: `uv tool list` with exact package identity matching to observe and `uv tool install LOCATOR` to apply.
-- mise `tool`: `mise which LOCATOR` to observe and `mise install LOCATOR` to apply.
+- mise `tool`: `mise which EXECUTABLE` to observe and `mise install LOCATOR` to apply. Rig MUST observe each `install.executables` name in declared order, or by default the single locator with a trailing `@VERSION` removed; an `@` that begins a scoped package name is not a version. The tool MUST be `present` only when every observation exits 0. Observation MUST stop at the first non-zero exit: exit 1 is `missing`, with detail `missing-executable:NAME` when `install.executables` is declared, and any other exit is `unknown` with `exit:N`.
 - npm `global`: `npm list --global --depth=0 LOCATOR` to observe and `npm install --global LOCATOR` to apply.
 - chezmoi `target`: `chezmoi status --path-style=absolute -- LOCATOR` to observe and `chezmoi apply -- LOCATOR` to apply.
 - direct-download `executable`: local destination and checksum inspection to observe; `curl --fail --location --proto =https --proto-redir =https --silent --show-error --output TEMP HTTPS_LOCATOR`, SHA-256 verification, executable mode, and sibling rename to apply.
@@ -113,9 +113,9 @@ For a Homebrew formula or cask, `OBSERVED_IDENTITY` MUST be the terminal token o
 
 _Conformance:_ conforming
 
-_Verify:_ Bats fake executables record exact native argument boundaries for every built-in kind, including provider and installation arguments containing spaces.
+_Verify:_ Bats fake executables record exact native argument boundaries for every built-in kind, including provider and installation arguments containing spaces, and provider fixtures record each mise executable observation.
 
-_Evidence:_ `rig_prepare_builtin_invocation`, `rig_observe_provider`, `rig_apply_provider`, and `rig_apply_direct_download` implement the native matrix; `built-in adapters observe dry-run and apply with exact native commands`, Homebrew identity, uv extras, and direct-download Bats tests compare exact invocation boundaries.
+_Evidence:_ `rig_prepare_builtin_invocation`, `rig_observe_provider`, `rig_observe_mise_tool`, `rig_apply_provider`, and `rig_apply_direct_download` implement the native matrix; `built-in adapters observe dry-run and apply with exact native commands`, Homebrew identity, uv extras, and direct-download Bats tests compare exact invocation boundaries, and the three mise tests in `tests/rig-provider-fixtures.bats` cover declared executables, the cargo backend and the versionless default.
 
 ### RIG-ORCH-009 — Platform installation selection
 
