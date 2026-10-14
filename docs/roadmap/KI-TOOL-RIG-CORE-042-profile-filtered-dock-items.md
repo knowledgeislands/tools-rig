@@ -4,13 +4,13 @@ area: CORE
 title: Profile-filtered Dock items
 initiative: rig
 kind: deliver
-horizon: next
+horizon: now
 status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-09T15:03:37Z
-updated_at: 2026-10-12T19:57:24Z
+updated_at: 2026-10-14T16:41:08Z
 ---
 
 # KI-TOOL-RIG-CORE-042: Profile-Filtered Dock Items
@@ -28,6 +28,8 @@ What Rig does today:
 - **One Dock per profile.** [RIG-ORCH-027](../specs/orchestration.md) rejects more than one selected Dock layout for the same provider, so a machine profile cannot inherit a shared Dock and add its own items.
 - **Items are plain path tables.** [RIG-CONF-018](../specs/configuration.md) gives `[dock-item.ID]` only `kind`, `path` and folder attributes. Items carry no membership, so every listed item is in every profile that selects the layout.
 - **Preflight fails on a missing path.** `rig_macos_resource_preflight` fails the whole Dock step when any declared item path is absent, so a shared list naming a studio-only app breaks the laptop's Dock apply, and the reverse.
+
+On 14 October 2026 Kris found that Mac Studio `sol` has no Zed on its Dock. A read-only check (`sol-dock-zed` run in the mac-studio-bootstrap thread) found Zed installed and selected by `core`, but the personal `[dock.workstation]` layout selected only by `laptop`, a deliberate choice of 9 October while this record was unbuilt. Rig therefore leaves `sol`'s hand-made Dock alone and reports nothing wrong, and `rig apply` on `sol` cannot add Zed. Kris then set the ordering rule for the shared Dock: "same order as the laptop, filtered by what each profile selects". That rule is exactly this record's model: the laptop's declared `items` order is the one list, and each machine's resolved profile filters it.
 
 The workaround without this record is a chezmoi template that renders one Dock layout per machine profile from a master list. It works, but it duplicates membership (an app's tool already says which profiles want it), turns the Dock fragment into a template the catalogue tests must render, and every new machine profile needs a template change.
 
@@ -83,9 +85,26 @@ bats tests/rig-dock-profiles.bats tests/rig-macos.bats tests/rig-dock-observatio
 
 Then use [Develop Rig's single complete command list](../guides/developer/README.md#verify-the-repository): full repository audit, ShellCheck, Bash syntax, assembly drift, fixture benchmark, complete isolated Bats suite, mandoc and diff checks. Use the two-second benchmark budget for resolution/query changes and inspect rendered manual changes. Every `ki` call in this run uses the authorised config-restoring wrapper. Do not run native-provider smoke, live macOS apply, sol or SSH operations under this grant; report that withheld gate explicitly rather than claiming a complete operational check. No planning audit or existing regression run proves the unimplemented feature.
 
+### Acceptance check on sol
+
+Kris asked on 14 October 2026 that this record, not a manual Dock change, be what puts Zed on `sol`'s Dock: "use it to verify rather than manual change". This check is therefore part of acceptance, after fixture-backed delivery reaches Awaiting review. It is not part of `ki-implement`'s authority, which still excludes any live apply, and it needs three things outside this repository:
+
+1. **The personal declaration.** The chezmoi source's `dot_config/rig/conf.d/private_40-macos.toml` moves `[dock.workstation]` from `profiles = ["laptop"]` to `core`, keeps the laptop's current `items` order, and links each machine-specific item to its tool with `tool = "ID"`. On 14 October 2026 the resolved selections were: Zed, NordVPN, ChatGPT, LaunchControl, draw.io and Telegram in both `laptop` and `studio`; Delta, RendApp and The Tower in `laptop` only; Adobe Lightroom Classic in `studio` only and absent from the laptop's list.
+2. **An owner decision on placement** of any studio-only app with no laptop position, such as Lightroom Classic, which `sol`'s hand-made Dock carries today.
+3. **Kris's approval of the live run** on `sol`: `rig apply` with the Dock in scope is a live macOS change, and Kris, or an agent Kris authorises for that run, performs it.
+
+The check, on `sol` with the default `studio` profile:
+
+- Before the apply, `rig show dock:workstation` lists the filtered items with Zed included, and `rig doctor` reports the Dock layout as drifted rather than saying nothing.
+- `rig apply` (or the Dock resource alone, if the command offers that scope) changes the Dock and reports success, with no manual Dock edit before or after.
+- Afterwards `defaults read com.apple.dock persistent-apps` or `dockutil --list` shows Zed in its laptop-relative place, between Claude and Visual Studio Code, with Delta, RendApp and The Tower absent; `rig status` and `rig doctor` report the Dock `present`.
+- On `terra`, `rig doctor` still reports the laptop Dock `present` with its full list, so the shared layout did not change the laptop.
+
+If any step fails, the record returns to `in-progress` through `ki-accept`'s failed-review route; nobody fixes `sol`'s Dock by hand to pass it.
+
 ## Dependencies / blocks
 
-The existing `blocks: []` and `blocked_by: []` remain unchanged. Local portable implementation has no dependency on the Studio restart, personal catalogue/order edits or the chezmoi consumer. Decision 15 satisfies the named Hold release condition; owner approval of this concrete plan is the remaining readiness gate. The published principal/mac-studio checkpoints still describe the earlier Hold and are owner-owned; this unit records the later exact approval here and does not mutate either checkpoint.
+The existing `blocks: []` and `blocked_by: []` remain unchanged. Local portable implementation has no dependency on the Studio restart, personal catalogue/order edits or the chezmoi consumer. The acceptance check on `sol` does depend on the chezmoi declaration change and on Kris's approval of the live apply, as that section states. Decision 15 satisfies the named Hold release condition; owner approval of this concrete plan is the remaining readiness gate. The published principal/mac-studio checkpoints still describe the earlier Hold and are owner-owned; this unit records the later exact approval here and does not mutate either checkpoint.
 
 ## Documentation impact
 
@@ -103,7 +122,7 @@ Explain the optional tool link, inherited/platform membership, stable relative o
 
 ### Roadmap
 
-Kris approved the plan on 12 October 2026, so the record is Ready at Next. No implementation, acceptance, prune or release has been performed. The existing chezmoi consumer owns any later personal declaration adoption. No new record or owner-checkpoint mutation is needed.
+Kris approved the plan on 12 October 2026, so the record became Ready at Next; Kris prioritised it on 14 October 2026, so it is Ready at Now. No implementation, acceptance, prune or release has been performed. The personal declaration change the acceptance check needs belongs to the chezmoi source; its earlier owner, KB-DOTFILES-UE-075, is no longer an open record there, so that change needs a chezmoi record of its own before acceptance.
 
 ## Discussion
 
@@ -130,3 +149,7 @@ Kris explicitly released this record from Hold in tools-burndown Decision 15 (12
 ### Plan approval
 
 On 12 October 2026 Kris approved this plan as written (state-of-play thread, Decision 147): the tool-link-only schema, final-selection membership, the filter/order-only dependency choice and the verification contract above. The record moves to `ready` at Next. The approval permits local, fixture-backed delivery through `ki-implement` only; it grants no personal Dock, order or configuration change, no macOS apply, no `sol` or other live host operation, and no acceptance, pruning or release.
+
+### Promotion and owner rule
+
+On 14 October 2026 Kris answered two queries from the mac-studio-bootstrap thread (decision 70 in its decisions log): "SOL-DOCK-ZED - prioritise KI-TOOL-RIG-CORE-042, use it to verify rather than manual change" and "SOL-DOCK-EXTRAS - same order as the laptop, filtered by what each profile selects". Under `ki-next` the record moves from Next to Now with its Ready status, plan and approvals unchanged. The ordering rule confirms the approved contract rather than changing it, and the acceptance check on `sol` adds a post-delivery verification step outside `ki-implement`'s fixture-only grant, so no replan is needed. These answers add no authority beyond the existing Ready approval: no personal configuration change and no live apply.
