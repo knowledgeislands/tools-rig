@@ -4,12 +4,18 @@ area: CORE
 title: Signed-release install kind
 purpose: capability
 initiative: rig
-status: triage
+kind: deliver
+status: draft
+horizon: hold
+hold:
+  reason: waiting-for
+  condition: vega is rebuilt and the Techne harness's converge-tools-through-Rig work leaves its hold
+  review: 2026-11-16
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-13T22:53:48Z
-updated_at: 2026-10-13T22:53:48Z
+updated_at: 2026-10-14T06:52:07Z
 ---
 
 # Signed-Release Install Kind
@@ -36,3 +42,7 @@ Not blocked; `tools-ki` releases already carry a signed manifest. It blocks the 
 ## Discussion
 
 Origin: `ki-principal`, state-of-play thread, under Kris Brown's acceptance of the audit decisions. Capture only; adoption, priority and plan belong to this repository.
+
+### Adoption
+
+On 14 October 2026 Kris approved the state-of-play thread's triage burn-down as written, under Kris's instruction to burn the roadmap down: adopted as `deliver / Hold` until 2026-11-16. Its only consumer is the Techne harness's plan to converge the agent host's tools through Rig, which is itself held until vega is rebuilt. Adoption grants no planning, implementation or acceptance authority.

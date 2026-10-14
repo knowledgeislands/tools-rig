@@ -3,12 +3,18 @@ id: KI-TOOL-RIG-CORE-046
 area: CORE
 title: Remote access and continuity
 initiative: rig
-status: triage
+kind: deliver
+status: draft
+horizon: hold
+hold:
+  reason: parked
+  condition: A further machine or profile needs remote-access and continuity settings declared rather than set by hand
+  review: 2027-01-04
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-13T22:14:26Z
-updated_at: 2026-10-13T22:48:41Z
+updated_at: 2026-10-14T06:52:07Z
 ---
 
 # KI-TOOL-RIG-CORE-046: Remote Access and Continuity
@@ -40,3 +46,7 @@ Related records: [KI-TOOL-RIG-CORE-042](KI-TOOL-RIG-CORE-042-profile-filtered-do
 - **Continuity settings.** Handoff and Universal Control are per-user preferences. Find which `defaults` domains and keys hold them, whether writing them takes effect without logging out, and whether macOS honours a written value at all; if not, observe only and show the manual steps (General > AirDrop & Handoff; Displays > Advanced).
 - **Requirements Rig cannot check.** Continuity needs the same Apple Account, Bluetooth and Wi-Fi on, and the machines within about 10 m. Doctor can at most report Bluetooth and Wi-Fi power; decide whether that is useful or noise.
 - **Linux.** GNOME Remote Desktop is configured with `grdctl`; xrdp is a system service. Limiting either to `tailscale0` belongs with a later Linux provider for [KI-TOOL-RIG-CORE-047](KI-TOOL-RIG-CORE-047-tailnet-only-listener-firewall.md). Decide which one Rig supports first, or whether Linux stays unsupported until a Linux profile exists.
+
+### Adoption
+
+On 14 October 2026 Kris approved the state-of-play thread's triage burn-down as written, under Kris's instruction to burn the roadmap down: adopted as `deliver / Hold` until 2027-01-04. The exposure risk is split into KI-TOOL-RIG-CORE-047; what remains is drift on two Macs already set by hand and documented in the chezmoi guide, and recent macOS mostly blocks setting these from a script. Adoption grants no planning, implementation or acceptance authority.

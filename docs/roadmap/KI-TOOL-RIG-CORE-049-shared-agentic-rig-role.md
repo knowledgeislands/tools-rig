@@ -4,12 +4,18 @@ area: CORE
 title: Shared agentic-rig role
 purpose: capability
 initiative: rig
-status: triage
+kind: investigate
+status: draft
+horizon: hold
+hold:
+  reason: waiting-for
+  condition: vega is rebuilt, so a second agentic-rig host exists
+  review: 2026-11-16
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-13T22:53:48Z
-updated_at: 2026-10-13T22:53:48Z
+updated_at: 2026-10-14T06:52:07Z
 ---
 
 # Shared Agentic-Rig Role
@@ -36,3 +42,7 @@ Not blocked. Blocks nothing today; `sol` including the role waits for it. The ro
 ## Discussion
 
 Origin: `ki-principal`, state-of-play thread, under Kris Brown's acceptance of the audit decisions. Capture only; adoption, priority and plan belong to this repository. The outcome may be a finding that `conf.d` fragments already suffice, recorded with a worked example.
+
+### Adoption
+
+On 14 October 2026 Kris approved the state-of-play thread's triage burn-down as written, under Kris's instruction to burn the roadmap down: adopted as `investigate / Hold` until 2026-11-16, since its outcome may be a finding that `conf.d` fragments already suffice. vega does not exist, so a role shared across two hosts has only one host today. Adoption grants no planning, implementation or acceptance authority.
