@@ -10838,10 +10838,15 @@ rig_sudo_start() {
   rig_executable_available "$executable" || { rig_fail 'sudo executable unavailable'; return 1; }
   interval=${RIG_SUDO_REFRESH_SECONDS:-30}
   case "$interval" in ''|*[!0-9]*|???*) rig_fail 'RIG_SUDO_REFRESH_SECONDS must be an integer from 1 to 60'; return 2 ;; esac
-  [ "$interval" -ge 1 ] && [ "$interval" -le 60 ] || { rig_fail 'RIG_SUDO_REFRESH_SECONDS must be an integer from 1 to 60'; return 2; }
-  # Bash 3.2 lacks BASHPID. The transient /bin/sh is a child of the command
-  # substitution, whose parent is this captured backend shell (not main's $$).
-  owner=$(/bin/sh -c 'ps -p "$PPID" -o ppid=') || return 1
+  if [ "$interval" -lt 1 ] || [ "$interval" -gt 60 ]; then
+    rig_fail 'RIG_SUDO_REFRESH_SECONDS must be an integer from 1 to 60'
+    return 2
+  fi
+  # Bash 3.2 lacks BASHPID. There the transient /bin/sh is a child of the
+  # command substitution, whose parent is this captured backend shell (not
+  # main's $$). Newer Bash may exec that /bin/sh directly, so prefer BASHPID.
+  owner=${BASHPID:-}
+  [ -n "$owner" ] || owner=$(/bin/sh -c 'ps -p "$PPID" -o ppid=') || return 1
   owner=${owner//[[:space:]]/}
   case "$owner" in ''|0|*[!0-9]*) rig_fail 'cannot identify administrator-session owner'; return 1 ;; esac
   rig_progress_cleanup

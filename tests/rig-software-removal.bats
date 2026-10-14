@@ -131,7 +131,7 @@ TOML
   [ "$status" -eq 2 ]
   [[ "$output" == *'does not permit provider arguments'* ]] || false
   write_config
-  /usr/bin/sed -i '' 's/locator = "obsolete"/locator = "--force"/' "$RIG_CONFIG_HOME/rig.toml"
+  /usr/bin/sed -i.bak 's/locator = "obsolete"/locator = "--force"/' "$RIG_CONFIG_HOME/rig.toml"
   run "$RIG" remove
   [ "$status" -eq 2 ]
   [ ! -s "$RIG_TEST_PROVIDER_LOG" ]
@@ -220,7 +220,7 @@ SH
   run bash -c 'printf "remove\n" | "$1" remove --apply' _ "$RIG"
   [ "$status" -eq 1 ]
   ! /usr/bin/grep 'uninstall' "$RIG_TEST_PROVIDER_LOG"
-  /usr/bin/sed -i '' 's/kind = "cask"/kind = "mas"/;s/locator = "obsolete"/locator = "123"/' "$RIG_CONFIG_HOME/rig.toml"
+  /usr/bin/sed -i.bak 's/kind = "cask"/kind = "mas"/;s/locator = "obsolete"/locator = "123"/' "$RIG_CONFIG_HOME/rig.toml"
   rig_test_provider mas
   rig_test_provider_response mas list 0 '123 Subject (1.0)'
   run bash -c 'printf "remove\n" | "$1" remove --apply' _ "$RIG"

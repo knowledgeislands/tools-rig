@@ -382,7 +382,7 @@ LOG
 )" ]
   [ "$(cat "$RULES")" = "$(golden_rules)" ]
   [ "$(cat "$UNIT")" = "$(golden_unit)" ]
-  [ "$(/usr/bin/stat -f %Lp "$RULES" 2>/dev/null || /usr/bin/stat -c %a "$RULES")" = 644 ]
+  [ "$(/usr/bin/stat -c %a "$RULES" 2>/dev/null || /usr/bin/stat -f %Lp "$RULES")" = 644 ]
   /usr/bin/grep -F $'linux-nftables\tfirewall\tdev-server\torg.rig.test.dev-server' "$RECEIPT"
   [ -z "$(/bin/ls -A "$TMPDIR")" ]
   assert_no_global_firewall

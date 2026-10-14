@@ -292,8 +292,10 @@ assert_no_global_firewall() {
   done
   [ "$(cat "$ANCHOR")" = "$(golden_anchor)" ]
   [ "$(cat "$DAEMON")" = "$(golden_daemon)" ]
-  [ "$(cd "$RIG_SYSTEM_ROOT" && /usr/bin/find . -type f | /usr/bin/sort)" = \
-    $'./Library/LaunchDaemons/org.rig.test.screen-sharing.plist\n./etc/pf.anchors/org.rig.test.screen-sharing' ]
+  local listing
+  listing=$(cd "$RIG_SYSTEM_ROOT" && /usr/bin/find . -type f | /usr/bin/sort)
+  [ "$listing" = $'./Library/LaunchDaemons/org.rig.test.screen-sharing.plist\n./etc/pf.anchors/org.rig.test.screen-sharing' ] ||
+    { printf 'system root files:\n%s\n' "$listing" >&3; false; }
   run "$RIG" show firewall:screen-sharing
   [[ "$output" == *'Allowed sources: lo0, 100.64.0.0/10, fd7a:115c:a1e0::/48'* ]] || false
   [[ "$output" == *'pf anchor: com.apple/org.rig.test.screen-sharing'* ]] || false
@@ -367,7 +369,7 @@ LOG
 )" ]
   [ "$(cat "$ANCHOR")" = "$(golden_anchor)" ]
   [ "$(cat "$DAEMON")" = "$(golden_daemon)" ]
-  [ "$(/usr/bin/stat -f %Lp "$ANCHOR")" = 644 ]
+  [ "$(/usr/bin/stat -c %a "$ANCHOR" 2>/dev/null || /usr/bin/stat -f %Lp "$ANCHOR")" = 644 ]
   /usr/bin/grep -F $'macos-pf\tfirewall\tscreen-sharing\torg.rig.test.screen-sharing' "$RECEIPT"
   [ -z "$(/bin/ls -A "$TMPDIR")" ]
   assert_no_global_firewall

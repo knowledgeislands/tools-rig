@@ -113,11 +113,11 @@ healthy_app() {
 @test "extension and URL scheme declarations use literal normalised native arguments" {
   write_config
   healthy_app
-  /usr/bin/sed -i '' 's/kind = "uti"/kind = "extension"/;s/value = "org.example.notes"/value = ".note"/' "$RIG_CONFIG_HOME/rig.toml"
+  /usr/bin/sed -i.bak 's/kind = "uti"/kind = "extension"/;s/value = "org.example.notes"/value = ".note"/' "$RIG_CONFIG_HOME/rig.toml"
   run "$RIG" apply --target default-application:notes
   [ "$status" -eq 0 ]
   [[ "$(cat "$RIG_HANDLER_FIXTURE_LOG")" == *'apply|extension|note|org.example.Editor|'* ]] || false
-  /usr/bin/sed -i '' 's/kind = "extension"/kind = "scheme"/;s/value = ".note"/value = "example+notes"/' "$RIG_CONFIG_HOME/rig.toml"
+  /usr/bin/sed -i.bak 's/kind = "extension"/kind = "scheme"/;s/value = ".note"/value = "example+notes"/' "$RIG_CONFIG_HOME/rig.toml"
   run "$RIG" apply --scope resources
   [ "$status" -eq 0 ]
   [[ "$(cat "$RIG_HANDLER_FIXTURE_LOG")" == *'apply|scheme|example+notes|org.example.Editor|'* ]] || false
@@ -188,7 +188,7 @@ esac
 SH
   chmod +x "$RIG_TEST_PROVIDER_BIN/installer"
   # Add installation fields to their existing owning table, not handler metadata.
-  /usr/bin/sed -i '' '/artifacts = /a\
+  /usr/bin/sed -i.bak '/artifacts = /a\
 install.provider = "installer"\
 install.kind = "executable"\
 install.locator = "fixture"\
@@ -229,7 +229,7 @@ TOML
 @test "conflicting selected handler targets fail before native work" {
   write_config
   healthy_app
-  /usr/bin/sed -i '' 's/default-applications = \["notes"\]/default-applications = ["notes", "conflict"]/' "$RIG_CONFIG_HOME/rig.toml"
+  /usr/bin/sed -i.bak 's/default-applications = \["notes"\]/default-applications = ["notes", "conflict"]/' "$RIG_CONFIG_HOME/rig.toml"
   cat >>"$RIG_CONFIG_HOME/rig.toml" <<'TOML'
 [default-application.conflict]
 name = "Conflicting choice"
@@ -252,7 +252,7 @@ TOML
   for invalid in 'kind = "role"' 'tool = "missing"' 'bundle-id = "invalid"' 'provider = "custom"' 'platforms = ["linux"]'; do
     write_config
     key=${invalid%% =*}
-    /usr/bin/sed -i '' "/^$key = /c\\
+    /usr/bin/sed -i.bak "/^$key = /c\\
 $invalid
 " "$RIG_CONFIG_HOME/rig.toml"
     run "$RIG" show
@@ -264,8 +264,8 @@ $invalid
 @test "item profiles and selected platform artifacts retain handler ownership" {
   write_config
   healthy_app
-  /usr/bin/sed -i '' '/default-applications = /d;s/^artifacts = /variant.macos.artifacts = /' "$RIG_CONFIG_HOME/rig.toml"
-  /usr/bin/sed -i '' '/variant.macos.artifacts = /a\
+  /usr/bin/sed -i.bak '/default-applications = /d;s/^artifacts = /variant.macos.artifacts = /' "$RIG_CONFIG_HOME/rig.toml"
+  /usr/bin/sed -i.bak '/variant.macos.artifacts = /a\
 variant.macos.platforms = ["macos"]\
 ' "$RIG_CONFIG_HOME/rig.toml"
   cat >>"$RIG_CONFIG_HOME/rig.toml" <<'TOML'
@@ -321,7 +321,7 @@ TOML
   run env RIG_OSASCRIPT="$BATS_TEST_TMPDIR/not-installed" "$RIG" apply
   [ "$status" -eq 1 ]
   [ ! -s "$RIG_HANDLER_FIXTURE_LOG" ]
-  /usr/bin/sed -i '' '/artifacts = /d' "$RIG_CONFIG_HOME/rig.toml"
+  /usr/bin/sed -i.bak '/artifacts = /d' "$RIG_CONFIG_HOME/rig.toml"
   run "$RIG" show
   [ "$status" -eq 2 ]
   [[ "$output" == *'requires a declared .app artifact'* ]] || false
@@ -330,7 +330,7 @@ TOML
 @test "normalised duplicate extensions conflict only inside their selected profile" {
   write_config
   healthy_app
-  /usr/bin/sed -i '' 's/kind = "uti"/kind = "extension"/;s/value = "org.example.notes"/value = ".note"/' "$RIG_CONFIG_HOME/rig.toml"
+  /usr/bin/sed -i.bak 's/kind = "uti"/kind = "extension"/;s/value = "org.example.notes"/value = ".note"/' "$RIG_CONFIG_HOME/rig.toml"
   cat >>"$RIG_CONFIG_HOME/rig.toml" <<'TOML'
 [default-application.alternate]
 name = "Alternate"
@@ -345,7 +345,7 @@ platforms = ["macos"]
 TOML
   run "$RIG" show
   [ "$status" -eq 0 ]
-  /usr/bin/sed -i '' 's/default-applications = \["notes"\]/default-applications = ["notes", "alternate"]/' "$RIG_CONFIG_HOME/rig.toml"
+  /usr/bin/sed -i.bak 's/default-applications = \["notes"\]/default-applications = ["notes", "alternate"]/' "$RIG_CONFIG_HOME/rig.toml"
   run "$RIG" apply
   [ "$status" -eq 2 ]
   [[ "$output" == *'conflicts with'* ]] || false
@@ -389,7 +389,7 @@ TOML
     write_config
     kind=${fixture%%|*}
     value=${fixture#*|}
-    /usr/bin/sed -i '' "s/kind = \"uti\"/kind = \"$kind\"/;s|value = \"org.example.notes\"|value = \"$value\"|" "$RIG_CONFIG_HOME/rig.toml"
+    /usr/bin/sed -i.bak "s/kind = \"uti\"/kind = \"$kind\"/;s|value = \"org.example.notes\"|value = \"$value\"|" "$RIG_CONFIG_HOME/rig.toml"
     run "$RIG" show
     [ "$status" -eq 2 ]
     [ ! -s "$RIG_HANDLER_FIXTURE_LOG" ]
