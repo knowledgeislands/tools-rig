@@ -27,22 +27,22 @@ That makes Rig a manager of managers beneath a catalogue people can read.
 
 ## Install
 
-Rig is a pre-v1 public preview. This checkout is the selected `v0.6.2` release candidate, not yet a published release. After publication, install that exact immutable preview with:
+Rig is a pre-v1 public preview. The latest immutable release is `v0.6.2`:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.6.2/install.sh | bash -s -- v0.6.2
 ```
 
-That command becomes available when `v0.6.2` is published. The latest published release is `v0.6.1`, which cannot read `install.executables` for a mise tool.
+That command installs the released `0.6.2` contract.
 
 To use the current checkout while developing or evaluating those changes, link both the executable and manual:
 
 ```sh
 ./install.sh --link
-rig --version # rig 0.6.2
+rig --version # rig 0.6.2+dev
 ```
 
-Between releases the linked checkout reports a development marker such as `0.6.2+dev`; the marker identifies an untagged checkout after the latest immutable release and does not promise the next release number.
+The development marker identifies an untagged checkout after the latest immutable release; it does not promise the next release number.
 
 ## Start here
 

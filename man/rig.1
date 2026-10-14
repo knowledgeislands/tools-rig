@@ -131,11 +131,7 @@ restarts, and other imperative actions.
 .SH INSTALLATION
 \&
 .PP
-This checkout is the selected v0.6.2 release candidate, not yet a published
-release. The latest published release, v0.6.1, cannot read
-.B install.executables
-for a mise tool. After v0.6.2 is published,
-install the immutable preview:
+Install the latest immutable release, currently v0.6.2:
 .PP
 .nf
 curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.6.2/install.sh | bash
@@ -147,8 +143,8 @@ Pin an exact release explicitly:
 curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.6.2/install.sh | bash -s -- v0.6.2
 .fi
 .PP
-These installer URLs are not available before publication. From a local
-checkout now, run
+These URLs name the latest documented immutable release. From a local
+checkout, run
 .B ./install.sh \-\-link
 to link both the executable and manual; the linked executable reports a
 development version marker until a release candidate is explicitly selected.
