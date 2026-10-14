@@ -9,14 +9,14 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-14T10:30:00Z
-updated_at: 2026-10-14T10:30:00Z
+updated_at: 2026-10-14T20:50:55Z
 ---
 
 # macOS Menu Bar Declarations
 
 ## Goal
 
-Rig declares what appears in a Mac's menu bar, and in what relative order, once for every machine, with per-machine differences selected by profile. `rig status` and `rig doctor` report where a machine's menu bar differs from the declaration. Rig applies only what it can apply reliably and says plainly which parts it observes but leaves to the owner or a menu-bar manager.
+Rig declares what should appear in a Mac's menu bar, and in what relative order, once for every machine, with per-machine differences selected by profile. `rig status` and `rig doctor` report where a machine's menu bar differs from the declaration. Rig reports menu-bar drift only: it never writes menu-bar visibility or positions, and the owner corrects the order once on each machine by Command-dragging the icons.
 
 ## Context
 
@@ -55,19 +55,19 @@ What Rig does today:
 
 ## Proposed design
 
-Units, boundaries and hand-offs, for owner sanity check before planning:
+Kris chose report-only on 14 October 2026: Rig reports drift, Kris drags the icons into order once by hand, and Rig enforces nothing. Units, boundaries and hand-offs, for owner sanity check before planning:
 
-1. **Setting scope and settle (extends RIG-CONF-017).** Add optional `scope = "current-host"` (`defaults -currentHost`) and optional `settle = "ControlCenter" | "SystemUIServer" | "Dock" | "Finder"`, a fixed allow-list of processes Rig restarts once per apply after writing any setting that names it. Hand-off: the personal configuration declares the values; macOS owns the meaning.
-2. **Menu bar layout (`[menu-bar.ID]`, provider `macos-menu-bar`).** One ordered `items` list per layout, modelled on the Dock: each item names a tool (third-party status item, filtered by profile the way KI-TOOL-RIG-CORE-042 filters Dock items) or an Apple module. Rig applies module visibility through unit 1's mechanism. For third-party items Rig observes but does not write: it reads each app's preferred positions, ranks them, and reports `drifted` with the first out-of-order pair, `missing` when a selected app's item is not running, and `unknown` when an autosave name is not found. Correcting order stays a one-off Command-drag by the owner on each machine.
-3. **Launch membership.** A status item exists only while its app runs, so the app's tool needs a login-item declaration for the layout to hold after restart. Whether that is a new observe-only `login-item` check or a field on the tool is a planning question; macOS login-item approval stays with the owner.
-4. **Personal declarations (chezmoi-owned).** Clock, Siri, hot corners and Control Centre module values, and the menu-bar layout itself, belong in the personal Rig configuration, shared items in `core`, Battery and other laptop-only items in `laptop`, studio-only items in `studio`. Rig ships only the generic kinds.
+1. **Current-host observation (extends RIG-CONF-017).** Add optional `scope = "current-host"` so a setting can be read with `defaults -currentHost`, which the Control Centre module values need. A setting that names this scope inside a menu-bar layout is observed only.
+2. **Menu bar layout (`[menu-bar.ID]`, provider `macos-menu-bar`, observe-only).** One ordered `items` list per layout, modelled on the Dock: each item names a tool's status item, filtered by profile the way KI-TOOL-RIG-CORE-042 filters Dock items, or an Apple module. Rig reads module visibility and each app's preferred position, ranks the items, and reports `drifted` with the first out-of-order pair or the first module whose visibility differs, `missing` when a selected app's item is not running, and `unknown` when an autosave name is not found. `rig apply` makes no change for a menu-bar layout and says so.
+3. **Launch membership.** A status item exists only while its app runs, so the report flags a selected status-item app that is not a login item. Whether that is a new observe-only `login-item` check or a field on the tool is a planning question; adding or approving login items stays with the owner.
+4. **Personal declarations (chezmoi-owned).** The menu-bar layout belongs in the personal Rig configuration: shared items in `core`, Battery and other laptop-only items in `laptop`, studio-only items in `studio`. Clock, Siri and hot-corner values are ordinary per-user defaults that the existing setting kind can already declare there. Rig ships only the generic kinds.
 
-Out of scope: writing third-party pixel positions; the Controls gallery; Live Activities; installing or configuring Ice or Bartender; anything connection-critical (Wi-Fi, VPN, Tailscale or network settings), which remains observe-only.
+Out of scope: writing menu-bar module visibility or third-party positions; restarting ControlCenter or SystemUIServer; the Controls gallery; Live Activities; installing or configuring Ice or Bartender; anything connection-critical (Wi-Fi, VPN, Tailscale or network settings). Where macOS persists the order, and whether Rig could ever declare it safely, is the separate investigation [KI-TOOL-RIG-CORE-056](KI-TOOL-RIG-CORE-056-menu-bar-order-persistence.md).
 
 ## Boundary
 
-- In: unit 1 schema and behaviour; unit 2 declaration, module visibility apply, order observation and drift reporting; unit 3's observation shape; specifications, guides and isolated tests with stubbed `defaults` and `killall`.
-- Out: personal values and order (the personal configuration's owner); menu-bar manager adoption; any live apply during delivery.
+- In: unit 1's current-host read; unit 2's declaration, observation and drift reporting; unit 3's observation shape; specifications, guides and isolated tests with stubbed `defaults`.
+- Out: any write to a menu-bar value or position; personal values and order (the personal configuration's owner); menu-bar manager adoption; any live apply during delivery.
 
 ## Dependencies / blocks
 
@@ -75,4 +75,4 @@ Not blocked. Unit 2's profile filtering should reuse the mechanism KI-TOOL-RIG-C
 
 ## Discussion
 
-Origin: Kris Brown's request on 2026-10-14, investigated read-only on terra and sol the same day. Kris's choice between observe-only order (recommended), Rig writing positions with app restarts, or adopting a menu-bar manager as the order lever is pending. Capture only; adoption, priority and plan belong to this repository.
+Origin: Kris Brown's request on 2026-10-14, investigated read-only on terra and sol the same day. On 14 October 2026 Kris chose observe-only order over Rig writing positions with app restarts or adopting a menu-bar manager, and the record was trimmed to report-only: the earlier proposal to apply Control Centre module visibility and restart the reading process was dropped with the enforcement options. Capture only; adoption, priority and plan belong to this repository.
