@@ -1,7 +1,7 @@
 ---
 id: KI-TOOL-RIG-DIST-011
 area: DIST
-title: Stale terra rig link
+title: Stale vega rig link
 purpose: corrective
 initiative: rig
 kind: deliver
@@ -9,7 +9,7 @@ status: draft
 horizon: hold
 hold:
   reason: waiting-for
-  condition: The Techne Programme Hold lifts, so terra may be changed
+  condition: The Techne Programme Hold lifts, so vega may be changed
   review: 2026-11-16
 blocks: []
 blocked_by: []
@@ -18,20 +18,20 @@ created_at: 2026-10-14T09:36:23Z
 updated_at: 2026-10-14T09:36:23Z
 ---
 
-# Stale terra Rig Link
+# Stale vega Rig Link
 
 ## Goal
 
-`rig` on the Linux host `terra` runs a current Rig: `~/.local/bin/rig` points at a live checkout or is replaced by a release install, and `rig --version` succeeds there.
+`rig` on the Linux host `vega` runs a current Rig: `~/.local/bin/rig` points at a live checkout or is replaced by a release install, and `rig --version` succeeds there.
 
 ## Context
 
-As reported on 14 October 2026, `~/.local/bin/rig` on `terra` still points at the retired `~/workspaces/kit/knowledgeislands/tools-rig` path, left over from before repositories moved to `~/workspaces/<group>/<repo>`. The same stale link, and a matching manual-page link, existed on Kris's Mac, where Homebrew's later `PATH` entry masked it; both were removed there the same day. Kris Brown asked on 2026-10-14 for the defect to be recorded and held; nothing on `terra` may change while the Techne Programme Hold stands.
+As reported on 14 October 2026, `~/.local/bin/rig` on `vega` still points at the retired `~/workspaces/kit/knowledgeislands/tools-rig` path, left over from before repositories moved to `~/workspaces/<group>/<repo>`. The same stale link, and a matching manual-page link, existed on Kris's Mac, where Homebrew's later `PATH` entry masked it; both were removed there the same day. Kris Brown asked on 2026-10-14 for the defect to be recorded and held; nothing on `vega` may change while the Techne Programme Hold stands.
 
 ## Boundary
 
-- In: relinking `terra`'s `rig` through the checkout's `install.sh --link`, or a release install, and its manual page; verifying `rig --version` there.
-- Out: any other change on `terra`; running `rig apply` there; other hosts.
+- In: relinking `vega`'s `rig` through the checkout's `install.sh --link`, or a release install, and its manual page; verifying `rig --version` there.
+- Out: any other change on `vega`; running `rig apply` there; other hosts.
 
 ## Dependencies / blocks
 
