@@ -144,6 +144,58 @@ STUB
   ! /usr/bin/grep -E 'install' "$RIG_TEST_PROVIDER_LOG"
 }
 
+@test "cask metadata reads the API cache and null auto updates need a resolved definition" {
+  write_config metadata
+  healthy_app
+  # Without a local cask tap, Homebrew answers an API-disabled read with a
+  # stub whose tap and auto_updates are null.
+  # The wrapper keeps the fixture's manager name while checking the read stays local.
+  mv "$RIG_TEST_PROVIDER_BIN/brew" "$BATS_TEST_TMPDIR/brew"
+  cat >"$RIG_TEST_PROVIDER_BIN/brew" <<STUB
+#!/usr/bin/env bash
+if [ "\$1" = info ]; then
+  [ -z "\${HOMEBREW_NO_INSTALL_FROM_API:-}" ] || exit 97
+  [ "\${HOMEBREW_NO_AUTO_UPDATE:-}" = 1 ] || exit 96
+fi
+exec "$BATS_TEST_TMPDIR/brew" "\$@"
+STUB
+  chmod +x "$RIG_TEST_PROVIDER_BIN/brew"
+  cat >"$RIG_PLUTIL" <<'STUB'
+#!/usr/bin/env bash
+read -r data
+case "$*:$data" in
+  '-extract casks.0.auto_updates raw -o - -:'*'"auto_updates":true'*) printf 'true\n' ;;
+  '-extract casks.0.auto_updates raw -o - -:'*) exit 1 ;;
+  '-type casks.0.auto_updates -o - -:'*'"auto_updates":null'*) printf '(any)\n' ;;
+  '-extract casks.0.tap raw -o - -:'*'"tap":"homebrew/cask"'*) printf 'homebrew/cask\n' ;;
+  '-extract casks.0.tap raw -o - -:'*) exit 1 ;;
+  *) exit 99 ;;
+esac
+STUB
+  chmod +x "$RIG_PLUTIL"
+  rig_test_provider_response brew 'info --json=v2 --cask subject' 0 \
+    '{"casks":[{"tap":"homebrew/cask","auto_updates":true}]}'
+  run "$RIG" status
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'self-updating'* ]] || false
+  : >"$RIG_TEST_PROVIDER_TABLE"
+  write_config metadata
+  rig_test_provider_response brew 'info --json=v2 --cask subject' 0 \
+    '{"casks":[{"tap":"homebrew/cask","auto_updates":null}]}'
+  run "$RIG" status
+  [ "$status" -eq 1 ]
+  [[ "$output" != *'application-metadata'* ]] || false
+  [[ "$output" == *'source-mismatch'* ]] || false
+  : >"$RIG_TEST_PROVIDER_TABLE"
+  write_config metadata
+  rig_test_provider_response brew 'info --json=v2 --cask subject' 0 \
+    '{"casks":[{"tap":null,"auto_updates":null}]}'
+  run "$RIG" doctor
+  [ "$status" -eq 1 ]
+  [[ "$output" == *'application-metadata-unavailable'* ]] || false
+  [[ "$output" != *'application-metadata-invalid'* ]] || false
+}
+
 @test "self updates reject formulae and absent artifact declarations" {
   write_config
   sed -i.bak 's/install.kind = "cask"/install.kind = "formula"/' "$RIG_CONFIG_HOME/rig.toml"

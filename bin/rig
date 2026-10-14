@@ -6633,18 +6633,29 @@ rig_application_policy() {
     RIG_APPLICATION_ERROR=application-metadata-unavailable
     return 0
   fi
-  # Metadata is a local read. Never let an observation refresh Homebrew.
-  metadata=$(HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_FROM_API=1 "$executable" "${RIG_INVOKE_ARGUMENTS[@]}" 2>/dev/null) || {
+  # Metadata is a local read of the tap or cached API definition. Never let an
+  # observation refresh Homebrew; without a cask tap the API cache is the source.
+  metadata=$(HOMEBREW_NO_AUTO_UPDATE=1 "$executable" "${RIG_INVOKE_ARGUMENTS[@]}" 2>/dev/null) || {
     RIG_APPLICATION_ERROR=application-metadata-unavailable; return 0;
   }
-  value=$(printf '%s' "$metadata" | "$plutil" -extract casks.0.auto_updates raw -o - - 2>/dev/null) || {
-    RIG_APPLICATION_ERROR=application-metadata-invalid; return 0;
-  }
-  case "$value" in
-    true) RIG_APPLICATION_POLICY=self ;;
-    false) RIG_APPLICATION_POLICY=managed ;;
-    *) RIG_APPLICATION_ERROR=application-metadata-invalid ;;
-  esac
+  if value=$(printf '%s' "$metadata" | "$plutil" -extract casks.0.auto_updates raw -o - - 2>/dev/null); then
+    case "$value" in
+      true) RIG_APPLICATION_POLICY=self ;;
+      false) RIG_APPLICATION_POLICY=managed ;;
+      *) RIG_APPLICATION_ERROR=application-metadata-invalid ;;
+    esac
+    return 0
+  fi
+  # Null is Homebrew's undeclared default, but only in a resolved definition;
+  # an installed cask with no definition source reports a null tap as well.
+  value=$(printf '%s' "$metadata" | "$plutil" -type casks.0.auto_updates -o - - 2>/dev/null) || value=
+  if [ "$value" != '(any)' ]; then
+    RIG_APPLICATION_ERROR=application-metadata-invalid
+  elif printf '%s' "$metadata" | "$plutil" -extract casks.0.tap raw -o - - >/dev/null 2>&1; then
+    RIG_APPLICATION_POLICY=managed
+  else
+    RIG_APPLICATION_ERROR=application-metadata-unavailable
+  fi
 }
 
 rig_application_source_detail() {
