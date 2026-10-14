@@ -11,7 +11,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-13T23:36:16Z
-updated_at: 2026-10-14T06:52:07Z
+updated_at: 2026-10-14T07:00:48Z
 ---
 
 # Mise Observed Executables
@@ -33,41 +33,57 @@ The built-in mise `tool` kind uses its locator for every native operation. [Prov
 
 ## Current state
 
-Not yet grounded. `ki-plan` records the current source facts before Ready.
+Grounded at `620e0b9` on 14 October 2026.
+
+- [Provider state](../../src/rig/21-provider-state.bash) builds `mise:tool:observe` as `mise which [ARGUMENTS] LOCATOR` and `mise:tool:apply` as `mise install [ARGUMENTS] LOCATOR`. `rig_observe_provider` treats exit 0 as `present`, exit 1 as `missing` and any other exit as `unknown`, through the per-invocation observation cache.
+- `mise which` takes an executable name, so a locator that is not itself an executable name is always `missing`: `rust` (provides `rustc` and `cargo`), `cargo:cargo-nextest` (provides `cargo-nextest`), and any versioned locator such as `node@22`.
+- [Configuration](../../src/rig/10-configuration.bash) maps `install.*` and `variant.ID.install.*` fields to `install-*` keys, copies them onto the synthesised binding in `rig_synthesise_binding_fields`, rejects `install.*` without `install.provider`, and in `rig_validate_binding_adapter` restricts `install.destination` and `install.checksum` to direct-download. That is the pattern for an adapter-specific optional field.
+- `rig upgrade` (`mise upgrade LOCATOR`) and `rig remove` (`mise uninstall LOCATOR`) use the locator and stay unchanged.
+- [RIG-ORCH-017](../specs/orchestration.md) fixes `mise which LOCATOR` as the observation command; [RIG-CONF-010 and RIG-CONF-013](../specs/configuration.md) enumerate the permitted `install.*` fields. The `install.*` field list in the [manual](../../man/rig.1) mirrors them.
+- `tests/rig-provider-fixtures.bats` already observes a mise tool through `rig_test_provider_response mise 'which sample' …`; that fixture is the test pattern.
 
 ## Steps
 
-- [ ] Plan this record under `ki-plan` before Ready, replacing these placeholder sections.
+- [ ] Add `install.executables` and `variant.ID.install.executables`, a string array, to the TOML field maps and the tool key allow-lists; copy it to the binding as `observe-executable` (distinct from the provider `executable` key) in `rig_synthesise_binding_fields`; include it in the "requires install.provider" guard.
+- [ ] In `rig_validate_binding_adapter`, accept `executables` only for `mise:tool`, reject it for every other adapter and kind, and reject an empty element, a tab or newline, a leading `-`, or a `/`.
+- [ ] Observation: for `mise:tool`, observe each named executable in order with `mise which [ARGUMENTS] EXECUTABLE`. With no `executables`, observe one executable: the locator with a trailing `@VERSION` removed (`rust`, `cargo:cargo-nextest`, `node@22` → `node`), so existing catalogues keep their current command except for a versioned locator. Aggregate: every executable present → `present`; any exit 1 → `missing` with detail `missing-executable:NAME` for the first missing; any other exit → `unknown` with `exit:N`. Apply, upgrade and remove keep the full locator.
+- [ ] Bats tests in `tests/rig-provider-fixtures.bats`: `rust` with `executables = ["rustc", "cargo"]` is present only when both `which` calls succeed and missing with the first failing name otherwise; `cargo:cargo-nextest` with one executable observes `which cargo-nextest` and applies `install cargo:cargo-nextest`; a versioned locator without the field observes the bare name; the unversioned default command is unchanged. Validation tests in `tests/rig-model-boundaries.bats` reject the field on a non-mise kind, without `install.provider`, and with an unsafe element.
+- [ ] Update the specification, manual and changelog (below), run `scripts/assemble-rig`, and run the complete local gate in [Develop Rig](../guides/developer/README.md#verify-the-repository).
 
 ## Files touched
 
-Not yet planned.
+- `src/rig/10-configuration.bash`, `src/rig/21-provider-state.bash`, and the regenerated `bin/rig`.
+- `tests/rig-provider-fixtures.bats`, `tests/rig-model-boundaries.bats`.
+- `docs/specs/orchestration.md`, `docs/specs/configuration.md`, `man/rig.1`, `CHANGELOG.md`.
 
 ## Verify
 
-Not yet planned.
+- `bats tests/ </dev/null` passes, including the new fixture and validation tests, with the fixture log showing no undeclared mise call.
+- `scripts/assemble-rig` leaves `bin/rig` byte-identical to the committed file after the change.
+- The complete local gate in [Develop Rig](../guides/developer/README.md#verify-the-repository) passes.
+- No apply runs against the live workstation; observation is proved only through the provider fixture.
 
 ## Dependencies / blocks
 
-Not blocked; it blocks nothing.
+Not blocked; it blocks nothing. The chezmoi workstation can move `rust` and its `cargo:` tools into its Rig catalogue after a release containing this fix; that move belongs to that repository.
 
 ## Documentation impact
 
 ### Decision Records
 
-Not yet assessed.
+None. The field extends an existing provider contract without a new design choice that needs recorded rationale.
 
 ### Specifications
 
-Not yet assessed.
+[RIG-ORCH-017](../specs/orchestration.md): mise observation becomes `mise which EXECUTABLE` for each declared executable, defaulting to the locator without its version, with the aggregation rule. [RIG-CONF-010 and RIG-CONF-013](../specs/configuration.md): add `install.executables` as an optional string array valid only for mise `tool`, with its element constraints. Both stay conforming with the new tests as evidence.
 
 ### Guides
 
-Not yet assessed.
+None beyond the `install.*` field list in `man/rig.1`; no user guide documents per-kind install fields.
 
 ### Roadmap
 
-Not yet assessed.
+This record only. `CHANGELOG.md` gains one capability line.
 
 ## Discussion
 
