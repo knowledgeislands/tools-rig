@@ -5,13 +5,13 @@ title: Mise observed executables
 purpose: corrective
 initiative: rig
 kind: deliver
-status: draft
+status: ready
 horizon: next
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-13T23:36:16Z
-updated_at: 2026-10-14T07:00:48Z
+updated_at: 2026-10-14T08:35:40Z
 ---
 
 # Mise Observed Executables
@@ -92,3 +92,7 @@ Origin: the chezmoi source (`krisb/dotfiles`), whose workstation keeps `rust` an
 ### Adoption
 
 On 14 October 2026 Kris approved the state-of-play thread's triage burn-down as written, under Kris's instruction to burn the roadmap down: adopted as `deliver / Next` as a defect fix. The mise `tool` kind reports `rust` and `cargo:` tools missing on every run, so the chezmoi workstation keeps them out of Rig's catalogue. The fix is a small optional field. Adoption grants no planning, implementation or acceptance authority.
+
+### Readiness
+
+On 14 October 2026 Kris approved the plan to Ready and delivery as written, including the versionless default for a versioned locator.
