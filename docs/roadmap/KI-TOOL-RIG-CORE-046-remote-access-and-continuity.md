@@ -4,17 +4,13 @@ area: CORE
 title: Remote access and continuity
 initiative: rig
 kind: deliver
-status: draft
-horizon: hold
-hold:
-  reason: parked
-  condition: A further machine or profile needs remote-access and continuity settings declared rather than set by hand
-  review: 2027-01-04
+status: cancelled
+resolution: rejected
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-13T22:14:26Z
-updated_at: 2026-10-14T06:52:07Z
+updated_at: 2026-10-14T13:27:24Z
 ---
 
 # KI-TOOL-RIG-CORE-046: Remote Access and Continuity
@@ -38,6 +34,10 @@ Related records: [KI-TOOL-RIG-CORE-042](KI-TOOL-RIG-CORE-042-profile-filtered-do
 
 - **In:** per-profile declarations for screen sharing on or off and the users allowed to connect; on macOS, Handoff (which carries Universal Clipboard), Universal Control with its "push through the edge" and "automatically reconnect" options; read-only observation in `rig doctor` and `rig status`; `rig apply` where macOS permits it without the GUI; manual steps shown in doctor and dry-run output where it does not; a Linux equivalent for screen sharing (for example GNOME Remote Desktop or xrdp); specification, guide, help, manual and test alignment.
 - **Out:** restricting any listener to the tailnet, on macOS or Linux, which [KI-TOOL-RIG-CORE-047](KI-TOOL-RIG-CORE-047-tailnet-only-listener-firewall.md) owns; installing or configuring Tailscale itself; SSH server settings and keys; display arrangement for Universal Control; the VNC password option, which Rig should leave off and only report; continuity features on Linux or other systems, which have no equivalent and are reported as unsupported; FileVault and sleep policy.
+
+## Cancelled
+
+Cancelled 2026-10-14 as rejected (parked), approved by Kris Brown in the state-of-play run ('RC-ALL: approve all' to the roadmap census): its trigger was speculative (a further machine or profile) and it was held to 2027. Its Goal, Boundary and the macOS and Linux findings in Discussion are kept as an idea in the mac-studio-bootstrap Project (`ki-principal`, `Streams/Projects/mac-studio-bootstrap/mac-studio-bootstrap.md`); Git history keeps the full record. The firewall slice stays with KI-TOOL-RIG-CORE-047. It leaves no outstanding change.
 
 ## Discussion
 

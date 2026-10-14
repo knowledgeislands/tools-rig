@@ -4,13 +4,12 @@ area: CORE
 title: Linux tailnet-only listener firewall
 initiative: rig
 kind: deliver
-horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 610d2d0f7ef74d029dc9846af242c2b00e2a01c9
 created_at: 2026-10-13T23:40:07Z
-updated_at: 2026-10-13T23:57:34Z
+updated_at: 2026-10-14T13:26:05Z
 ---
 
 # KI-TOOL-RIG-CORE-051: Linux Tailnet-Only Listener Firewall
@@ -159,6 +158,10 @@ The goal is met in code: one declaration model now has a Linux provider that res
 ### Mini recap
 
 Built the `linux-nftables` firewall provider with fixture-only proof: validation and table collisions, golden rules and unit, the read-only boundary, every observation state, the exact apply argv, no-op, check and reread failures, grant refusal, retirement order and a retained receipt on failure. Handed the agent-host adoption to `ki-techne-harness`. Proposed learning route: none automatically. If live acceptance shows `nft list table` formats rules differently, adjust the normalisation in a follow-up record.
+
+## Done
+
+Accepted 2026-10-14 by Kris Brown on the review packet above, on its fixture evidence (state-of-play run, 'RC-ALL: approve all' to the roadmap census, which proposed 'accept on fixture evidence'). The live acceptance check in Verify was not run: the only Linux host is held, so that check moves to the Techne harness's converge-tools-through-Rig work, which absorbed the agent-host firewall adoption. ADR-KI-TOOL-RIG-010 stays proposed.
 
 ## Discussion
 

@@ -15,7 +15,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-13T22:53:48Z
-updated_at: 2026-10-14T06:52:07Z
+updated_at: 2026-10-14T13:27:24Z
 ---
 
 # Signed-Release Install Kind
@@ -33,6 +33,7 @@ Today the built-in `direct-download` `executable` kind covers a single binary ch
 ## Boundary
 
 - In: the install kind, its configuration fields and validation, signature and checksum verification that never falls back to SHA-256 only, version reporting for `rig status`, specifications and tests.
+- In: whether one `agentic-rig` role profile, published by the Techne harness, can be included by both remote agentic rigs (`vega` through Cheztoi and `sol` through a person's own configuration), carrying exact pins on one and minimums on the other; if existing `inherits` and `conf.d` composition already covers it, a worked example records that finding. Merged from KI-TOOL-RIG-CORE-049 below.
 - Out: changes to any tool's release signing or installer; producing linux-arm64 builds, which each `tools-*` repository owns; bootstrapping Rig itself.
 
 ## Dependencies / blocks
@@ -46,3 +47,12 @@ Origin: `ki-principal`, state-of-play thread, under Kris Brown's acceptance of t
 ### Adoption
 
 On 14 October 2026 Kris approved the state-of-play thread's triage burn-down as written, under Kris's instruction to burn the roadmap down: adopted as `deliver / Hold` until 2026-11-16. Its only consumer is the Techne harness's plan to converge the agent host's tools through Rig, which is itself held until vega is rebuilt. Adoption grants no planning, implementation or acceptance authority.
+
+### Merged from KI-TOOL-RIG-CORE-049 on 2026-10-14
+
+Kris approved merging KI-TOOL-RIG-CORE-049 (shared agentic-rig role) into this record on 14 October 2026, in the state-of-play run ('RC-ALL: approve all' to the roadmap census): both wait for the same trigger, vega being rebuilt, and the shared role is how a signed install reaches both hosts. Its Goal and Boundary, carried as written:
+
+- **Goal.** One `agentic-rig` role profile serves both remote agentic rigs: `vega`, a rebuildable cloud host set up by the Techne harness, and `sol`, Kris's owned Mac Studio configured through chezmoi. Both hosts include the same role from its single published source, with platform variants (Homebrew on macOS), so they carry the same KI toolchain without a second copy of its declaration.
+- **Context.** The Rig and Techne boundary audit makes Rig own the role layer (its Decision 1), places the role profile in a recipe-independent `roles/` folder in `ki-techne-harness` (Decision 3), and sets the version policy per role: exact pins on rebuildable hosts, newest through Homebrew on workstations, with the role declaring minimums both satisfy (Decision 4).
+- **In:** establishing whether existing composition covers this, and if not, the smallest Rig capability that does; the exact-versus-minimum version policy for one role across hosts; specifications and tests.
+- **Out:** the role's contents and home, which `ki-techne-harness` owns; Kris's own `studio` profile and catalogue, which chezmoi owns.

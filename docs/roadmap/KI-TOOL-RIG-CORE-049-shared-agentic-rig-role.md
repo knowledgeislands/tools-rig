@@ -5,17 +5,14 @@ title: Shared agentic-rig role
 purpose: capability
 initiative: rig
 kind: investigate
-status: draft
-horizon: hold
-hold:
-  reason: waiting-for
-  condition: vega is rebuilt, so a second agentic-rig host exists
-  review: 2026-11-16
+status: cancelled
+resolution: merged
+resolution_target: KI-TOOL-RIG-CORE-048
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-13T22:53:48Z
-updated_at: 2026-10-14T06:52:07Z
+updated_at: 2026-10-14T13:27:24Z
 ---
 
 # Shared Agentic-Rig Role
@@ -35,9 +32,9 @@ Rig profiles already compose through `inherits` and `conf.d` fragments. What is 
 - In: establishing whether existing composition covers this, and if not, the smallest Rig capability that does; the exact-versus-minimum version policy for one role across hosts; specifications and tests.
 - Out: the role's contents and home, which `ki-techne-harness` owns; Kris's own `studio` profile and catalogue, which chezmoi owns; the signed-release install kind, a separate record here.
 
-## Dependencies / blocks
+## Cancelled
 
-Not blocked. Blocks nothing today; `sol` including the role waits for it. The role's move to `ki-techne-harness`'s `roles/` folder proceeds independently.
+Cancelled 2026-10-14 as merged into KI-TOOL-RIG-CORE-048, approved by Kris Brown in the state-of-play run ('RC-ALL: approve all' to the roadmap census): both wait for vega to be rebuilt, and the shared role is how the signed install reaches both hosts. KI-TOOL-RIG-CORE-048 carries this record's Goal and Boundary in its Discussion. It leaves no outstanding change here.
 
 ## Discussion
 
