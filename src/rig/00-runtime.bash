@@ -221,7 +221,7 @@ rig_command_help() {
       printf '%s\n' '' 'Shows selected historical apply failures separately from current observations.' \
         'Health checks do not assess available package updates.' \
     'Default-application checks verify the owned app and compare handlers without changing them.' \
-    'Firewall checks read files, launchd state and listeners without administrator rights.' ;;
+    'Firewall checks read files, launchd or systemd state and listeners without administrator rights.' ;;
     diag)
       printf '%s\n' '' 'Offline facts include installation provenance, runtime host and configuration presence.' \
         'Paths are included only with --full; configuration values are never printed.' ;;

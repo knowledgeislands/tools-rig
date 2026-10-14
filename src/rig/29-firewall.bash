@@ -37,19 +37,27 @@ rig_firewall_port_valid() {
 }
 
 rig_validate_firewall() {
-  local section index locator field end value seen count other
+  local section index provider locator field end value seen count other
 
   section=$1; index=$2
   rig_require_field "$section" name || return
   rig_require_field "$section" purpose || return
   rig_require_field "$section" rationale || return
   rig_require_field "$section" provider || return
-  [ "$RIG_VALUE" = macos-pf ] || rig_fail "[$section] provider must be 'macos-pf'" || return
+  provider=$RIG_VALUE
+  case "$provider" in
+    macos-pf|linux-nftables) ;;
+    *) rig_fail "[$section] provider must be 'macos-pf' or 'linux-nftables'" || return ;;
+  esac
   rig_require_field "$section" locator || return
   locator=$RIG_VALUE
   rig_firewall_locator_valid "$locator" ||
     rig_fail "[$section] locator must be a reverse-DNS label outside com.apple" || return
-  rig_validate_macos_platforms "$section" || return
+  if [ "$provider" = linux-nftables ]; then
+    rig_nftables_validate_platforms "$section" "$index" || return
+  else
+    rig_validate_macos_platforms "$section" || return
+  fi
   rig_validate_references_for_field "$index" requires tool || return
   field=${RIG_SECTION_FIELD_STARTS[$index]}; end=${RIG_SECTION_FIELD_ENDS[$index]}
   seen=' '; count=0
@@ -82,6 +90,7 @@ rig_validate_firewall() {
     fi
     other=$((other + 1))
   done
+  [ "$provider" != linux-nftables ] || rig_nftables_validate_table "$section" "$index" "$locator"
 }
 
 rig_firewall_ports() {
@@ -298,6 +307,8 @@ rig_firewall_observe() {
   local section locator reasons exposed
 
   section=$1
+  rig_get_value "$section" provider || return 2
+  [ "$RIG_VALUE" != linux-nftables ] || { rig_nftables_observe "$section"; return; }
   RIG_OBSERVATION=unavailable
   RIG_OBSERVATION_DETAIL=-
   RIG_FIREWALL_ANCHOR_STATE=-
@@ -561,6 +572,8 @@ rig_explain_firewall() {
   local section locator state
 
   section=$1
+  rig_get_value "$section" provider || return 2
+  [ "$RIG_VALUE" != linux-nftables ] || { rig_nftables_explain "$section"; return; }
   rig_get_value "$section" locator || return 2
   locator=$RIG_VALUE
   rig_firewall_paths "$locator" || return

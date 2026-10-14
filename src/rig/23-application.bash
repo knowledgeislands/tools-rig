@@ -385,6 +385,7 @@ rig_apply_resource() {
   case "$adapter" in
     macos-handlers) rig_default_application_apply "$section_name"; return ;;
     macos-pf) rig_firewall_apply "$section_name"; return ;;
+    linux-nftables) rig_nftables_apply "$section_name"; return ;;
     macos-defaults) rig_setting_apply "$section_name"; return ;;
     macos-dock) rig_dock_apply "$section_name"; return ;;
   esac
@@ -403,6 +404,7 @@ rig_print_resource_projection() {
   adapter=$RIG_VALUE
   case "$adapter" in
     macos-pf) rig_firewall_print_projection "$section_name"; return ;;
+    linux-nftables) rig_nftables_print_projection "$section_name"; return ;;
     launchd|macos-defaults|macos-dock|macos-handlers)
     RIG_INVOKE_ARGUMENTS=()
     rig_append_resource_fields "$section_name" || return

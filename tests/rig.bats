@@ -5097,4 +5097,16 @@ artifacts = ["$HOME/bin/home-tool", "~/bin/tilde-tool", "/opt/rig/absolute-tool"
   run "$RIG_NETSTAT_COMMAND" -an
   [ "$status" -eq 1 ]
   [ "$(cat "$RIG_NETSTAT_COMMAND.log")" = '-an' ]
+  case "$RIG_NFT" in "$BATS_TEST_TMPDIR"/*) ;; *) false ;; esac || false
+  case "$RIG_SYSTEMCTL" in "$BATS_TEST_TMPDIR"/*) ;; *) false ;; esac || false
+  case "$RIG_SS_COMMAND" in "$BATS_TEST_TMPDIR"/*) ;; *) false ;; esac || false
+  run "$RIG_NFT" list ruleset
+  [ "$status" -eq 1 ]
+  [ "$(cat "$RIG_NFT.log")" = 'list ruleset' ]
+  run "$RIG_SYSTEMCTL" daemon-reload
+  [ "$status" -eq 1 ]
+  [ "$(cat "$RIG_SYSTEMCTL.log")" = 'daemon-reload' ]
+  run "$RIG_SS_COMMAND" -Hltun
+  [ "$status" -eq 1 ]
+  [ "$(cat "$RIG_SS_COMMAND.log")" = '-Hltun' ]
 }

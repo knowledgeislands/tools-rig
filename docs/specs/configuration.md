@@ -294,10 +294,10 @@ _Evidence:_ `rig_validate_default_application`, `rig_default_application_identit
 
 ### RIG-CONF-030 — Tailnet-only firewall declarations
 
-`[firewall.ID]` MUST require `name`, `purpose`, `rationale`, fixed `provider = "macos-pf"`, a reverse-DNS `locator` outside `com.apple`, a non-empty `ports` list, `allow = ["tailnet"]` and macOS-only `platforms`. Each port MUST be `tcp:N` or `udp:N` with N from 1 to 65535 and no leading zero; ports MUST be unique within the declaration, and `tcp:22` and `udp:22` MUST be rejected because SSH is the recovery path. `allow` MUST accept no other source. A firewall MAY declare `requires`, `depends-on` and item `profiles`; central profiles MAY select `firewalls`. Locators MUST be unique across firewall declarations. Every rejection MUST happen before any native invocation.
+`[firewall.ID]` MUST require `name`, `purpose`, `rationale`, a `provider` of either `macos-pf` or `linux-nftables`, a reverse-DNS `locator` outside `com.apple`, a non-empty `ports` list, `allow = ["tailnet"]` and `platforms` naming only the provider's platform: `macos` for `macos-pf` and `linux` for `linux-nftables`. Each port MUST be `tcp:N` or `udp:N` with N from 1 to 65535 and no leading zero; ports MUST be unique within the declaration, and `tcp:22` and `udp:22` MUST be rejected because SSH is the recovery path. `allow` MUST accept no other source. A firewall MAY declare `requires`, `depends-on` and item `profiles`; central profiles MAY select `firewalls`. Locators MUST be unique across firewall declarations, and two `linux-nftables` locators MUST NOT derive the same nftables table name, which replaces each `.` and `-` with `_`. Every rejection MUST happen before any native invocation.
 
 _Conformance:_ conforming
 
-_Verify:_ Isolated fixtures reject a wrong provider or platform, malformed, duplicate or SSH ports, any other `allow` value, missing ports, unknown requirements and a duplicate locator, each with an empty native-command log.
+_Verify:_ Isolated fixtures reject a wrong provider or a provider paired with the other platform, malformed, duplicate or SSH ports, any other `allow` value, missing ports, unknown requirements, a duplicate locator and a colliding nftables table name, each with an empty native-command log.
 
-_Evidence:_ `rig_validate_firewall`, `rig_firewall_locator_valid` and `rig_firewall_port_valid` enforce the declaration; `tests/rig-firewall.bats` covers every rejection.
+_Evidence:_ `rig_validate_firewall`, `rig_firewall_locator_valid`, `rig_firewall_port_valid`, `rig_nftables_validate_platforms` and `rig_nftables_validate_table` enforce the declaration; `tests/rig-firewall.bats` and `tests/rig-firewall-linux.bats` cover every rejection.

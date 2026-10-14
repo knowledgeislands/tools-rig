@@ -4,13 +4,13 @@ area: CORE
 title: Linux tailnet-only listener firewall
 initiative: rig
 kind: deliver
-horizon: next
-status: ready
+horizon: now
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 610d2d0f7ef74d029dc9846af242c2b00e2a01c9
 created_at: 2026-10-13T23:40:07Z
-updated_at: 2026-10-13T23:40:07Z
+updated_at: 2026-10-13T23:57:34Z
 ---
 
 # KI-TOOL-RIG-CORE-051: Linux Tailnet-Only Listener Firewall
@@ -40,15 +40,15 @@ Techne's agent host runs Ubuntu on AWS and is reached only through Tailscale SSH
 
 ## Steps
 
-- [ ] Re-read authority and source, establish the immutable baseline through `ki-implement`, and keep the boundary. Stop for review if source drift changes the provider, sudo or retirement assumptions below.
-- [ ] Register `linux-nftables` as a built-in adapter with `resource-observe`, `resource-apply` and `resource-retire`. Make `rig_validate_firewall` accept either provider, requiring `platforms = ["macos"]` for `macos-pf` and `platforms = ["linux"]` for `linux-nftables`. Keep the locator, port, port-22 and `allow` rules unchanged. Reject two firewall declarations whose derived nftables table names collide.
-- [ ] Render deterministically: the rules file `/etc/rig/firewall/LOCATOR.nft` and the unit `/etc/systemd/system/LOCATOR.service`, each opening with the "Managed by rig" comment. The table is `inet rig_NAME`, where NAME is the locator with `.` and `-` replaced by `_`. Its one base chain hooks `input` at `priority filter` with `policy accept`; for each declared port it accepts `iif "lo"`, accepts tailnet-to-tailnet on both families (source and destination both in `100.64.0.0/10`, or both in `fd7a:115c:a1e0::/48`), then drops the port from anywhere else. The file opens with `table inet rig_NAME` and `delete table inet rig_NAME`, so one `nft -f` replaces the table atomically. The unit is a `oneshot` with `RemainAfterExit=yes`, `ExecStart=/usr/sbin/nft -f FILE`, `ExecStop=-/usr/sbin/nft delete table inet rig_NAME`, with `DefaultDependencies=no`, `Wants=network-pre.target`, `After=nftables.service ufw.service`, `Before=network-pre.target shutdown.target`, `Conflicts=shutdown.target` and `WantedBy=multi-user.target`, the same early-boot shape as Ubuntu's own `nftables.service`.
-- [ ] Observe without privilege: rendered and on-disk files compared byte for byte; `systemctl show LOCATOR.service -p LoadState -p ActiveState -p UnitFileState -p Result`; and a fixed read-only `ss -Hltun` listener source (injectable as `RIG_SS_COMMAND`) for whether each declared port listens on every address. Report `present` with `kernel-rules-unverified`, `missing`, `drifted` or `unavailable` per [RIG-STATE-021](../specs/state.md), with the drift reasons in [Proposed contract](#proposed-contract). Read-only commands never call `sudo` or `nft`.
-- [ ] Apply only under `rig apply --sudo` through the attended grant with `sudo -n`; without it a firewall needing work is `skipped` with `administrator-grant-required`, as on macOS. Order: `nft -c -f RENDERED` (check only); install the rules file and unit root-owned `0644` with `install -D`; `systemctl daemon-reload` when the unit changed; `systemctl enable LOCATOR.service` when not enabled; `systemctl restart LOCATOR.service`; reread with `nft list table inet rig_NAME` and fail unless it matches the rendered rules. A correct, enabled, active resource whose loaded rules match is a no-op.
-- [ ] Retire when the catalogue no longer declares the locator: `systemctl disable --now LOCATOR.service`, `nft delete table inet rig_NAME` only if `nft list table` finds it, remove both files, then `systemctl daemon-reload`. Never `nft flush ruleset`, never touch another table.
-- [ ] Extend dry-run projection, `rig show firewall:ID` text and JSON, the doctor counts and help so they describe the Linux files, table and commands.
-- [ ] Extend `tests/helpers/isolate.bash` to refuse `nft`, `systemctl` and `ss` by default (`RIG_NFT`, `RIG_SYSTEMCTL`, `RIG_SS_COMMAND`) and add isolated Bats coverage, `tests/rig-firewall-linux.bats`, with `RIG_PLATFORM=linux`, stubbed `sudo`, `nft`, `systemctl` and `ss`, and every system path beneath `RIG_SYSTEM_ROOT`. Extend the isolation guard in `tests/rig.bats`.
-- [ ] Align specifications, propose a decision record, update guides, help, manual and the active changelog; assemble `bin/rig`; run the focused set and the complete gate; assemble an honest review packet. Live acceptance stays withheld.
+- [x] Re-read authority and source, establish the immutable baseline through `ki-implement`, and keep the boundary. Stop for review if source drift changes the provider, sudo or retirement assumptions below.
+- [x] Register `linux-nftables` as a built-in adapter with `resource-observe`, `resource-apply` and `resource-retire`. Make `rig_validate_firewall` accept either provider, requiring `platforms = ["macos"]` for `macos-pf` and `platforms = ["linux"]` for `linux-nftables`. Keep the locator, port, port-22 and `allow` rules unchanged. Reject two firewall declarations whose derived nftables table names collide.
+- [x] Render deterministically: the rules file `/etc/rig/firewall/LOCATOR.nft` and the unit `/etc/systemd/system/LOCATOR.service`, each opening with the "Managed by rig" comment. The table is `inet rig_NAME`, where NAME is the locator with `.` and `-` replaced by `_`. Its one base chain hooks `input` at `priority filter` with `policy accept`; for each declared port it accepts `iif "lo"`, accepts tailnet-to-tailnet on both families (source and destination both in `100.64.0.0/10`, or both in `fd7a:115c:a1e0::/48`), then drops the port from anywhere else. The file opens with `table inet rig_NAME` and `delete table inet rig_NAME`, so one `nft -f` replaces the table atomically. The unit is a `oneshot` with `RemainAfterExit=yes`, `ExecStart=/usr/sbin/nft -f FILE`, `ExecStop=-/usr/sbin/nft delete table inet rig_NAME`, with `DefaultDependencies=no`, `Wants=network-pre.target`, `After=nftables.service ufw.service`, `Before=network-pre.target shutdown.target`, `Conflicts=shutdown.target` and `WantedBy=multi-user.target`, the same early-boot shape as Ubuntu's own `nftables.service`.
+- [x] Observe without privilege: rendered and on-disk files compared byte for byte; `systemctl show LOCATOR.service -p LoadState -p ActiveState -p UnitFileState -p Result`; and a fixed read-only `ss -Hltun` listener source (injectable as `RIG_SS_COMMAND`) for whether each declared port listens on every address. Report `present` with `kernel-rules-unverified`, `missing`, `drifted` or `unavailable` per [RIG-STATE-021](../specs/state.md), with the drift reasons in [Proposed contract](#proposed-contract). Read-only commands never call `sudo` or `nft`.
+- [x] Apply only under `rig apply --sudo` through the attended grant with `sudo -n`; without it a firewall needing work is `skipped` with `administrator-grant-required`, as on macOS. Order: `nft -c -f RENDERED` (check only); install the rules file and unit root-owned `0644` with `install -D`; `systemctl daemon-reload` when the unit changed; `systemctl enable LOCATOR.service` when not enabled; `systemctl restart LOCATOR.service`; reread with `nft list table inet rig_NAME` and fail unless it matches the rendered rules. A correct, enabled, active resource whose loaded rules match is a no-op.
+- [x] Retire when the catalogue no longer declares the locator: `systemctl disable --now LOCATOR.service`, `nft delete table inet rig_NAME` only if `nft list table` finds it, remove both files, then `systemctl daemon-reload`. Never `nft flush ruleset`, never touch another table.
+- [x] Extend dry-run projection, `rig show firewall:ID` text and JSON, the doctor counts and help so they describe the Linux files, table and commands.
+- [x] Extend `tests/helpers/isolate.bash` to refuse `nft`, `systemctl` and `ss` by default (`RIG_NFT`, `RIG_SYSTEMCTL`, `RIG_SS_COMMAND`) and add isolated Bats coverage, `tests/rig-firewall-linux.bats`, with `RIG_PLATFORM=linux`, stubbed `sudo`, `nft`, `systemctl` and `ss`, and every system path beneath `RIG_SYSTEM_ROOT`. Extend the isolation guard in `tests/rig.bats`.
+- [x] Align specifications, propose a decision record, update guides, help, manual and the active changelog; assemble `bin/rig`; run the focused set and the complete gate; assemble an honest review packet. Live acceptance stays withheld.
 
 ## Files touched
 
@@ -100,6 +100,65 @@ Extend "Restrict a listener to the tailnet" in [operational resources](../guides
 ### Roadmap
 
 Kris approved this record and its plan in principle in Decision 51; see [Plan approval](#plan-approval).
+
+## Review
+
+### Delivered
+
+Delivered within the approved boundary from baseline `610d2d0f7ef74d029dc9846af242c2b00e2a01c9`, using fixtures only. Rig now accepts a `[firewall.ID]` declaration with the built-in `linux-nftables` provider on Linux. It renders a Rig-owned `inet rig_NAME` table and a systemd unit, observes them without privilege, applies and retires them only under `apply --sudo`, and leaves `ufw`, `iptables`, `/etc/nftables.conf` and every other table alone. Proposed [ADR-KI-TOOL-RIG-010](../decisions/ADR-KI-TOOL-RIG-010-linux-firewall-through-a-rig-owned-nftables-table.md) records the provider decision. The agent-host adoption is handed to `ki-techne-harness` as [KI-TECHNE-OPS-026](https://github.com/knowledgeislands/ki-techne-harness/blob/main/docs/roadmap/KI-TECHNE-OPS-026-agent-host-tailnet-only-firewall.md).
+
+Excluded, as the approval requires: no personal or recipe declaration, no `rig apply` on any host, no live `nft`, `systemctl` or `sudo` call, no remote or AWS action, and no acceptance, pruning or release. The live acceptance check in [Verify](#verify) is withheld.
+
+### Change Summary
+
+- **New module** `src/rig/29-firewall-nftables.bash`: table naming, platform pairing and table-collision validation, rules and unit rendering, unprivileged observation through `systemctl show` and `ss -Hltun`, preflight, apply, retirement, dry-run projection and explanation. Assembled after `29-firewall.bash`.
+- **Shared firewall module** (`29-firewall.bash`): validation accepts either provider with its platform; observation and explanation dispatch to the Linux provider by `provider`.
+- **Registry and dispatch** (`10-configuration.bash`, `20-orchestration.bash`, `21-provider-state.bash`, `23-application.bash`): the `linux-nftables` built-in adapter and its capabilities, preflight, apply, projection, retirement preflight and retirement. The shared-port conflict now applies within one provider and names it.
+- **Help** (`00-runtime.bash`): status and doctor help names systemd state as well as launchd.
+- **Tests**: new `tests/rig-firewall-linux.bats` (10 tests); `tests/helpers/isolate.bash` now also refuses `nft`, `systemctl` and `ss` by default; the isolation guard in `tests/rig.bats` covers them.
+- **Documentation**: RIG-CONF-030, RIG-ORCH-027 and RIG-STATE-045 extended; new RIG-ORCH-045 for the Linux adapter; the operational-resources and commands guides, manual, changelog, and the proposed ADR with its index entry.
+
+Deviations and interpretations for review:
+
+- **Horizon moved from Next to Now.** Delivery under Decision 51 happens now, and the roadmap audit retires in-progress work at Next.
+- **A Linux companion requirement, RIG-ORCH-045,** rather than widening RIG-ORCH-023, whose title and text are macOS-specific.
+- **Shared-port conflicts are per provider.** One profile may hold a `macos-pf` and a `linux-nftables` declaration with the same ports, as the record's contract describes; two selected declarations of one provider on one port are still refused.
+- **`systemctl enable` also runs when the unit file changed,** not only when it is not enabled, so a changed `[Install]` section is re-linked.
+- **Retirement deletes the table only if it survives the unit's stop.** The unit's `ExecStop` normally removes it; the explicit delete is the fallback the record names.
+- **README unchanged.** Its resource summary already says "tailnet-only firewall restrictions" without naming a platform.
+
+### Verification
+
+All commands were run locally on 14 October 2026 with stdin closed. No live `sudo`, `nft`, `systemctl` mutation or Rig apply was run.
+
+- Focused set, `bats tests/rig-firewall-linux.bats tests/rig-firewall.bats tests/rig-sudo-session.bats tests/rig-profile-authority.bats tests/rig-cli-surface.bats </dev/null`: 43 of 43 passed.
+- Complete gate from [Develop Rig](../guides/developer/README.md#verify-the-repository):
+  - `ki repo audit --repo .`: no failures. One existing warning (HOOK-1, no committed pre-commit gate) is unrelated.
+  - `shellcheck` and `bash -n` on every listed script: clean.
+  - `scripts/assemble-rig --check`: current.
+  - `scripts/benchmark-rig`: within budget (show-all 2 s of 5 s, status 6 s of 8 s).
+  - `scripts/smoke-native-providers`: read-only version probes only, all passed.
+  - `bats tests/ </dev/null`: 538 of 538 passed. A one-line hardening of the rule normaliser (disabling globbing) landed while it ran; `tests/rig-firewall-linux.bats` was rerun afterwards, 10 of 10 passed, and the hostile run below used the final executable.
+  - `mandoc -T lint man/rig.1`: clean.
+  - `git diff --check`: clean.
+- Hostile isolation run, `XDG_STATE_HOME` and `XDG_CONFIG_HOME` pointed at nonexistent outside directories, over `tests/rig-firewall-linux.bats`, `tests/rig-firewall.bats` and `tests/rig.bats`: 208 of 208 passed, and neither hostile directory was created.
+- `tests/rig-firewall-linux.bats` covers every Verify case except live acceptance. Its sudo fixture refuses any install or removal outside `RIG_SYSTEM_ROOT`, and the apply, mismatch and retirement tests assert that no log names `ufw`, `iptables`, `/etc/nftables.conf`, a flush or another table.
+
+### Outstanding concerns
+
+- Comparing `nft list table` output with the rendered rules is proven only against a fixture that mimics nft's canonical listing. Real output must be confirmed in live acceptance; a mismatch fails apply safely, after the table is loaded, rather than leaving the port open.
+- Live acceptance is withheld and unrun: Tailscale SSH still connecting, the port answering over the tailnet and refused from the VPC, survival across reboot, and the reread matching. It needs a Linux host and Kris's approval; on the agent host it also waits for the Techne Programme Hold.
+- A manual `systemctl restart nftables` or `nft flush ruleset` removes Rig's table until the next boot or `apply --sudo`, and doctor cannot see that without root. Recorded in the ADR.
+- Ports published from containers through a bridge use the `forward` hook and are not restricted. Recorded in the guide and ADR.
+- The JSON label splitting noted in KI-TOOL-RIG-CORE-047 applies here unchanged.
+
+### Post-change review
+
+The goal is met in code: one declaration model now has a Linux provider that restricts only declared ports to loopback and the tailnet, with Rig-owned files, table and unit only. Scope held to the record's files; `30-commands.bash` and `28-sudo-session.bash` needed no change because their firewall paths are generic. Regression risk sits in the shared validation and the per-provider conflict rule; the unchanged macOS firewall tests and the full suite cover both. Acceptance readiness: ready for code review now; ready for live acceptance only after Kris approves it on a Linux host.
+
+### Mini recap
+
+Built the `linux-nftables` firewall provider with fixture-only proof: validation and table collisions, golden rules and unit, the read-only boundary, every observation state, the exact apply argv, no-op, check and reread failures, grant refusal, retirement order and a retained receipt on failure. Handed the agent-host adoption to `ki-techne-harness`. Proposed learning route: none automatically. If live acceptance shows `nft list table` formats rules differently, adjust the normalisation in a follow-up record.
 
 ## Discussion
 

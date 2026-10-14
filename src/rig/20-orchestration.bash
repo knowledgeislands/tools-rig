@@ -97,6 +97,7 @@ rig_provider_has_capability() {
       macos-dock:resource-observe|macos-dock:resource-apply|\
     macos-handlers:resource-observe|macos-handlers:resource-apply|\
       macos-pf:resource-observe|macos-pf:resource-apply|macos-pf:resource-retire|\
+      linux-nftables:resource-observe|linux-nftables:resource-apply|linux-nftables:resource-retire|\
       skills-cli:skill-observe|skills-cli:skill-apply|skills-cli:skill-update|skills-cli:skill-inventory|\
       ki:skill-apply|ki:skill-update)
         return 0
@@ -1191,6 +1192,10 @@ rig_preflight_resource() {
   fi
   if [ "$adapter" = macos-pf ]; then
     rig_firewall_preflight "$section_name" "$verb"
+    return
+  fi
+  if [ "$adapter" = linux-nftables ]; then
+    rig_nftables_preflight "$section_name" "$verb"
     return
   fi
   if [ "$adapter" = launchd ]; then

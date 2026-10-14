@@ -197,7 +197,37 @@ Without `--sudo`, apply leaves a firewall that needs work untouched and reports 
 
 Status and doctor never use administrator rights. They compare both files with what Rig would render, read the daemon's load state and last exit code, and check whether a declared port listens on every address. A matching firewall reports `present` with `kernel-rules-unverified`, because reading loaded pf rules needs root; `apply --sudo` checks them on every run. A port listening on every address while the firewall is missing or drifted adds `exposed-beyond-tailnet`.
 
-Deleting the declaration and applying with `--sudo` unloads the daemon, flushes only Rig's anchor and removes its two files. pf stays enabled: other components may rely on it, and Apple's anchors alone filter nothing. Removing the firewall from a profile while the catalogue still declares it retires nothing. Firewalls are macOS only.
+Deleting the declaration and applying with `--sudo` unloads the daemon, flushes only Rig's anchor and removes its two files. pf stays enabled: other components may rely on it, and Apple's anchors alone filter nothing. Removing the firewall from a profile while the catalogue still declares it retires nothing.
+
+On Linux, declare the same restriction with the `linux-nftables` provider and `platforms = ["linux"]`. A profile serving both platforms holds one declaration for each, with the same ports; Rig selects the one for the running platform:
+
+```toml
+[firewall.dev-server-tailnet]
+name = "Development server on the tailnet only"
+purpose = "Keep agent-started listeners off the VPC and the internet"
+rationale = "Development servers bind every address by default"
+provider = "linux-nftables"
+locator = "org.example.rig.firewall.dev-server"
+platforms = ["linux"]
+ports = ["tcp:3000"]
+allow = ["tailnet"]
+```
+
+Rig writes two root-owned files and owns one nftables table, `inet rig_NAME`, where NAME is the locator with each `.` and `-` replaced by `_`:
+
+- `/etc/rig/firewall/LOCATOR.nft`, the table with one `input` chain whose policy is accept and four rules per port: accept on `lo`, accept IPv4 tailnet to tailnet, accept IPv6 tailnet to tailnet, then drop.
+- `/etc/systemd/system/LOCATOR.service`, a unit that loads the table at every boot, after `nftables.service` and `ufw.service`, and deletes only its own table when stopped.
+
+The chain drops nothing but the declared ports, so it never blocks SSH or another service. Rig never runs `ufw` or `iptables`, never edits `/etc/nftables.conf`, and never flushes the ruleset. If `ufw` is active it keeps governing every other port, and a `ufw` deny on a declared port still wins. Restarting `nftables.service` by hand flushes the whole ruleset, including Rig's table, until the next boot or `rig apply --sudo`. Install the `nftables` package first; without `nft`, apply reports the firewall unavailable. Do not declare Tailscale's own UDP port 41641: peers would fall back to relays. Ports published from a container through a bridge pass the `forward` hook and are not restricted.
+
+Keep this rollback to hand. It needs no Rig and works over Tailscale SSH:
+
+```sh
+sudo systemctl disable --now LOCATOR.service
+sudo nft delete table inet rig_NAME
+```
+
+Apply and preview exactly as on macOS. With the grant, Rig checks the rendered table with `nft -c` before installing anything, installs the files, reloads systemd when the unit changed, enables and restarts the unit, then rereads the table with `nft list table` and fails unless it matches. Status and doctor compare both files, read the unit's state through `systemctl show`, and check listeners with `ss`; the drift reasons are `rules-missing`, `rules-changed`, `unit-missing`, `unit-changed`, `unit-not-enabled`, `unit-not-active` and `unit-result:RESULT`. Retirement disables and stops the unit, deletes only Rig's table and removes its two files.
 
 ## Select and inspect the workstation
 

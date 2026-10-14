@@ -147,7 +147,7 @@ Refusal or an unusable grant stops before tasks. Lost refresh stops subsequent d
 
 ## Declared firewall restrictions
 
-[Restrict a listener to the tailnet](operational-resources.md#restrict-a-listener-to-the-tailnet) with a `[firewall.ID]` declaration. `rig show firewall:ID` lists its ports, allowed sources, pf anchor, files and observed state. Status and doctor observe without administrator rights and report kernel rules as unverified. `rig apply --dry-run` prints the rendered rules, files and commands. Only `rig apply --sudo` changes a firewall; without it, a firewall that needs work is skipped with `administrator-grant-required`. A present firewall needs no prompt.
+[Restrict a listener to the tailnet](operational-resources.md#restrict-a-listener-to-the-tailnet) with a `[firewall.ID]` declaration. `rig show firewall:ID` lists its ports, allowed sources, pf anchor or nftables table, files and observed state. Status and doctor observe without administrator rights and report kernel rules as unverified. `rig apply --dry-run` prints the rendered rules, files and commands. Only `rig apply --sudo` changes a firewall; without it, a firewall that needs work is skipped with `administrator-grant-required`. A present firewall needs no prompt.
 
 ## Declared default applications
 

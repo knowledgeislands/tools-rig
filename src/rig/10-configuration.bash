@@ -1232,14 +1232,14 @@ rig_validate_provider_adapter() {
   adapter=$2
   case "$adapter" in
     custom) ;;
-    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-handlers|macos-pf|skills-cli|ki) ;;
+    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-handlers|macos-pf|linux-nftables|skills-cli|ki) ;;
     *) rig_fail "[$section_name] has unsupported adapter '$adapter'" || return ;;
   esac
 }
 
 rig_builtin_provider_adapter() {
   case "$1" in
-    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-handlers|macos-pf|skills-cli|ki)
+    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-handlers|macos-pf|linux-nftables|skills-cli|ki)
       RIG_VALUE=$1
       return 0
       ;;
@@ -1280,7 +1280,7 @@ rig_validate_binding_adapter() {
     custom:*) ;;
     homebrew:formula|homebrew:cask|homebrew:mas|uv:tool|mise:tool|npm:global|chezmoi:target) ;;
     direct-download:executable) ;;
-    launchd:*|macos-applications:*|macos-defaults:*|macos-dock:*|macos-handlers:*|macos-pf:*|skills-cli:*|ki:*)
+    launchd:*|macos-applications:*|macos-defaults:*|macos-dock:*|macos-handlers:*|macos-pf:*|linux-nftables:*|skills-cli:*|ki:*)
       rig_fail "[$section_name] adapter '$adapter' cannot install tools" || return
       ;;
     homebrew:*|uv:*|mise:*|npm:*|chezmoi:*|direct-download:*)
@@ -2710,8 +2710,9 @@ rig_validate_selected_native_targets() {
       [ "$target" != "$other_target" ] ||
         rig_fail "[$other] conflicts with [$section_name] at native target '$target'" || return
       if [ "${section_name%%.*}.${other%%.*}" = firewall.firewall ] &&
+        [ "${target%%:*}" = "${other_target%%:*}" ] &&
         rig_firewall_shared_port "$section_name" "$other"; then
-        rig_fail "[$other] conflicts with [$section_name] at native target 'macos-pf:port:$RIG_VALUE'" || return
+        rig_fail "[$other] conflicts with [$section_name] at native target '${target%%:*}:port:$RIG_VALUE'" || return
       fi
       scan=$((scan + 1))
     done

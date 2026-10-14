@@ -1848,12 +1848,14 @@ and do not remove applications or change per-file Finder overrides.
 \&
 .PP
 Private [firewall.ID] resources require name, purpose, rationale,
-provider = macos-pf, a reverse-DNS locator outside com.apple, ports,
-allow = ["tailnet"] and macOS platforms. Each port is tcp:N or udp:N with N
+provider = macos-pf with macOS platforms or provider = linux-nftables with
+Linux platforms, a reverse-DNS locator outside com.apple, ports and
+allow = ["tailnet"]. Each port is tcp:N or udp:N with N
 from 1 to 65535. Port 22 is rejected for either protocol because SSH is the
 recovery path. Central profiles select firewalls; item profiles use normal
-membership. Two selected firewalls restricting the same protocol and port are
-rejected.
+membership. Two selected firewalls of one provider restricting the same
+protocol and port are rejected, as are two linux-nftables locators deriving
+the same table name.
 .PP
 Each declared port accepts loopback and connections whose source and
 destination are both in 100.64.0.0/10 or both in fd7a:115c:a1e0::/48, and is
@@ -1876,3 +1878,21 @@ sudo launchctl bootout system/LOCATOR and
 sudo pfctl -a com.apple/LOCATOR -F all.
 RIG_PFCTL, RIG_LAUNCHCTL and RIG_NETSTAT_COMMAND override native executable
 paths, and RIG_SYSTEM_ROOT roots the managed system paths for fixtures.
+.PP
+On Linux, the linux-nftables provider owns the table inet rig_NAME, where
+NAME is the locator with each . and - replaced by _, in
+/etc/rig/firewall/LOCATOR.nft, and the unit
+/etc/systemd/system/LOCATOR.service, which loads it at boot after
+nftables.service and ufw.service. Its one input chain has policy accept and
+drops only declared ports from outside loopback and the tailnet. Rig never
+runs ufw or iptables, edits /etc/nftables.conf, flushes the ruleset or touches
+another table. Doctor compares both files, reads systemctl show and checks
+listeners with ss -Hltun; drift reasons are rules-missing, rules-changed,
+unit-missing, unit-changed, unit-not-enabled, unit-not-active and
+unit-result:RESULT. Only apply --sudo changes it: nft -c first, root-owned
+file installation, systemctl daemon-reload, enable and restart, then a reread
+with nft list table that must match. Retirement disables and stops the unit,
+deletes only its table and removes its two files. Emergency rollback:
+sudo systemctl disable --now LOCATOR.service and
+sudo nft delete table inet rig_NAME.
+RIG_NFT, RIG_SYSTEMCTL and RIG_SS_COMMAND override native executable paths.

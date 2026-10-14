@@ -284,6 +284,10 @@ rig_prepare_retire_invocation() {
     rig_firewall_preflight_retirement "$locator"
     return
   fi
+  if [ "$adapter" = linux-nftables ]; then
+    rig_nftables_preflight_retirement "$locator"
+    return
+  fi
   [ "$adapter" = custom ] || return 2
   rig_custom_provider_executable "$provider" || return 2
   executable=$RIG_VALUE
@@ -309,6 +313,10 @@ rig_retire_resource() {
   fi
   if [ "$adapter" = macos-pf ]; then
     rig_firewall_retire "$locator"
+    return
+  fi
+  if [ "$adapter" = linux-nftables ]; then
+    rig_nftables_retire "$locator"
     return
   fi
   rig_prepare_retire_invocation "$provider" "$kind" "$id" "$locator" || return

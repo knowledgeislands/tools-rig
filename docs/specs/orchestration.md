@@ -239,6 +239,16 @@ _Verify:_ Bats fakes native macOS commands and filesystem surfaces to compare ex
 
 _Evidence:_ `rig_launchd_observe_resource`, `rig_launchd_apply_resource`, `rig_launchd_retire_resource`, `rig_setting_observe`, `rig_setting_apply`, `rig_dock_observe`, `rig_dock_apply`, and `rig_macos_application_inventory` implement the four built-in surfaces; `rig_launchd_render_plist` emits the ownership comment and the associated bundle identifiers; `rig_launchd_unload` waits for the domain to release a label before `rig_launchd_apply_resource` bootstraps its replacement; the built-in launchd test and all four `tests/rig-macos.bats` tests cover reconciliation and inventory without extension dispatch. `rig_firewall_apply`, `rig_firewall_retire` and `tests/rig-firewall.bats` cover the `macos-pf` adapter's ordered argv, its no-op, parse and reread failures, and its retirement order.
 
+### RIG-ORCH-045 — Built-in Linux nftables firewall adapter
+
+On Linux, Rig MUST observe, apply, and retire `linux-nftables` firewall declarations through its built-in adapter, with no provider or action declaration, and MUST leave the adapter unavailable without mutation on other platforms. It MUST render a rules file at `/etc/rig/firewall/LOCATOR.nft` and a systemd unit at `/etc/systemd/system/LOCATOR.service`, each opening with a comment naming Rig and the declaration. The rules file MUST declare and then delete the table `inet rig_NAME`, where NAME is the locator with each `.` and `-` replaced by `_`, before defining it, so one `nft -f` replaces it atomically. Its one base chain MUST hook `input` at `priority filter` with `policy accept` and, for each declared port, accept it on `iif "lo"` and between addresses that are both in `100.64.0.0/10` or both in `fd7a:115c:a1e0::/48`, then drop it from anywhere else; every rule MUST name a declared port. The unit MUST be a `oneshot` with `RemainAfterExit=yes` whose `ExecStart` runs `/usr/sbin/nft -f` on the rules file and whose `ExecStop` deletes only its own table, ordered with `DefaultDependencies=no`, `Wants=network-pre.target`, `After=nftables.service ufw.service`, `Before=network-pre.target shutdown.target`, `Conflicts=shutdown.target` and `WantedBy=multi-user.target`. It MUST mutate only through the attended grant's `sudo -n`, in this order: `nft -c -f` on the rendered rules, root-owned `0644` installation with `install -D` of each changed file, `systemctl daemon-reload` when the unit changed, `systemctl enable` when the unit is not enabled or changed, `systemctl restart`, and a reread with `nft list table inet rig_NAME` that MUST match the rendered rules once comments, the replace preamble and whitespace are normalised. A check failure MUST install nothing; a present resource whose reread matches MUST be a no-op. Retirement MUST run `systemctl disable --now` when the unit file exists, delete its own table only when `nft list table` finds it, remove only its own two files and run `systemctl daemon-reload`. The adapter MUST NOT run `ufw` or `iptables`, edit `/etc/nftables.conf`, flush the ruleset, or touch another table. Every system path MUST resolve beneath an optional `RIG_SYSTEM_ROOT`, while the rendered content names the real paths; `RIG_NFT`, `RIG_SYSTEMCTL` and `RIG_SS_COMMAND` MAY replace the native executables.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats fakes `sudo`, `nft`, `systemctl` and `ss` with `RIG_PLATFORM=linux` and compares golden rendering, the exact ordered argv, the no-op, check and reread failures, a refused or absent grant, retirement order and a failed retirement's retained receipt, and asserts that no log names `ufw`, `iptables`, `/etc/nftables.conf`, a flush or another table.
+
+_Evidence:_ `rig_nftables_render_rules`, `rig_nftables_render_unit`, `rig_nftables_apply`, `rig_nftables_retire` and `tests/rig-firewall-linux.bats` implement and cover the adapter.
+
 ### RIG-ORCH-024 — Declaration-scoped upgrades
 
 `rig upgrade` MUST advance selected provider-managed Homebrew, uv, mise and npm tools and supported Skills CLI skills through fixed native operations. It MUST NOT invoke Homebrew Bundle or provider-wide maintenance. Unavailable executables and unsupported operations MUST remain visible per task, while independent work continues. Native dependencies MAY change as part of a declared provider operation; Rig MUST NOT remove unknown packages or dispatch a second package list.
@@ -271,13 +281,13 @@ _Evidence:_ `rig_resolve_profile`, `rig_validate_view_closure`, and the lifecycl
 
 ### RIG-ORCH-027 — Resolved native-target conflicts
 
-Rig MUST reject two selected services or scheduled jobs sharing a provider locator, two selected settings sharing a provider domain and key, more than one selected Dock layout for the same provider, or two selected firewall declarations restricting the same protocol and port. It MUST permit those alternatives to coexist when no resolved profile selects them together.
+Rig MUST reject two selected services or scheduled jobs sharing a provider locator, two selected settings sharing a provider domain and key, more than one selected Dock layout for the same provider, or two selected firewall declarations with the same provider restricting the same protocol and port. It MUST permit those alternatives to coexist when no resolved profile selects them together.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats resolves each mutually exclusive alternative successfully and a composed contradictory selection unsuccessfully for every native target class.
 
-_Evidence:_ `rig_resource_native_target` and `rig_validate_selected_native_targets` validate only `RIG_SELECTED_RESOURCE_SECTIONS`; `tests/rig-profile-authority.bats` covers locator, setting, and Dock conflicts, and `tests/rig-firewall.bats` covers a shared firewall port.
+_Evidence:_ `rig_resource_native_target` and `rig_validate_selected_native_targets` validate only `RIG_SELECTED_RESOURCE_SECTIONS`; `tests/rig-profile-authority.bats` covers locator, setting, and Dock conflicts, and `tests/rig-firewall.bats` and `tests/rig-firewall-linux.bats` cover a shared firewall port for each provider.
 
 ### RIG-ORCH-028 — Operation scope disclosure
 
