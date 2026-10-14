@@ -372,6 +372,18 @@ TOML
   [ ! -s "$RIG_HANDLER_FIXTURE_LOG" ]
 }
 
+@test "embedded bridge observation returns a bundle ID or absence, never a native reference" {
+  [ -x /usr/bin/osascript ] || skip 'native JavaScript bridge is macOS only'
+  script=$(bash -c 'source "$1"; printf "%s" "$RIG_DEFAULT_HANDLER_SCRIPT"' _ "$RIG")
+  # Observation only copies the current handler; nothing is registered or set.
+  run /usr/bin/osascript -l JavaScript -e "$script" -- observe scheme rig-unregistered-scheme - -
+  [ "$status" -eq 0 ]
+  [ "$output" = - ]
+  run /usr/bin/osascript -l JavaScript -e "$script" -- observe scheme https - -
+  [ "$status" -eq 0 ]
+  [[ "$output" =~ ^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$ ]] || false
+}
+
 @test "absent native handler is drifted and assignments remain explicit" {
   write_config
   healthy_app

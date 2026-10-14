@@ -20,7 +20,7 @@ function run(argv) {
     if (action === "observe") {
         result = kind === "scheme" ? $.LSCopyDefaultHandlerForURLScheme($(value)) :
             $.LSCopyDefaultRoleHandlerForContentType(contentType(), $.kLSRolesAll);
-        result = ObjC.unwrap(result);
+        result = ObjC.unwrap(ObjC.castRefToObject(result));
         return result ? String(result) : "-";
     }
     if (action !== "apply") throw new Error("unsupported handler operation");
