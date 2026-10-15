@@ -20,7 +20,7 @@ A Rig step adds every mgit territory checkout to GitHub Desktop, so a new machin
 
 ## Context
 
-On 14 October 2026 Mac Studio `sol`'s GitHub Desktop list held stale paths from an older layout (`~/.homesick`, `~/dev/hnr`, `~/dev/techmedix`, `~/obsidian/vaults`). The gh-desktop run cleared it and added the 56 territory checkouts by hand ([gh-desktop run report](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_THREADS/mac-studio-bootstrap/gh-desktop.report.md)). Its findings shape this record:
+On 14 October 2026 Mac Studio `sol`'s GitHub Desktop list held stale paths from an older layout (`~/.homesick`, `~/dev/hnr`, `~/dev/techmedix`, `~/obsidian/vaults`). The gh-desktop run cleared it and added the 56 territory checkouts by hand ([gh-desktop run report](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_THREADS/mac-studio-setup/gh-desktop.report.md)). Its findings shape this record:
 
 - The list lives in GitHub Desktop's IndexedDB database under `~/Library/Application Support/GitHub Desktop`, not in a file, so chezmoi cannot declare it.
 - The `github <path>` command-line shim that GitHub Desktop installs (`/opt/homebrew/bin/github` on `sol`) adds and selects a repository, is idempotent for one already listed, and never removes one.

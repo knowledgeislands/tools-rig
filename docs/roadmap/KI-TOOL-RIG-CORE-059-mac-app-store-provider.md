@@ -22,7 +22,7 @@ Rig installs, observes, upgrades and removes Mac App Store applications through 
 
 ## Context
 
-App Store applications are declared today under the Homebrew provider with kind `mas`, although Rig never runs `brew` for them: `rig_provider_executable` maps `homebrew:mas` to the `mas` executable (`src/rig/21-provider-state.bash`). The grouping is only a label, but it is what Rig prints, so status, plans, apply history and upgrade reports name `homebrew` for an App Store copy. On 15 October 2026 that confused the Telegram decision on Mac Studio `sol`, where Rig output said "homebrew" for the App Store build ([mas-model run report](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_THREADS/mac-studio-bootstrap/mas-model.report.md)). Kris's point was that Homebrew and the App Store are different managers, "like brew and npm".
+App Store applications are declared today under the Homebrew provider with kind `mas`, although Rig never runs `brew` for them: `rig_provider_executable` maps `homebrew:mas` to the `mas` executable (`src/rig/21-provider-state.bash`). The grouping is only a label, but it is what Rig prints, so status, plans, apply history and upgrade reports name `homebrew` for an App Store copy. On 15 October 2026 that confused the Telegram decision on Mac Studio `sol`, where Rig output said "homebrew" for the App Store build ([mas-model run report](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_THREADS/mac-studio-setup/mas-model.report.md)). Kris's point was that Homebrew and the App Store are different managers, "like brew and npm".
 
 ## Boundary
 

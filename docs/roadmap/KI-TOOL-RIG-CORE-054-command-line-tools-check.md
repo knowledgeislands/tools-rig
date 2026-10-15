@@ -36,7 +36,7 @@ The native evidence is cheap and read-only: `xcode-select -p` for presence, `pkg
 
 ## Dependencies / blocks
 
-Not blocked; blocks nothing. Related to the shared-failure reporting note (R2) in the [mac-studio-bootstrap Project note](../../../ki-principal/Streams/Projects/mac-studio-bootstrap/mac-studio-bootstrap.md), which would collapse 84 identical failures into one; this record catches the cause before the run instead.
+Not blocked; blocks nothing. Related to the shared-failure reporting note (R2) in the [mac-studio-bootstrap Project note](../../../ki-principal/Streams/Projects/mac-studio-setup/mac-studio-setup.md), which would collapse 84 identical failures into one; this record catches the cause before the run instead.
 
 ## Discussion
 
