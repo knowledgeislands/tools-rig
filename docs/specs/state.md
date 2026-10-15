@@ -100,13 +100,13 @@ _Evidence:_ `rig_command_doctor` consumes `rig_observe_plan` and `rig_observe_re
 
 ### RIG-STATE-015 — Doctor output and outcomes
 
-`rig doctor` MUST print `Verdict: healthy` or `Verdict: unhealthy`, deterministic owner and action fields for each finding, and fixed-order summary counts. An unusable configuration MUST become a configuration finding retaining its file, line, reason, and corrective guidance in text and JSON. Doctor MUST still report effective paths, platform, and native provider executable availability without running configuration-dependent observations. It MUST exit 0 when healthy, 1 for findings including configuration load failure, and 2 for syntax or resolution failure. Other operational commands MUST continue to reject unusable configuration with status 2.
+`rig doctor` MUST print `Verdict: healthy` or `Verdict: unhealthy`, deterministic owner and action fields for each finding, and fixed-order summary counts. An unusable configuration MUST become a configuration finding retaining its file, line, reason, and corrective guidance in text and JSON. Doctor MUST still report effective paths, platform, and native provider executable availability without running configuration-dependent observations. It MUST exit 0 when healthy, 1 for findings including configuration load failure, and 2 for syntax or resolution failure. Other operational commands MUST continue to reject unusable configuration with status 2. A working but deprecated declaration, such as the former Homebrew `mas` kind, MUST appear under `Warnings` (text) or `warnings` (JSON) with owner `configuration` and a migration action, and MUST count in `warn` without changing the verdict or exit status.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats compares exact healthy and mixed-finding output, covers statuses 0, 1, and 2, and checks text and JSON diagnostics for a retired configuration table while status and apply still reject it.
+_Verify:_ Bats compares exact healthy and mixed-finding output, covers statuses 0, 1, and 2, and checks text and JSON diagnostics for a retired configuration table while status and apply still reject it; App Store alias fixtures assert one warning per tool, variant and removal declaration and an unchanged verdict.
 
-_Evidence:_ Doctor Bats cases and `tests/rig-doctor-config.bats` assert exact summaries, actionable findings, and failure classes.
+_Evidence:_ Doctor Bats cases, `tests/rig-mas-provider.bats` and `tests/rig-doctor-config.bats` assert exact summaries, actionable findings, and failure classes.
 
 ## Application
 

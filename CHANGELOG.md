@@ -24,6 +24,7 @@ Run `rig help COMMAND` or `rig COMMAND --help` for options and exact arguments.
 
 ### Capabilities
 
+- Mac App Store applications have their own built-in `mas` provider, declared `install.provider = "mas"` with `install.kind = "app"` and a numeric App Store locator; Rig output names `mas`, never `homebrew`, for them. The former `homebrew` provider with kind `mas` still works as a deprecated alias that `rig doctor` lists under Warnings.
 - Tailnet-only macOS firewall restrictions: a `[firewall.ID]` declaration keeps chosen listener ports reachable only from loopback and the tailnet through a Rig-owned pf anchor and LaunchDaemon, changed only under `apply --sudo` and observed without administrator rights.
 - Tailnet-only Linux firewall restrictions: the `linux-nftables` provider applies the same `[firewall.ID]` declaration through a Rig-owned nftables table and systemd unit, leaving `ufw`, `iptables`, `/etc/nftables.conf` and every other table untouched.
 - Private macOS default applications for UTI, extension and URL schemes, with owned-app verification and effective-result checks.

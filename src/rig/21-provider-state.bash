@@ -46,7 +46,7 @@ rig_resolve_operational_plan() {
 
 rig_adapter_is_builtin() {
   case "$1" in
-    homebrew|uv|mise|npm|chezmoi|direct-download) return 0 ;;
+    homebrew|mas|uv|mise|npm|chezmoi|direct-download) return 0 ;;
   esac
   return 1
 }
@@ -426,8 +426,8 @@ rig_provider_executable() {
     return 0
   fi
   case "$adapter:$kind" in
-    homebrew:mas) RIG_VALUE=mas ;;
     homebrew:*) RIG_VALUE=brew ;;
+    mas:*) RIG_VALUE=mas ;;
     uv:*) RIG_VALUE=uv ;;
     mise:*) RIG_VALUE=mise ;;
     npm:*) RIG_VALUE=npm ;;
@@ -511,11 +511,11 @@ rig_prepare_builtin_invocation() {
       rig_append_arguments "$binding" || return
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
       ;;
-    homebrew:mas:observe)
+    mas:app:observe)
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=list
       rig_append_arguments "$binding" || return
       ;;
-    homebrew:mas:apply)
+    mas:app:apply)
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=install
       rig_append_arguments "$binding" || return
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
@@ -1019,7 +1019,7 @@ rig_observe_provider() {
   fi
   case "$adapter:$kind" in
     homebrew:formula|homebrew:cask|npm:global) RIG_OBSERVATION=present ;;
-    homebrew:mas|uv:tool)
+    mas:app|uv:tool)
       rig_normalize_provider_identity "$adapter" "$kind" "$locator"
       observation_locator=$RIG_VALUE
       if rig_output_has_identity "$RIG_CAPTURED_OUTPUT" "$observation_locator"; then
@@ -1324,6 +1324,7 @@ rig_apply_provider_prerequisite() {
       locator=$RIG_VALUE
       case "$adapter:$provider:$kind:$locator" in
         mise:homebrew:formula:mise|mise:homebrew:formula:homebrew/core/mise|\
+          mas:homebrew:formula:mas|mas:homebrew:formula:homebrew/core/mas|\
           npm:mise:tool:node|npm:mise:tool:node@*)
           rig_tool_requires_tool "$consumer" "$prerequisite" && return 0
           ;;
@@ -1477,7 +1478,7 @@ rig_validate_application_updates() {
         rig_get_value "$section" "${prefix}install-provider" || return 2
         provider=$RIG_VALUE
         rig_provider_adapter "$provider" || return 2
-        case "$RIG_VALUE:$kind" in homebrew:cask|homebrew:mas) ;; *)
+        case "$RIG_VALUE:$kind" in homebrew:cask|mas:app) ;; *)
           rig_fail "[$section] $key supports only macOS cask or App Store applications"; return ;;
         esac
         item=1
@@ -1537,7 +1538,7 @@ rig_application_policy() {
   adapter=$RIG_VALUE
   rig_get_value "$binding" kind || return 2
   kind=$RIG_VALUE
-  case "$adapter:$kind" in homebrew:cask|homebrew:mas) ;; *) return 0 ;; esac
+  case "$adapter:$kind" in homebrew:cask|mas:app) ;; *) return 0 ;; esac
   rig_application_artifact "$tool" || return 0
   rig_selected_variant_for_tool "$tool" || true
   variant=$RIG_VALUE
@@ -1658,7 +1659,7 @@ rig_application_apply_skip() {
   adapter=$RIG_VALUE
   rig_get_value "$binding" kind || return 1
   kind=$RIG_VALUE
-  case "$adapter:$kind:${RIG_RESOLVED_PLATFORM:-}" in homebrew:cask:macos|homebrew:mas:macos) ;; *) return 1 ;; esac
+  case "$adapter:$kind:${RIG_RESOLVED_PLATFORM:-}" in homebrew:cask:macos|mas:app:macos) ;; *) return 1 ;; esac
   rig_application_artifact "$tool" || return 1
   rig_observe_provider "$tool" "$binding" "$provider" || return 1
   rig_observe_application "$tool" "$binding" "$provider" || return 1

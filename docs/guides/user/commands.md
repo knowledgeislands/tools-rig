@@ -133,7 +133,7 @@ profiles = ["default"]
 
 `rig remove --dry-run` previews selected declarations; plain `rig remove` does the same. `rig remove --target obsolete --apply` displays the exact preview and requires typing `remove` before native uninstall. It rechecks presence, skips absent items and refuses uncertain observations. A removal identity cannot still be declared by any retained tool installation. Provider arguments are forbidden for removals. No confirmation bypass exists.
 
-Supported native removals are Homebrew formula/cask/mas, uv tool, npm global and mise tool. App Store removal needs an already authorised sudo grant; Rig uses `sudo -n` and never prompts for one. Native managers own uninstall behaviour. Rig adds no force, zap or retained-data cleanup. Apply, upgrade, deselection and retired-application traces never authorise software removal.
+Supported native removals are Homebrew formula and cask, mas app, uv tool, npm global and mise tool. App Store removal needs an already authorised sudo grant; Rig uses `sudo -n` and never prompts for one. Native managers own uninstall behaviour. Rig adds no force, zap or retained-data cleanup. Apply, upgrade, deselection and retired-application traces never authorise software removal.
 
 Doctor reports selected removals still present as findings. `rig doctor --unmanaged` additionally reports undeclared-anywhere inventory as information; it neither fails health for undeclared items nor treats profile exclusion as removal authority. Existing declared drift and source mismatches keep their own findings. Removal declarations remain private.
 

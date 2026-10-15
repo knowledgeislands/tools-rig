@@ -25,7 +25,7 @@ Supported installation methods for tools and apps are:
 
 - **Homebrew formulae:** command-line tools and packages through `brew`.
 - **Homebrew casks:** macOS desktop applications through `brew`.
-- **Mac App Store:** macOS applications through `mas`.
+- **Mac App Store:** macOS applications through `mas`, declared with the `mas` provider. See [Declare a Mac App Store application](#declare-a-mac-app-store-application).
 - **uv:** Python command-line tools through `uv tool`.
 - **mise:** development tools and runtimes through `mise`.
 - **npm:** global Node.js packages through `npm`.
@@ -94,6 +94,26 @@ kind = "complete"
 This is intentionally ordinary TOML. Use whitespace, comments, and multiline arrays to make personal configuration comfortable to review. A declaration without `profiles` belongs to the configured default profile, so the first tool needs no repeated membership field.
 
 The Homebrew installation metadata identifies the native owner. Homebrew remains responsible for its own package resolution and state; Rig does not need a `[provider.homebrew]` adapter declaration for this built-in provider.
+
+### Declare a Mac App Store application
+
+Mac App Store applications use the built-in `mas` provider, kind `app`, and the numeric App Store identity that `mas list` prints as the locator:
+
+```toml
+[tool.telegram]
+name = "Telegram"
+category = "communication"
+purpose = "Message people and groups"
+rationale = "The App Store build updates through the App Store"
+platforms = ["macos"]
+install.provider = "mas"
+install.kind = "app"
+install.locator = "747648890"
+```
+
+Rig runs `mas list`, `mas install ID` and `mas upgrade ID`, never `brew`, and names `mas` in status, plan, apply and upgrade output. An unattended upgrade reports these applications `interactive-required`, because the App Store needs a person signed in. If `mas` itself comes from Homebrew, declare it as a Homebrew formula and add `requires = ["mas"]` to each App Store tool, so one apply can install `mas` before the applications.
+
+Earlier configurations declared these applications as `install.provider = "homebrew"` with `install.kind = "mas"`. That form still works as a deprecated alias: Rig runs the same `mas` commands and names `mas` in its output, and `rig doctor` lists each such declaration under `Warnings` with action `declare-provider-mas-kind-app`. To migrate, change those two lines to `install.provider = "mas"` and `install.kind = "app"`, or the `variant.ID.install.*` and `[remove.ID]` equivalents, and keep the locator.
 
 ## Confirm Rig can read it
 

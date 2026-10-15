@@ -6,12 +6,12 @@ purpose: capability
 initiative: rig
 kind: deliver
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: b5011d53957719d19404eeac1721339dc9f6ae38
 created_at: 2026-10-15T01:40:07Z
-updated_at: 2026-10-15T01:40:07Z
+updated_at: 2026-10-15T10:00:00Z
 ---
 
 # KI-TOOL-RIG-CORE-059: Mac App Store Provider
@@ -37,12 +37,12 @@ App Store applications are declared today under the Homebrew provider with kind 
 
 ## Steps
 
-- [ ] Register `mas` as a built-in provider and adapter; accept kind `app` only; require a numeric locator; reject `[provider.mas]` adapter or capability declarations as for every built-in.
-- [ ] Rewrite each tool, variant and `[remove.ID]` declaration of provider `homebrew` with kind `mas` to provider `mas` with kind `app` at load, before bindings are synthesised, and record it for `rig doctor`, which lists each one under a Warnings section and counts it in `warn` without changing the verdict.
-- [ ] Move observe, install, upgrade, removal, update-policy and application-source handling from `homebrew:mas` to `mas:app`, with no Homebrew environment for App Store calls.
-- [ ] Let an earlier Homebrew formula `mas` in the same plan satisfy the `mas` executable for a tool that requires it.
-- [ ] Update Bats tests to the new form, and add alias, doctor-warning, output-naming and prerequisite coverage.
-- [ ] Align the configuration, orchestration and state specifications, the user guides, help, manual and changelog; assemble `bin/rig`; run the complete local gate.
+- [x] Register `mas` as a built-in provider and adapter; accept kind `app` only; require a numeric locator; reject `[provider.mas]` adapter or capability declarations as for every built-in.
+- [x] Rewrite each tool, variant and `[remove.ID]` declaration of provider `homebrew` with kind `mas` to provider `mas` with kind `app` at load, before bindings are synthesised, and record it for `rig doctor`, which lists each one under a Warnings section and counts it in `warn` without changing the verdict.
+- [x] Move observe, install, upgrade, removal, update-policy and application-source handling from `homebrew:mas` to `mas:app`, with no Homebrew environment for App Store calls.
+- [x] Let an earlier Homebrew formula `mas` in the same plan satisfy the `mas` executable for a tool that requires it.
+- [x] Update Bats tests to the new form, and add alias, doctor-warning, output-naming and prerequisite coverage.
+- [x] Align the configuration, orchestration and state specifications, the user guides, help, manual and changelog; assemble `bin/rig`; run the complete local gate.
 
 ## Files touched
 
@@ -80,6 +80,65 @@ Name the App Store provider and its declaration form in [getting started](../gui
 ### Roadmap
 
 Adopted at Now by Kris's MAS-PROVIDER decision; see [Origin and approval](#origin-and-approval).
+
+## Review
+
+### Delivered
+
+Delivered within the approved boundary from baseline `b5011d53957719d19404eeac1721339dc9f6ae38`, using fixtures only. Rig has a built-in `mas` provider with the single kind `app`. A tool, variant or `[remove.ID]` declared as provider `homebrew` with kind `mas` is rewritten to `mas` and `app` at load, before bindings exist, so it runs the same `mas` commands, prints `mas` in every output and appears once under `rig doctor` Warnings with action `declare-provider-mas-kind-app`, counted in `warn` without changing the verdict.
+
+Excluded, as the approval requires: no personal declaration was migrated, no `rig apply` was run, and nothing was accepted, pushed or released.
+
+### Change Summary
+
+- **Configuration** (`10-configuration.bash`): `mas` joins the built-in providers and adapters; `rig_alias_deprecated_mas` rewrites the alias and records each declaration; `mas:app` requires a numeric locator and rejects platform `linux`.
+- **Provider state and orchestration** (`20-orchestration.bash`, `21-provider-state.bash`): `mas` capabilities, executable, observe and install arguments, application update policy and source detection move from `homebrew:mas` to `mas:app`; an earlier Homebrew formula `mas` satisfies the executable for a tool that requires it.
+- **Upgrade and removal** (`40-publication-lifecycle.bash`, `27-software-removal.bash`): `mas upgrade ID` under the `mas` adapter, without `NONINTERACTIVE`; unattended exclusion keyed to the adapter; removal and its sudo notice keyed to `mas:app`.
+- **Doctor** (`22-observation.bash`): a Warnings section in text, a `warnings` array in JSON, and a real `warn` count.
+- **Tests**: new `tests/rig-mas-provider.bats` (6 tests); App Store fixtures in `tests/rig.bats`, `tests/rig-lifecycle.bats`, `tests/rig-software-removal.bats` and `tests/rig-application-updates.bats` move to the new form.
+- **Documentation**: RIG-CONF-013 and RIG-CONF-028 in [configuration](../specs/configuration.md); RIG-ORCH-018, RIG-ORCH-006, RIG-ORCH-017, RIG-ORCH-024, RIG-ORCH-034 and RIG-ORCH-042 in [orchestration](../specs/orchestration.md); RIG-STATE-015 in [state](../specs/state.md); RIG-CAT-009 in [catalogue](../specs/catalogue.md); the [getting started](../guides/user/getting-started.md) declaration and migration section, [commands](../guides/user/commands.md), the manual and the changelog.
+
+Deviations and interpretations for review:
+
+- **Platform rejection is explicit only.** A `mas` installation is rejected when its own `install.platforms` or variant platforms name `linux`. A tool listing `linux` at tool level is not rejected, because a Linux variant may carry that platform while the top-level `mas` installation serves macOS.
+- **Provider arguments.** A `[provider.homebrew]` argument no longer reaches `mas`, which it previously did; App Store calls take no Homebrew argument or environment.
+- **History rows.** Apply and upgrade history recorded under `homebrew` stays as recorded, per RIG-STATE-035.
+- **No adapter table.** The README adapter table that first grouped `mas` under Homebrew no longer exists; RIG-ORCH-017's command matrix is the current table and is updated.
+
+### Verification
+
+All commands were run locally on 15 October 2026 with stdin closed. No `rig apply` and no live `mas` install, upgrade or uninstall was run.
+
+- `ki repo audit --repo .`: PASS=19, WARN=1, FAIL=0. The warning is the repository's existing lack of a committed `.githooks/pre-commit` gate.
+- `shellcheck` and `bash -n` over `bin/rig`, `install.sh`, `src/rig/*.bash` and the three scripts: clean.
+- `scripts/assemble-rig --check`: `bin/rig` matches its modules.
+- `scripts/benchmark-rig`: every command within budget.
+- `scripts/smoke-native-providers`: homebrew, uv, mise, npm, chezmoi and mas PASS.
+- `bats tests/`: 550 tests, 0 failures, including the 6 in `tests/rig-mas-provider.bats`.
+- `mandoc -T lint man/rig.1` and `git diff --check`: clean.
+
+### Outstanding concerns
+
+- The live configuration on `sol` and `terra` still uses the alias, so `rig doctor` will warn once per App Store declaration until the chezmoi source migrates in its own run.
+- The provider is proven against fixtures and the `mas` smoke probe only; the first real `rig status` after this commit is its live check.
+
+For that migration, each App Store declaration in the chezmoi source changes two lines and keeps its locator:
+
+```toml
+install.provider = "mas"
+install.kind = "app"
+install.locator = "747648890"
+```
+
+Variants use `variant.ID.install.provider = "mas"` and `variant.ID.install.kind = "app"`; `[remove.ID]` uses `provider = "mas"` and `kind = "app"`. A tool that installs `mas` from Homebrew stays `install.provider = "homebrew"`, `install.kind = "formula"`, `install.locator = "mas"`, and App Store tools MAY add `requires = ["mas"]`.
+
+### Post-change review
+
+The goal is met in code: App Store applications have their own provider, every output names `mas`, and the alias keeps existing configuration working with a visible doctor warning. Scope held to the record's files. Regression risk sits in the load-time rewrite, which touches every tool, variant and removal declaration, and in doctor's new warning count; both are covered by the full suite. Ready for review; acceptance does not depend on a live run.
+
+### Mini recap
+
+Gave the Mac App Store its own built-in `mas` provider, kept the Homebrew alias as a warned deprecation, and aligned specifications, guides, manual and changelog. Proposed learning route: none.
 
 ## Discussion
 

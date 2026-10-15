@@ -852,6 +852,7 @@ rig_declaration_lookup() {
 
 rig_model_reset() {
   RIG_HAS_APPLICATION_UPDATES=0
+  RIG_DEPRECATED_MAS_DECLARATIONS=()
   RIG_SECTION_NAMES=()
   RIG_SECTION_TYPES=()
   RIG_SECTION_IDS=()
@@ -1774,6 +1775,67 @@ rig_synthesise_binding_fields() {
   done
 }
 
+rig_set_value() {
+  local section_name key value section_index index end
+
+  section_name=$1
+  key=$2
+  value=$3
+  rig_section_index "$section_name" || return 1
+  section_index=$RIG_INDEX
+  index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$index" -lt "$end" ]; do
+    if [ "${RIG_FIELD_KEYS[$index]}" = "$key" ]; then
+      RIG_FIELD_VALUES[$index]=$value
+      return 0
+    fi
+    index=$((index + 1))
+  done
+  return 1
+}
+
+# Homebrew never ran App Store installs: provider homebrew with kind mas is the
+# deprecated spelling of the built-in mas provider. Rewrite it before bindings
+# exist so every later phase, and every output, names mas; doctor lists each.
+rig_alias_deprecated_mas() {
+  local section_name prefix label provider_key kind_key variant
+  local -a prefixes
+
+  section_name=$1
+  case "$section_name" in
+    tool.*)
+      provider_key=install-provider
+      kind_key=install-kind
+      rig_section_index "$section_name" || return 2
+      rig_collect_tool_variants "$RIG_INDEX"
+      prefixes=('')
+      for variant in "${RIG_QUERY_ITEMS[@]+"${RIG_QUERY_ITEMS[@]}"}"; do
+        prefixes[${#prefixes[@]}]=variant:$variant:
+      done
+      ;;
+    remove.*)
+      provider_key=provider
+      kind_key=kind
+      prefixes=('')
+      ;;
+    *) return 0 ;;
+  esac
+  for prefix in "${prefixes[@]}"; do
+    rig_get_value "$section_name" "$prefix$provider_key" && [ "$RIG_VALUE" = homebrew ] || continue
+    rig_get_value "$section_name" "$prefix$kind_key" && [ "$RIG_VALUE" = mas ] || continue
+    rig_set_value "$section_name" "$prefix$provider_key" mas || return 2
+    rig_set_value "$section_name" "$prefix$kind_key" app || return 2
+    label=$section_name
+    case "$prefix" in variant:*)
+      variant=${prefix#variant:}
+      label="$section_name variant ${variant%:}"
+      ;;
+    esac
+    RIG_DEPRECATED_MAS_DECLARATIONS[${#RIG_DEPRECATED_MAS_DECLARATIONS[@]}]=$label
+  done
+}
+
 rig_synthesise_bindings() {
   local original_count index tool_id tool_section provider binding_index variant variant_key
   local variant_index
@@ -1782,6 +1844,10 @@ rig_synthesise_bindings() {
   original_count=${#RIG_SECTION_NAMES[@]}
   index=0
   while [ "$index" -lt "$original_count" ]; do
+    case "${RIG_SECTION_TYPES[$index]}" in tool|remove)
+      rig_alias_deprecated_mas "${RIG_SECTION_NAMES[$index]}" || return
+      ;;
+    esac
     if [ "${RIG_SECTION_TYPES[$index]}" = tool ]; then
       tool_id=${RIG_SECTION_IDS[$index]}
       tool_section=tool.$tool_id
@@ -2083,14 +2149,14 @@ rig_validate_provider_adapter() {
   adapter=$2
   case "$adapter" in
     custom) ;;
-    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-handlers|macos-pf|linux-nftables|skills-cli|ki) ;;
+    homebrew|mas|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-handlers|macos-pf|linux-nftables|skills-cli|ki) ;;
     *) rig_fail "[$section_name] has unsupported adapter '$adapter'" || return ;;
   esac
 }
 
 rig_builtin_provider_adapter() {
   case "$1" in
-    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-handlers|macos-pf|linux-nftables|skills-cli|ki)
+    homebrew|mas|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-handlers|macos-pf|linux-nftables|skills-cli|ki)
       RIG_VALUE=$1
       return 0
       ;;
@@ -2130,22 +2196,28 @@ rig_validate_binding_adapter() {
 
   case "$adapter:$kind" in
     custom:*) ;;
-    homebrew:formula|homebrew:cask|homebrew:mas|uv:tool|mise:tool|npm:global|chezmoi:target) ;;
+    homebrew:formula|homebrew:cask|mas:app|uv:tool|mise:tool|npm:global|chezmoi:target) ;;
     direct-download:executable) ;;
     launchd:*|macos-applications:*|macos-defaults:*|macos-dock:*|macos-handlers:*|macos-pf:*|linux-nftables:*|skills-cli:*|ki:*)
       rig_fail "[$section_name] adapter '$adapter' cannot install tools" || return
       ;;
-    homebrew:*|uv:*|mise:*|npm:*|chezmoi:*|direct-download:*)
+    homebrew:*|mas:*|uv:*|mise:*|npm:*|chezmoi:*|direct-download:*)
       rig_fail "[$section_name] kind '$kind' is not supported by adapter '$adapter'" || return
       ;;
   esac
 
-  if [ "$adapter:$kind" = homebrew:mas ]; then
+  if [ "$adapter:$kind" = mas:app ]; then
     case "$locator" in
       ''|*[!0-9]*)
-        rig_fail "[$section_name] Homebrew mas locator must be a numeric application identity" || return
+        rig_fail "[$section_name] mas locator must be a numeric App Store application identity" || return
         ;;
     esac
+    field_index=1
+    while rig_get_value "$section_name" platform "$field_index"; do
+      [ "$RIG_VALUE" != linux ] ||
+        rig_fail "[$section_name] mas installs App Store applications only on macOS" || return
+      field_index=$((field_index + 1))
+    done
   fi
 
   if [ "$adapter" = direct-download ]; then
@@ -3868,6 +3940,7 @@ rig_provider_has_capability() {
     adapter=$RIG_VALUE
     case "$adapter:$capability" in
       homebrew:observe|homebrew:apply|homebrew:update|homebrew:maintain|homebrew:capture|homebrew:inventory|\
+      mas:observe|mas:apply|mas:update|\
       uv:observe|uv:apply|uv:update|uv:maintain|\
       mise:observe|mise:apply|mise:update|mise:maintain|\
       npm:observe|npm:apply|npm:update|npm:maintain|\
@@ -5120,7 +5193,7 @@ rig_resolve_operational_plan() {
 
 rig_adapter_is_builtin() {
   case "$1" in
-    homebrew|uv|mise|npm|chezmoi|direct-download) return 0 ;;
+    homebrew|mas|uv|mise|npm|chezmoi|direct-download) return 0 ;;
   esac
   return 1
 }
@@ -5500,8 +5573,8 @@ rig_provider_executable() {
     return 0
   fi
   case "$adapter:$kind" in
-    homebrew:mas) RIG_VALUE=mas ;;
     homebrew:*) RIG_VALUE=brew ;;
+    mas:*) RIG_VALUE=mas ;;
     uv:*) RIG_VALUE=uv ;;
     mise:*) RIG_VALUE=mise ;;
     npm:*) RIG_VALUE=npm ;;
@@ -5585,11 +5658,11 @@ rig_prepare_builtin_invocation() {
       rig_append_arguments "$binding" || return
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
       ;;
-    homebrew:mas:observe)
+    mas:app:observe)
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=list
       rig_append_arguments "$binding" || return
       ;;
-    homebrew:mas:apply)
+    mas:app:apply)
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=install
       rig_append_arguments "$binding" || return
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
@@ -6093,7 +6166,7 @@ rig_observe_provider() {
   fi
   case "$adapter:$kind" in
     homebrew:formula|homebrew:cask|npm:global) RIG_OBSERVATION=present ;;
-    homebrew:mas|uv:tool)
+    mas:app|uv:tool)
       rig_normalize_provider_identity "$adapter" "$kind" "$locator"
       observation_locator=$RIG_VALUE
       if rig_output_has_identity "$RIG_CAPTURED_OUTPUT" "$observation_locator"; then
@@ -6398,6 +6471,7 @@ rig_apply_provider_prerequisite() {
       locator=$RIG_VALUE
       case "$adapter:$provider:$kind:$locator" in
         mise:homebrew:formula:mise|mise:homebrew:formula:homebrew/core/mise|\
+          mas:homebrew:formula:mas|mas:homebrew:formula:homebrew/core/mas|\
           npm:mise:tool:node|npm:mise:tool:node@*)
           rig_tool_requires_tool "$consumer" "$prerequisite" && return 0
           ;;
@@ -6551,7 +6625,7 @@ rig_validate_application_updates() {
         rig_get_value "$section" "${prefix}install-provider" || return 2
         provider=$RIG_VALUE
         rig_provider_adapter "$provider" || return 2
-        case "$RIG_VALUE:$kind" in homebrew:cask|homebrew:mas) ;; *)
+        case "$RIG_VALUE:$kind" in homebrew:cask|mas:app) ;; *)
           rig_fail "[$section] $key supports only macOS cask or App Store applications"; return ;;
         esac
         item=1
@@ -6611,7 +6685,7 @@ rig_application_policy() {
   adapter=$RIG_VALUE
   rig_get_value "$binding" kind || return 2
   kind=$RIG_VALUE
-  case "$adapter:$kind" in homebrew:cask|homebrew:mas) ;; *) return 0 ;; esac
+  case "$adapter:$kind" in homebrew:cask|mas:app) ;; *) return 0 ;; esac
   rig_application_artifact "$tool" || return 0
   rig_selected_variant_for_tool "$tool" || true
   variant=$RIG_VALUE
@@ -6732,7 +6806,7 @@ rig_application_apply_skip() {
   adapter=$RIG_VALUE
   rig_get_value "$binding" kind || return 1
   kind=$RIG_VALUE
-  case "$adapter:$kind:${RIG_RESOLVED_PLATFORM:-}" in homebrew:cask:macos|homebrew:mas:macos) ;; *) return 1 ;; esac
+  case "$adapter:$kind:${RIG_RESOLVED_PLATFORM:-}" in homebrew:cask:macos|mas:app:macos) ;; *) return 1 ;; esac
   rig_application_artifact "$tool" || return 1
   rig_observe_provider "$tool" "$binding" "$provider" || return 1
   rig_observe_application "$tool" "$binding" "$provider" || return 1
@@ -8154,9 +8228,11 @@ rig_command_doctor() {
   local index section_name state detail port owner action skill authority format information config_finding config_loaded
   local verbose profile_seen format_seen checks_passed checks_skipped checks_total checks_coverage
 
-  local unmanaged_requested removal_findings
+  local unmanaged_requested removal_findings warnings warning_count declaration
   unmanaged_requested=0
   removal_findings=
+  warnings=
+  warning_count=0
   profile=
   format=text
   verbose=0
@@ -8225,6 +8301,13 @@ rig_command_doctor() {
     RIG_RESOLVED_PLATFORM=$RIG_VALUE
   fi
   rig_effective_paths || return 2
+  if [ "$config_loaded" -eq 1 ]; then
+    for declaration in "${RIG_DEPRECATED_MAS_DECLARATIONS[@]+"${RIG_DEPRECATED_MAS_DECLARATIONS[@]}"}"; do
+      warnings="${warnings}  ${declaration}: deprecated (homebrew-mas-alias); owner=configuration; action=declare-provider-mas-kind-app"$'\n'
+      warning_count=$((warning_count + 1))
+    done
+    warnings=${warnings%$'\n'}
+  fi
   tool_findings=
   resource_findings=
   port_findings=
@@ -8371,7 +8454,9 @@ rig_command_doctor() {
     checks_total=$((checks_total + 1))
     checks_skipped=1
   fi
-  checks_passed=$((checks_total - checks_skipped - findings))
+  # A deprecated declaration still works, so it warns without failing a check.
+  checks_total=$((checks_total + warning_count))
+  checks_passed=$((checks_total - checks_skipped - findings - warning_count))
   rig_diagnostic_context || return
 
   if [ "$format" = json ]; then
@@ -8380,8 +8465,8 @@ rig_command_doctor() {
     rig_diagnostic_context_json
     [ "$findings" -eq 0 ] && state=healthy || state=unhealthy
     rig_json_field ',' verdict "$state"
-    printf ',"checks":{"pass":%s,"warn":0,"fail":%s,"skipped":%s,"unit":"item","coverage":' \
-      "$checks_passed" "$findings" "$checks_skipped"
+    printf ',"checks":{"pass":%s,"warn":%s,"fail":%s,"skipped":%s,"unit":"item","coverage":' \
+      "$checks_passed" "$warning_count" "$findings" "$checks_skipped"
     rig_json_escape "$checks_coverage"
     printf '"%s"' "$RIG_VALUE"
     printf ',"read_only":true,"freshness":"not-checked"}'
@@ -8404,7 +8489,9 @@ rig_command_doctor() {
     rig_json_lines "$port_findings"
     printf ',"skills":'
     rig_json_lines "$skill_findings"
-    printf '},"information":'
+    printf '},"warnings":'
+    rig_json_lines "$warnings"
+    printf ',"information":'
     rig_json_lines "$information"
     if [ "$verbose" -eq 1 ]; then
       printf ',"diagnostics":'
@@ -8419,8 +8506,8 @@ rig_command_doctor() {
     "$([ "$findings" -eq 0 ] && printf healthy || printf unhealthy)" \
     "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   rig_diagnostic_context_text
-  printf 'Scope: read-only declared setup health; package updates not checked\nCoverage: %s\nChecks: pass=%s warn=0 fail=%s skipped=%s (unit=item)\n' \
-    "$checks_coverage" "$checks_passed" "$findings" "$checks_skipped"
+  printf 'Scope: read-only declared setup health; package updates not checked\nCoverage: %s\nChecks: pass=%s warn=%s fail=%s skipped=%s (unit=item)\n' \
+    "$checks_coverage" "$checks_passed" "$warning_count" "$findings" "$checks_skipped"
   if [ -n "$config_finding" ]; then
     printf 'Configuration findings:\n%s\n' "$config_finding"
   fi
@@ -8441,6 +8528,9 @@ rig_command_doctor() {
   fi
   if [ -n "$skill_findings" ]; then
     printf 'Skill findings:\n%s\n' "$skill_findings"
+  fi
+  if [ -n "$warnings" ]; then
+    printf 'Warnings:\n%s\n' "$warnings"
   fi
   if [ -n "$information" ]; then
     printf 'Information:\n%s\n' "$information"
@@ -10530,7 +10620,7 @@ rig_retired_print() {
 # shellcheck disable=SC2034
 
 rig_removal_supported() {
-  case "$1:$2" in homebrew:formula|homebrew:cask|homebrew:mas|uv:tool|npm:global|mise:tool) return 0 ;; esac
+  case "$1:$2" in homebrew:formula|homebrew:cask|mas:app|uv:tool|npm:global|mise:tool) return 0 ;; esac
   return 1
 }
 
@@ -10626,7 +10716,7 @@ rig_validate_removal() {
   rig_removal_supported "$adapter" "$kind" || rig_fail "[$section] unsupported native removal '$adapter:$kind'" || return
   rig_require_field "$section" locator || return
   locator=$RIG_VALUE
-  if [ "$adapter:$kind" = homebrew:mas ]; then
+  if [ "$adapter:$kind" = mas:app ]; then
     case "$locator" in ''|*[!0-9]*) rig_fail "[$section] App Store removal requires a numeric app ID"; return ;; esac
   fi
   case "$locator" in -*) rig_fail "[$section] removal locator must not be an option"; return ;; esac
@@ -10635,7 +10725,7 @@ rig_validate_removal() {
   locator=$RIG_VALUE
   rig_field_count "$index" platform
   [ "$RIG_COUNT" -gt 0 ] || rig_fail "[$section] requires platforms" || return
-  if [ "$adapter" = homebrew ] && { [ "$kind" = cask ] || [ "$kind" = mas ]; }; then
+  if [ "$adapter:$kind" = homebrew:cask ] || [ "$adapter:$kind" = mas:app ]; then
     scan=1
     while rig_get_value "$section" platform "$scan"; do
       [ "$RIG_VALUE" = macos ] || rig_fail "[$section] cask and App Store removals support only macOS" || return
@@ -10764,7 +10854,7 @@ rig_remove_native() {
   rig_append_arguments "provider.$provider" || return 2
   case "$adapter:$kind" in
     homebrew:formula|homebrew:cask) RIG_INVOKE_ARGUMENTS+=(uninstall "--$kind" "$locator") ;;
-    homebrew:mas)
+    mas:app)
       # mas documents a root requirement. Never acquire or prompt for a grant:
       # a person must already have authorised sudo in this terminal.
       "${RIG_SUDO:-sudo}" -n -- "$executable" uninstall "$locator" </dev/null 1>&2
@@ -10839,7 +10929,7 @@ rig_command_remove_impl() {
     if { [ -z "$target" ] || [ "$target" = "$section" ]; } && [ "${RIG_REMOVAL_STATES[index]}" = present ]; then
       rig_get_value "$section" locator || return 2
       printf '  %s: %s\n' "$section" "$RIG_VALUE" >&2
-      if rig_get_value "$section" kind && [ "$RIG_VALUE" = mas ]; then
+      if rig_get_value "$section" provider && rig_provider_adapter "$RIG_VALUE" && [ "$RIG_VALUE" = mas ]; then
         printf '    App Store removal requires an existing administrator grant; sudo will not prompt.\n' >&2
       fi
     fi
@@ -15381,7 +15471,7 @@ rig_command_export() {
 
 rig_lifecycle_supported() {
   case "$1:$2" in
-    upgrade:homebrew|upgrade:uv|upgrade:mise|upgrade:npm|upgrade:skills-cli) return 0 ;;
+    upgrade:homebrew|upgrade:mas|upgrade:uv|upgrade:mise|upgrade:npm|upgrade:skills-cli) return 0 ;;
   esac
   return 1
 }
@@ -15536,11 +15626,10 @@ rig_execute_lifecycle_task() {
 
   case "$action:$adapter" in
     upgrade:homebrew)
-      if [ "$kind" = mas ]; then
-        "$executable" upgrade "$locator" 1>&2
-      else
-        "$executable" upgrade "--$kind" "$locator" 1>&2
-      fi
+      "$executable" upgrade "--$kind" "$locator" 1>&2
+      ;;
+    upgrade:mas)
+      "$executable" upgrade "$locator" 1>&2
       ;;
     upgrade:uv)
       rig_normalize_provider_identity "$adapter" "$kind" "$locator"
@@ -15565,18 +15654,17 @@ rig_execute_lifecycle_task() {
 }
 
 rig_lifecycle_requires_person() {
-  local provider binding kind
+  local provider binding
 
   provider=$1
   binding=$2
   case "$binding" in
     ''|skill.*) return 1 ;;
   esac
-  rig_get_value "$binding" kind || return 1
-  kind=$RIG_VALUE
+  rig_provider_adapter "$provider" || return 1
   # A Mac App Store upgrade needs a person signed in to the App Store, which a
   # run with nobody watching cannot supply.
-  [ "$kind" = mas ]
+  [ "$RIG_VALUE" = mas ]
 }
 
 rig_write_last_run_report() {

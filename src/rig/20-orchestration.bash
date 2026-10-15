@@ -86,6 +86,7 @@ rig_provider_has_capability() {
     adapter=$RIG_VALUE
     case "$adapter:$capability" in
       homebrew:observe|homebrew:apply|homebrew:update|homebrew:maintain|homebrew:capture|homebrew:inventory|\
+      mas:observe|mas:apply|mas:update|\
       uv:observe|uv:apply|uv:update|uv:maintain|\
       mise:observe|mise:apply|mise:update|mise:maintain|\
       npm:observe|npm:apply|npm:update|npm:maintain|\

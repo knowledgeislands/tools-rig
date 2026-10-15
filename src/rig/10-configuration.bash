@@ -5,6 +5,7 @@
 
 rig_model_reset() {
   RIG_HAS_APPLICATION_UPDATES=0
+  RIG_DEPRECATED_MAS_DECLARATIONS=()
   RIG_SECTION_NAMES=()
   RIG_SECTION_TYPES=()
   RIG_SECTION_IDS=()
@@ -927,6 +928,67 @@ rig_synthesise_binding_fields() {
   done
 }
 
+rig_set_value() {
+  local section_name key value section_index index end
+
+  section_name=$1
+  key=$2
+  value=$3
+  rig_section_index "$section_name" || return 1
+  section_index=$RIG_INDEX
+  index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$index" -lt "$end" ]; do
+    if [ "${RIG_FIELD_KEYS[$index]}" = "$key" ]; then
+      RIG_FIELD_VALUES[$index]=$value
+      return 0
+    fi
+    index=$((index + 1))
+  done
+  return 1
+}
+
+# Homebrew never ran App Store installs: provider homebrew with kind mas is the
+# deprecated spelling of the built-in mas provider. Rewrite it before bindings
+# exist so every later phase, and every output, names mas; doctor lists each.
+rig_alias_deprecated_mas() {
+  local section_name prefix label provider_key kind_key variant
+  local -a prefixes
+
+  section_name=$1
+  case "$section_name" in
+    tool.*)
+      provider_key=install-provider
+      kind_key=install-kind
+      rig_section_index "$section_name" || return 2
+      rig_collect_tool_variants "$RIG_INDEX"
+      prefixes=('')
+      for variant in "${RIG_QUERY_ITEMS[@]+"${RIG_QUERY_ITEMS[@]}"}"; do
+        prefixes[${#prefixes[@]}]=variant:$variant:
+      done
+      ;;
+    remove.*)
+      provider_key=provider
+      kind_key=kind
+      prefixes=('')
+      ;;
+    *) return 0 ;;
+  esac
+  for prefix in "${prefixes[@]}"; do
+    rig_get_value "$section_name" "$prefix$provider_key" && [ "$RIG_VALUE" = homebrew ] || continue
+    rig_get_value "$section_name" "$prefix$kind_key" && [ "$RIG_VALUE" = mas ] || continue
+    rig_set_value "$section_name" "$prefix$provider_key" mas || return 2
+    rig_set_value "$section_name" "$prefix$kind_key" app || return 2
+    label=$section_name
+    case "$prefix" in variant:*)
+      variant=${prefix#variant:}
+      label="$section_name variant ${variant%:}"
+      ;;
+    esac
+    RIG_DEPRECATED_MAS_DECLARATIONS[${#RIG_DEPRECATED_MAS_DECLARATIONS[@]}]=$label
+  done
+}
+
 rig_synthesise_bindings() {
   local original_count index tool_id tool_section provider binding_index variant variant_key
   local variant_index
@@ -935,6 +997,10 @@ rig_synthesise_bindings() {
   original_count=${#RIG_SECTION_NAMES[@]}
   index=0
   while [ "$index" -lt "$original_count" ]; do
+    case "${RIG_SECTION_TYPES[$index]}" in tool|remove)
+      rig_alias_deprecated_mas "${RIG_SECTION_NAMES[$index]}" || return
+      ;;
+    esac
     if [ "${RIG_SECTION_TYPES[$index]}" = tool ]; then
       tool_id=${RIG_SECTION_IDS[$index]}
       tool_section=tool.$tool_id
@@ -1236,14 +1302,14 @@ rig_validate_provider_adapter() {
   adapter=$2
   case "$adapter" in
     custom) ;;
-    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-handlers|macos-pf|linux-nftables|skills-cli|ki) ;;
+    homebrew|mas|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-handlers|macos-pf|linux-nftables|skills-cli|ki) ;;
     *) rig_fail "[$section_name] has unsupported adapter '$adapter'" || return ;;
   esac
 }
 
 rig_builtin_provider_adapter() {
   case "$1" in
-    homebrew|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-handlers|macos-pf|linux-nftables|skills-cli|ki)
+    homebrew|mas|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-handlers|macos-pf|linux-nftables|skills-cli|ki)
       RIG_VALUE=$1
       return 0
       ;;
@@ -1283,22 +1349,28 @@ rig_validate_binding_adapter() {
 
   case "$adapter:$kind" in
     custom:*) ;;
-    homebrew:formula|homebrew:cask|homebrew:mas|uv:tool|mise:tool|npm:global|chezmoi:target) ;;
+    homebrew:formula|homebrew:cask|mas:app|uv:tool|mise:tool|npm:global|chezmoi:target) ;;
     direct-download:executable) ;;
     launchd:*|macos-applications:*|macos-defaults:*|macos-dock:*|macos-handlers:*|macos-pf:*|linux-nftables:*|skills-cli:*|ki:*)
       rig_fail "[$section_name] adapter '$adapter' cannot install tools" || return
       ;;
-    homebrew:*|uv:*|mise:*|npm:*|chezmoi:*|direct-download:*)
+    homebrew:*|mas:*|uv:*|mise:*|npm:*|chezmoi:*|direct-download:*)
       rig_fail "[$section_name] kind '$kind' is not supported by adapter '$adapter'" || return
       ;;
   esac
 
-  if [ "$adapter:$kind" = homebrew:mas ]; then
+  if [ "$adapter:$kind" = mas:app ]; then
     case "$locator" in
       ''|*[!0-9]*)
-        rig_fail "[$section_name] Homebrew mas locator must be a numeric application identity" || return
+        rig_fail "[$section_name] mas locator must be a numeric App Store application identity" || return
         ;;
     esac
+    field_index=1
+    while rig_get_value "$section_name" platform "$field_index"; do
+      [ "$RIG_VALUE" != linux ] ||
+        rig_fail "[$section_name] mas installs App Store applications only on macOS" || return
+      field_index=$((field_index + 1))
+    done
   fi
 
   if [ "$adapter" = direct-download ]; then

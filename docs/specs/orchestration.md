@@ -26,7 +26,7 @@ _Evidence:_ `rig_resolve_profile` accepts an explicit profile independently of t
 
 ### RIG-ORCH-018 — Declared apply prerequisites
 
-Apply MUST preflight the selected plan before mutation and MAY defer only a missing built-in manager with a selected, explicitly required supported prerequisite. Homebrew itself MUST already be available. A declared Homebrew mise prerequisite and a declared mise node prerequisite MAY make later mise and npm work available; Rig MUST recheck availability before dependent dispatch and MUST NOT suppress unrelated preflight failures. Targeted apply MUST NOT expand to unrelated manager declarations. Rig MUST NOT read a Brewfile or manage Homebrew autoupdate policy.
+Apply MUST preflight the selected plan before mutation and MAY defer only a missing built-in manager with a selected, explicitly required supported prerequisite. Homebrew itself MUST already be available. A declared Homebrew mise prerequisite, a declared Homebrew mas prerequisite and a declared mise node prerequisite MAY make later mise, mas and npm work available; Rig MUST recheck availability before dependent dispatch and MUST NOT suppress unrelated preflight failures. Targeted apply MUST NOT expand to unrelated manager declarations. Rig MUST NOT read a Brewfile or manage Homebrew autoupdate policy.
 
 _Conformance:_ conforming
 
@@ -88,7 +88,7 @@ _Evidence:_ `rig_build_plan` emits a stable dependency-first work plan consumed 
 
 ### RIG-ORCH-006 — Initial provider classes
 
-Rig MUST provide built-in Homebrew, uv, mise, npm, chezmoi, direct-download, launchd, macOS application inventory, macOS defaults, and semantic Dock integrations without provider declarations. It MUST support providers explicitly declared with `adapter = "custom"` without requiring an unselected extension's executable. A selected custom provider that omits `executable` MUST resolve exactly `${RIG_DATA_HOME}/providers/PROVIDER-ID`; an explicit executable MUST take precedence.
+Rig MUST provide built-in Homebrew, mas, uv, mise, npm, chezmoi, direct-download, launchd, macOS application inventory, macOS defaults, and semantic Dock integrations without provider declarations. It MUST support providers explicitly declared with `adapter = "custom"` without requiring an unselected extension's executable. A selected custom provider that omits `executable` MUST resolve exactly `${RIG_DATA_HOME}/providers/PROVIDER-ID`; an explicit executable MUST take precedence.
 
 _Conformance:_ conforming
 
@@ -102,7 +102,7 @@ Built-in adapters MUST preserve each provider argument and tool `install.argumen
 
 - Homebrew `formula`: `brew list --formula --versions OBSERVED_IDENTITY` to observe and `brew install --formula LOCATOR` to apply.
 - Homebrew `cask`: `brew list --cask --versions OBSERVED_IDENTITY` to observe and `brew install --cask LOCATOR` to apply.
-- Homebrew `mas`: `mas list` with exact numeric identity matching to observe and `mas install LOCATOR` to apply.
+- mas `app`: `mas list` with exact numeric identity matching to observe and `mas install LOCATOR` to apply. No Homebrew provider argument or environment applies to it.
 - uv `tool`: `uv tool list` with exact package identity matching to observe and `uv tool install LOCATOR` to apply.
 - mise `tool`: `mise which EXECUTABLE` to observe and `mise install LOCATOR` to apply. Rig MUST observe each `install.executables` name in declared order, or by default the single locator with a trailing `@VERSION` removed; an `@` that begins a scoped package name is not a version. The tool MUST be `present` only when every observation exits 0. Observation MUST stop at the first non-zero exit: exit 1 is `missing`, with detail `missing-executable:NAME` when `install.executables` is declared, and any other exit is `unknown` with `exit:N`.
 - npm `global`: `npm list --global --depth=0 LOCATOR` to observe and `npm install --global LOCATOR` to apply.
@@ -251,7 +251,7 @@ _Evidence:_ `rig_nftables_render_rules`, `rig_nftables_render_unit`, `rig_nftabl
 
 ### RIG-ORCH-024 — Declaration-scoped upgrades
 
-`rig upgrade` MUST advance selected provider-managed Homebrew, uv, mise and npm tools and supported Skills CLI skills through fixed native operations. It MUST NOT invoke Homebrew Bundle or provider-wide maintenance. Unavailable executables and unsupported operations MUST remain visible per task, while independent work continues. Native dependencies MAY change as part of a declared provider operation; Rig MUST NOT remove unknown packages or dispatch a second package list.
+`rig upgrade` MUST advance selected provider-managed Homebrew, mas, uv, mise and npm tools and supported Skills CLI skills through fixed native operations. It MUST NOT invoke Homebrew Bundle or provider-wide maintenance. Unavailable executables and unsupported operations MUST remain visible per task, while independent work continues. Native dependencies MAY change as part of a declared provider operation; Rig MUST NOT remove unknown packages or dispatch a second package list.
 
 _Conformance:_ conforming
 
@@ -353,7 +353,7 @@ _Evidence:_ `rig_capture_observation_invocation` keys the command-local snapshot
 
 `rig upgrade` MUST accept `--unattended`, and no other command may. The flag MUST preserve target selection, dependency order, the per-task outcome vocabulary and aggregate exit-status semantics.
 
-Every native upgrade invocation in an unattended run MUST take its standard input from `/dev/null`, and Rig MUST export `NONINTERACTIVE=1` for the Homebrew adapter. Selected Mac App Store bindings MUST be reported `unavailable` with detail `interactive-required` before native invocation. Other native failures MUST retain the `failed` outcome and native exit detail, while independent targets continue; an unavailable or failed task MUST produce aggregate status 1. Mixed Homebrew App Store, cask and formula tasks MUST retain separate results in the unattended report rather than sharing a manifest outcome.
+Every native upgrade invocation in an unattended run MUST take its standard input from `/dev/null`, and Rig MUST export `NONINTERACTIVE=1` for the Homebrew adapter. Selected mas `app` bindings MUST be reported `unavailable` with detail `interactive-required` before native invocation. Other native failures MUST retain the `failed` outcome and native exit detail, while independent targets continue; an unavailable or failed task MUST produce aggregate status 1. Mixed App Store, Homebrew cask and Homebrew formula tasks MUST retain separate results in the unattended report rather than sharing a manifest outcome.
 
 Standard-input EOF does not prevent a native program from using a controlling terminal, graphical authentication or an independent credential helper. The flag does not impose a timeout or supervise native processes, and Rig does not infer that an ordinary failure requires credentials.
 
@@ -441,7 +441,7 @@ _Evidence:_ `rig_application_policy`, `rig_observe_application` and `rig_applica
 
 ### RIG-ORCH-042 — Previewed explicit native removal
 
-`rig remove` MUST preview selected explicit removal declarations by default. Mutation MUST require `--apply`, display its selected native-removal preview before literal `remove` confirmation and reobserve presence after confirmation. Refusal, EOF, undeclared targets and uncertain observations MUST remove nothing. Missing items MUST skip; independent native outcomes MUST remain visible and failures MUST keep an incomplete result. Native commands MUST be `brew uninstall --formula|--cask LOCATOR`, `uv tool uninstall NAME`, `npm uninstall --global LOCATOR`, `mise uninstall LOCATOR`, or existing-grant-only `sudo -n -- mas uninstall ID`. Rig MUST NOT acquire privilege, add force/zap/data deletion, infer removal from deselection, or automatically add retired-application declarations. Native managers retain their own uninstall semantics.
+`rig remove` MUST preview selected explicit removal declarations by default. Mutation MUST require `--apply`, display its selected native-removal preview before literal `remove` confirmation and reobserve presence after confirmation. Refusal, EOF, undeclared targets and uncertain observations MUST remove nothing. Missing items MUST skip; independent native outcomes MUST remain visible and failures MUST keep an incomplete result. Native commands MUST be `brew uninstall --formula|--cask LOCATOR`, `uv tool uninstall NAME`, `npm uninstall --global LOCATOR`, `mise uninstall LOCATOR`, or, for a mas `app`, existing-grant-only `sudo -n -- mas uninstall ID`. Rig MUST NOT acquire privilege, add force/zap/data deletion, infer removal from deselection, or automatically add retired-application declarations. Native managers retain their own uninstall semantics.
 
 _Conformance:_ conforming
 

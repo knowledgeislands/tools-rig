@@ -1400,9 +1400,11 @@ rig_command_doctor() {
   local index section_name state detail port owner action skill authority format information config_finding config_loaded
   local verbose profile_seen format_seen checks_passed checks_skipped checks_total checks_coverage
 
-  local unmanaged_requested removal_findings
+  local unmanaged_requested removal_findings warnings warning_count declaration
   unmanaged_requested=0
   removal_findings=
+  warnings=
+  warning_count=0
   profile=
   format=text
   verbose=0
@@ -1471,6 +1473,13 @@ rig_command_doctor() {
     RIG_RESOLVED_PLATFORM=$RIG_VALUE
   fi
   rig_effective_paths || return 2
+  if [ "$config_loaded" -eq 1 ]; then
+    for declaration in "${RIG_DEPRECATED_MAS_DECLARATIONS[@]+"${RIG_DEPRECATED_MAS_DECLARATIONS[@]}"}"; do
+      warnings="${warnings}  ${declaration}: deprecated (homebrew-mas-alias); owner=configuration; action=declare-provider-mas-kind-app"$'\n'
+      warning_count=$((warning_count + 1))
+    done
+    warnings=${warnings%$'\n'}
+  fi
   tool_findings=
   resource_findings=
   port_findings=
@@ -1617,7 +1626,9 @@ rig_command_doctor() {
     checks_total=$((checks_total + 1))
     checks_skipped=1
   fi
-  checks_passed=$((checks_total - checks_skipped - findings))
+  # A deprecated declaration still works, so it warns without failing a check.
+  checks_total=$((checks_total + warning_count))
+  checks_passed=$((checks_total - checks_skipped - findings - warning_count))
   rig_diagnostic_context || return
 
   if [ "$format" = json ]; then
@@ -1626,8 +1637,8 @@ rig_command_doctor() {
     rig_diagnostic_context_json
     [ "$findings" -eq 0 ] && state=healthy || state=unhealthy
     rig_json_field ',' verdict "$state"
-    printf ',"checks":{"pass":%s,"warn":0,"fail":%s,"skipped":%s,"unit":"item","coverage":' \
-      "$checks_passed" "$findings" "$checks_skipped"
+    printf ',"checks":{"pass":%s,"warn":%s,"fail":%s,"skipped":%s,"unit":"item","coverage":' \
+      "$checks_passed" "$warning_count" "$findings" "$checks_skipped"
     rig_json_escape "$checks_coverage"
     printf '"%s"' "$RIG_VALUE"
     printf ',"read_only":true,"freshness":"not-checked"}'
@@ -1650,7 +1661,9 @@ rig_command_doctor() {
     rig_json_lines "$port_findings"
     printf ',"skills":'
     rig_json_lines "$skill_findings"
-    printf '},"information":'
+    printf '},"warnings":'
+    rig_json_lines "$warnings"
+    printf ',"information":'
     rig_json_lines "$information"
     if [ "$verbose" -eq 1 ]; then
       printf ',"diagnostics":'
@@ -1665,8 +1678,8 @@ rig_command_doctor() {
     "$([ "$findings" -eq 0 ] && printf healthy || printf unhealthy)" \
     "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM"
   rig_diagnostic_context_text
-  printf 'Scope: read-only declared setup health; package updates not checked\nCoverage: %s\nChecks: pass=%s warn=0 fail=%s skipped=%s (unit=item)\n' \
-    "$checks_coverage" "$checks_passed" "$findings" "$checks_skipped"
+  printf 'Scope: read-only declared setup health; package updates not checked\nCoverage: %s\nChecks: pass=%s warn=%s fail=%s skipped=%s (unit=item)\n' \
+    "$checks_coverage" "$checks_passed" "$warning_count" "$findings" "$checks_skipped"
   if [ -n "$config_finding" ]; then
     printf 'Configuration findings:\n%s\n' "$config_finding"
   fi
@@ -1687,6 +1700,9 @@ rig_command_doctor() {
   fi
   if [ -n "$skill_findings" ]; then
     printf 'Skill findings:\n%s\n' "$skill_findings"
+  fi
+  if [ -n "$warnings" ]; then
+    printf 'Warnings:\n%s\n' "$warnings"
   fi
   if [ -n "$information" ]; then
     printf 'Information:\n%s\n' "$information"

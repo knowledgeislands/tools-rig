@@ -3028,7 +3028,7 @@ bootstrap-profile = "default"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.
  'install.locator = "homebrew/cask/visual-studio-code"' \
  '[tool.store]' 'name = "Store"' 'category = "core"' 'purpose = "Store test"' \
  'rationale = "Store rationale"' 'platforms = ["any"]' \
-    'install.provider = "homebrew"' 'install.kind = "mas"' 'install.locator = "12345"' \
+    'install.provider = "mas"' 'install.kind = "app"' 'install.locator = "12345"' \
  '[tool.python]' 'name = "Python"' 'category = "core"' 'purpose = "Python test"' \
  'rationale = "Python rationale"' 'platforms = ["any"]' \
     'install.provider = "uv"' 'install.kind = "tool"' 'install.locator = "ruff"' \
@@ -3047,7 +3047,7 @@ bootstrap-profile = "default"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.
   [ "$status" -eq 0 ]
   output_has_table_row $'formula\thomebrew\tpresent\t-'
   output_has_table_row $'cask\thomebrew\tpresent\t-'
-  output_has_table_row $'store\thomebrew\tpresent\t-'
+  output_has_table_row $'store\tmas\tpresent\t-'
   output_has_table_row $'python\tuv\tpresent\t-'
   output_has_table_row $'dotfile\tchezmoi\tpresent\t-'
   [ "$(wc -l <"$native_log" | tr -d ' ')" -eq 5 ]
@@ -3068,7 +3068,7 @@ bootstrap-profile = "default"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.
     'chezmoi|apply|--|/tmp/example target' \
     'brew|--global value|install|--formula|--formula value|homebrew/core/jq' \
     'uv|tool|install|ruff' \
-    'mas|--global value|install|12345')" ]
+    'mas|install|12345')" ]
 }
 
 @test "Homebrew observation preserves unqualified formula and cask identities" {
@@ -3241,16 +3241,16 @@ bootstrap-profile = "default"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.
   [ -z "$(find "$destination" -mindepth 1 -maxdepth 1 -print -quit)" ]
 }
 
-@test "Homebrew mas installations require numeric application identities" {
+@test "mas installations require numeric application identities" {
   write_minimal_config
-  sed -e 's/kind = "formula"/kind = "mas"/' \
+  sed -e 's/provider = "homebrew"/provider = "mas"/' -e 's/kind = "formula"/kind = "app"/' \
     "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/mas.toml"
   mv "$CONFIG_HOME/mas.toml" "$CONFIG_HOME/rig.toml"
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos "$RIG" status
 
   [ "$status" -eq 2 ]
-  [[ "$output" == *'Homebrew mas locator must be a numeric application identity'* ]] || false
+  [[ "$output" == *'mas locator must be a numeric App Store application identity'* ]] || false
 }
 
 @test "direct-download rejects unsafe or incomplete declarations before mutation" {

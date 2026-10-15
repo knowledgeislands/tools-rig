@@ -265,7 +265,7 @@ variant.mac.updates =/' "$RIG_CONFIG_HOME/rig.toml"
 @test "explicit App Store self updates satisfy a healthy app without sign-in or upgrades" {
   write_config
   healthy_app
-  sed -i.bak 's/install.kind = "cask"/install.kind = "mas"/; s/install.locator = "subject"/install.locator = "123"/' "$RIG_CONFIG_HOME/rig.toml"
+  sed -i.bak 's/install.provider = "homebrew"/install.provider = "mas"/; s/install.kind = "cask"/install.kind = "app"/; s/install.locator = "subject"/install.locator = "123"/' "$RIG_CONFIG_HOME/rig.toml"
   rig_test_provider mas
   rig_test_provider_response mas 'list' 0 -
   run "$RIG" doctor

@@ -88,7 +88,7 @@ _Evidence:_ `rig_validate_tool_variants`, `rig_select_compatible_variant`, and `
 
 ### RIG-CAT-009 — Application update policy
 
-A macOS Homebrew cask or App Store tool MAY declare `updates = "self"` or `"managed"` on its installation-bearing tool or selected variant. Explicit self updates MUST require a declared application artifact; formulae and non-macOS platforms MUST reject this field. An explicit policy MUST override Homebrew cask `auto_updates` metadata; only casks with declared application artifacts use that metadata default. A resolved cask definition that leaves `auto_updates` undeclared MUST select managed updates, as Homebrew does; unavailable or invalid metadata, including an unresolved definition, MUST remain visible rather than selecting a guessed policy.
+A macOS Homebrew cask or mas `app` tool MAY declare `updates = "self"` or `"managed"` on its installation-bearing tool or selected variant. Explicit self updates MUST require a declared application artifact; formulae and non-macOS platforms MUST reject this field. An explicit policy MUST override Homebrew cask `auto_updates` metadata; only casks with declared application artifacts use that metadata default. A resolved cask definition that leaves `auto_updates` undeclared MUST select managed updates, as Homebrew does; unavailable or invalid metadata, including an unresolved definition, MUST remain visible rather than selecting a guessed policy.
 
 _Conformance:_ conforming
 

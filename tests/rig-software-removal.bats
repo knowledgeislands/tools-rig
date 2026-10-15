@@ -180,7 +180,7 @@ TOML
       uv) provider=uv; kind=tool; locator=subject; observe='tool list'; observed='subject v1.0'; uninstall='tool uninstall subject' ;;
       npm) provider=npm; kind=global; locator=subject; observe='list --global --depth=0 subject'; observed='/fixture/subject'; uninstall='uninstall --global subject' ;;
       mise) provider=mise; kind=tool; locator=subject; observe='which subject'; observed='/fixture/subject'; uninstall='uninstall subject' ;;
-      mas) provider=homebrew; kind=mas; locator=123; observe=list; observed='123 Subject (1.0)'; uninstall='uninstall 123' ;;
+      mas) provider=mas; kind=app; locator=123; observe=list; observed='123 Subject (1.0)'; uninstall='uninstall 123' ;;
     esac
     cat >"$RIG_CONFIG_HOME/rig.toml" <<TOML
 [rig]
@@ -220,7 +220,7 @@ SH
   run bash -c 'printf "remove\n" | "$1" remove --apply' _ "$RIG"
   [ "$status" -eq 1 ]
   ! /usr/bin/grep 'uninstall' "$RIG_TEST_PROVIDER_LOG"
-  /usr/bin/sed -i.bak 's/kind = "cask"/kind = "mas"/;s/locator = "obsolete"/locator = "123"/' "$RIG_CONFIG_HOME/rig.toml"
+  /usr/bin/sed -i.bak 's/provider = "homebrew"/provider = "mas"/;s/kind = "cask"/kind = "app"/;s/locator = "obsolete"/locator = "123"/' "$RIG_CONFIG_HOME/rig.toml"
   rig_test_provider mas
   rig_test_provider_response mas list 0 '123 Subject (1.0)'
   run bash -c 'printf "remove\n" | "$1" remove --apply' _ "$RIG"

@@ -390,7 +390,7 @@ rig_command_export() {
 
 rig_lifecycle_supported() {
   case "$1:$2" in
-    upgrade:homebrew|upgrade:uv|upgrade:mise|upgrade:npm|upgrade:skills-cli) return 0 ;;
+    upgrade:homebrew|upgrade:mas|upgrade:uv|upgrade:mise|upgrade:npm|upgrade:skills-cli) return 0 ;;
   esac
   return 1
 }
@@ -545,11 +545,10 @@ rig_execute_lifecycle_task() {
 
   case "$action:$adapter" in
     upgrade:homebrew)
-      if [ "$kind" = mas ]; then
-        "$executable" upgrade "$locator" 1>&2
-      else
-        "$executable" upgrade "--$kind" "$locator" 1>&2
-      fi
+      "$executable" upgrade "--$kind" "$locator" 1>&2
+      ;;
+    upgrade:mas)
+      "$executable" upgrade "$locator" 1>&2
       ;;
     upgrade:uv)
       rig_normalize_provider_identity "$adapter" "$kind" "$locator"
@@ -574,18 +573,17 @@ rig_execute_lifecycle_task() {
 }
 
 rig_lifecycle_requires_person() {
-  local provider binding kind
+  local provider binding
 
   provider=$1
   binding=$2
   case "$binding" in
     ''|skill.*) return 1 ;;
   esac
-  rig_get_value "$binding" kind || return 1
-  kind=$RIG_VALUE
+  rig_provider_adapter "$provider" || return 1
   # A Mac App Store upgrade needs a person signed in to the App Store, which a
   # run with nobody watching cannot supply.
-  [ "$kind" = mas ]
+  [ "$RIG_VALUE" = mas ]
 }
 
 rig_write_last_run_report() {

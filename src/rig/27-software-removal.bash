@@ -4,7 +4,7 @@
 # shellcheck disable=SC2034
 
 rig_removal_supported() {
-  case "$1:$2" in homebrew:formula|homebrew:cask|homebrew:mas|uv:tool|npm:global|mise:tool) return 0 ;; esac
+  case "$1:$2" in homebrew:formula|homebrew:cask|mas:app|uv:tool|npm:global|mise:tool) return 0 ;; esac
   return 1
 }
 
@@ -100,7 +100,7 @@ rig_validate_removal() {
   rig_removal_supported "$adapter" "$kind" || rig_fail "[$section] unsupported native removal '$adapter:$kind'" || return
   rig_require_field "$section" locator || return
   locator=$RIG_VALUE
-  if [ "$adapter:$kind" = homebrew:mas ]; then
+  if [ "$adapter:$kind" = mas:app ]; then
     case "$locator" in ''|*[!0-9]*) rig_fail "[$section] App Store removal requires a numeric app ID"; return ;; esac
   fi
   case "$locator" in -*) rig_fail "[$section] removal locator must not be an option"; return ;; esac
@@ -109,7 +109,7 @@ rig_validate_removal() {
   locator=$RIG_VALUE
   rig_field_count "$index" platform
   [ "$RIG_COUNT" -gt 0 ] || rig_fail "[$section] requires platforms" || return
-  if [ "$adapter" = homebrew ] && { [ "$kind" = cask ] || [ "$kind" = mas ]; }; then
+  if [ "$adapter:$kind" = homebrew:cask ] || [ "$adapter:$kind" = mas:app ]; then
     scan=1
     while rig_get_value "$section" platform "$scan"; do
       [ "$RIG_VALUE" = macos ] || rig_fail "[$section] cask and App Store removals support only macOS" || return
@@ -238,7 +238,7 @@ rig_remove_native() {
   rig_append_arguments "provider.$provider" || return 2
   case "$adapter:$kind" in
     homebrew:formula|homebrew:cask) RIG_INVOKE_ARGUMENTS+=(uninstall "--$kind" "$locator") ;;
-    homebrew:mas)
+    mas:app)
       # mas documents a root requirement. Never acquire or prompt for a grant:
       # a person must already have authorised sudo in this terminal.
       "${RIG_SUDO:-sudo}" -n -- "$executable" uninstall "$locator" </dev/null 1>&2
@@ -313,7 +313,7 @@ rig_command_remove_impl() {
     if { [ -z "$target" ] || [ "$target" = "$section" ]; } && [ "${RIG_REMOVAL_STATES[index]}" = present ]; then
       rig_get_value "$section" locator || return 2
       printf '  %s: %s\n' "$section" "$RIG_VALUE" >&2
-      if rig_get_value "$section" kind && [ "$RIG_VALUE" = mas ]; then
+      if rig_get_value "$section" provider && rig_provider_adapter "$RIG_VALUE" && [ "$RIG_VALUE" = mas ]; then
         printf '    App Store removal requires an existing administrator grant; sudo will not prompt.\n' >&2
       fi
     fi

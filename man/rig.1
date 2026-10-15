@@ -379,7 +379,9 @@ and pass/warn/fail/skipped Checks. Counts use evaluated items, not subprocesses:
 configuration, each XDG directory, history availability, selected declarations,
 retirement and historical-failure items. Dependent selection is one skipped
 group when configuration cannot load. Catalogue-only and incompatible items are
-skipped. Warning counts are currently zero. This is read-only declared setup
+skipped. Each working but deprecated declaration, such as a Homebrew mas
+alias, is listed under Warnings and counted as warn without changing the
+Verdict. This is read-only declared setup
 health; available package updates are explicitly not checked.
 Catalogue-only and
 incompatible-platform tools are informational. An observed competing
@@ -1472,9 +1474,18 @@ and
 .B cask
 installations use
 .BR brew (1);
+the
 .B mas
+provider's
+.B app
 installations use
-.BR mas (1).
+.BR mas (1)
+with a numeric App Store identity as the locator, on macOS only.
+The former Homebrew
+.B mas
+kind is a deprecated alias that runs the same commands, is reported as provider
+.BR mas ,
+and is listed by doctor as a warning.
 The
 .B uv
 adapter supports
@@ -1805,9 +1816,9 @@ removals, provider arguments and unsafe locators are rejected.
 rig remove defaults to preview. --apply displays its preview and requires
 literal remove confirmation before rechecking presence and invoking native
 uninstall. --target limits selection. Missing items skip; uncertain evidence
-refuses; native failures remain visible. Homebrew formula/cask/mas, uv tool,
-npm global and mise tool are supported. App Store removal uses only an existing
-sudo grant with -n. Rig adds no force, zap or retained-data cleanup.
+refuses; native failures remain visible. Homebrew formula and cask, mas app,
+uv tool, npm global and mise tool are supported. App Store removal uses only
+an existing sudo grant with -n. Rig adds no force, zap or retained-data cleanup.
 .PP
 Doctor reports pending declared removals as findings. doctor --unmanaged
 adds undeclared-anywhere inventory as information. Apply, upgrade, deselection

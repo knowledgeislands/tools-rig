@@ -155,8 +155,8 @@ category = "core"
 purpose = "Exercise the conservative App Store exclusion"
 rationale = "Unattended runs leave App Store interaction to a person"
 platforms = ["any"]
-install.provider = "homebrew"
-install.kind = "mas"
+install.provider = "mas"
+install.kind = "app"
 install.locator = "497799835"
 
 [profile.default]
@@ -334,8 +334,8 @@ category = "core"
 purpose = "Exercise a Mac App Store lifecycle"
 rationale = "An App Store upgrade needs a person signed in"
 platforms = ["any"]
-install.provider = "homebrew"
-install.kind = "mas"
+install.provider = "mas"
+install.kind = "app"
 install.locator = "497799835"
 install.platforms = ["any"]
 
@@ -359,16 +359,16 @@ EOF
   run run_rig upgrade --unattended </dev/null
 
   [ "$status" -eq 1 ] || { printf '%s\n' "$output" >&3; false; }
-  rig_test_report_contains "$output" $'store-app\thomebrew\tunavailable\tinteractive-required' || false
+  rig_test_report_contains "$output" $'store-app\tmas\tunavailable\tinteractive-required' || false
   rig_test_report_contains "$output" $'ruff\tuv\tcompleted\tupgrade' || false
   [ "$(grep -Fc mas "$CALL_LOG")" -eq 0 ]
-  grep -Fqx $'store-app\thomebrew\tunavailable\tinteractive-required' \
+  grep -Fqx $'store-app\tmas\tunavailable\tinteractive-required' \
     "$STATE_HOME/last-upgrade"
 
   run run_rig upgrade </dev/null
 
   [ "$status" -eq 0 ] || { printf '%s\n' "$output" >&3; false; }
-  rig_test_report_contains "$output" $'store-app\thomebrew\tcompleted\tupgrade' || false
+  rig_test_report_contains "$output" $'store-app\tmas\tcompleted\tupgrade' || false
   grep -Fqx $'mas\tupgrade 497799835' "$CALL_LOG"
 }
 
@@ -380,7 +380,7 @@ EOF
   [ "$status" -eq 1 ] || { printf '%s\n' "$output" >&3; false; }
   rig_test_report_contains "$output" $'cask-failure\thomebrew\tfailed\texit:7' || false
   rig_test_report_contains "$output" $'formula-success\thomebrew\tcompleted\tupgrade' || false
-  rig_test_report_contains "$output" $'store-app\thomebrew\tunavailable\tinteractive-required' || false
+  rig_test_report_contains "$output" $'store-app\tmas\tunavailable\tinteractive-required' || false
   [[ "$output" == *'Summary: planned=0 completed=1 failed=1 unavailable=1 skipped=0'* ]] || false
   [ "$(grep -c $'^brew\tupgrade' "$CALL_LOG")" -eq 2 ] || false
   [ "$(grep -Fc $'brew-stdin\tend-of-file' "$CALL_LOG")" -eq 2 ] || false
@@ -396,7 +396,7 @@ EOF
   grep -Fqx $'summary\tplanned=0 completed=1 failed=1 unavailable=1 skipped=0' "$report"
   grep -Fqx $'cask-failure\thomebrew\tfailed\texit:7' "$report"
   grep -Fqx $'formula-success\thomebrew\tcompleted\tupgrade' "$report"
-  grep -Fqx $'store-app\thomebrew\tunavailable\tinteractive-required' "$report"
+  grep -Fqx $'store-app\tmas\tunavailable\tinteractive-required' "$report"
   [ "$(grep -Ec '^(cask-failure|formula-success|store-app)' "$report")" -eq 3 ] || false
   ! grep -Eq 'bundle|cleanup|manifest' "$report" || false
 }
@@ -411,7 +411,7 @@ EOF
   [ "$status" -eq 1 ] || { printf '%s\n' "$output" >&3; false; }
   rig_test_report_contains "$output" $'cask-failure\thomebrew\tplanned\tupgrade' || false
   rig_test_report_contains "$output" $'formula-success\thomebrew\tplanned\tupgrade' || false
-  rig_test_report_contains "$output" $'store-app\thomebrew\tunavailable\tinteractive-required' || false
+  rig_test_report_contains "$output" $'store-app\tmas\tunavailable\tinteractive-required' || false
   [[ "$output" == *'Summary: planned=2 completed=0 failed=0 unavailable=1 skipped=0'* ]] || false
   [ ! -e "$CALL_LOG" ] || false
   [ "$(cat "$STATE_HOME/last-upgrade")" = 'previous report remains authoritative' ] || false
@@ -425,7 +425,7 @@ EOF
   [ "$status" -eq 1 ] || { printf '%s\n' "$output" >&3; false; }
   rig_test_report_contains "$output" $'cask-failure\thomebrew\tfailed\texit:7' || false
   rig_test_report_contains "$output" $'formula-success\thomebrew\tcompleted\tupgrade' || false
-  rig_test_report_contains "$output" $'store-app\thomebrew\tcompleted\tupgrade' || false
+  rig_test_report_contains "$output" $'store-app\tmas\tcompleted\tupgrade' || false
   grep -Fqx $'mas\tupgrade 497799835' "$CALL_LOG"
   grep -Fqx $'brew-stdin\tinteractive caller input' "$CALL_LOG"
   [ "$(grep -Fc $'brew-noninteractive\tunset' "$CALL_LOG")" -eq 2 ] || false
