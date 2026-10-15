@@ -5,13 +5,12 @@ title: Mac App Store provider
 purpose: capability
 initiative: rig
 kind: deliver
-horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: b5011d53957719d19404eeac1721339dc9f6ae38
 created_at: 2026-10-15T01:40:07Z
-updated_at: 2026-10-15T10:00:00Z
+updated_at: 2026-10-15T22:53:14Z
 ---
 
 # KI-TOOL-RIG-CORE-059: Mac App Store Provider
@@ -139,6 +138,10 @@ The goal is met in code: App Store applications have their own provider, every o
 ### Mini recap
 
 Gave the Mac App Store its own built-in `mas` provider, kept the Homebrew alias as a warned deprecation, and aligned specifications, guides, manual and changelog. Proposed learning route: none.
+
+## Done
+
+Accepted 2026-10-15 by Kris Brown on the review packet above (mac-studio-setup decisions log, CORE-059-ACCEPT: "Yes: an agent closes KI-TOOL-RIG-CORE-059 as done under ki-accept and commits it in tools-rig locally.").
 
 ## Discussion
 
