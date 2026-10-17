@@ -33,6 +33,10 @@ A single scheduled-job preview against the `laptop` profile took about 24 second
   - Native-provider behaviour.
   - Any change to a person's configuration.
 
+## Current state
+
+Before this record, `rig_build_plan` restarted its scan after each planned tool and searched planned members linearly. `rig_select_bindings` scanned every section for each tool, and resource ordering and native-target checks rescanned the whole selection for each item. Cycle validation searched a visit array, and section indexing shifted the sorted lookup one element at a time. Native probes were already limited to the target's closure.
+
 ## Steps
 
 - [x] Measure phase timings on disposable fixtures of 50, 200 and 500 tools, and on a read-only preview of the real `laptop` profile.
@@ -48,11 +52,37 @@ A single scheduled-job preview against the `laptop` profile took about 24 second
 - [Performance tests](../../tests/rig-performance.bats).
 - [Changelog](../../CHANGELOG.md).
 
-## Discussion
+## Verify
 
-The tools-burndown thread's rig-target-speed run delegated this record, using the HNR mail-triage job on the `laptop` profile as its example. That job is not declared on `sol`, so `scheduled-job:workstation-health` stands in for it in the real-catalogue measurements. The delegation allows local, fixture-backed delivery up to Awaiting review. It does not allow a live `rig apply`, acceptance, a push or a release.
+- Run the complete gate in [Develop Rig](../guides/developer/README.md#verify-the-repository).
+- `bats tests/rig-performance.bats </dev/null` covers targeted native invocations and planner order.
+- Against disposable fixtures, compare the output of a targeted dry run with the baseline binary's output.
+
+## Dependencies / blocks
+
+Not blocked; blocks nothing.
+
+## Documentation impact
+
+### Decision Records
+
+None. The change is internal, and every boundary in an existing decision record still holds.
+
+### Specifications
+
+None. Ordering, selection, validation and messages are unchanged, so no requirement changes.
+
+### Guides
+
+None. The changelog notes the speed-up.
+
+### Roadmap
+
+Captured Now and delivered by the tools-burndown rig-target-speed run.
 
 ## Review
+
+### Delivered
 
 Delivered locally against fixtures and read-only previews only. No live `rig apply` ran, and nothing was accepted, pushed or released.
 
@@ -70,7 +100,7 @@ Delivered locally against fixtures and read-only previews only. No live `rig app
   - The dependency-ordered plan keeps an early tool that waits on a later one in its original position.
 - **Changelog:** one entry under Changed and removed.
 
-### Evidence
+### Verification
 
 Output was byte-identical to the baseline binary for every measured run. Wall-clock seconds, `apply --dry-run --profile laptop`:
 
@@ -87,4 +117,20 @@ Fixture timings ran under a function-timing wrapper; the `sol` timings did not.
 
 The remaining cost of a targeted run is loading the configuration: parsing, binding synthesis and full-model validation take about 3.6 seconds on `sol`. Profile resolution adds about 0.9 seconds and planning about 0.7. Loading stays whole-model by design (see Boundary).
 
-The complete local gate in [Develop Rig](../guides/developer/README.md#verify-the-repository) passes. The audit's only warning is the existing HOOK-1 note that no pre-commit gate is committed.
+The complete local gate in [Develop Rig](../guides/developer/README.md#verify-the-repository) passes. The audit's only warning is the existing HOOK-1 note that no pre-commit gate is committed. All 552 Bats tests pass.
+
+### Outstanding concerns
+
+Most of the remaining time in a targeted run is configuration loading. Loading stays whole-model to keep the guarantee that every run validates the full configuration. A later record could cache the parsed model or shorten parsing and validation.
+
+### Post-change review
+
+The planner gives the same lowest-indexed-ready order: the new test pins an early tool that waits on a later one. Repeated targets still appear once. The cycle and conflict messages are unchanged, and the existing Bats cases cover them.
+
+### Mini recap
+
+A targeted `laptop` preview on `sol` now takes about 5 seconds instead of 24, with the same output and the same native probes.
+
+## Discussion
+
+The tools-burndown thread's rig-target-speed run delegated this record, using the HNR mail-triage job on the `laptop` profile as its example. That job is not declared on `sol`, so `scheduled-job:workstation-health` stands in for it in the real-catalogue measurements. The delegation allows local, fixture-backed delivery up to Awaiting review. It does not allow a live `rig apply`, acceptance, a push or a release.
