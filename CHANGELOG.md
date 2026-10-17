@@ -49,6 +49,7 @@ Run `rig help COMMAND` or `rig COMMAND --help` for options and exact arguments.
 - Homebrew Bundle, Brewfile orchestration, and Homebrew autoupdate management are retired. Rig configuration declares desired packages; retired configuration fields fail with migration guidance. No migration deletes an existing Brewfile, package, timer, or state file.
 - Managed-resource retirement follows catalogue ownership rather than the last applied profile, avoiding unloads of still-declared services and scheduled jobs. Launchd replacement waits for a departing service before bootstrapping its successor; failures withhold retirement and receipt replacement.
 - A mise tool can name the executables Rig observes with `install.executables`, so `rust` and `cargo:` packages are observed by their binaries; without it Rig observes the locator without a trailing `@VERSION`, while install, upgrade and removal keep the full locator.
+- Planning a large catalogue no longer grows cubically: dependency ordering, binding lookup, resource ordering, native-target conflict checks and cycle validation each scan the model once, so a targeted `rig apply --dry-run` against a 191-tool catalogue drops from about 24 seconds to about 5, with unchanged output and native probes still limited to the target's dependency closure.
 - Provider and observation fixes preserve stable identities, distinguish unavailable evidence from proven conflicts, handle dual-stack listeners without duplicate rows, and keep native diagnostics intact through terminal progress.
 
 ### Distribution baseline

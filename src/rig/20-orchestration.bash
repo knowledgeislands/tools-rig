@@ -30,47 +30,70 @@ rig_tool_dependencies_planned() {
   while [ "$field_index" -lt "$field_end" ]; do
     if [ "${RIG_FIELD_KEYS[$field_index]}" = requires ]; then
       dependency=${RIG_FIELD_VALUES[$field_index]}
-      rig_plan_index "$dependency" || return 1
+      case "$RIG_PLAN_MEMBERS" in *$'\n'"$dependency"$'\n'*) ;; *) return 1 ;; esac
     fi
     field_index=$((field_index + 1))
   done
   return 0
 }
 
+rig_plan_append_selected() {
+  local index binding provider
+
+  index=$1
+  binding=${RIG_SELECTED_BINDINGS[$index]:-}
+  provider=-
+  if [ -n "$binding" ]; then
+    rig_section_index "$binding" || return 2
+    provider=${RIG_SECTION_SECONDARY_IDS[$RIG_INDEX]}
+  fi
+  RIG_PLAN_TOOLS[${#RIG_PLAN_TOOLS[@]}]=${RIG_SELECTED_TOOLS[$index]}
+  RIG_PLAN_BINDINGS[${#RIG_PLAN_BINDINGS[@]}]=$binding
+  RIG_PLAN_PROVIDERS[${#RIG_PLAN_PROVIDERS[@]}]=$provider
+  RIG_PLAN_MEMBERS=$RIG_PLAN_MEMBERS${RIG_SELECTED_TOOLS[$index]}$'\n'
+}
+
+# Each step plans the lowest-indexed selected tool whose dependencies are
+# planned. Every index before the scan position is planned or waiting, so
+# only waiting tools are rechecked rather than rescanning the selection.
 rig_build_plan() {
-  local selected_count progress index tool binding provider section_index
+  local selected_count position index waiting_index progress
+  local -a waiting
 
   RIG_PLAN_TOOLS=()
   RIG_PLAN_BINDINGS=()
   RIG_PLAN_PROVIDERS=()
   RIG_PLAN_RESULTS=()
   RIG_PLAN_DETAILS=()
+  RIG_PLAN_MEMBERS=$'\n'
   selected_count=${#RIG_SELECTED_TOOLS[@]}
+  waiting=()
+  position=0
 
   while [ "${#RIG_PLAN_TOOLS[@]}" -lt "$selected_count" ]; do
     progress=0
-    index=0
-    while [ "$index" -lt "$selected_count" ]; do
-      tool=${RIG_SELECTED_TOOLS[$index]}
-      if rig_plan_index "$tool"; then
-        index=$((index + 1))
-        continue
-      fi
-      if rig_tool_dependencies_planned "$tool"; then
-        binding=${RIG_SELECTED_BINDINGS[$index]:-}
-        provider=-
-        if [ -n "$binding" ]; then
-          rig_section_index "$binding" || return 2
-          section_index=$RIG_INDEX
-          provider=${RIG_SECTION_SECONDARY_IDS[$section_index]}
+    waiting_index=0
+    while [ "$waiting_index" -lt "${#waiting[@]}" ]; do
+      index=${waiting[$waiting_index]}
+      if [ -n "$index" ]; then
+        if rig_tool_dependencies_planned "${RIG_SELECTED_TOOLS[$index]}"; then
+          rig_plan_append_selected "$index" || return
+          waiting[$waiting_index]=
+          progress=1
+          break
         fi
-        RIG_PLAN_TOOLS[${#RIG_PLAN_TOOLS[@]}]=$tool
-        RIG_PLAN_BINDINGS[${#RIG_PLAN_BINDINGS[@]}]=$binding
-        RIG_PLAN_PROVIDERS[${#RIG_PLAN_PROVIDERS[@]}]=$provider
-        progress=1
-        break
       fi
-      index=$((index + 1))
+      waiting_index=$((waiting_index + 1))
+    done
+    while [ "$progress" -eq 0 ] && [ "$position" -lt "$selected_count" ]; do
+      index=$position
+      position=$((position + 1))
+      if rig_tool_dependencies_planned "${RIG_SELECTED_TOOLS[$index]}"; then
+        rig_plan_append_selected "$index" || return
+        progress=1
+      else
+        waiting[${#waiting[@]}]=$index
+      fi
     done
     [ "$progress" -eq 1 ] || rig_fail 'cannot produce a dependency-ordered provider plan' || return
   done

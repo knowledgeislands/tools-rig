@@ -35,6 +35,7 @@ RIG_ACTIVE_PROFILES=()
 RIG_PLAN_TOOLS=()
 RIG_PLAN_BINDINGS=()
 RIG_PLAN_PROVIDERS=()
+RIG_PLAN_MEMBERS=$'\n'
 RIG_PLAN_RESULTS=()
 RIG_PLAN_DETAILS=()
 RIG_PLAN_STATES=()
@@ -50,8 +51,8 @@ RIG_STALE_RESOURCE_LOCATORS=()
 RIG_INVOKE_ARGUMENTS=()
 RIG_OBSERVE_EXECUTABLES=()
 RIG_OBSERVE_EXECUTABLES_DECLARED=0
-RIG_VISIT_NAMES=()
-RIG_VISIT_STATES=()
+RIG_VISIT_VISITING=$'\n'
+RIG_VISIT_VISITED=$'\n'
 RIG_QUERY_ITEMS=()
 RIG_DECLARED_FIELD_KEYS=()
 RIG_PORT_STATES=()
@@ -876,6 +877,7 @@ rig_model_reset() {
   RIG_PLAN_TOOLS=()
   RIG_PLAN_BINDINGS=()
   RIG_PLAN_PROVIDERS=()
+  RIG_PLAN_MEMBERS=$'\n'
   RIG_PLAN_RESULTS=()
   RIG_PLAN_DETAILS=()
   RIG_PLAN_STATES=()
@@ -889,8 +891,8 @@ rig_model_reset() {
   RIG_STALE_RESOURCE_IDS=()
   RIG_STALE_RESOURCE_LOCATORS=()
   RIG_INVOKE_ARGUMENTS=()
-  RIG_VISIT_NAMES=()
-  RIG_VISIT_STATES=()
+  RIG_VISIT_VISITING=$'\n'
+  RIG_VISIT_VISITED=$'\n'
   RIG_QUERY_ITEMS=()
   RIG_DECLARED_FIELD_KEYS=()
   RIG_PORT_STATES=()
@@ -970,22 +972,42 @@ rig_section_index() {
   return 1
 }
 
-rig_index_section_name() {
-  local name section_index position previous
+# Find the first sorted lookup position whose section name is not before $1.
+rig_section_lookup_lower_bound() {
+  local wanted low high middle
   local LC_ALL=C
+
+  wanted=$1
+  low=0
+  high=${#RIG_SECTION_LOOKUP_NAMES[@]}
+  while [ "$low" -lt "$high" ]; do
+    middle=$(((low + high) / 2))
+    if [[ "${RIG_SECTION_LOOKUP_NAMES[$middle]}" < "$wanted" ]]; then
+      low=$((middle + 1))
+    else
+      high=$middle
+    fi
+  done
+  RIG_INDEX=$low
+}
+
+rig_index_section_name() {
+  local name section_index position
 
   name=$1
   section_index=$2
-  position=${#RIG_SECTION_LOOKUP_NAMES[@]}
-  while [ "$position" -gt 0 ]; do
-    previous=${RIG_SECTION_LOOKUP_NAMES[$((position - 1))]}
-    [[ "$name" < "$previous" ]] || break
-    RIG_SECTION_LOOKUP_NAMES[$position]=$previous
-    RIG_SECTION_LOOKUP_INDICES[$position]=${RIG_SECTION_LOOKUP_INDICES[$((position - 1))]}
-    position=$((position - 1))
-  done
-  RIG_SECTION_LOOKUP_NAMES[$position]=$name
-  RIG_SECTION_LOOKUP_INDICES[$position]=$section_index
+  rig_section_lookup_lower_bound "$name"
+  position=$RIG_INDEX
+  # Slicing shifts the sorted tail natively rather than one element at a time.
+  if [ "$position" -eq "${#RIG_SECTION_LOOKUP_NAMES[@]}" ]; then
+    RIG_SECTION_LOOKUP_NAMES[$position]=$name
+    RIG_SECTION_LOOKUP_INDICES[$position]=$section_index
+    return 0
+  fi
+  RIG_SECTION_LOOKUP_NAMES=("${RIG_SECTION_LOOKUP_NAMES[@]:0:$position}" "$name" \
+    "${RIG_SECTION_LOOKUP_NAMES[@]:$position}")
+  RIG_SECTION_LOOKUP_INDICES=("${RIG_SECTION_LOOKUP_INDICES[@]:0:$position}" "$section_index" \
+    "${RIG_SECTION_LOOKUP_INDICES[@]:$position}")
 }
 
 rig_parse_section_identity() {
@@ -1913,36 +1935,28 @@ rig_validate_references_for_field() {
   done
 }
 
-rig_visit_get() {
-  local name index
+# Cycle checks keep visit states as newline-framed name lists, so a lookup is
+# one native pattern match rather than a scan of every visited name.
+rig_visit_reset() {
+  RIG_VISIT_VISITING=$'\n'
+  RIG_VISIT_VISITED=$'\n'
+}
 
-  name=$1
-  index=0
+rig_visit_get() {
   RIG_VALUE=
-  while [ "$index" -lt "${#RIG_VISIT_NAMES[@]}" ]; do
-    if [ "${RIG_VISIT_NAMES[$index]}" = "$name" ]; then
-      RIG_VALUE=${RIG_VISIT_STATES[$index]}
-      RIG_INDEX=$index
-      return 0
-    fi
-    index=$((index + 1))
-  done
-  RIG_INDEX=
+  case "$RIG_VISIT_VISITED" in *$'\n'"$1"$'\n'*) RIG_VALUE=visited; return 0 ;; esac
+  case "$RIG_VISIT_VISITING" in *$'\n'"$1"$'\n'*) RIG_VALUE=visiting; return 0 ;; esac
   return 1
 }
 
 rig_visit_set() {
-  local name state index
-
-  name=$1
-  state=$2
-  if rig_visit_get "$name"; then
-    RIG_VISIT_STATES[$RIG_INDEX]=$state
-  else
-    index=${#RIG_VISIT_NAMES[@]}
-    RIG_VISIT_NAMES[$index]=$name
-    RIG_VISIT_STATES[$index]=$state
-  fi
+  case "$2" in
+    visiting) RIG_VISIT_VISITING=$RIG_VISIT_VISITING$1$'\n' ;;
+    visited)
+      RIG_VISIT_VISITING=${RIG_VISIT_VISITING/$'\n'"$1"$'\n'/$'\n'}
+      RIG_VISIT_VISITED=$RIG_VISIT_VISITED$1$'\n'
+      ;;
+  esac
 }
 
 rig_profile_kind() {
@@ -2110,8 +2124,7 @@ rig_resource_cycle_visit() {
 rig_validate_cycles() {
   local index
 
-  RIG_VISIT_NAMES=()
-  RIG_VISIT_STATES=()
+  rig_visit_reset
   index=0
   while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
     if [ "${RIG_SECTION_TYPES[$index]}" = profile ]; then
@@ -2120,8 +2133,7 @@ rig_validate_cycles() {
     index=$((index + 1))
   done
 
-  RIG_VISIT_NAMES=()
-  RIG_VISIT_STATES=()
+  rig_visit_reset
   index=0
   while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
     if [ "${RIG_SECTION_TYPES[$index]}" = tool ]; then
@@ -2130,8 +2142,7 @@ rig_validate_cycles() {
     index=$((index + 1))
   done
 
-  RIG_VISIT_NAMES=()
-  RIG_VISIT_STATES=()
+  rig_visit_reset
   index=0
   while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
     case "${RIG_SECTION_TYPES[$index]}" in service|scheduled-job|setting|dock|default-application|firewall)
@@ -3358,55 +3369,81 @@ rig_sort_selected_ports() {
   done
 }
 
-rig_resource_dependencies_selected() {
-  local section_name section_index field_index field_end reference dependency
+# RIG_VALUE becomes the newline-framed resource sections $1 depends on.
+rig_resource_dependency_list() {
+  local section_name section_index field_index field_end reference
 
   section_name=$1
-  shift
   rig_section_index "$section_name" || return 2
   section_index=$RIG_INDEX
   field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
   field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  RIG_RESOURCE_DEPENDENCY_LIST=$'\n'
   while [ "$field_index" -lt "$field_end" ]; do
     if [ "${RIG_FIELD_KEYS[$field_index]}" = resource-dependency ]; then
       reference=${RIG_FIELD_VALUES[$field_index]}
       rig_resource_reference "$reference" || return 2
-      dependency=$RIG_VALUE
-      [ "$#" -gt 0 ] && rig_array_contains "$dependency" "$@" || return 1
+      RIG_RESOURCE_DEPENDENCY_LIST=$RIG_RESOURCE_DEPENDENCY_LIST$RIG_VALUE$'\n'
     fi
     field_index=$((field_index + 1))
   done
+  RIG_VALUE=$RIG_RESOURCE_DEPENDENCY_LIST
 }
 
+# Each step orders the name-least resource whose dependencies are ordered.
+# Dependency lists are read once; an unreadable list never becomes ready.
 rig_sort_selected_resources() {
-  local candidate best index remaining_index
+  local candidate best index dependencies dependency ordered_members ready done_count
   local LC_ALL=C
-  local -a remaining ordered next
+  local -a remaining remaining_dependencies ordered
 
   remaining=("${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}")
+  remaining_dependencies=()
+  index=0
+  while [ "$index" -lt "${#remaining[@]}" ]; do
+    if rig_resource_dependency_list "${remaining[$index]}"; then
+      remaining_dependencies[$index]=$RIG_VALUE
+    else
+      remaining_dependencies[$index]=-
+    fi
+    index=$((index + 1))
+  done
   ordered=()
-  while [ "${#remaining[@]}" -gt 0 ]; do
+  ordered_members=$'\n'
+  done_count=0
+  while [ "$done_count" -lt "${#remaining[@]}" ]; do
     best=
     index=0
     while [ "$index" -lt "${#remaining[@]}" ]; do
       candidate=${remaining[$index]}
-      if rig_resource_dependencies_selected "$candidate" "${ordered[@]+"${ordered[@]}"}"; then
-        if [ -z "$best" ] || [[ "$candidate" < "$best" ]]; then
-          best=$candidate
-        fi
-      fi
+      dependencies=${remaining_dependencies[$index]}
       index=$((index + 1))
+      [ "$dependencies" != + ] && [ "$dependencies" != - ] || continue
+      ready=1
+      dependencies=${dependencies#$'\n'}
+      while [ -n "$dependencies" ]; do
+        dependency=${dependencies%%$'\n'*}
+        dependencies=${dependencies#*$'\n'}
+        case "$ordered_members" in *$'\n'"$dependency"$'\n'*) ;; *) ready=0; break ;; esac
+      done
+      [ "$ready" -eq 1 ] || continue
+      if [ -z "$best" ] || [[ "$candidate" < "$best" ]]; then
+        best=$candidate
+      fi
     done
     [ -n "$best" ] || rig_fail 'resource dependency graph cannot be ordered' || return
     ordered[${#ordered[@]}]=$best
-    next=()
-    remaining_index=0
-    while [ "$remaining_index" -lt "${#remaining[@]}" ]; do
-      candidate=${remaining[$remaining_index]}
-      [ "$candidate" = "$best" ] || next[${#next[@]}]=$candidate
-      remaining_index=$((remaining_index + 1))
+    ordered_members=$ordered_members$best$'\n'
+    # A repeated selection is ordered once, as every copy leaves together.
+    index=0
+    while [ "$index" -lt "${#remaining[@]}" ]; do
+      if [ "${remaining[$index]}" = "$best" ] &&
+        [ "${remaining_dependencies[$index]}" != + ]; then
+        remaining_dependencies[$index]=+
+        done_count=$((done_count + 1))
+      fi
+      index=$((index + 1))
     done
-    remaining=("${next[@]+"${next[@]}"}")
   done
   RIG_SELECTED_RESOURCE_SECTIONS=("${ordered[@]+"${ordered[@]}"}")
 }
@@ -3638,17 +3675,26 @@ rig_resource_native_target() {
 
 rig_validate_selected_native_targets() {
   local index scan section_name other target other_target
+  local -a targets
 
+  # Derive each target once, in the order the pairwise scan first needs it.
+  targets=()
   index=0
   while [ "$index" -lt "${#RIG_SELECTED_RESOURCE_SECTIONS[@]}" ]; do
     section_name=${RIG_SELECTED_RESOURCE_SECTIONS[$index]}
-    rig_resource_native_target "$section_name" || return
-    target=$RIG_VALUE
+    if [ -z "${targets[$index]+set}" ]; then
+      rig_resource_native_target "$section_name" || return
+      targets[$index]=$RIG_VALUE
+    fi
+    target=${targets[$index]}
     scan=$((index + 1))
     while [ "$scan" -lt "${#RIG_SELECTED_RESOURCE_SECTIONS[@]}" ]; do
       other=${RIG_SELECTED_RESOURCE_SECTIONS[$scan]}
-      rig_resource_native_target "$other" || return
-      other_target=$RIG_VALUE
+      if [ -z "${targets[$scan]+set}" ]; then
+        rig_resource_native_target "$other" || return
+        targets[$scan]=$RIG_VALUE
+      fi
+      other_target=${targets[$scan]}
       [ "$target" != "$other_target" ] ||
         rig_fail "[$other] conflicts with [$section_name] at native target '$target'" || return
       if [ "${section_name%%.*}.${other%%.*}" = firewall.firewall ] &&
@@ -3724,38 +3770,44 @@ rig_binding_supports_platform() {
 rig_select_bindings() {
   local platform tool_index tool section_index total matches binding_name
   local selected_variant binding_variant variant_install compatible_variant
+  local prefix lookup lookup_count
 
   platform=$1
   RIG_SELECTED_BINDINGS=()
+  lookup_count=${#RIG_SECTION_LOOKUP_NAMES[@]}
   tool_index=0
   while [ "$tool_index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
     tool=${RIG_SELECTED_TOOLS[$tool_index]}
     selected_variant=${RIG_SELECTED_VARIANTS[$tool_index]:-}
-    section_index=0
     total=0
     matches=0
     binding_name=
-    while [ "$section_index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
-      if [ "${RIG_SECTION_TYPES[$section_index]}" = binding ] &&
-        [ "${RIG_SECTION_IDS[$section_index]}" = "$tool" ]; then
-        compatible_variant=1
-        if rig_get_value "${RIG_SECTION_NAMES[$section_index]}" variant; then
-          binding_variant=$RIG_VALUE
-          [ "$binding_variant" = "$selected_variant" ] || compatible_variant=0
-        elif [ -n "$selected_variant" ]; then
-          variant_install=variant:$selected_variant:install-provider
-          if rig_get_value "tool.$tool" "$variant_install"; then
-            compatible_variant=0
-          fi
-        fi
-        [ "$compatible_variant" -eq 1 ] || { section_index=$((section_index + 1)); continue; }
-        total=$((total + 1))
-        if rig_binding_supports_platform "$section_index" "$platform"; then
-          matches=$((matches + 1))
-          binding_name=${RIG_SECTION_NAMES[$section_index]}
+    # Identifiers contain no dot, so a tool's installations are the
+    # contiguous sorted names beginning binding.TOOL. in the lookup.
+    prefix=binding.$tool.
+    rig_section_lookup_lower_bound "$prefix"
+    lookup=$RIG_INDEX
+    while [ "$lookup" -lt "$lookup_count" ]; do
+      case "${RIG_SECTION_LOOKUP_NAMES[$lookup]}" in "$prefix"*) ;; *) break ;; esac
+      section_index=${RIG_SECTION_LOOKUP_INDICES[$lookup]}
+      lookup=$((lookup + 1))
+      [ "${RIG_SECTION_TYPES[$section_index]}" = binding ] || continue
+      compatible_variant=1
+      if rig_get_value "${RIG_SECTION_NAMES[$section_index]}" variant; then
+        binding_variant=$RIG_VALUE
+        [ "$binding_variant" = "$selected_variant" ] || compatible_variant=0
+      elif [ -n "$selected_variant" ]; then
+        variant_install=variant:$selected_variant:install-provider
+        if rig_get_value "tool.$tool" "$variant_install"; then
+          compatible_variant=0
         fi
       fi
-      section_index=$((section_index + 1))
+      [ "$compatible_variant" -eq 1 ] || continue
+      total=$((total + 1))
+      if rig_binding_supports_platform "$section_index" "$platform"; then
+        matches=$((matches + 1))
+        binding_name=${RIG_SECTION_NAMES[$section_index]}
+      fi
     done
 
     if [ "$total" -eq 0 ]; then
@@ -3884,47 +3936,70 @@ rig_tool_dependencies_planned() {
   while [ "$field_index" -lt "$field_end" ]; do
     if [ "${RIG_FIELD_KEYS[$field_index]}" = requires ]; then
       dependency=${RIG_FIELD_VALUES[$field_index]}
-      rig_plan_index "$dependency" || return 1
+      case "$RIG_PLAN_MEMBERS" in *$'\n'"$dependency"$'\n'*) ;; *) return 1 ;; esac
     fi
     field_index=$((field_index + 1))
   done
   return 0
 }
 
+rig_plan_append_selected() {
+  local index binding provider
+
+  index=$1
+  binding=${RIG_SELECTED_BINDINGS[$index]:-}
+  provider=-
+  if [ -n "$binding" ]; then
+    rig_section_index "$binding" || return 2
+    provider=${RIG_SECTION_SECONDARY_IDS[$RIG_INDEX]}
+  fi
+  RIG_PLAN_TOOLS[${#RIG_PLAN_TOOLS[@]}]=${RIG_SELECTED_TOOLS[$index]}
+  RIG_PLAN_BINDINGS[${#RIG_PLAN_BINDINGS[@]}]=$binding
+  RIG_PLAN_PROVIDERS[${#RIG_PLAN_PROVIDERS[@]}]=$provider
+  RIG_PLAN_MEMBERS=$RIG_PLAN_MEMBERS${RIG_SELECTED_TOOLS[$index]}$'\n'
+}
+
+# Each step plans the lowest-indexed selected tool whose dependencies are
+# planned. Every index before the scan position is planned or waiting, so
+# only waiting tools are rechecked rather than rescanning the selection.
 rig_build_plan() {
-  local selected_count progress index tool binding provider section_index
+  local selected_count position index waiting_index progress
+  local -a waiting
 
   RIG_PLAN_TOOLS=()
   RIG_PLAN_BINDINGS=()
   RIG_PLAN_PROVIDERS=()
   RIG_PLAN_RESULTS=()
   RIG_PLAN_DETAILS=()
+  RIG_PLAN_MEMBERS=$'\n'
   selected_count=${#RIG_SELECTED_TOOLS[@]}
+  waiting=()
+  position=0
 
   while [ "${#RIG_PLAN_TOOLS[@]}" -lt "$selected_count" ]; do
     progress=0
-    index=0
-    while [ "$index" -lt "$selected_count" ]; do
-      tool=${RIG_SELECTED_TOOLS[$index]}
-      if rig_plan_index "$tool"; then
-        index=$((index + 1))
-        continue
-      fi
-      if rig_tool_dependencies_planned "$tool"; then
-        binding=${RIG_SELECTED_BINDINGS[$index]:-}
-        provider=-
-        if [ -n "$binding" ]; then
-          rig_section_index "$binding" || return 2
-          section_index=$RIG_INDEX
-          provider=${RIG_SECTION_SECONDARY_IDS[$section_index]}
+    waiting_index=0
+    while [ "$waiting_index" -lt "${#waiting[@]}" ]; do
+      index=${waiting[$waiting_index]}
+      if [ -n "$index" ]; then
+        if rig_tool_dependencies_planned "${RIG_SELECTED_TOOLS[$index]}"; then
+          rig_plan_append_selected "$index" || return
+          waiting[$waiting_index]=
+          progress=1
+          break
         fi
-        RIG_PLAN_TOOLS[${#RIG_PLAN_TOOLS[@]}]=$tool
-        RIG_PLAN_BINDINGS[${#RIG_PLAN_BINDINGS[@]}]=$binding
-        RIG_PLAN_PROVIDERS[${#RIG_PLAN_PROVIDERS[@]}]=$provider
-        progress=1
-        break
       fi
-      index=$((index + 1))
+      waiting_index=$((waiting_index + 1))
+    done
+    while [ "$progress" -eq 0 ] && [ "$position" -lt "$selected_count" ]; do
+      index=$position
+      position=$((position + 1))
+      if rig_tool_dependencies_planned "${RIG_SELECTED_TOOLS[$index]}"; then
+        rig_plan_append_selected "$index" || return
+        progress=1
+      else
+        waiting[${#waiting[@]}]=$index
+      fi
     done
     [ "$progress" -eq 1 ] || rig_fail 'cannot produce a dependency-ordered provider plan' || return
   done
