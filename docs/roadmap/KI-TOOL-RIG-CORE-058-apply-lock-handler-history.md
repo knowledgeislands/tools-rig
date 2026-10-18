@@ -5,13 +5,12 @@ title: Apply lock, handler history
 purpose: corrective
 theme: rig
 kind: deliver
-horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 8432f33de6b35be94750f3da6017c33b94ccd7dd
 created_at: 2026-10-15T00:53:34Z
-updated_at: 2026-10-18T07:30:00Z
+updated_at: 2026-10-18T17:26:05Z
 ---
 
 # Apply Lock, Handler History
@@ -117,6 +116,10 @@ The reconciliation-lock regressions (active and stale owners, tool-only target, 
 ### Mini recap
 
 `rig apply` and `rig upgrade` can no longer run at the same time: the second refuses at once and says who holds the lock, and an unattended upgrade that is refused says so in its report.
+
+## Done
+
+Accepted 2026-10-18 by the ways-of-working rig-lock-review run, after an independent re-check at `3a33d51`: the complete local gate in [Develop Rig](../guides/developer/README.md#verify-the-repository) passed, with all 582 Bats tests green and only the existing HOOK-1 and SHELL-FATAL audit warnings. Authority: the ways-of-working decisions log, ACCEPT-AND-PRUNE of 18 October 2026 ("accept every record awaiting acceptance whose verification evidence is recorded"), with RIG-LOCK-FOLLOWUP a) ("an independent review runs before the Rig acceptances"), and RIG-LOCK-CHOICES a), which confirmed the lock design and its choices. The removal and doctor gaps in Outstanding concerns are delivered by [KI-TOOL-RIG-CORE-061](KI-TOOL-RIG-CORE-061-removal-lock-diagnostics.md), accepted in the same sitting. Not pruned.
 
 ## Discussion
 

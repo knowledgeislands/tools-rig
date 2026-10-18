@@ -5,13 +5,12 @@ title: Removal lock diagnostics
 purpose: capability
 theme: rig
 kind: deliver
-horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: a31a96c1688a1ac2aee226a6a81e4bed90ba00fd
 created_at: 2026-10-18T05:32:38Z
-updated_at: 2026-10-18T06:07:55Z
+updated_at: 2026-10-18T17:26:05Z
 ---
 
 # KI-TOOL-RIG-CORE-061: Removal lock diagnostics
@@ -123,6 +122,10 @@ The existing lock regressions for apply, upgrade, tool-only targets and signals 
 ### Mini recap
 
 `rig remove --apply` can no longer run beside an apply or upgrade, in either order, and `rig doctor` says when a lock is held, whether its owner is still alive, and, for a dead owner, exactly what to delete.
+
+## Done
+
+Accepted 2026-10-18 by the ways-of-working rig-lock-review run, after an independent re-check at `3a33d51`: the complete local gate in [Develop Rig](../guides/developer/README.md#verify-the-repository) passed, with all 582 Bats tests green and only the existing HOOK-1 and SHELL-FATAL audit warnings. This run's independent review read `cacce0c` against every Step and Verify bullet: each has a fatal fixture assertion, the extracted `rig_platform_lock_owner` keeps `rig_platform_lock_take`'s refusal unchanged, the lock is released on every return from `rig_remove_selected`, and doctor reads locks without creating or changing them, whether or not configuration loads. No finding. Two notes, neither blocking: doctor does not refuse a symbolic-linked `operation/` or `reconciliation/` parent, which is harmless because it only reads; and interruption of a removal relies on the shared lock traps, which the apply and upgrade signal tests cover, without a removal-specific signal test. Authority: the ways-of-working decisions log, ACCEPT-AND-PRUNE of 18 October 2026 ("accept every record awaiting acceptance whose verification evidence is recorded"), with RIG-LOCK-FOLLOWUP a) ("an independent review runs before the Rig acceptances"); RIG-LOCK-FOLLOWUP a) also confirmed this record's adoption, plan and build, so its three provisional planning answers stand. Not pruned.
 
 ## Discussion
 

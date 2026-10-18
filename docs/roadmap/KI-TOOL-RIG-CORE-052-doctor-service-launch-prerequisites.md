@@ -5,13 +5,12 @@ title: Doctor service launch prerequisites
 purpose: capability
 theme: rig
 kind: deliver
-horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 7cbe3407552b21ec395223dad7b6b2aef5c108b7
 created_at: 2026-10-14T06:44:45Z
-updated_at: 2026-10-18T04:15:00Z
+updated_at: 2026-10-18T17:26:05Z
 ---
 
 # Doctor Service Launch Prerequisites
@@ -109,6 +108,10 @@ Existing doctor and port tests pass unchanged; a fully present service adds no f
 ### Mini recap
 
 Doctor now says a service cannot start because its program or working directory is missing, instead of only asking for its port's owner to be started.
+
+## Done
+
+Accepted 2026-10-18 by the ways-of-working rig-lock-review run, after an independent re-check at `3a33d51`: the complete local gate in [Develop Rig](../guides/developer/README.md#verify-the-repository) passed, with all 582 Bats tests green and only the existing HOOK-1 and SHELL-FATAL audit warnings. Authority: the ways-of-working decisions log, ACCEPT-AND-PRUNE of 18 October 2026 ("accept every record awaiting acceptance whose verification evidence is recorded"), with RIG-LOCK-FOLLOWUP a) ("an independent review runs before the Rig acceptances"). The provisional choice in Outstanding concerns, an `unlaunchable` service finding as well as the port annotation, stands as delivered. Not pruned.
 
 ## Discussion
 
