@@ -7138,6 +7138,7 @@ rig_expected_owner_identity() {
   owner=$1
   kind=${owner%%:*}
   id=${owner#*:}
+  RIG_OWNER_MODULES=
   case "$kind" in
     service|scheduled-job)
       section_name=$kind.$id
@@ -7168,6 +7169,7 @@ rig_expected_owner_identity() {
             value=${value##*:}
             RIG_OWNER_IDENTITY=$value
             RIG_OWNER_COMMAND=$value
+            RIG_OWNER_MODULES="$id ${value//-/_}"
             return 0
           fi
           break
@@ -7176,23 +7178,32 @@ rig_expected_owner_identity() {
       done
       RIG_OWNER_IDENTITY=$id
       RIG_OWNER_COMMAND=$id
+      RIG_OWNER_MODULES="$id ${id//-/_}"
       return 0
       ;;
   esac
   return 1
 }
 
+# A tool owner also matches an interpreter entry point, `-m MODULE[.sub]`, whose top-level
+# module is the tool identifier or its distribution name with hyphens as underscores.
 rig_owner_matches_listener() {
-  local argv process identity command
+  local argv process identity command modules module
 
   argv=$1
   process=$2
   identity=$3
   command=$4
+  modules=${5:-}
   if [ -n "$argv" ]; then
     case "$argv" in
       "$identity"|"$identity "*|*" $identity"|*" $identity "*|*"/$identity/"*|*"/$identity"|*"/$identity "*) return 0 ;;
     esac
+    for module in $modules; do
+      case "$argv" in
+        *" -m $module"|*" -m $module "*|*" -m $module."*) return 0 ;;
+      esac
+    done
     return 1
   fi
 
@@ -7200,7 +7211,7 @@ rig_owner_matches_listener() {
 }
 
 rig_observe_ports() {
-  local index port section_name number expected_scope mode owner expected_identity expected_command
+  local index port section_name number expected_scope mode owner expected_identity expected_command expected_modules
   local listener_index found actual_scope observed_command observed_argv foreign_command
   local owner_match owner_foreign owner_unverified
   local state detail
@@ -7232,6 +7243,7 @@ rig_observe_ports() {
     rig_expected_owner_identity "$owner" || return 2
     expected_identity=$RIG_OWNER_IDENTITY
     expected_command=$RIG_OWNER_COMMAND
+    expected_modules=$RIG_OWNER_MODULES
     found=0
     actual_scope=loopback
     observed_command=
@@ -7247,7 +7259,7 @@ rig_observe_ports() {
         [ "${RIG_LISTENER_SCOPES[$listener_index]}" != all-interfaces ] || actual_scope='all-interfaces'
         observed_command=${RIG_LISTENER_COMMANDS[$listener_index]}
         observed_argv=${RIG_LISTENER_ARGVS[$listener_index]}
-        if rig_owner_matches_listener "$observed_argv" "$observed_command" "$expected_identity" "$expected_command"; then
+        if rig_owner_matches_listener "$observed_argv" "$observed_command" "$expected_identity" "$expected_command" "$expected_modules"; then
           owner_match=$((owner_match + 1))
         elif [ -n "$observed_argv" ]; then
           owner_foreign=$((owner_foreign + 1))
@@ -8356,6 +8368,78 @@ rig_json_lines() {
   printf ']'
 }
 
+# A selected launchd resource can start only when its program and working directory exist.
+# Returns 0 with RIG_VALUE naming the first blocker; a bare program name is left to launchd.
+rig_resource_launch_blocker() {
+  local section_name section_index field_index field_end value
+
+  section_name=$1
+  rig_section_index "$section_name" || return 1
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = program ]; then
+      rig_launchd_expand_home "${RIG_FIELD_VALUES[$field_index]}" || return 1
+      value=$RIG_VALUE
+      case "$value" in
+        */*)
+          if [ ! -e "$value" ]; then
+            RIG_VALUE=program-missing:$value
+            return 0
+          elif [ -d "$value" ] || [ ! -x "$value" ]; then
+            RIG_VALUE=program-not-executable:$value
+            return 0
+          fi
+          ;;
+      esac
+      break
+    fi
+    field_index=$((field_index + 1))
+  done
+  if rig_get_value "$section_name" working-directory; then
+    rig_launchd_expand_home "$RIG_VALUE" || return 1
+    value=$RIG_VALUE
+    if [ ! -d "$value" ]; then
+      RIG_VALUE=working-directory-missing:$value
+      return 0
+    fi
+  fi
+  return 1
+}
+
+# Homebrew builds with the Command Line Tools, so their absence, or a major version behind
+# macOS, fails every Homebrew item for one shared reason. Xcode.app selections are left alone.
+rig_doctor_command_line_tools() {
+  local provider uses_homebrew path report line installed system
+
+  RIG_VALUE=
+  RIG_DOCTOR_CLT_CHECKED=0
+  [ "$RIG_RESOLVED_PLATFORM" = macos ] || return 0
+  uses_homebrew=0
+  for provider in "${RIG_PLAN_PROVIDERS[@]+"${RIG_PLAN_PROVIDERS[@]}"}"; do
+    [ "$provider" != homebrew ] || uses_homebrew=1
+  done
+  [ "$uses_homebrew" -eq 1 ] || return 0
+  RIG_DOCTOR_CLT_CHECKED=1
+  if ! path=$("${RIG_XCODE_SELECT:-/usr/bin/xcode-select}" -p 2>/dev/null) || [ -z "$path" ]; then
+    RIG_VALUE='  command-line-tools: missing (homebrew-items-fail-until-installed); owner=environment; action=run-xcode-select-install'
+    return 0
+  fi
+  case "$path" in */CommandLineTools|*/CommandLineTools/*) ;; *) return 0 ;; esac
+  report=$("${RIG_PKGUTIL:-/usr/sbin/pkgutil}" --pkg-info=com.apple.pkg.CLTools_Executables 2>/dev/null) || report=
+  installed=
+  while IFS= read -r line; do
+    case "$line" in version:\ *) installed=${line#version: } ;; esac
+  done <<< "$report"
+  system=$("${RIG_SW_VERS:-/usr/bin/sw_vers}" -productVersion 2>/dev/null) || system=
+  case "${installed%%.*}:${system%%.*}" in
+    *[!0-9:]*|:*|*:) return 0 ;;
+  esac
+  [ "${installed%%.*}" -lt "${system%%.*}" ] || return 0
+  RIG_VALUE="  command-line-tools: outdated (installed:$installed;macos:$system;homebrew-items-fail-until-updated); owner=environment; action=update-command-line-tools"
+}
+
 rig_doctor_native_availability() {
   local executable state
 
@@ -8371,6 +8455,7 @@ rig_doctor_native_availability() {
 
 rig_command_doctor() {
   local profile findings incompatible xdg_findings tool_findings resource_findings port_findings skill_findings
+  local environment_checks=0
   local index section_name state detail port owner action skill authority format information config_finding config_loaded
   local verbose profile_seen format_seen checks_passed checks_skipped checks_total checks_coverage
 
@@ -8472,6 +8557,12 @@ rig_command_doctor() {
   rig_observe_plan || return
   tool_findings=$RIG_VALUE
   findings=$RIG_DOCTOR_FINDINGS
+  rig_doctor_command_line_tools
+  if [ -n "$RIG_VALUE" ]; then
+    tool_findings="$RIG_VALUE${tool_findings:+$'\n'}$tool_findings"
+    findings=$((findings + 1))
+  fi
+  environment_checks=$RIG_DOCTOR_CLT_CHECKED
   if [ "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" -gt 0 ]; then
     rig_observe_resource_plan || return
     index=0
@@ -8483,6 +8574,15 @@ rig_command_doctor() {
         resource_findings="${resource_findings}  ${section_name}: ${state} (${detail}); owner=provider; action=review-then-run-rig-apply"$'\n'
         findings=$((findings + 1))
       fi
+      case "$section_name" in
+        service.*|scheduled-job.*)
+          if rig_resource_launch_blocker "$section_name"; then
+            resource_findings="${resource_findings}  ${section_name}: unlaunchable (${RIG_VALUE}); owner=configuration; action=restore-launch-path"$'\n'
+            # One item fails once, however many findings explain it.
+            [ "$state" != present ] || findings=$((findings + 1))
+          fi
+          ;;
+      esac
       index=$((index + 1))
     done
   fi
@@ -8503,10 +8603,17 @@ rig_command_doctor() {
       if [ "$state" != present ]; then
         rig_get_value "port.$port" owner || return 2
         owner=$RIG_VALUE
-        case "$state" in
-          missing) action=start-owner ;;
-          drifted) action=correct-listener-scope ;;
-          conflicting) action=stop-or-reconfigure-occupant ;;
+        case "$state:$owner" in
+          missing:service:*|missing:scheduled-job:*)
+            action=start-owner
+            if rig_resource_launch_blocker "${owner%%:*}.${owner#*:}"; then
+              detail="$detail;cause:owner-unlaunchable"
+              action=restore-owner-launch-path
+            fi
+            ;;
+          missing:*) action=start-owner ;;
+          drifted:*) action=correct-listener-scope ;;
+          conflicting:*) action=stop-or-reconfigure-occupant ;;
           *) action=inspect-listener-observation ;;
         esac
         port_findings="${port_findings}  port.${port}: ${state} (${detail}); owner=${owner}; action=${action}"$'\n'
@@ -8592,7 +8699,7 @@ rig_command_doctor() {
   if [ "$config_loaded" -eq 1 ]; then
     checks_total=$((checks_total + ${#RIG_PLAN_TOOLS[@]} + ${#RIG_RESOURCE_PLAN_SECTIONS[@]} + \
       ${#RIG_STALE_RESOURCE_IDS[@]} + ${#RIG_SELECTED_PORTS[@]} + ${#RIG_SELECTED_SKILLS[@]} + \
-      ${#RIG_APPLY_FAILURE_KEYS[@]} + ${#RIG_REMOVALS[@]} + incompatible))
+      ${#RIG_APPLY_FAILURE_KEYS[@]} + ${#RIG_REMOVALS[@]} + incompatible + environment_checks))
     checks_skipped=$((RIG_DOCTOR_CATALOGUE_ONLY + incompatible))
     checks_coverage=configuration,xdg,tools,resources,ports,skills,apply-history
   else

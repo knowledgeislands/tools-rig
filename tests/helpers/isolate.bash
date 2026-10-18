@@ -154,6 +154,20 @@ rig_test_isolate() {
   printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\n" "$*" >>"$0.log"' 'exit 1' >"$stub"
   chmod +x "$stub"
   export RIG_SS_COMMAND=$stub
+  # The Command Line Tools check reads the runner's toolchain. Report current tools
+  # so doctor output does not depend on the runner; tests of the check stub their own.
+  stub=$BATS_TEST_TMPDIR/isolated-xcode-select
+  printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\n" /Library/Developer/CommandLineTools' >"$stub"
+  chmod +x "$stub"
+  export RIG_XCODE_SELECT=$stub
+  stub=$BATS_TEST_TMPDIR/isolated-pkgutil
+  printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\n" "version: 99.0"' >"$stub"
+  chmod +x "$stub"
+  export RIG_PKGUTIL=$stub
+  stub=$BATS_TEST_TMPDIR/isolated-sw-vers
+  printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\n" 99.0' >"$stub"
+  chmod +x "$stub"
+  export RIG_SW_VERS=$stub
 }
 
 rig_test_provider() {

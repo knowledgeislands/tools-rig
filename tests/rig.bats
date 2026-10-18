@@ -4062,6 +4062,52 @@ write_launchd_fixture() {
     'scheduled-jobs = ["morning", "weekly"]' >"$CONFIG_HOME/rig.toml"
 }
 
+@test "doctor names a missing launch path as the cause of an owned port's silence" {
+  local lsof_fake
+
+  write_launchd_fixture
+  lsof_fake=$BATS_TEST_TMPDIR/lsof-empty
+  printf '%s\n' '#!/usr/bin/env bash' 'exit 0' >"$lsof_fake"
+  chmod +x "$lsof_fake"
+  sed 's|^start-policy = "load"$|start-policy = "load"\
+working-directory = "~/workspaces/site"|' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/edited.toml"
+  mv "$CONFIG_HOME/edited.toml" "$CONFIG_HOME/rig.toml"
+  printf '%s\n' 'ports = ["site"]' >>"$CONFIG_HOME/rig.toml"
+  printf '%s\n' '[port.site]' 'name = "Site"' 'purpose = "Serve the site"' 'rationale = "Stable address"' \
+    'protocol = "tcp"' 'port = 4201' 'scope = "loopback"' 'mode = "required"' 'owner = "service:daemon"' \
+    >>"$CONFIG_HOME/rig.toml"
+
+  doctor() {
+    run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
+      RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RIG_PLATFORM=macos \
+      RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
+      RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
+      RIG_LSOF_COMMAND="$lsof_fake" "$RIG" doctor
+  }
+
+  doctor
+  [ "$status" -eq 1 ] || false
+  [[ "$output" == *"service.daemon: unlaunchable (program-missing:$TEST_HOME/bin/example); owner=configuration; action=restore-launch-path"* ]] || {
+    printf '%s\n' "$output" >&3; false; }
+  [[ "$output" == *'port.site: missing (not-listening;cause:owner-unlaunchable); owner=service:daemon; action=restore-owner-launch-path'* ]] || false
+  [[ "$output" != *'scheduled-job.morning: unlaunchable'* ]] || false
+
+  mkdir -p "$TEST_HOME/bin"
+  printf '%s\n' '#!/bin/sh' >"$TEST_HOME/bin/example"
+  doctor
+  [[ "$output" == *"service.daemon: unlaunchable (program-not-executable:$TEST_HOME/bin/example)"* ]] || false
+
+  chmod +x "$TEST_HOME/bin/example"
+  doctor
+  [[ "$output" == *"service.daemon: unlaunchable (working-directory-missing:$TEST_HOME/workspaces/site)"* ]] || false
+
+  mkdir -p "$TEST_HOME/workspaces/site"
+  doctor
+  [[ "$output" != *'unlaunchable'* ]] || false
+  [[ "$output" == *'port.site: missing (not-listening); owner=service:daemon; action=start-owner'* ]] || false
+  ! grep -Eq '^(bootstrap|bootout|kickstart)' "$LAUNCHD_LOG" || false
+}
+
 @test "built-in launchd observes applies and retires declared resources" {
   local daemon_plist morning_plist weekly_plist
   local daemon_contents morning_contents weekly_contents
@@ -4734,6 +4780,29 @@ ports = ["required-api", "on-demand-api", "allocated-api", "free-allocation"]' \
   [[ "$(<"$PORT_LSOF_LOG")" == *'-nP -iTCP -sTCP:LISTEN -Fpcn'* ]] || false
   [ "$(wc -l <"$PORT_PS_LOG")" -eq 1 ]
   [ "$(<"$PORT_PS_LOG")" = '-axo pid=,command=' ]
+}
+
+@test "an interpreter entry point matches its owner tool's module and nothing else" {
+  write_port_fixture
+  listener_output=$'p101\ncPython\nn127.0.0.1:4101 (LISTEN)\np103\ncPython\nn127.0.0.1:4103 (LISTEN)\n'
+  ps_output=$'  101 /opt/homebrew/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python -m alpha.proxy --port 4101\n  103 /opt/homebrew/bin/python3 -m alphabet --port 4103\n'
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" \
+    RIG_TEST_LSOF_OUTPUT="$listener_output" RIG_TEST_PS_OUTPUT="$ps_output" \
+    "$RIG" status
+  output_has_table_row $'required-api\t4101\ttcp\trequired\ttool:alpha\tpresent\tlistening:loopback;owner:alpha' || {
+    printf '%s\n' "$output" >&3; false; }
+  output_has_table_row $'allocated-api\t4103\ttcp\tallocated\ttool:alpha\tconflicting\towner:Python;expected:alpha'
+
+  run bash -c '
+    . "$1"
+    rig_owner_matches_listener "/usr/bin/python3 -m headroom_ai" Python headroom-ai headroom-ai "headroom headroom_ai" || exit 1
+    rig_owner_matches_listener "/usr/bin/python3 -m headroom" Python headroom-ai headroom-ai "headroom headroom_ai" || exit 2
+    ! rig_owner_matches_listener "/usr/bin/python3 -m headroomx.cli" Python headroom-ai headroom-ai "headroom headroom_ai" || exit 3
+    ! rig_owner_matches_listener "/usr/bin/python3 -m pip install headroom" Python headroom-ai headroom-ai "" || exit 4
+  ' _ "$RIG"
+  [ "$status" -eq 0 ] || { printf "%s\n" "$output" >&3; false; }
 }
 
 @test "one process on both stacks of a port is a single unmanaged listener" {

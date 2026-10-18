@@ -4,12 +4,14 @@ area: CORE
 title: Command Line Tools check
 purpose: capability
 theme: rig
-status: triage
+kind: deliver
+horizon: now
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 7cbe3407552b21ec395223dad7b6b2aef5c108b7
 created_at: 2026-10-14T16:37:00Z
-updated_at: 2026-10-14T16:37:00Z
+updated_at: 2026-10-18T04:15:00Z
 ---
 
 # Command Line Tools Check
@@ -34,10 +36,84 @@ The native evidence is cheap and read-only: `xcode-select -p` for presence, `pkg
 - In: a read-only macOS doctor finding when the Command Line Tools are absent or their major version is below the running macOS major version, with `owner=environment` (or the owner field the specification settles on) and an action naming the fix (`xcode-select --install` or Software Update); a note in the same output that Homebrew items will fail until it is resolved; the matching `rig apply --dry-run` preflight warning if planning finds it cheap; specification text and isolated tests with stubbed `xcode-select`, `pkgutil` and `sw_vers`.
 - Out: installing or updating the Command Line Tools; running `brew doctor`; Xcode.app as an alternative toolchain beyond accepting it as present; Linux toolchains.
 
+## Current state
+
+Delivered locally to Awaiting review on 18 October 2026 by the tools-burndown run, from baseline `7cbe340`, against fixtures only; see Review.
+
+## Steps
+
+- [x] Add `rig_doctor_command_line_tools`, which runs only on macOS when the resolved plan contains a Homebrew-bound tool, through overridable `RIG_XCODE_SELECT`, `RIG_PKGUTIL` and `RIG_SW_VERS`.
+- [x] Report one `command-line-tools` tool finding, `missing` or `outdated` by major version, with `owner=environment`, the fix as the action and the note that Homebrew items fail until it is resolved; count it as one environment check.
+- [x] Stub the three commands in test isolation so no test reads the host toolchain.
+- [x] Add RIG-STATE-047, the manual text, the changelog and the Homebrew authority test; assemble and run the gate.
+
+## Files touched
+
+- [Observation](../../src/rig/22-observation.bash) and the assembled [executable](../../bin/rig).
+- [Test isolation](../../tests/helpers/isolate.bash), [Rig tests](../../tests/rig.bats) and [Homebrew authority tests](../../tests/rig-homebrew-authority.bats).
+- [State specification](../specs/state.md), [manual](../../man/rig.1) and [changelog](../../CHANGELOG.md).
+
+## Verify
+
+- Stubbed `xcode-select`, `pkgutil` and `sw_vers` with a Homebrew tool selected: no developer directory reports `command-line-tools: missing` with `action=run-xcode-select-install`; Command Line Tools 26.6.0.0.1 on macOS 27.0.1 reports `outdated (installed:26.6.0.0.1;macos:27.0.1;...)` with `action=update-command-line-tools`; both carry `owner=environment` and fail doctor once.
+- Current tools with a minor difference (27.0 on 27.0.1), an Xcode.app selection and a plan without Homebrew report nothing; the last runs none of the three commands.
+- `bats tests/rig-homebrew-authority.bats </dev/null`, then the full developer gate.
+
 ## Dependencies / blocks
 
 Not blocked; blocks nothing. Related to the shared-failure reporting note (R2) in the [mac-studio-bootstrap Project note](../../../ki-principal/Streams/Projects/mac-studio-setup/mac-studio-setup.md), which would collapse 84 identical failures into one; this record catches the cause before the run instead.
 
+## Documentation impact
+
+### Decision Records
+
+None: a bounded extension of the existing doctor and port contracts.
+
+### Specifications
+
+New RIG-STATE-047, Command Line Tools for Homebrew work.
+
+### Guides
+
+The manual and changelog carry the new findings; the user guides describe doctor generically and need no change.
+
+### Roadmap
+
+Planned together with KI-TOOL-RIG-CORE-052, KI-TOOL-RIG-CORE-054 and KI-TOOL-RIG-CORE-055 and delivered in one commit; no acceptance, prune or release has been performed.
+
+## Review
+
+### Delivered
+
+Delivered locally against fixtures only, from baseline `7cbe340`. The host's own Command Line Tools were never read by a test.
+
+### Change Summary
+
+- `rig_doctor_command_line_tools` in `22-observation.bash` reads `xcode-select -p`, the `CLTools_Executables` package version and `sw_vers -productVersion` when Homebrew work is selected on macOS.
+- Doctor prepends one `command-line-tools` finding to the tool findings and adds one environment check to the totals when it ran.
+- `tests/helpers/isolate.bash` stubs the three commands as current; RIG-STATE-047, the manual and the changelog describe the check.
+
+### Verification
+
+The complete local gate in [Develop Rig](../guides/developer/README.md#verify-the-repository) passes: audit (the existing HOOK-1 warning only), ShellCheck, Bash syntax, assembly drift, the fixture benchmark within budget, mandoc and diff checks. All 566 Bats tests pass.
+
+Withheld by authority: `scripts/smoke-native-providers` and any live doctor run on `sol` or `terra`.
+
+### Outstanding concerns
+
+- **Provisional plan choices.** Only a major-version lag counts; the finding fails doctor only when Homebrew work is selected; `apply` and `upgrade` do not refuse Homebrew work. Kris to confirm.
+- **Deviation, provisional.** The optional `rig apply --dry-run` preflight warning is not delivered; doctor is the one place the cause is named.
+
+### Post-change review
+
+Existing Homebrew doctor tests keep their counts apart from the one added environment check where Homebrew is selected; Linux and non-Homebrew plans are unchanged.
+
+### Mini recap
+
+Doctor now names missing or outdated Command Line Tools once, before a Homebrew apply fails on every item.
+
 ## Discussion
 
 Origin: the `sol` bring-up, captured on Kris Brown's approval of RIG-RECORDS on 2026-10-14 (decision 70 in the thread's decisions log). Planning questions: whether a minor-version lag (26.6 on 26.7) also counts, or only a major one; whether the finding makes doctor unhealthy or stays informational when no Homebrew tool is selected; whether `apply` and `upgrade` should refuse Homebrew work outright while the finding stands. Capture only; adoption, priority and plan belong to this repository.
+
+Adopted, planned and delivered on 18 October 2026 by the tools-burndown run, under the rig-lane report's RIG-ORDER a) ("plan KI-TOOL-RIG-CORE-055, KI-TOOL-RIG-CORE-052 and KI-TOOL-RIG-CORE-054 to Ready in one ki-plan sitting") and Kris's overnight instruction of 18 October 2026, 04:30 BST, to burn the roadmap down as far as possible and take the recommended course on a judgement call. The record was triage, so its adoption to `deliver` / Now and its plan choices below are provisional, for Kris to confirm at review.

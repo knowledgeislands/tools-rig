@@ -274,11 +274,11 @@ _Evidence:_ `rig_acquire_reconciliation_lock`, signal traps, `rig_release_reconc
 
 ### RIG-STATE-026 — Private port expected-versus-observed state
 
-For a selected private TCP port, Rig MUST report a required absent listener as `missing`; MUST treat absent on-demand and allocated ports as healthy availability; MUST report a listener with a different bind scope as `drifted`; MUST report positively different ownership as `conflicting`; and MUST report inaccessible ownership or observation as `unknown` or `unavailable` rather than infer absence, drift, or ownership. Allocated occupancy with no positively different owner MUST remain informational. An ownership match MUST rest on the listener's full command line compared against the owner's declaration — a service's or scheduled job's home-expanded `program`, a tool's selected locator without package extras — matched as a complete argument token or path component, with an exact executable-name match as fallback evidence. A listener whose command line cannot be read and whose executable name differs MUST be reported as unverified ownership, never as `conflicting`, and the `conflicting` detail MUST name the listener whose command line positively identified a different process.
+For a selected private TCP port, Rig MUST report a required absent listener as `missing`; MUST treat absent on-demand and allocated ports as healthy availability; MUST report a listener with a different bind scope as `drifted`; MUST report positively different ownership as `conflicting`; and MUST report inaccessible ownership or observation as `unknown` or `unavailable` rather than infer absence, drift, or ownership. Allocated occupancy with no positively different owner MUST remain informational. An ownership match MUST rest on the listener's full command line compared against the owner's declaration — a service's or scheduled job's home-expanded `program`, a tool's selected locator without package extras — matched as a complete argument token or path component, with an exact executable-name match as fallback evidence. A tool owner MUST also match an interpreter entry point `-m MODULE` or `-m MODULE.SUB` whose top-level module is the tool identifier or the locator identity with hyphens replaced by underscores. A listener whose command line cannot be read and whose executable name differs MUST be reported as unverified ownership, never as `conflicting`, and the `conflicting` detail MUST name the listener whose command line positively identified a different process.
 
 _Conformance:_ conforming
 
-_Verify:_ Deterministic Bats command fakes emit no listener, loopback, IPv4 and IPv6 wildcard, matching owner, different owner, missing command, malformed output, and native failure records without opening real sockets.
+_Verify:_ Deterministic Bats command fakes emit no listener, loopback, IPv4 and IPv6 wildcard, matching owner, interpreter entry point, a different module with a shared prefix, different owner, missing command, malformed output, and native failure records without opening real sockets.
 
 _Evidence:_ `rig_load_listeners` and `rig_observe_ports` normalise one cached observation; private-port status and doctor tests verify every mode and outcome.
 
@@ -491,3 +491,23 @@ _Conformance:_ conforming
 _Verify:_ Isolated fixtures for each provider cover present, missing, each drift reason, exposure with and without a present restriction, listener-source failure, an unsafe managed file and service-manager failure, and assert that no read-only command logs `sudo`, `pfctl`, `nft`, a launchd or systemd load, unload or enablement, or a file write.
 
 _Evidence:_ `rig_firewall_observe`, `rig_firewall_exposed_ports`, `rig_firewall_load_state`, `rig_nftables_observe`, `rig_nftables_exposed_ports`, `rig_nftables_unit_state`, `tests/rig-firewall.bats` and `tests/rig-firewall-linux.bats` implement the evidence boundary.
+
+### RIG-STATE-046 — Launch prerequisites
+
+`rig doctor` MUST check, read-only, that each selected launchd service and scheduled job can start: a `program` executable given as a path, after `~` expansion, MUST exist and be executable, and a declared `working-directory` MUST exist as a directory. A failed check MUST be a resource finding `unlaunchable` naming `program-missing`, `program-not-executable` or `working-directory-missing` with the path, `owner=configuration` and `action=restore-launch-path`, and MUST count once per item with any other finding for the same resource. A required port whose owning service or scheduled job is unlaunchable and which has no listener MUST add `cause:owner-unlaunchable` to its detail and use `action=restore-owner-launch-path` instead of `start-owner`. Doctor MUST NOT create paths, start, stop or reload the resource.
+
+_Conformance:_ conforming
+
+_Verify:_ Isolated launchd fixtures cover a missing program, a non-executable program, a missing working directory, all present, and the dependent port's cause and action, with no launchd mutation logged.
+
+_Evidence:_ `rig_resource_launch_blocker` and `rig_command_doctor`; `doctor names a missing launch path as the cause of an owned port's silence` in `tests/rig.bats`.
+
+### RIG-STATE-047 — Command Line Tools for Homebrew work
+
+On macOS, when the resolved plan contains a Homebrew-bound tool, `rig doctor` MUST read `xcode-select -p`, `pkgutil --pkg-info=com.apple.pkg.CLTools_Executables` and `sw_vers -productVersion` and MUST report one tool finding `command-line-tools`: `missing` when no developer directory is selected, with `action=run-xcode-select-install`, or `outdated` when the selected directory is the Command Line Tools and their major version is below the running macOS major version, naming both versions, with `action=update-command-line-tools`. Both MUST use `owner=environment` and say that Homebrew items fail until resolved. A selected Xcode.app, unreadable versions, a minor-version difference, another platform or a plan without Homebrew MUST produce no finding, and the last two MUST run none of these commands. Doctor MUST NOT install or update the tools or run `brew doctor`.
+
+_Conformance:_ conforming
+
+_Verify:_ Stubbed `xcode-select`, `pkgutil` and `sw_vers` cover missing, outdated, current and Xcode.app selections and a plan without Homebrew, and assert the exact read-only arguments.
+
+_Evidence:_ `rig_doctor_command_line_tools`; `doctor names missing or outdated Command Line Tools once for Homebrew work` in `tests/rig-homebrew-authority.bats`.

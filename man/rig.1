@@ -265,6 +265,10 @@ The spacing is not a machine-readable interface.
 A declared private port compares its owner against the whole command line of
 the bound process, so a listener started through an interpreter still matches
 the service program or tool locator it was declared to run.
+An interpreter entry point such as
+.BI "python \-m " MODULE
+matches a tool owner whose identifier, or its hyphen-to-underscore form, is the
+module's top-level package.
 .B conflicting
 asserts that a readable command line identifies a different process, and names
 that process. An unreadable command line whose executable name does not match
@@ -389,6 +393,16 @@ auto-update agent Rig did not declare, such as Homebrew's
 .BR "brew autoupdate" ,
 is reported as information alone: it adds no finding, changes no exit status,
 and Rig never installs, modifies, or removes it.
+A declared service or scheduled job whose absolute program or working directory
+is missing is reported as
+.B unlaunchable
+with
+.BR restore-launch-path ,
+and an owned port that is missing because of it names
+.B cause:owner-unlaunchable
+instead of asking to start the owner. When Homebrew work is selected on macOS,
+missing Command Line Tools, or a Command Line Tools selection older than the
+running macOS major version, is one environment finding.
 .TP
 .B rig diag [\-\-full]
 Print offline, share-safe Tool, Version, Installation, Platform, Architecture,
@@ -983,6 +997,14 @@ bundle identity uses the existing
 .B RIG_PLUTIL
 override or
 .IR /usr/bin/plutil .
+The Command Line Tools check uses
+.BR RIG_XCODE_SELECT ,
+.BR RIG_PKGUTIL " and " RIG_SW_VERS ,
+defaulting to
+.IR /usr/bin/xcode-select ,
+.I /usr/sbin/pkgutil
+and
+.IR /usr/bin/sw_vers .
 .SS MANAGED RESOURCES
 \&
 .B [service.ID]
