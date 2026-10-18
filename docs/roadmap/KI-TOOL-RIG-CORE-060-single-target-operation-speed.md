@@ -131,6 +131,10 @@ The planner gives the same lowest-indexed-ready order: the new test pins an earl
 
 A targeted `laptop` preview on `sol` now takes about 5 seconds instead of 24, with the same output and the same native probes.
 
+## Discussion
+
+The tools-burndown thread's rig-target-speed run delegated this record, using the HNR mail-triage job on the `laptop` profile as its example. That job is not declared on `sol`, so `scheduled-job:workstation-health` stands in for it in the real-catalogue measurements. The delegation allows local, fixture-backed delivery up to Awaiting review. It does not allow a live `rig apply`, acceptance, a push or a release.
+
 ### Independent review
 
 The tools-burndown run reviewed the change on 18 October 2026 for RIG-TARGET-SPEED-ACCEPT, at `30fbebf`, without having written it. No findings.
@@ -141,7 +145,3 @@ The tools-burndown run reviewed the change on 18 October 2026 for RIG-TARGET-SPE
 - **Gate.** Audit, ShellCheck, Bash syntax, assembly drift and mandoc pass; all 552 Bats tests pass.
 
 Acceptance stays with Kris.
-
-## Discussion
-
-The tools-burndown thread's rig-target-speed run delegated this record, using the HNR mail-triage job on the `laptop` profile as its example. That job is not declared on `sol`, so `scheduled-job:workstation-health` stands in for it in the real-catalogue measurements. The delegation allows local, fixture-backed delivery up to Awaiting review. It does not allow a live `rig apply`, acceptance, a push or a release.
