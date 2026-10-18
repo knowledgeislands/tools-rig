@@ -6,12 +6,12 @@ purpose: capability
 theme: rig
 kind: deliver
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: a31a96c1688a1ac2aee226a6a81e4bed90ba00fd
 created_at: 2026-10-18T05:32:38Z
-updated_at: 2026-10-18T05:53:22Z
+updated_at: 2026-10-18T06:07:55Z
 ---
 
 # KI-TOOL-RIG-CORE-061: Removal lock diagnostics
@@ -38,17 +38,17 @@ At baseline `a31a96c`, `rig_platform_lock_take` in `src/rig/21-provider-state.ba
 
 ## Steps
 
-- [ ] Extract the owner classification from `rig_platform_lock_take` into `rig_platform_lock_owner LOCK`, setting `RIG_LOCK_CONTENTION` and `RIG_LOCK_CONTENTION_COMMAND`, and recognise `remove` as an owning command. `rig_platform_lock_take` calls it unchanged in behaviour.
-- [ ] In `rig_command_remove_impl`, under `--apply` only, acquire the operation lock with command `remove` straight after profile resolution and the complete-profile check, before collecting removals, so a held lock refuses with status 2 before any observation or native call. Move the remainder into a helper so the lock is released on every return, with the existing traps covering interruption. Preview and `--dry-run` take no lock.
-- [ ] Add `rig_doctor_platform_locks` beside the other doctor checks. For the resolved platform it inspects the operation and reconciliation lock paths without creating anything. An absent lock adds nothing. An active owner is a warning (`operation-lock: active (owner-command:apply); owner=rig; action=wait-for-owner`), because a run in progress is normal. A stale or unknown owner is a failure (`action=remove-lock-after-owner-exits`), because it refuses every later live run. A symbolic link or non-directory at the path is an `unsafe` failure. Each held lock counts as one evaluated item; coverage gains `locks`. It runs whether or not configuration loads.
-- [ ] Report findings under `Lock findings:` in text and `findings.locks` in JSON, with no path in either. Text output alone adds a `Lock recovery:` section naming the exact, shell-quoted command to remove a stale or unknown lock by hand, `rm -r -- PATH`, once no apply, upgrade or removal is running.
-- [ ] Amend RIG-STATE-025 to include `rig remove --apply`; amend RIG-STATE-015 for the lock findings, warning and text-only recovery path; update the manual's `remove`, `doctor` and FILES text, the command guide and the unattended updates guide, the changelog, and reassemble `bin/rig`.
-- [ ] Add isolated Bats cases and run the complete local gate.
+- [x] Extract the owner classification from `rig_platform_lock_take` into `rig_platform_lock_owner LOCK`, setting `RIG_LOCK_CONTENTION` and `RIG_LOCK_CONTENTION_COMMAND`, and recognise `remove` as an owning command. `rig_platform_lock_take` calls it unchanged in behaviour.
+- [x] In `rig_command_remove_impl`, under `--apply` only, acquire the operation lock with command `remove` straight after profile resolution and the complete-profile check, before collecting removals, so a held lock refuses with status 2 before any observation or native call. Move the remainder into a helper so the lock is released on every return, with the existing traps covering interruption. Preview and `--dry-run` take no lock.
+- [x] Add `rig_doctor_platform_locks` beside the other doctor checks. For the resolved platform it inspects the operation and reconciliation lock paths without creating anything. An absent lock adds nothing. An active owner is a warning (`operation-lock: active (owner-command:apply); owner=rig; action=wait-for-owner`), because a run in progress is normal. A stale or unknown owner is a failure (`action=remove-lock-after-owner-exits`), because it refuses every later live run. A symbolic link or non-directory at the path is an `unsafe` failure. Each held lock counts as one evaluated item; coverage gains `locks`. It runs whether or not configuration loads.
+- [x] Report findings under `Lock findings:` in text and `findings.locks` in JSON, with no path in either. Text output alone adds a `Lock recovery:` section naming the exact, shell-quoted command to remove a stale or unknown lock by hand, `rm -r -- PATH`, once no apply, upgrade or removal is running.
+- [x] Amend RIG-STATE-025 to include `rig remove --apply`; amend RIG-STATE-015 for the lock findings, warning and text-only recovery path; update the manual's `remove`, `doctor` and FILES text, the command guide and the unattended updates guide, the changelog, and reassemble `bin/rig`.
+- [x] Add isolated Bats cases and run the complete local gate.
 
 ## Files touched
 
 - `src/rig/21-provider-state.bash`, `src/rig/22-observation.bash`, `src/rig/27-software-removal.bash`, and the assembled `bin/rig`.
-- `tests/rig-software-removal.bats`, `tests/rig-doctor-config.bats` or a new `tests/rig-doctor-locks.bats`, and the exact-shape assertions in `tests/diagnostics-tables.bats` and `tests/rig-projection.bats`.
+- `tests/rig-software-removal.bats`, the new `tests/rig-doctor-locks.bats`, `tests/rig-lifecycle.bats`, and the exact-shape assertions in `tests/diagnostics-tables.bats` and `tests/rig-projection.bats`.
 - `docs/specs/state.md`, `man/rig.1`, `docs/guides/user/commands.md`, `docs/guides/user/unattended-updates.md`, `CHANGELOG.md`.
 
 ## Verify
@@ -78,7 +78,7 @@ None.
 
 ### Specifications
 
-RIG-STATE-025 adds live `rig remove --apply` to the operation lock's holders. RIG-STATE-015 adds lock findings, the active-owner warning and the text-only recovery path.
+RIG-STATE-025 adds live `rig remove --apply` to the operation lock's holders. RIG-STATE-015 adds lock findings, the active-owner warning and the text-only recovery path. RIG-STATE-030's list of owning commands in a refused unattended report gains `remove`.
 
 ### Guides
 
@@ -87,6 +87,42 @@ The manual's `remove`, `doctor` and FILES text, the command guide, and the unatt
 ### Roadmap
 
 None beyond this record.
+
+## Review
+
+### Delivered
+
+Delivered locally against fixtures only by the ways-of-working rig-review run on 18 October 2026, from baseline `a31a96c`, under the provisional plan in Discussion. No live `rig remove`, `rig apply` or `rig upgrade` ran, no lock outside a test's temporary state home was read or touched, and nothing was accepted or released.
+
+### Change Summary
+
+- **Owner classification** (`21-provider-state.bash`): `rig_platform_lock_owner` now holds the active, stale and unknown rule that `rig_platform_lock_take` used inline, and recognises `remove` as an owning command; the refusal message is unchanged.
+- **Removal** (`27-software-removal.bash`): `rig remove --apply` takes the operation lock with command `remove` straight after profile resolution, before collecting or observing removals, and releases it after the run; the body moved unchanged into `rig_remove_selected`. Preview and `--dry-run` take none.
+- **Doctor** (`22-observation.bash`): `rig_doctor_platform_locks` reads the selected platform's operation and reconciliation locks without creating or changing anything. A running owner is a warning with `action=wait-for-owner`; a stale or unknown owner, or a symbolic link or non-directory at the lock path, is a failure under `Lock findings` and `findings.locks`, whether or not configuration loads. Text output alone adds `Lock recovery`, with the exact shell-quoted `rm -r -- PATH`. Each held lock is one item; coverage gains `locks`.
+- **Tests:** five cases in the new `tests/rig-doctor-locks.bats`, three removal cases in `tests/rig-software-removal.bats`, one upgrade case in `tests/rig-lifecycle.bats`, and the updated coverage and findings-key assertions in `tests/diagnostics-tables.bats` and `tests/rig-projection.bats`.
+- **Documentation:** RIG-STATE-015, RIG-STATE-025 and RIG-STATE-030's owner list; the manual, command guide, unattended updates guide and changelog.
+
+### Verification
+
+The complete local gate in [Develop Rig](../guides/developer/README.md#verify-the-repository) passes: audit (the existing HOOK-1 warning only), ShellCheck, Bash syntax, assembly drift, the fixture benchmark, the native-provider version smoke (version probes only), mandoc and diff checks. All 581 Bats tests pass. Withheld by authority: any live removal, apply or upgrade, and doctor against the real state home.
+
+Every Verify bullet has a fixture: refusal on active, stale and unknown owners with an empty provider log and a retained lock; a provider fixture recording `profile=default command=remove` in the lock while `brew list` and `brew uninstall` run, and release after success, a refused confirmation and a failed uninstall; preview and dry run with and without a held lock; `owner=remove` in a refused unattended upgrade's report; and the doctor cases, including byte-identical state and a broken configuration.
+
+### Outstanding concerns
+
+- **Provisional choices, for Kris to confirm:** the three planning answers in Discussion (no removal report; stale and unknown fail, active warns; exact `rm -r` command in text only), and `owner=rig` as the finding's owner field.
+- **The JSON check is narrower than "no path anywhere".** The test proves the lock finding and recovery command carry no path; when configuration cannot load, doctor's existing information block still prints the state path, as before.
+- **A recycled process identifier** can still make a stale owner look active, so doctor would warn rather than fail; this is the existing RIG-STATE-025 rule.
+- **The lock is held across the confirmation prompt.** It is taken before observation, so a removal left waiting at `Type remove` blocks an unattended upgrade until it is answered or interrupted; and a removal with nothing to remove still briefly takes, and can be refused by, the lock. Taking it only after confirmation would let the observed state change before the lock, so the plan's order was kept.
+- **The installed Rig on both Macs** keeps the old behaviour until a release, which needs Kris.
+
+### Post-change review
+
+The existing lock regressions for apply, upgrade, tool-only targets and signals pass unchanged, so the extraction kept `rig_platform_lock_take`'s behaviour. The lock is taken only after argument parsing, configuration and profile resolution, which invoke no provider, so a syntax error still fails before contention is checked, and an undeclared target is still rejected before any provider call.
+
+### Mini recap
+
+`rig remove --apply` can no longer run beside an apply or upgrade, in either order, and `rig doctor` says when a lock is held, whether its owner is still alive, and, for a dead owner, exactly what to delete.
 
 ## Discussion
 

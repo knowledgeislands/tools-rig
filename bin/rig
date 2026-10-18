@@ -5449,10 +5449,38 @@ rig_platform_lock_traps() {
   trap 'rig_platform_lock_signal 143' TERM
 }
 
+# Classify a held lock's owner without changing it: a live pid is active, a
+# dead one stale, anything else unknown. The raw owner line is left in RIG_VALUE.
+rig_platform_lock_owner() {
+  local lock owner owner_pid
+
+  lock=$1
+  owner=unknown
+  if [ -f "$lock/owner" ] && [ -r "$lock/owner" ]; then
+    IFS= read -r owner <"$lock/owner" || owner=unknown
+  fi
+  RIG_LOCK_CONTENTION=active
+  case "$owner" in
+    pid=[0-9]*' '*)
+      owner_pid=${owner#pid=}
+      owner_pid=${owner_pid%% *}
+      kill -0 "$owner_pid" 2>/dev/null || RIG_LOCK_CONTENTION=stale
+      ;;
+    *) RIG_LOCK_CONTENTION=unknown ;;
+  esac
+  case " $owner " in
+    *' command=apply '*) RIG_LOCK_CONTENTION_COMMAND=apply ;;
+    *' command=upgrade '*) RIG_LOCK_CONTENTION_COMMAND=upgrade ;;
+    *' command=remove '*) RIG_LOCK_CONTENTION_COMMAND=remove ;;
+    *) RIG_LOCK_CONTENTION_COMMAND=unknown ;;
+  esac
+  RIG_VALUE=$owner
+}
+
 # Create one exclusive per-platform lock directory and record its owner. A held
 # lock is reported, never removed, and its state left in RIG_LOCK_CONTENTION.
 rig_platform_lock_take() {
-  local label platform lock profile command parent ancestor owner owner_pid owner_state
+  local label platform lock profile command parent ancestor
 
   label=$1
   platform=$2
@@ -5477,26 +5505,8 @@ rig_platform_lock_take() {
   if ! mkdir "$lock" 2>/dev/null; then
     [ -d "$lock" ] && [ ! -L "$lock" ] ||
       rig_fail "$label target lock is unsafe: $lock" || return
-    owner=unknown
-    if [ -f "$lock/owner" ] && [ -r "$lock/owner" ]; then
-      IFS= read -r owner <"$lock/owner" || owner=unknown
-    fi
-    owner_state=active
-    case "$owner" in
-      pid=[0-9]*' '*)
-        owner_pid=${owner#pid=}
-        owner_pid=${owner_pid%% *}
-        kill -0 "$owner_pid" 2>/dev/null || owner_state=stale
-        ;;
-      *) owner_state=unknown ;;
-    esac
-    RIG_LOCK_CONTENTION=$owner_state
-    case " $owner " in
-      *' command=apply '*) RIG_LOCK_CONTENTION_COMMAND=apply ;;
-      *' command=upgrade '*) RIG_LOCK_CONTENTION_COMMAND=upgrade ;;
-      *) RIG_LOCK_CONTENTION_COMMAND=unknown ;;
-    esac
-    rig_fail "$label target '$platform' is $owner_state; owner=$owner" || return
+    rig_platform_lock_owner "$lock"
+    rig_fail "$label target '$platform' is $RIG_LOCK_CONTENTION; owner=$RIG_VALUE" || return
   fi
   if ! printf 'pid=%s profile=%s command=%s\n' "$$" "$profile" "$command" >"$lock/owner"; then
     rmdir "$lock" 2>/dev/null || true
@@ -5524,7 +5534,7 @@ rig_acquire_reconciliation_lock() {
   rig_platform_lock_traps
 }
 
-# Live apply and upgrade hold this lock for the whole run, so two native
+# Live apply, upgrade and removal hold this lock for the whole run, so two native
 # managers never run side by side; it wraps the reconciliation lock.
 rig_acquire_operation_lock() {
   local platform profile command lock
@@ -8525,6 +8535,47 @@ rig_doctor_command_line_tools() {
   RIG_VALUE="  command-line-tools: outdated (installed:$installed;macos:$system;homebrew-items-fail-until-updated); owner=environment; action=update-command-line-tools"
 }
 
+# A held lock refuses every later live run on its platform. Read each lock
+# without creating, changing or removing it: an active owner only warns, while a
+# stale, unknown or unsafe lock fails. Recovery commands name paths, so only
+# text output prints them.
+rig_doctor_platform_locks() {
+  local platform kind lock line
+
+  platform=$1
+  RIG_DOCTOR_LOCK_FINDINGS=
+  RIG_DOCTOR_LOCK_FAILURES=0
+  RIG_DOCTOR_LOCK_WARNINGS=
+  RIG_DOCTOR_LOCK_WARNING_COUNT=0
+  RIG_DOCTOR_LOCK_RECOVERY=
+  for kind in operation reconciliation; do
+    case "$kind" in
+      operation) rig_operation_lock_path "$platform" || return ;;
+      reconciliation) rig_reconciliation_lock_path "$platform" || return ;;
+    esac
+    lock=$RIG_VALUE
+    if [ -L "$lock" ] || { [ -e "$lock" ] && [ ! -d "$lock" ]; }; then
+      RIG_DOCTOR_LOCK_FINDINGS="${RIG_DOCTOR_LOCK_FINDINGS}  ${kind}-lock: unsafe (not-a-lock-directory); owner=rig; action=inspect-state-directory"$'\n'
+      RIG_DOCTOR_LOCK_FAILURES=$((RIG_DOCTOR_LOCK_FAILURES + 1))
+      continue
+    fi
+    [ -d "$lock" ] || continue
+    rig_platform_lock_owner "$lock"
+    line="  ${kind}-lock: ${RIG_LOCK_CONTENTION} (owner-command:${RIG_LOCK_CONTENTION_COMMAND}); owner=rig"
+    if [ "$RIG_LOCK_CONTENTION" = active ]; then
+      RIG_DOCTOR_LOCK_WARNINGS="${RIG_DOCTOR_LOCK_WARNINGS}${line}; action=wait-for-owner"$'\n'
+      RIG_DOCTOR_LOCK_WARNING_COUNT=$((RIG_DOCTOR_LOCK_WARNING_COUNT + 1))
+    else
+      RIG_DOCTOR_LOCK_FINDINGS="${RIG_DOCTOR_LOCK_FINDINGS}${line}; action=remove-lock-after-owner-exits"$'\n'
+      RIG_DOCTOR_LOCK_FAILURES=$((RIG_DOCTOR_LOCK_FAILURES + 1))
+      RIG_DOCTOR_LOCK_RECOVERY="${RIG_DOCTOR_LOCK_RECOVERY}  ${kind}-lock: rm -r -- $(printf '%q' "$lock")"$'\n'
+    fi
+  done
+  RIG_DOCTOR_LOCK_FINDINGS=${RIG_DOCTOR_LOCK_FINDINGS%$'\n'}
+  RIG_DOCTOR_LOCK_WARNINGS=${RIG_DOCTOR_LOCK_WARNINGS%$'\n'}
+  RIG_DOCTOR_LOCK_RECOVERY=${RIG_DOCTOR_LOCK_RECOVERY%$'\n'}
+}
+
 rig_doctor_native_availability() {
   local executable state
 
@@ -8766,6 +8817,12 @@ rig_command_doctor() {
   if [ -n "$xdg_findings" ]; then
     while IFS= read -r _; do findings=$((findings + 1)); done <<< "$xdg_findings"
   fi
+  rig_doctor_platform_locks "$RIG_RESOLVED_PLATFORM" || return
+  findings=$((findings + RIG_DOCTOR_LOCK_FAILURES))
+  if [ -n "$RIG_DOCTOR_LOCK_WARNINGS" ]; then
+    warnings="${warnings}${warnings:+$'\n'}$RIG_DOCTOR_LOCK_WARNINGS"
+    warning_count=$((warning_count + RIG_DOCTOR_LOCK_WARNING_COUNT))
+  fi
   RIG_APPLY_FAILURE_KEYS=(); RIG_APPLY_FAILURE_TIMES=(); RIG_APPLY_FAILURE_STATUSES=(); RIG_APPLY_FAILURE_AGES=()
   RIG_APPLY_HISTORY_UNAVAILABLE=
   if [ "$config_loaded" -eq 1 ]; then
@@ -8780,19 +8837,21 @@ rig_command_doctor() {
   # not individual subprocess calls or progress events. Neutral selections skip.
   checks_total=6
   checks_skipped=0
-  checks_coverage=configuration,xdg,apply-history
+  checks_coverage=configuration,xdg,apply-history,locks
   if [ "$config_loaded" -eq 1 ]; then
     checks_total=$((checks_total + ${#RIG_PLAN_TOOLS[@]} + ${#RIG_RESOURCE_PLAN_SECTIONS[@]} + \
       ${#RIG_STALE_RESOURCE_IDS[@]} + ${#RIG_SELECTED_PORTS[@]} + ${#RIG_SELECTED_SKILLS[@]} + \
       ${#RIG_APPLY_FAILURE_KEYS[@]} + ${#RIG_REMOVALS[@]} + incompatible + environment_checks))
     checks_skipped=$((RIG_DOCTOR_CATALOGUE_ONLY + incompatible))
-    checks_coverage=configuration,xdg,tools,resources,ports,skills,apply-history
+    checks_coverage=configuration,xdg,tools,resources,ports,skills,apply-history,locks
   else
     # One dependent selection group could not be evaluated at all.
     checks_total=$((checks_total + 1))
     checks_skipped=1
   fi
-  # A deprecated declaration still works, so it warns without failing a check.
+  # Each held lock is one evaluated item; an absent lock adds no check.
+  checks_total=$((checks_total + RIG_DOCTOR_LOCK_FAILURES))
+  # A deprecated declaration or an active lock warns without failing a check.
   checks_total=$((checks_total + warning_count))
   checks_passed=$((checks_total - checks_skipped - findings - warning_count))
   rig_diagnostic_context || return
@@ -8827,6 +8886,8 @@ rig_command_doctor() {
     rig_json_lines "$port_findings"
     printf ',"skills":'
     rig_json_lines "$skill_findings"
+    printf ',"locks":'
+    rig_json_lines "$RIG_DOCTOR_LOCK_FINDINGS"
     printf '},"warnings":'
     rig_json_lines "$warnings"
     printf ',"information":'
@@ -8866,6 +8927,12 @@ rig_command_doctor() {
   fi
   if [ -n "$skill_findings" ]; then
     printf 'Skill findings:\n%s\n' "$skill_findings"
+  fi
+  if [ -n "$RIG_DOCTOR_LOCK_FINDINGS" ]; then
+    printf 'Lock findings:\n%s\n' "$RIG_DOCTOR_LOCK_FINDINGS"
+  fi
+  if [ -n "$RIG_DOCTOR_LOCK_RECOVERY" ]; then
+    printf 'Lock recovery (once no apply, upgrade or removal is running):\n%s\n' "$RIG_DOCTOR_LOCK_RECOVERY"
   fi
   if [ -n "$warnings" ]; then
     printf 'Warnings:\n%s\n' "$warnings"
@@ -11219,7 +11286,7 @@ rig_remove_native() {
 }
 
 rig_command_remove_impl() {
-  local profile mode target section index provider state detail answer pending failed completed native_status
+  local profile mode target operation_acquired status
   profile=
   mode=preview
   target=
@@ -11235,6 +11302,29 @@ rig_command_remove_impl() {
   done
   rig_resolve_operational_plan "$profile" defer || return
   [ "$RIG_RESOLVED_PROFILE_KIND" = complete ] || rig_fail 'removal requires a complete profile' || return
+  # A confirmed removal runs native uninstallers, so it holds the operation lock
+  # from before its first observation; preview and dry run take none.
+  operation_acquired=0
+  if [ "$mode" = apply ]; then
+    rig_acquire_operation_lock \
+      "$RIG_RESOLVED_PLATFORM" "$RIG_RESOLVED_PROFILE" remove || return
+    operation_acquired=$RIG_OPERATION_LOCK_ACQUIRED
+  fi
+  if rig_remove_selected "$mode" "$target"; then
+    status=0
+  else
+    status=$?
+  fi
+  if [ "$operation_acquired" -eq 1 ]; then
+    rig_release_operation_lock || return
+  fi
+  return "$status"
+}
+
+rig_remove_selected() {
+  local mode target section index provider state detail answer pending failed completed native_status
+  mode=$1
+  target=$2
   rig_collect_removals
   if [ -n "$target" ]; then
     case "$target" in remove.*) ;; *) target=remove.$target ;; esac

@@ -102,11 +102,13 @@ _Evidence:_ `rig_command_doctor` consumes `rig_observe_plan` and `rig_observe_re
 
 `rig doctor` MUST print `Verdict: healthy` or `Verdict: unhealthy`, deterministic owner and action fields for each finding, and fixed-order summary counts. An unusable configuration MUST become a configuration finding retaining its file, line, reason, and corrective guidance in text and JSON. Doctor MUST still report effective paths, platform, and native provider executable availability without running configuration-dependent observations. It MUST exit 0 when healthy, 1 for findings including configuration load failure, and 2 for syntax or resolution failure. Other operational commands MUST continue to reject unusable configuration with status 2. A working but deprecated declaration, such as the former Homebrew `mas` kind, MUST appear under `Warnings` (text) or `warnings` (JSON) with owner `configuration` and a migration action, and MUST count in `warn` without changing the verdict or exit status.
 
+Doctor MUST read the selected platform's operation and reconciliation locks under [RIG-STATE-025](#rig-state-025--exclusive-operation-and-reconciliation-targets) without creating, changing or removing them. An absent lock adds nothing. A held lock with an active owner MUST be a warning naming its owning command with action `wait-for-owner`, without changing the verdict. A stale or unknown owner, or a symbolic link or non-directory at the lock path, MUST be a finding under `Lock findings` (text) or `findings.locks` (JSON), counted as one failed item, whether or not configuration loads. The finding and the warning MUST NOT carry a path; text output alone MUST add the exact quoted command that removes a stale or unknown lock by hand once its owner has gone.
+
 _Conformance:_ conforming
 
-_Verify:_ Bats compares exact healthy and mixed-finding output, covers statuses 0, 1, and 2, and checks text and JSON diagnostics for a retired configuration table while status and apply still reject it; App Store alias fixtures assert one warning per tool, variant and removal declaration and an unchanged verdict.
+_Verify:_ Bats compares exact healthy and mixed-finding output, covers statuses 0, 1, and 2, and checks text and JSON diagnostics for a retired configuration table while status and apply still reject it; App Store alias fixtures assert one warning per tool, variant and removal declaration and an unchanged verdict; fixture locks assert no finding without a lock, an active-owner warning, stale, unknown and unsafe failures with and without loadable configuration, a text-only recovery path, and byte-identical state.
 
-_Evidence:_ Doctor Bats cases, `tests/rig-mas-provider.bats` and `tests/rig-doctor-config.bats` assert exact summaries, actionable findings, and failure classes.
+_Evidence:_ Doctor Bats cases, `tests/rig-mas-provider.bats`, `tests/rig-doctor-config.bats` and `tests/rig-doctor-locks.bats` assert exact summaries, actionable findings, and failure classes.
 
 ## Application
 
@@ -264,7 +266,7 @@ _Evidence:_ `rig_load_resource_receipt` records only service and scheduled-job r
 
 ### RIG-STATE-025 — Exclusive operation and reconciliation targets
 
-A live `rig apply` of any scope or target, and a live `rig upgrade`, attended or unattended, MUST acquire an exclusive per-platform operation lock before any provider invocation and MUST hold it until the run ends, so two native managers never run side by side under Rig. A concurrent apply or upgrade MUST fail with status 2 before any provider invocation. A dry run and every read-only command MUST NOT take the operation lock, and Rig MUST NOT queue or wait for it.
+A live `rig apply` of any scope or target, a live `rig upgrade`, attended or unattended, and a confirmed `rig remove --apply` MUST acquire an exclusive per-platform operation lock before any provider invocation, including observation, and MUST hold it until the run ends, so two native managers never run side by side under Rig. A concurrent apply, upgrade or removal MUST fail with status 2 before any provider invocation. A dry run, a removal preview and every read-only command MUST NOT take the operation lock, and Rig MUST NOT queue or wait for it.
 
 Before a live receipt-backed apply reads its per-platform receipt, Rig MUST also acquire a separate exclusive reconciliation lock for that platform, inside the operation lock, and MUST hold it through receipt replacement or failure cleanup. A concurrent invocation MUST fail before provider mutation. The operation lock does not widen the reconciliation lock: a targeted apply with no resource work takes the operation lock alone under [RIG-ORCH-037](orchestration.md#rig-orch-037--narrow-reconciliation-state-boundary).
 
@@ -272,9 +274,9 @@ A refusal on either lock MUST name active, stale, or unknown owner detail and MU
 
 _Conformance:_ conforming
 
-_Verify:_ Bats supplies live, non-existent and absent owners on fixture operation and reconciliation locks, asserts status 2, no provider call and a retained lock for apply of every scope, a tool-only target and upgrade, and that dry runs proceed; it then completes an apply and an upgrade, asserts the provider ran with both or the operation lock held, and asserts lock cleanup, receipt installation and release on HUP, INT and TERM.
+_Verify:_ Bats supplies live, non-existent and absent owners on fixture operation and reconciliation locks, asserts status 2, no provider call and a retained lock for apply of every scope, a tool-only target, upgrade and confirmed removal, and that dry runs and removal previews proceed; it then completes an apply, an upgrade and a removal, asserts the provider ran with both or the operation lock held, and asserts lock cleanup, receipt installation and release on HUP, INT and TERM.
 
-_Evidence:_ `rig_acquire_operation_lock`, `rig_acquire_reconciliation_lock`, the shared `rig_platform_lock_take`, signal traps, `rig_release_platform_locks`, and deferred receipt loading implement the boundary; `tests/rig-profile-authority.bats`, `tests/rig-lifecycle.bats`, `tests/rig.bats` and `tests/rig-sudo-session.bats` cover contention, nesting, success and interruption.
+_Evidence:_ `rig_acquire_operation_lock`, `rig_acquire_reconciliation_lock`, the shared `rig_platform_lock_take`, signal traps, `rig_release_platform_locks`, and deferred receipt loading implement the boundary; `tests/rig-profile-authority.bats`, `tests/rig-lifecycle.bats`, `tests/rig.bats`, `tests/rig-software-removal.bats` and `tests/rig-sudo-session.bats` cover contention, nesting, success, release after a refused or failed removal, and interruption.
 
 ### RIG-STATE-026 — Private port expected-versus-observed state
 
@@ -330,7 +332,7 @@ _Evidence:_ `rig_outcome_enabled`, `rig_outcome_note`, `rig_outcome_report`, and
 
 An unattended `rig upgrade` that dispatches work, or that a held operation lock refuses under [RIG-STATE-025](#rig-state-025--exclusive-operation-and-reconciliation-targets), MUST record its outcome beneath the effective state home as `last-upgrade`, honouring `RIG_STATE_HOME` and then `${XDG_STATE_HOME:-$HOME/.local/state}/rig`. One file MUST hold the most recent unattended run and MUST be replaced atomically, so a reader never observes a partial report. A dry run MUST NOT write it, because no run happened.
 
-A refused run dispatches nothing, but its report MUST still replace the previous one, so a wrapper sees why nothing ran rather than an older run's outcome. It MUST carry `status` 2, `result` `failed`, `detail` `operation-lock=STATE owner=COMMAND`, where `STATE` is `active`, `stale` or `unknown` and `COMMAND` is `apply`, `upgrade` or `unknown`, a summary with every count zero, and the header with no rows. No other status-2 rejection writes the report.
+A refused run dispatches nothing, but its report MUST still replace the previous one, so a wrapper sees why nothing ran rather than an older run's outcome. It MUST carry `status` 2, `result` `failed`, `detail` `operation-lock=STATE owner=COMMAND`, where `STATE` is `active`, `stale` or `unknown` and `COMMAND` is `apply`, `upgrade`, `remove` or `unknown`, a summary with every count zero, and the header with no rows. No other status-2 rejection writes the report.
 
 The report MUST be UTF-8 tab-separated text. It MUST open with `rig-last-run` and the integer report version, then one `KEY<TAB>VALUE` line each for `action`, `profile`, `platform`, `finished`, `status`, `result`, `detail`, and `summary`, then the `TARGET PROVIDER RESULT DETAIL` header and the same rows the run printed on stdout. For a run that dispatched work, `result` and `status` MUST agree with the stated outcome under [RIG-STATE-029](#rig-state-029--exit-status-and-stated-outcome); a refused run states no outcome line, so its report alone records `failed`. Rig MAY add a later report version but MUST NOT silently change the meaning of version 1.
 

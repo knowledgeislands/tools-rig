@@ -61,7 +61,7 @@ Preview with `rig apply --dry-run`, then use `rig apply` when the plan is right.
 
 Repeat `--target ID` for exact entries or use `--scope` to restrict kinds. Selected dependencies remain explicit; Rig does not install an unrelated manager merely because it appears elsewhere in the catalogue. Complete preflight happens before mutation. A local resource problem can fail that row while independent work proceeds.
 
-A live apply and a live upgrade share one lock per platform, so neither starts while the other runs; the second refuses at once with the owner's details instead of waiting. Dry runs and read-only commands never take it.
+A live apply, a live upgrade and a confirmed `rig remove --apply` share one lock per platform, so none starts while another runs; the later one refuses at once with the owner's details instead of waiting. Dry runs, removal previews and read-only commands never take it. `rig doctor` warns about a lock whose owner is still running and fails on a stale or unknown one, printing the exact command to remove it once nothing else is running.
 
 Apply does not remove unknown software or silently perform provider housekeeping. Receipt-backed resource retirement concerns declarations removed from the catalogue, not items merely omitted by a profile.
 

@@ -152,10 +152,38 @@ rig_platform_lock_traps() {
   trap 'rig_platform_lock_signal 143' TERM
 }
 
+# Classify a held lock's owner without changing it: a live pid is active, a
+# dead one stale, anything else unknown. The raw owner line is left in RIG_VALUE.
+rig_platform_lock_owner() {
+  local lock owner owner_pid
+
+  lock=$1
+  owner=unknown
+  if [ -f "$lock/owner" ] && [ -r "$lock/owner" ]; then
+    IFS= read -r owner <"$lock/owner" || owner=unknown
+  fi
+  RIG_LOCK_CONTENTION=active
+  case "$owner" in
+    pid=[0-9]*' '*)
+      owner_pid=${owner#pid=}
+      owner_pid=${owner_pid%% *}
+      kill -0 "$owner_pid" 2>/dev/null || RIG_LOCK_CONTENTION=stale
+      ;;
+    *) RIG_LOCK_CONTENTION=unknown ;;
+  esac
+  case " $owner " in
+    *' command=apply '*) RIG_LOCK_CONTENTION_COMMAND=apply ;;
+    *' command=upgrade '*) RIG_LOCK_CONTENTION_COMMAND=upgrade ;;
+    *' command=remove '*) RIG_LOCK_CONTENTION_COMMAND=remove ;;
+    *) RIG_LOCK_CONTENTION_COMMAND=unknown ;;
+  esac
+  RIG_VALUE=$owner
+}
+
 # Create one exclusive per-platform lock directory and record its owner. A held
 # lock is reported, never removed, and its state left in RIG_LOCK_CONTENTION.
 rig_platform_lock_take() {
-  local label platform lock profile command parent ancestor owner owner_pid owner_state
+  local label platform lock profile command parent ancestor
 
   label=$1
   platform=$2
@@ -180,26 +208,8 @@ rig_platform_lock_take() {
   if ! mkdir "$lock" 2>/dev/null; then
     [ -d "$lock" ] && [ ! -L "$lock" ] ||
       rig_fail "$label target lock is unsafe: $lock" || return
-    owner=unknown
-    if [ -f "$lock/owner" ] && [ -r "$lock/owner" ]; then
-      IFS= read -r owner <"$lock/owner" || owner=unknown
-    fi
-    owner_state=active
-    case "$owner" in
-      pid=[0-9]*' '*)
-        owner_pid=${owner#pid=}
-        owner_pid=${owner_pid%% *}
-        kill -0 "$owner_pid" 2>/dev/null || owner_state=stale
-        ;;
-      *) owner_state=unknown ;;
-    esac
-    RIG_LOCK_CONTENTION=$owner_state
-    case " $owner " in
-      *' command=apply '*) RIG_LOCK_CONTENTION_COMMAND=apply ;;
-      *' command=upgrade '*) RIG_LOCK_CONTENTION_COMMAND=upgrade ;;
-      *) RIG_LOCK_CONTENTION_COMMAND=unknown ;;
-    esac
-    rig_fail "$label target '$platform' is $owner_state; owner=$owner" || return
+    rig_platform_lock_owner "$lock"
+    rig_fail "$label target '$platform' is $RIG_LOCK_CONTENTION; owner=$RIG_VALUE" || return
   fi
   if ! printf 'pid=%s profile=%s command=%s\n' "$$" "$profile" "$command" >"$lock/owner"; then
     rmdir "$lock" 2>/dev/null || true
@@ -227,7 +237,7 @@ rig_acquire_reconciliation_lock() {
   rig_platform_lock_traps
 }
 
-# Live apply and upgrade hold this lock for the whole run, so two native
+# Live apply, upgrade and removal hold this lock for the whole run, so two native
 # managers never run side by side; it wraps the reconciliation lock.
 rig_acquire_operation_lock() {
   local platform profile command lock

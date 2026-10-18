@@ -75,7 +75,7 @@ assert set(("tool", "version", "installation", "platform", "architecture", "runt
 assert c["tool"] == "rig" and c["installation"] == "local"
 assert "executable" not in c
 s=d["checks"]
-assert s == {"pass":6,"warn":0,"fail":0,"skipped":0,"unit":"item","coverage":"configuration,xdg,tools,resources,ports,skills,apply-history","read_only":True,"freshness":"not-checked"}
+assert s == {"pass":6,"warn":0,"fail":0,"skipped":0,"unit":"item","coverage":"configuration,xdg,tools,resources,ports,skills,apply-history,locks","read_only":True,"freshness":"not-checked"}
 ' || false
 
   run env RIG_CONFIG_HOME="$BATS_TEST_TMPDIR/absent" RIG_PROGRESS=never "$RIG" doctor --format json
@@ -85,7 +85,7 @@ import json,sys
 d=json.load(sys.stdin)
 assert d["verdict"] == "unhealthy" and not d["healthy"]
 assert d["checks"]["fail"] == 1 and d["checks"]["skipped"] == 1
-assert d["checks"]["coverage"] == "configuration,xdg,apply-history"
+assert d["checks"]["coverage"] == "configuration,xdg,apply-history,locks"
 assert "correct-configuration" in str(d["findings"])
 ' || false
 }

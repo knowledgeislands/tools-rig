@@ -255,7 +255,7 @@ rig_remove_native() {
 }
 
 rig_command_remove_impl() {
-  local profile mode target section index provider state detail answer pending failed completed native_status
+  local profile mode target operation_acquired status
   profile=
   mode=preview
   target=
@@ -271,6 +271,29 @@ rig_command_remove_impl() {
   done
   rig_resolve_operational_plan "$profile" defer || return
   [ "$RIG_RESOLVED_PROFILE_KIND" = complete ] || rig_fail 'removal requires a complete profile' || return
+  # A confirmed removal runs native uninstallers, so it holds the operation lock
+  # from before its first observation; preview and dry run take none.
+  operation_acquired=0
+  if [ "$mode" = apply ]; then
+    rig_acquire_operation_lock \
+      "$RIG_RESOLVED_PLATFORM" "$RIG_RESOLVED_PROFILE" remove || return
+    operation_acquired=$RIG_OPERATION_LOCK_ACQUIRED
+  fi
+  if rig_remove_selected "$mode" "$target"; then
+    status=0
+  else
+    status=$?
+  fi
+  if [ "$operation_acquired" -eq 1 ]; then
+    rig_release_operation_lock || return
+  fi
+  return "$status"
+}
+
+rig_remove_selected() {
+  local mode target section index provider state detail answer pending failed completed native_status
+  mode=$1
+  target=$2
   rig_collect_removals
   if [ -n "$target" ]; then
     case "$target" in remove.*) ;; *) target=remove.$target ;; esac

@@ -410,3 +410,85 @@ TOML
   [ "$status" -eq 0 ]
   [ "$(cat "$RIG_TEST_PROVIDER_LOG")" = $'uv|tool list\nuv|tool list\nuv|tool uninstall subject' ]
 }
+
+hold_operation_lock() {
+  mkdir -p "$RIG_STATE_HOME/operation/macos.lock"
+  [ "$#" -eq 0 ] || printf '%s\n' "$1" >"$RIG_STATE_HOME/operation/macos.lock/owner"
+}
+
+@test "a held operation lock refuses confirmed removal before any observation" {
+  export RIG_STATE_HOME=$BATS_TEST_TMPDIR/state
+  write_config
+  hold_operation_lock "pid=$$ profile=default command=apply"
+  run bash -c 'printf "remove\n" | "$1" remove --apply' _ "$RIG"
+  [ "$status" -eq 2 ] || false
+  [[ "$output" == *"operation target 'macos' is active; owner=pid=$$ profile=default command=apply"* ]] || false
+
+  hold_operation_lock 'pid=999999 profile=default command=upgrade'
+  run bash -c 'printf "remove\n" | "$1" remove --apply' _ "$RIG"
+  [ "$status" -eq 2 ] || false
+  [[ "$output" == *"operation target 'macos' is stale"* ]] || false
+
+  rm -f "$RIG_STATE_HOME/operation/macos.lock/owner"
+  run bash -c 'printf "remove\n" | "$1" remove --apply' _ "$RIG"
+  [ "$status" -eq 2 ] || false
+  [[ "$output" == *"operation target 'macos' is unknown; owner=unknown"* ]] || false
+  [ ! -s "$RIG_TEST_PROVIDER_LOG" ] || false
+  [ -d "$RIG_STATE_HOME/operation/macos.lock" ] || false
+
+  run "$RIG" remove
+  [ "$status" -eq 0 ] || false
+  run "$RIG" remove --dry-run
+  [ "$status" -eq 0 ] || false
+  [ -d "$RIG_STATE_HOME/operation/macos.lock" ] || false
+  [ ! -e "$RIG_STATE_HOME/operation/macos.lock/owner" ] || false
+}
+
+@test "preview and dry-run removal take no operation lock" {
+  export RIG_STATE_HOME=$BATS_TEST_TMPDIR/state
+  write_config
+  run "$RIG" remove
+  [ "$status" -eq 0 ] || false
+  run "$RIG" remove --dry-run
+  [ "$status" -eq 0 ] || false
+  [ ! -e "$RIG_STATE_HOME/operation" ] || false
+}
+
+@test "confirmed removal holds the operation lock while uninstalling and then releases it" {
+  export RIG_STATE_HOME=$BATS_TEST_TMPDIR/state
+  write_config
+  bin=$BATS_TEST_TMPDIR/lock-bin
+  mkdir -p "$bin"
+  cat >"$bin/brew" <<'SCRIPT'
+#!/bin/bash
+owner=free
+[ ! -f "$RIG_STATE_HOME/operation/macos.lock/owner" ] ||
+  owner=$(cut -d' ' -f2- "$RIG_STATE_HOME/operation/macos.lock/owner")
+printf '%s\t%s\n' "$*" "$owner" >>"$RIG_TEST_PROVIDER_LOG"
+case "$*" in
+  'list --cask --versions obsolete') printf 'obsolete 1.0\n' ;;
+  'uninstall --cask obsolete') exit "${LOCK_TEST_UNINSTALL_STATUS:-0}" ;;
+  *) exit 99 ;;
+esac
+SCRIPT
+  chmod +x "$bin/brew"
+  PATH=$bin:$PATH
+
+  run bash -c 'printf "remove\n" | "$1" remove --apply' _ "$RIG"
+  [ "$status" -eq 0 ] || { printf '%s\n' "$output" >&3; false; }
+  grep -Fqx $'list --cask --versions obsolete\tprofile=default command=remove' "$RIG_TEST_PROVIDER_LOG"
+  grep -Fqx $'uninstall --cask obsolete\tprofile=default command=remove' "$RIG_TEST_PROVIDER_LOG"
+  [ ! -e "$RIG_STATE_HOME/operation/macos.lock" ] || false
+  [ ! -e "$RIG_STATE_HOME/reconciliation/macos.lock" ] || false
+
+  run "$RIG" remove --apply </dev/null
+  [ "$status" -eq 1 ] || false
+  [[ "$output" == *'nothing removed'* ]] || false
+  [ ! -e "$RIG_STATE_HOME/operation/macos.lock" ] || false
+
+  export LOCK_TEST_UNINSTALL_STATUS=3
+  run bash -c 'printf "remove\n" | "$1" remove --apply' _ "$RIG"
+  [ "$status" -eq 1 ] || false
+  [[ "$output" == *'exit:3'* ]] || false
+  [ ! -e "$RIG_STATE_HOME/operation/macos.lock" ] || false
+}

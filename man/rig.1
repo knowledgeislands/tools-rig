@@ -385,7 +385,12 @@ retirement and historical-failure items. Dependent selection is one skipped
 group when configuration cannot load. Catalogue-only and incompatible items are
 skipped. Each working but deprecated declaration, such as a Homebrew mas
 alias, is listed under Warnings and counted as warn without changing the
-Verdict. This is read-only declared setup
+Verdict. A held operation or reconciliation lock whose owner is still running
+is likewise a warning. A stale or unknown owner, or an unsafe lock path, is a
+Lock finding, even when configuration cannot load; text output alone then
+prints the exact command that removes the lock once no apply, upgrade or
+removal is running. Doctor never creates, changes or removes a lock.
+This is read-only declared setup
 health; available package updates are explicitly not checked.
 Catalogue-only and
 incompatible-platform tools are informational. An observed competing
@@ -1450,14 +1455,16 @@ Persistence warnings do not rewrite provider outcomes or apply exit status.
 .TP
 .I ${XDG_STATE_HOME:-$HOME/.local/state}/rig/operation/PLATFORM.lock
 Exclusive live operation lock. Every live
-.B rig apply
-and
+.BR "rig apply" ,
 .BR "rig upgrade" ,
-including an unattended upgrade, acquires it before any provider invocation and
-holds it for the whole run, so an apply and an upgrade refuse to run at the
-same time. Dry runs and read-only commands do not take it, and Rig never waits
-for it. Existing active, stale, or unknown owners are reported and not removed
-automatically.
+including an unattended upgrade, and confirmed
+.B rig remove --apply
+acquires it before any provider invocation and holds it for the whole run, so
+none of them runs beside another. Dry runs, removal previews and read-only
+commands do not take it, and Rig never waits for it. Existing active, stale, or
+unknown owners are reported and not removed automatically;
+.B rig doctor
+names a held lock and, for a stale or unknown owner, the command to remove it.
 .TP
 .I ${XDG_STATE_HOME:-$HOME/.local/state}/rig/reconciliation/PLATFORM.lock
 Exclusive live reconciliation lock, taken inside the operation lock. Rig
@@ -1862,7 +1869,10 @@ removals, provider arguments and unsafe locators are rejected.
 .PP
 rig remove defaults to preview. --apply displays its preview and requires
 literal remove confirmation before rechecking presence and invoking native
-uninstall. --target limits selection. Missing items skip; uncertain evidence
+uninstall. --apply holds the operation lock from before its first observation
+until it finishes, and refuses with status 2 while an apply, upgrade or other
+removal holds it; preview and --dry-run take no lock.
+--target limits selection. Missing items skip; uncertain evidence
 refuses; native failures remain visible. Homebrew formula and cask, mas app,
 uv tool, npm global and mise tool are supported. App Store removal uses only
 an existing sudo grant with -n. Rig adds no force, zap or retained-data cleanup.

@@ -542,3 +542,13 @@ SCRIPT
   [ ! -e "$STATE_HOME/operation/fixture.lock" ] || false
   [ ! -e "$STATE_HOME/reconciliation/fixture.lock" ] || false
 }
+
+@test "an upgrade refused by a removal's operation lock names the removal" {
+  hold_operation_lock "pid=$$ profile=default command=remove"
+
+  run run_rig upgrade --unattended </dev/null
+
+  [ "$status" -eq 2 ] || false
+  [ ! -e "$CALL_LOG" ] || false
+  grep -Fqx $'detail\toperation-lock=active owner=remove' "$STATE_HOME/last-upgrade"
+}

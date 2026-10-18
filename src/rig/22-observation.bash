@@ -1466,6 +1466,47 @@ rig_doctor_command_line_tools() {
   RIG_VALUE="  command-line-tools: outdated (installed:$installed;macos:$system;homebrew-items-fail-until-updated); owner=environment; action=update-command-line-tools"
 }
 
+# A held lock refuses every later live run on its platform. Read each lock
+# without creating, changing or removing it: an active owner only warns, while a
+# stale, unknown or unsafe lock fails. Recovery commands name paths, so only
+# text output prints them.
+rig_doctor_platform_locks() {
+  local platform kind lock line
+
+  platform=$1
+  RIG_DOCTOR_LOCK_FINDINGS=
+  RIG_DOCTOR_LOCK_FAILURES=0
+  RIG_DOCTOR_LOCK_WARNINGS=
+  RIG_DOCTOR_LOCK_WARNING_COUNT=0
+  RIG_DOCTOR_LOCK_RECOVERY=
+  for kind in operation reconciliation; do
+    case "$kind" in
+      operation) rig_operation_lock_path "$platform" || return ;;
+      reconciliation) rig_reconciliation_lock_path "$platform" || return ;;
+    esac
+    lock=$RIG_VALUE
+    if [ -L "$lock" ] || { [ -e "$lock" ] && [ ! -d "$lock" ]; }; then
+      RIG_DOCTOR_LOCK_FINDINGS="${RIG_DOCTOR_LOCK_FINDINGS}  ${kind}-lock: unsafe (not-a-lock-directory); owner=rig; action=inspect-state-directory"$'\n'
+      RIG_DOCTOR_LOCK_FAILURES=$((RIG_DOCTOR_LOCK_FAILURES + 1))
+      continue
+    fi
+    [ -d "$lock" ] || continue
+    rig_platform_lock_owner "$lock"
+    line="  ${kind}-lock: ${RIG_LOCK_CONTENTION} (owner-command:${RIG_LOCK_CONTENTION_COMMAND}); owner=rig"
+    if [ "$RIG_LOCK_CONTENTION" = active ]; then
+      RIG_DOCTOR_LOCK_WARNINGS="${RIG_DOCTOR_LOCK_WARNINGS}${line}; action=wait-for-owner"$'\n'
+      RIG_DOCTOR_LOCK_WARNING_COUNT=$((RIG_DOCTOR_LOCK_WARNING_COUNT + 1))
+    else
+      RIG_DOCTOR_LOCK_FINDINGS="${RIG_DOCTOR_LOCK_FINDINGS}${line}; action=remove-lock-after-owner-exits"$'\n'
+      RIG_DOCTOR_LOCK_FAILURES=$((RIG_DOCTOR_LOCK_FAILURES + 1))
+      RIG_DOCTOR_LOCK_RECOVERY="${RIG_DOCTOR_LOCK_RECOVERY}  ${kind}-lock: rm -r -- $(printf '%q' "$lock")"$'\n'
+    fi
+  done
+  RIG_DOCTOR_LOCK_FINDINGS=${RIG_DOCTOR_LOCK_FINDINGS%$'\n'}
+  RIG_DOCTOR_LOCK_WARNINGS=${RIG_DOCTOR_LOCK_WARNINGS%$'\n'}
+  RIG_DOCTOR_LOCK_RECOVERY=${RIG_DOCTOR_LOCK_RECOVERY%$'\n'}
+}
+
 rig_doctor_native_availability() {
   local executable state
 
@@ -1707,6 +1748,12 @@ rig_command_doctor() {
   if [ -n "$xdg_findings" ]; then
     while IFS= read -r _; do findings=$((findings + 1)); done <<< "$xdg_findings"
   fi
+  rig_doctor_platform_locks "$RIG_RESOLVED_PLATFORM" || return
+  findings=$((findings + RIG_DOCTOR_LOCK_FAILURES))
+  if [ -n "$RIG_DOCTOR_LOCK_WARNINGS" ]; then
+    warnings="${warnings}${warnings:+$'\n'}$RIG_DOCTOR_LOCK_WARNINGS"
+    warning_count=$((warning_count + RIG_DOCTOR_LOCK_WARNING_COUNT))
+  fi
   RIG_APPLY_FAILURE_KEYS=(); RIG_APPLY_FAILURE_TIMES=(); RIG_APPLY_FAILURE_STATUSES=(); RIG_APPLY_FAILURE_AGES=()
   RIG_APPLY_HISTORY_UNAVAILABLE=
   if [ "$config_loaded" -eq 1 ]; then
@@ -1721,19 +1768,21 @@ rig_command_doctor() {
   # not individual subprocess calls or progress events. Neutral selections skip.
   checks_total=6
   checks_skipped=0
-  checks_coverage=configuration,xdg,apply-history
+  checks_coverage=configuration,xdg,apply-history,locks
   if [ "$config_loaded" -eq 1 ]; then
     checks_total=$((checks_total + ${#RIG_PLAN_TOOLS[@]} + ${#RIG_RESOURCE_PLAN_SECTIONS[@]} + \
       ${#RIG_STALE_RESOURCE_IDS[@]} + ${#RIG_SELECTED_PORTS[@]} + ${#RIG_SELECTED_SKILLS[@]} + \
       ${#RIG_APPLY_FAILURE_KEYS[@]} + ${#RIG_REMOVALS[@]} + incompatible + environment_checks))
     checks_skipped=$((RIG_DOCTOR_CATALOGUE_ONLY + incompatible))
-    checks_coverage=configuration,xdg,tools,resources,ports,skills,apply-history
+    checks_coverage=configuration,xdg,tools,resources,ports,skills,apply-history,locks
   else
     # One dependent selection group could not be evaluated at all.
     checks_total=$((checks_total + 1))
     checks_skipped=1
   fi
-  # A deprecated declaration still works, so it warns without failing a check.
+  # Each held lock is one evaluated item; an absent lock adds no check.
+  checks_total=$((checks_total + RIG_DOCTOR_LOCK_FAILURES))
+  # A deprecated declaration or an active lock warns without failing a check.
   checks_total=$((checks_total + warning_count))
   checks_passed=$((checks_total - checks_skipped - findings - warning_count))
   rig_diagnostic_context || return
@@ -1768,6 +1817,8 @@ rig_command_doctor() {
     rig_json_lines "$port_findings"
     printf ',"skills":'
     rig_json_lines "$skill_findings"
+    printf ',"locks":'
+    rig_json_lines "$RIG_DOCTOR_LOCK_FINDINGS"
     printf '},"warnings":'
     rig_json_lines "$warnings"
     printf ',"information":'
@@ -1807,6 +1858,12 @@ rig_command_doctor() {
   fi
   if [ -n "$skill_findings" ]; then
     printf 'Skill findings:\n%s\n' "$skill_findings"
+  fi
+  if [ -n "$RIG_DOCTOR_LOCK_FINDINGS" ]; then
+    printf 'Lock findings:\n%s\n' "$RIG_DOCTOR_LOCK_FINDINGS"
+  fi
+  if [ -n "$RIG_DOCTOR_LOCK_RECOVERY" ]; then
+    printf 'Lock recovery (once no apply, upgrade or removal is running):\n%s\n' "$RIG_DOCTOR_LOCK_RECOVERY"
   fi
   if [ -n "$warnings" ]; then
     printf 'Warnings:\n%s\n' "$warnings"
