@@ -37,7 +37,7 @@ Profiles select the active items that belong on a machine or in a role. The cata
 
 ## Install the public preview
 
-After `v0.7.0` is published, install the immutable preview. Until then, use a linked checkout; the latest published release, `v0.6.3`, which lets an apply, an upgrade and a removal run side by side:
+Install the latest immutable release, currently `v0.7.0`:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.7.0/install.sh | bash
@@ -58,9 +58,9 @@ rig --version
 man rig
 ```
 
-These installer URLs are not available before publication. The selected candidate reports `rig 0.7.0`.
+The released command reports `rig 0.7.0`.
 
-For a local checkout now, use `./install.sh --link`. It links the executable and manual so subsequent repository changes are visible without reinstalling. This selected candidate reports `rig 0.7.0`. Between releases a checkout reports a `+dev` marker, which means development after the latest immutable release and does not choose the next preview number.
+For a local checkout now, use `./install.sh --link`. It links the executable and manual so subsequent repository changes are visible without reinstalling. The current checkout reports `rig 0.7.0+dev`; the marker means development after the latest immutable release and does not choose the next preview number.
 
 ## Create a small catalogue
 
