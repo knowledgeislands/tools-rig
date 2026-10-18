@@ -662,6 +662,7 @@ rig_command_apply_impl() {
   local profile scope dry_run profile_seen scope_seen dry_run_seen index tool binding provider
   local blocker native_status planned completed failed skipped operational_failure
   local section_name section_index kind id locator resource_total lock_acquired exit_code
+  local operation_acquired
   local row_scope sudo_requested
   sudo_requested=0
 
@@ -727,6 +728,12 @@ rig_command_apply_impl() {
   rig_resolve_operational_plan "$profile" defer || return
   [ "$RIG_RESOLVED_PROFILE_KIND" = complete ] ||
     rig_fail "profile '$RIG_RESOLVED_PROFILE' is a non-appliable view" || return
+  operation_acquired=0
+  if [ "$dry_run" -eq 0 ]; then
+    rig_acquire_operation_lock \
+      "$RIG_RESOLVED_PLATFORM" "$RIG_RESOLVED_PROFILE" apply || return
+    operation_acquired=$RIG_OPERATION_LOCK_ACQUIRED
+  fi
   if [ "${#RIG_APPLY_TARGETS[@]}" -gt 0 ]; then
     rig_apply_select_targets "$scope" || return
   fi
@@ -1013,6 +1020,9 @@ rig_command_apply_impl() {
   fi
   if [ "$lock_acquired" -eq 1 ]; then
     rig_release_reconciliation_lock || return
+  fi
+  if [ "$operation_acquired" -eq 1 ]; then
+    rig_release_operation_lock || return
     trap - EXIT HUP INT TERM
   fi
   return "$exit_code"

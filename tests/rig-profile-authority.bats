@@ -276,3 +276,66 @@ write_lock_fixture() {
   [ ! -e "$STATE_HOME/reconciliation/macos.lock" ]
   [ -f "$STATE_HOME/resources/macos.tsv" ]
 }
+
+write_operation_lock_provider() {
+  write_lock_fixture
+  LOCK_LOG=$BATS_TEST_TMPDIR/lock-log-$BATS_TEST_NUMBER
+  export LOCK_LOG
+  cat >"$PROVIDER" <<'SCRIPT'
+#!/usr/bin/env bash
+operation=free
+reconciliation=free
+[ ! -d "$RIG_STATE_HOME/operation/macos.lock" ] || operation=held
+[ ! -d "$RIG_STATE_HOME/reconciliation/macos.lock" ] || reconciliation=held
+printf '%s operation=%s reconciliation=%s\n' "$1" "$operation" "$reconciliation" >>"$LOCK_LOG"
+exit 0
+SCRIPT
+}
+
+@test "live apply of every scope refuses a held operation lock before any provider call" {
+  write_operation_lock_provider
+  mkdir -p "$STATE_HOME/operation/macos.lock"
+  printf 'pid=%s profile=default command=upgrade\n' "$$" >"$STATE_HOME/operation/macos.lock/owner"
+
+  for scope in all tools resources; do
+    run_rig apply --scope "$scope"
+    [ "$status" -eq 2 ] || false
+    [[ "$output" == *"operation target 'macos' is active; owner=pid=$$ profile=default command=upgrade"* ]] || false
+  done
+  [ ! -e "$LOCK_LOG" ] || false
+  [ -d "$STATE_HOME/operation/macos.lock" ] || false
+  [ ! -e "$STATE_HOME/reconciliation/macos.lock" ] || false
+
+  printf '%s\n' 'pid=999999 profile=default command=upgrade' >"$STATE_HOME/operation/macos.lock/owner"
+  run_rig apply
+  [ "$status" -eq 2 ] || false
+  [[ "$output" == *"operation target 'macos' is stale; owner=pid=999999"* ]] || false
+
+  rm -f "$STATE_HOME/operation/macos.lock/owner"
+  run_rig apply
+  [ "$status" -eq 2 ] || false
+  [[ "$output" == *"operation target 'macos' is unknown; owner=unknown"* ]] || false
+  [ -d "$STATE_HOME/operation/macos.lock" ] || false
+  [ ! -e "$LOCK_LOG" ] || false
+
+  run_rig apply --dry-run
+  [ "$status" -eq 0 ] || false
+}
+
+@test "live apply holds the operation lock around the reconciliation lock and releases both" {
+  write_operation_lock_provider
+
+  run_rig apply
+  [ "$status" -eq 0 ] || false
+  [ -s "$LOCK_LOG" ] || false
+  ! grep -Fv 'operation=held reconciliation=held' "$LOCK_LOG" || false
+  [ ! -e "$STATE_HOME/operation/macos.lock" ] || false
+  [ ! -e "$STATE_HOME/reconciliation/macos.lock" ] || false
+
+  mkdir -p "$STATE_HOME/reconciliation/macos.lock"
+  printf 'pid=%s profile=default command=other\n' "$$" >"$STATE_HOME/reconciliation/macos.lock/owner"
+  run_rig apply --scope resources
+  [ "$status" -eq 2 ] || false
+  [[ "$output" == *"reconciliation target 'macos' is active"* ]] || false
+  [ ! -e "$STATE_HOME/operation/macos.lock" ] || false
+}

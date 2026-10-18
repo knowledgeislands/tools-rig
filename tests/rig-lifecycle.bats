@@ -452,3 +452,93 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *'Usage: rig upgrade [--profile NAME] [--dry-run] [--unattended]'* ]] || false
 }
+
+hold_operation_lock() {
+  mkdir -p "$STATE_HOME/operation/fixture.lock"
+  [ "$#" -eq 0 ] || printf '%s\n' "$1" >"$STATE_HOME/operation/fixture.lock/owner"
+}
+
+@test "upgrade refuses an active, stale or unknown operation lock before any provider call" {
+  hold_operation_lock "pid=$$ profile=default command=apply"
+
+  run run_rig upgrade </dev/null
+
+  [ "$status" -eq 2 ] || false
+  [[ "$output" == *"operation target 'fixture' is active; owner=pid=$$ profile=default command=apply"* ]] || false
+  [[ "$output" != *'rig: upgrade'* ]] || false
+
+  hold_operation_lock 'pid=999999 profile=default command=apply'
+  run run_rig upgrade </dev/null
+
+  [ "$status" -eq 2 ] || false
+  [[ "$output" == *"operation target 'fixture' is stale; owner=pid=999999 profile=default command=apply"* ]] || false
+
+  rm -f "$STATE_HOME/operation/fixture.lock/owner"
+  run run_rig upgrade </dev/null
+
+  [ "$status" -eq 2 ] || false
+  [[ "$output" == *"operation target 'fixture' is unknown; owner=unknown"* ]] || false
+  [ -d "$STATE_HOME/operation/fixture.lock" ] || false
+  [ ! -e "$CALL_LOG" ] || false
+  [ ! -e "$STATE_HOME/last-upgrade" ] || false
+
+  run run_rig upgrade --dry-run </dev/null
+
+  [ "$status" -eq 0 ] || false
+  [ ! -e "$CALL_LOG" ] || false
+}
+
+@test "an unattended upgrade refused by a held operation lock records why nothing ran" {
+  mkdir -p "$STATE_HOME"
+  printf '%s\n' 'previous run' >"$STATE_HOME/last-upgrade"
+  hold_operation_lock "pid=$$ profile=default command=apply"
+
+  run run_rig upgrade --unattended </dev/null
+
+  [ "$status" -eq 2 ] || false
+  [ ! -e "$CALL_LOG" ] || false
+  report=$STATE_HOME/last-upgrade
+  grep -Fqx $'rig-last-run\t1' "$report"
+  grep -Fqx $'action\tupgrade' "$report"
+  grep -Fqx $'profile\tdefault' "$report"
+  grep -Fqx $'platform\tfixture' "$report"
+  grep -Fqx $'status\t2' "$report"
+  grep -Fqx $'result\tfailed' "$report"
+  grep -Fqx $'detail\toperation-lock=active owner=apply' "$report"
+  grep -Fqx $'summary\tplanned=0 completed=0 failed=0 unavailable=0 skipped=0' "$report"
+  [ "$(tail -n 1 "$report")" = $'TARGET\tPROVIDER\tRESULT\tDETAIL' ] || false
+  ! grep -Fq -e "$STATE_HOME" -e 'pid=' -e 'previous run' "$report" || false
+
+  hold_operation_lock 'pid=999999 profile=default command=upgrade'
+  run run_rig upgrade --unattended </dev/null
+
+  [ "$status" -eq 2 ] || false
+  grep -Fqx $'detail\toperation-lock=stale owner=upgrade' "$STATE_HOME/last-upgrade"
+
+  hold_operation_lock "pid=$$ profile=default command=/some/path"
+  run run_rig upgrade --unattended </dev/null
+
+  [ "$status" -eq 2 ] || false
+  grep -Fqx $'detail\toperation-lock=active owner=unknown' "$STATE_HOME/last-upgrade"
+  ! grep -Fq '/some/path' "$STATE_HOME/last-upgrade" || false
+  [ -d "$STATE_HOME/operation/fixture.lock" ] || false
+}
+
+@test "a live upgrade holds the operation lock for its whole run and then releases it" {
+  cat >"$FAKE_BIN/brew" <<'SCRIPT'
+#!/usr/bin/env bash
+owner=free
+[ ! -f "$RIG_STATE_HOME/operation/fixture.lock/owner" ] ||
+  owner=$(cut -d' ' -f2- "$RIG_STATE_HOME/operation/fixture.lock/owner")
+printf 'brew\t%s\t%s\n' "$*" "$owner" >>"$RIG_TEST_LOG"
+SCRIPT
+  chmod +x "$FAKE_BIN/brew"
+
+  run run_rig upgrade </dev/null
+
+  [ "$status" -eq 0 ] || { printf '%s\n' "$output" >&3; false; }
+  grep -Fqx $'brew\tupgrade --formula brew-one\tprofile=default command=upgrade' "$CALL_LOG"
+  grep -Fqx $'brew\tupgrade --cask brew-two\tprofile=default command=upgrade' "$CALL_LOG"
+  [ ! -e "$STATE_HOME/operation/fixture.lock" ] || false
+  [ ! -e "$STATE_HOME/reconciliation/fixture.lock" ] || false
+}

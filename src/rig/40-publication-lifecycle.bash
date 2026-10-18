@@ -778,6 +778,7 @@ rig_run_lifecycle_tasks() {
 
 rig_command_lifecycle_impl() {
   local action profile dry_run profile_seen dry_run_seen unattended_seen usage
+  local operation_acquired status
 
   action=$1
   shift
@@ -829,8 +830,33 @@ rig_command_lifecycle_impl() {
   rig_resolve_operational_plan "$profile" || return
   [ "$RIG_RESOLVED_PROFILE_KIND" = complete ] ||
     rig_fail "profile '$RIG_RESOLVED_PROFILE' is a non-appliable view" || return
+  operation_acquired=0
+  if [ "$dry_run" -eq 0 ]; then
+    if rig_acquire_operation_lock \
+      "$RIG_RESOLVED_PLATFORM" "$RIG_RESOLVED_PROFILE" "$action"; then
+      operation_acquired=$RIG_OPERATION_LOCK_ACQUIRED
+    else
+      status=$?
+      # A wrapper reading the report must see why nothing ran this time.
+      if [ "$RIG_UNATTENDED" -eq 1 ] && [ -n "$RIG_LOCK_CONTENTION" ]; then
+        rig_write_last_run_report "$action" "$status" failed \
+          "operation-lock=$RIG_LOCK_CONTENTION owner=$RIG_LOCK_CONTENTION_COMMAND" \
+          'planned=0 completed=0 failed=0 unavailable=0 skipped=0' ''
+      fi
+      return "$status"
+    fi
+  fi
   rig_collect_lifecycle_tasks "$action" || return
-  rig_run_lifecycle_tasks "$action" "$dry_run"
+  if rig_run_lifecycle_tasks "$action" "$dry_run"; then
+    status=0
+  else
+    status=$?
+  fi
+  if [ "$operation_acquired" -eq 1 ]; then
+    rig_release_operation_lock || return
+    trap - EXIT HUP INT TERM
+  fi
+  return "$status"
 }
 
 rig_command_lifecycle() {

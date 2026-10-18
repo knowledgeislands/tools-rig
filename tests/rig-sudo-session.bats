@@ -207,6 +207,7 @@ assert_stopped() {
     [[ "$output" == *"\"status\": $expected"* ]] || false
     [ "$(cat "$RIG_TEST_TASK_LOG")" = first ]
     [ ! -d "$HOME/.local/state/rig/reconciliation/macos.lock" ]
+    [ ! -d "$HOME/.local/state/rig/operation/macos.lock" ]
     assert_stopped
   done
 }

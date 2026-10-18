@@ -548,7 +548,9 @@ terminal, graphical authentication, or credential helper; this flag is not a
 timeout or process supervisor. A non-dry run writes the
 .I last-upgrade
 report described under
-.BR FILES .
+.BR FILES ,
+including a run refused because an apply or another upgrade holds the
+operation lock.
 .RE
 .TP
 .B rig capture
@@ -1403,7 +1405,8 @@ Default state directory.
 .I ${XDG_STATE_HOME:-$HOME/.local/state}/rig/last-upgrade
 Report of the most recent unattended
 .B rig upgrade
-that dispatched work, replaced atomically and never written by a dry run. The
+that dispatched work or that a held operation lock refused, replaced
+atomically and never written by a dry run. The
 UTF-8 tab-separated text opens with
 .B rig-last-run
 and the integer report version, then one key and value line each for
@@ -1417,9 +1420,13 @@ and the integer report version, then one key and value line each for
 and
 .BR summary ,
 then the target, provider, result, and detail header and the same rows the run
-printed. It is a stable contract for a wrapper that notifies or reports, and
-carries no path, locator, argument, credential, or native output. Rig does not
-itself notify.
+printed. A refused run records status 2, result
+.BR failed ,
+detail
+.BI operation-lock= STATE " owner=" COMMAND\fR,
+zero counts, and no rows. It is a stable contract for a wrapper that notifies
+or reports, and carries no path, locator, argument, credential, or native
+output. Rig does not itself notify.
 .TP
 .I ${XDG_STATE_HOME:-$HOME/.local/state}/rig/resources/PLATFORM.tsv
 Atomic reconciliation receipt for resources last successfully managed on one
@@ -1441,10 +1448,23 @@ on real history writes; profile deselection alone does not remove evidence.
 The ledger is limited to 4 MiB and 4096 rows, with no age-based expiry.
 Persistence warnings do not rewrite provider outcomes or apply exit status.
 .TP
+.I ${XDG_STATE_HOME:-$HOME/.local/state}/rig/operation/PLATFORM.lock
+Exclusive live operation lock. Every live
+.B rig apply
+and
+.BR "rig upgrade" ,
+including an unattended upgrade, acquires it before any provider invocation and
+holds it for the whole run, so an apply and an upgrade refuse to run at the
+same time. Dry runs and read-only commands do not take it, and Rig never waits
+for it. Existing active, stale, or unknown owners are reported and not removed
+automatically.
+.TP
 .I ${XDG_STATE_HOME:-$HOME/.local/state}/rig/reconciliation/PLATFORM.lock
-Exclusive live reconciliation lock. Rig acquires it before reading a receipt
-and holds it through provider work and atomic receipt replacement. Existing
-active, stale, or unknown owners are reported and not removed automatically.
+Exclusive live reconciliation lock, taken inside the operation lock. Rig
+acquires it before reading a receipt and holds it through provider work and
+atomic receipt replacement; an apply with no resource work does not take it.
+Existing active, stale, or unknown owners are reported and not removed
+automatically.
 .TP
 .I ${XDG_CACHE_HOME:-$HOME/.cache}/rig
 Default cache directory.

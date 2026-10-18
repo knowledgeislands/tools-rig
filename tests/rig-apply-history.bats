@@ -19,9 +19,14 @@ case "$2" in
   apply|apply-resource)
     if [ "${HISTORY_INTERRUPT_ON:-}" = "$4" ]; then kill -TERM "$PPID"; sleep 0.1; exit 0; fi
     if [ -n "${HISTORY_STARTED:-}" ]; then
+      # Stand in for a writer that holds no operation lock, such as an earlier
+      # Rig, so another apply can overlap this attempt's history write.
+      detached=$RIG_STATE_HOME/operation/detached-$$
+      mv "$RIG_STATE_HOME/operation/macos.lock" "$detached" || exit 97
       : >"$HISTORY_STARTED"
       count=0
       while [ ! -f "$HISTORY_RELEASE" ] && [ "$count" -lt 300 ]; do sleep 0.02; count=$((count + 1)); done
+      mv "$detached" "$RIG_STATE_HOME/operation/macos.lock" || exit 97
       [ -f "$HISTORY_RELEASE" ] || exit 98
     fi
     exit "${HISTORY_EXIT:-0}" ;;
@@ -187,12 +192,15 @@ assert d["checks"]["fail"] == 2 and d["checks"]["skipped"] == 0
 }
 
 @test "parallel unrelated outcomes merge and older failure cannot beat newer success" {
-  env HISTORY_EXIT=7 "$RIG" apply --target alpha >"$BATS_TEST_TMPDIR/alpha.out" 2>&1 &
-  local alpha_pid=$!
-  env HISTORY_EXIT=8 "$RIG" apply --target beta >"$BATS_TEST_TMPDIR/beta.out" 2>&1 &
-  local beta_pid=$!
+  env HISTORY_EXIT=7 HISTORY_STARTED="$BATS_TEST_TMPDIR/alpha-start" HISTORY_RELEASE="$BATS_TEST_TMPDIR/alpha-release" \
+    "$RIG" apply --target alpha >"$BATS_TEST_TMPDIR/alpha.out" 2>&1 &
+  local alpha_pid=$! count=0
+  while [ ! -f "$BATS_TEST_TMPDIR/alpha-start" ] && [ "$count" -lt 300 ]; do sleep 0.02; count=$((count + 1)); done
+  [ -f "$BATS_TEST_TMPDIR/alpha-start" ] || false
+  run env HISTORY_EXIT=8 "$RIG" apply --target beta
+  [ "$status" -eq 1 ] || false
+  : >"$BATS_TEST_TMPDIR/alpha-release"
   wait "$alpha_pid" || [ "$?" -eq 1 ] || false
-  wait "$beta_pid" || [ "$?" -eq 1 ] || false
   [ "$(grep -c '^tool:' "$LEDGER")" -eq 2 ] || false
   env HISTORY_EXIT=17 HISTORY_STARTED="$BATS_TEST_TMPDIR/started" HISTORY_RELEASE="$BATS_TEST_TMPDIR/release" \
     "$RIG" apply --target alpha >"$BATS_TEST_TMPDIR/older.out" 2>&1 &
@@ -465,7 +473,7 @@ requires = ["alpha"]\
   export HISTORY_LOCK_RACE_MARKER=$BATS_TEST_TMPDIR/lock-race
   printf '%s\n' '#!/usr/bin/env bash' \
     'for argument in "$@"; do :; done' \
-    'case "$argument" in *.lock) if [ ! -e "$HISTORY_LOCK_RACE_MARKER" ]; then : >"$HISTORY_LOCK_RACE_MARKER"; exit 1; fi ;; esac' \
+    'case "$argument" in */apply-history/*.lock) if [ ! -e "$HISTORY_LOCK_RACE_MARKER" ]; then : >"$HISTORY_LOCK_RACE_MARKER"; exit 1; fi ;; esac' \
     'exec /bin/mkdir "$@"' >"$RIG_TEST_PROVIDER_BIN/mkdir"
   chmod +x "$RIG_TEST_PROVIDER_BIN/mkdir"
   run env HISTORY_EXIT=7 "$RIG" apply --target alpha

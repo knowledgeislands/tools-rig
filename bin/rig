@@ -121,6 +121,10 @@ RIG_PROFILE_SELECTION_MODE=
 RIG_RESOLVED_PROFILE_KIND=
 RIG_RECONCILIATION_LOCK=
 RIG_RECONCILIATION_LOCK_ACQUIRED=0
+RIG_OPERATION_LOCK=
+RIG_OPERATION_LOCK_ACQUIRED=0
+RIG_LOCK_CONTENTION=
+RIG_LOCK_CONTENTION_COMMAND=
 RIG_APPLY_ALLOW_DEFERRED_SKILLS=0
 RIG_APPLY_ALLOW_DEFERRED_PROVIDERS=0
 RIG_LISTENER_OBSERVATION_AVAILABLE=0
@@ -5375,52 +5379,91 @@ rig_reconciliation_lock_path() {
   RIG_VALUE=$state_home/reconciliation/$platform.lock
 }
 
+rig_operation_lock_path() {
+  local state_home platform
+
+  platform=$1
+  rig_effective_state_home || return
+  state_home=$RIG_VALUE
+  RIG_VALUE=$state_home/operation/$platform.lock
+}
+
+rig_platform_lock_drop() {
+  local label directory lock parent
+
+  label=$1
+  directory=$2
+  lock=$3
+  rig_effective_state_home || return
+  parent=$RIG_VALUE/$directory
+  case "$lock" in "$parent"/*.lock) ;; *)
+    rig_fail "refusing unsafe $label lock release: $lock" || return ;;
+  esac
+  [ -d "$lock" ] && [ ! -L "$lock" ] ||
+    rig_fail "$label lock became unsafe: $lock" || return
+  rm -f "$lock/owner" || return
+  rmdir "$lock" || return
+}
+
 rig_release_reconciliation_lock() {
-  local lock parent
+  local lock
 
   lock=${RIG_RECONCILIATION_LOCK:-}
   [ -n "$lock" ] || return 0
-  rig_effective_state_home || return
-  parent=$RIG_VALUE/reconciliation
-  case "$lock" in "$parent"/*.lock) ;; *)
-    rig_fail "refusing unsafe reconciliation lock release: $lock" || return ;;
-  esac
-  [ -d "$lock" ] && [ ! -L "$lock" ] ||
-    rig_fail "reconciliation lock became unsafe: $lock" || return
-  rm -f "$lock/owner" || return
-  rmdir "$lock" || return
+  rig_platform_lock_drop reconciliation reconciliation "$lock" || return
   RIG_RECONCILIATION_LOCK=
   RIG_RECONCILIATION_LOCK_ACQUIRED=0
 }
 
-rig_reconciliation_signal() {
+rig_release_operation_lock() {
+  local lock
+
+  lock=${RIG_OPERATION_LOCK:-}
+  [ -n "$lock" ] || return 0
+  rig_platform_lock_drop operation operation "$lock" || return
+  RIG_OPERATION_LOCK=
+  RIG_OPERATION_LOCK_ACQUIRED=0
+}
+
+# The reconciliation lock nests inside the operation lock, so release it first.
+rig_release_platform_locks() {
+  rig_release_reconciliation_lock || true
+  rig_release_operation_lock || true
+}
+
+rig_platform_lock_signal() {
   local exit_code
 
   exit_code=$1
   trap - HUP INT TERM
   rig_progress_interrupted
   rig_sudo_cleanup
-  rig_release_reconciliation_lock || true
+  rig_release_platform_locks
   exit "$exit_code"
 }
 
-rig_acquire_reconciliation_lock() {
-  local platform profile command lock parent ancestor owner owner_pid owner_state
+rig_platform_lock_traps() {
+  trap 'rig_sudo_cleanup; rig_progress_cleanup; rig_release_platform_locks' EXIT
+  trap 'rig_platform_lock_signal 129' HUP
+  trap 'rig_platform_lock_signal 130' INT
+  trap 'rig_platform_lock_signal 143' TERM
+}
 
-  platform=$1
-  profile=$2
-  command=$3
-  rig_reconciliation_lock_path "$platform" || return
-  lock=$RIG_VALUE
-  if [ -n "${RIG_RECONCILIATION_LOCK:-}" ]; then
-    [ "$RIG_RECONCILIATION_LOCK" = "$lock" ] ||
-      rig_fail "another reconciliation target is already locked by this process: $RIG_RECONCILIATION_LOCK" || return
-    RIG_RECONCILIATION_LOCK_ACQUIRED=0
-    return 0
-  fi
+# Create one exclusive per-platform lock directory and record its owner. A held
+# lock is reported, never removed, and its state left in RIG_LOCK_CONTENTION.
+rig_platform_lock_take() {
+  local label platform lock profile command parent ancestor owner owner_pid owner_state
+
+  label=$1
+  platform=$2
+  lock=$3
+  profile=$4
+  command=$5
+  RIG_LOCK_CONTENTION=
+  RIG_LOCK_CONTENTION_COMMAND=
   parent=${lock%/*}
   if [ -L "$parent" ] || { [ -e "$parent" ] && [ ! -d "$parent" ]; }; then
-    rig_fail "reconciliation lock directory is unsafe: $parent" || return
+    rig_fail "$label lock directory is unsafe: $parent" || return
   fi
   ancestor=$parent
   while [ ! -e "$ancestor" ]; do
@@ -5429,11 +5472,11 @@ rig_acquire_reconciliation_lock() {
     [ -n "$ancestor" ] || ancestor=/
   done
   [ -d "$ancestor" ] && [ -w "$ancestor" ] && [ -x "$ancestor" ] ||
-    rig_fail "reconciliation lock parent is unavailable: $ancestor" || return
-  mkdir -p "$parent" || rig_fail "cannot create reconciliation lock directory: $parent" || return
+    rig_fail "$label lock parent is unavailable: $ancestor" || return
+  mkdir -p "$parent" || rig_fail "cannot create $label lock directory: $parent" || return
   if ! mkdir "$lock" 2>/dev/null; then
     [ -d "$lock" ] && [ ! -L "$lock" ] ||
-      rig_fail "reconciliation target lock is unsafe: $lock" || return
+      rig_fail "$label target lock is unsafe: $lock" || return
     owner=unknown
     if [ -f "$lock/owner" ] && [ -r "$lock/owner" ]; then
       IFS= read -r owner <"$lock/owner" || owner=unknown
@@ -5447,18 +5490,60 @@ rig_acquire_reconciliation_lock() {
         ;;
       *) owner_state=unknown ;;
     esac
-    rig_fail "reconciliation target '$platform' is $owner_state; owner=$owner" || return
+    RIG_LOCK_CONTENTION=$owner_state
+    case " $owner " in
+      *' command=apply '*) RIG_LOCK_CONTENTION_COMMAND=apply ;;
+      *' command=upgrade '*) RIG_LOCK_CONTENTION_COMMAND=upgrade ;;
+      *) RIG_LOCK_CONTENTION_COMMAND=unknown ;;
+    esac
+    rig_fail "$label target '$platform' is $owner_state; owner=$owner" || return
   fi
   if ! printf 'pid=%s profile=%s command=%s\n' "$$" "$profile" "$command" >"$lock/owner"; then
     rmdir "$lock" 2>/dev/null || true
-    rig_fail "cannot record reconciliation lock owner: $lock" || return
+    rig_fail "cannot record $label lock owner: $lock" || return
   fi
+}
+
+rig_acquire_reconciliation_lock() {
+  local platform profile command lock
+
+  platform=$1
+  profile=$2
+  command=$3
+  rig_reconciliation_lock_path "$platform" || return
+  lock=$RIG_VALUE
+  if [ -n "${RIG_RECONCILIATION_LOCK:-}" ]; then
+    [ "$RIG_RECONCILIATION_LOCK" = "$lock" ] ||
+      rig_fail "another reconciliation target is already locked by this process: $RIG_RECONCILIATION_LOCK" || return
+    RIG_RECONCILIATION_LOCK_ACQUIRED=0
+    return 0
+  fi
+  rig_platform_lock_take reconciliation "$platform" "$lock" "$profile" "$command" || return
   RIG_RECONCILIATION_LOCK=$lock
   RIG_RECONCILIATION_LOCK_ACQUIRED=1
-  trap 'rig_sudo_cleanup; rig_progress_cleanup; rig_release_reconciliation_lock' EXIT
-  trap 'rig_reconciliation_signal 129' HUP
-  trap 'rig_reconciliation_signal 130' INT
-  trap 'rig_reconciliation_signal 143' TERM
+  rig_platform_lock_traps
+}
+
+# Live apply and upgrade hold this lock for the whole run, so two native
+# managers never run side by side; it wraps the reconciliation lock.
+rig_acquire_operation_lock() {
+  local platform profile command lock
+
+  platform=$1
+  profile=$2
+  command=$3
+  rig_operation_lock_path "$platform" || return
+  lock=$RIG_VALUE
+  if [ -n "${RIG_OPERATION_LOCK:-}" ]; then
+    [ "$RIG_OPERATION_LOCK" = "$lock" ] ||
+      rig_fail "another operation target is already locked by this process: $RIG_OPERATION_LOCK" || return
+    RIG_OPERATION_LOCK_ACQUIRED=0
+    return 0
+  fi
+  rig_platform_lock_take operation "$platform" "$lock" "$profile" "$command" || return
+  RIG_OPERATION_LOCK=$lock
+  RIG_OPERATION_LOCK_ACQUIRED=1
+  rig_platform_lock_traps
 }
 
 rig_resource_receipt_path() {
@@ -9465,6 +9550,7 @@ rig_command_apply_impl() {
   local profile scope dry_run profile_seen scope_seen dry_run_seen index tool binding provider
   local blocker native_status planned completed failed skipped operational_failure
   local section_name section_index kind id locator resource_total lock_acquired exit_code
+  local operation_acquired
   local row_scope sudo_requested
   sudo_requested=0
 
@@ -9530,6 +9616,12 @@ rig_command_apply_impl() {
   rig_resolve_operational_plan "$profile" defer || return
   [ "$RIG_RESOLVED_PROFILE_KIND" = complete ] ||
     rig_fail "profile '$RIG_RESOLVED_PROFILE' is a non-appliable view" || return
+  operation_acquired=0
+  if [ "$dry_run" -eq 0 ]; then
+    rig_acquire_operation_lock \
+      "$RIG_RESOLVED_PLATFORM" "$RIG_RESOLVED_PROFILE" apply || return
+    operation_acquired=$RIG_OPERATION_LOCK_ACQUIRED
+  fi
   if [ "${#RIG_APPLY_TARGETS[@]}" -gt 0 ]; then
     rig_apply_select_targets "$scope" || return
   fi
@@ -9816,6 +9908,9 @@ rig_command_apply_impl() {
   fi
   if [ "$lock_acquired" -eq 1 ]; then
     rig_release_reconciliation_lock || return
+  fi
+  if [ "$operation_acquired" -eq 1 ]; then
+    rig_release_operation_lock || return
     trap - EXIT HUP INT TERM
   fi
   return "$exit_code"
@@ -16162,6 +16257,7 @@ rig_run_lifecycle_tasks() {
 
 rig_command_lifecycle_impl() {
   local action profile dry_run profile_seen dry_run_seen unattended_seen usage
+  local operation_acquired status
 
   action=$1
   shift
@@ -16213,8 +16309,33 @@ rig_command_lifecycle_impl() {
   rig_resolve_operational_plan "$profile" || return
   [ "$RIG_RESOLVED_PROFILE_KIND" = complete ] ||
     rig_fail "profile '$RIG_RESOLVED_PROFILE' is a non-appliable view" || return
+  operation_acquired=0
+  if [ "$dry_run" -eq 0 ]; then
+    if rig_acquire_operation_lock \
+      "$RIG_RESOLVED_PLATFORM" "$RIG_RESOLVED_PROFILE" "$action"; then
+      operation_acquired=$RIG_OPERATION_LOCK_ACQUIRED
+    else
+      status=$?
+      # A wrapper reading the report must see why nothing ran this time.
+      if [ "$RIG_UNATTENDED" -eq 1 ] && [ -n "$RIG_LOCK_CONTENTION" ]; then
+        rig_write_last_run_report "$action" "$status" failed \
+          "operation-lock=$RIG_LOCK_CONTENTION owner=$RIG_LOCK_CONTENTION_COMMAND" \
+          'planned=0 completed=0 failed=0 unavailable=0 skipped=0' ''
+      fi
+      return "$status"
+    fi
+  fi
   rig_collect_lifecycle_tasks "$action" || return
-  rig_run_lifecycle_tasks "$action" "$dry_run"
+  if rig_run_lifecycle_tasks "$action" "$dry_run"; then
+    status=0
+  else
+    status=$?
+  fi
+  if [ "$operation_acquired" -eq 1 ]; then
+    rig_release_operation_lock || return
+    trap - EXIT HUP INT TERM
+  fi
+  return "$status"
 }
 
 rig_command_lifecycle() {

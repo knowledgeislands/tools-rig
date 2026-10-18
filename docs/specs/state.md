@@ -262,15 +262,19 @@ _Verify:_ Bats deletes a declaration and inspects its retirement, narrows a prof
 
 _Evidence:_ `rig_load_resource_receipt` records only service and scheduled-job retirement and only for rows the catalogue no longer declares, while `rig_resolve_operational_plan` excludes views from receipt loading; resource and profile-authority Bats cover both paths.
 
-### RIG-STATE-025 — Exclusive reconciliation target
+### RIG-STATE-025 — Exclusive operation and reconciliation targets
 
-Before a live receipt-backed apply reads its per-platform receipt, Rig MUST acquire an exclusive lock for that platform and MUST hold it through receipt replacement or failure cleanup. A concurrent invocation MUST fail before provider mutation with active, stale, or unknown owner detail and MUST NOT remove an unverified existing lock.
+A live `rig apply` of any scope or target, and a live `rig upgrade`, attended or unattended, MUST acquire an exclusive per-platform operation lock before any provider invocation and MUST hold it until the run ends, so two native managers never run side by side under Rig. A concurrent apply or upgrade MUST fail with status 2 before any provider invocation. A dry run and every read-only command MUST NOT take the operation lock, and Rig MUST NOT queue or wait for it.
+
+Before a live receipt-backed apply reads its per-platform receipt, Rig MUST also acquire a separate exclusive reconciliation lock for that platform, inside the operation lock, and MUST hold it through receipt replacement or failure cleanup. A concurrent invocation MUST fail before provider mutation. The operation lock does not widen the reconciliation lock: a targeted apply with no resource work takes the operation lock alone under [RIG-ORCH-037](orchestration.md#rig-orch-037--narrow-reconciliation-state-boundary).
+
+A refusal on either lock MUST name active, stale, or unknown owner detail and MUST NOT remove an unverified existing lock. An interrupted run MUST release the locks it holds.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats supplies live and non-existent owner PIDs, asserts no provider call and retained lock, then completes reconciliation and asserts lock cleanup plus receipt installation.
+_Verify:_ Bats supplies live, non-existent and absent owners on fixture operation and reconciliation locks, asserts status 2, no provider call and a retained lock for apply of every scope, a tool-only target and upgrade, and that dry runs proceed; it then completes an apply and an upgrade, asserts the provider ran with both or the operation lock held, and asserts lock cleanup, receipt installation and release on HUP, INT and TERM.
 
-_Evidence:_ `rig_acquire_reconciliation_lock`, signal traps, `rig_release_reconciliation_lock`, and deferred receipt loading implement the boundary; `tests/rig-profile-authority.bats` covers contention and success.
+_Evidence:_ `rig_acquire_operation_lock`, `rig_acquire_reconciliation_lock`, the shared `rig_platform_lock_take`, signal traps, `rig_release_platform_locks`, and deferred receipt loading implement the boundary; `tests/rig-profile-authority.bats`, `tests/rig-lifecycle.bats`, `tests/rig.bats` and `tests/rig-sudo-session.bats` cover contention, nesting, success and interruption.
 
 ### RIG-STATE-026 — Private port expected-versus-observed state
 
@@ -324,17 +328,19 @@ _Evidence:_ `rig_outcome_enabled`, `rig_outcome_note`, `rig_outcome_report`, and
 
 ### RIG-STATE-030 — Unattended last-run report
 
-An unattended `rig upgrade` that dispatches work MUST record its outcome beneath the effective state home as `last-upgrade`, honouring `RIG_STATE_HOME` and then `${XDG_STATE_HOME:-$HOME/.local/state}/rig`. One file MUST hold the most recent unattended run and MUST be replaced atomically, so a reader never observes a partial report. A dry run MUST NOT write it, because no run happened.
+An unattended `rig upgrade` that dispatches work, or that a held operation lock refuses under [RIG-STATE-025](#rig-state-025--exclusive-operation-and-reconciliation-targets), MUST record its outcome beneath the effective state home as `last-upgrade`, honouring `RIG_STATE_HOME` and then `${XDG_STATE_HOME:-$HOME/.local/state}/rig`. One file MUST hold the most recent unattended run and MUST be replaced atomically, so a reader never observes a partial report. A dry run MUST NOT write it, because no run happened.
 
-The report MUST be UTF-8 tab-separated text. It MUST open with `rig-last-run` and the integer report version, then one `KEY<TAB>VALUE` line each for `action`, `profile`, `platform`, `finished`, `status`, `result`, `detail`, and `summary`, then the `TARGET PROVIDER RESULT DETAIL` header and the same rows the run printed on stdout. `result` and `status` MUST agree with the stated outcome under [RIG-STATE-029](#rig-state-029--exit-status-and-stated-outcome). Rig MAY add a later report version but MUST NOT silently change the meaning of version 1.
+A refused run dispatches nothing, but its report MUST still replace the previous one, so a wrapper sees why nothing ran rather than an older run's outcome. It MUST carry `status` 2, `result` `failed`, `detail` `operation-lock=STATE owner=COMMAND`, where `STATE` is `active`, `stale` or `unknown` and `COMMAND` is `apply`, `upgrade` or `unknown`, a summary with every count zero, and the header with no rows. No other status-2 rejection writes the report.
+
+The report MUST be UTF-8 tab-separated text. It MUST open with `rig-last-run` and the integer report version, then one `KEY<TAB>VALUE` line each for `action`, `profile`, `platform`, `finished`, `status`, `result`, `detail`, and `summary`, then the `TARGET PROVIDER RESULT DETAIL` header and the same rows the run printed on stdout. For a run that dispatched work, `result` and `status` MUST agree with the stated outcome under [RIG-STATE-029](#rig-state-029--exit-status-and-stated-outcome); a refused run states no outcome line, so its report alone records `failed`. Rig MAY add a later report version but MUST NOT silently change the meaning of version 1.
 
 The report is a public contract a wrapper reads to notify or report, so it MUST NOT carry a path, locator, argument, credential, or native output, and Rig MUST NOT itself notify. Rig MUST refuse to replace a target that is a symbolic link or a non-regular file, and a report that cannot be written MUST NOT change the run's exit status.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats runs an unattended update, parses the report's keys and rows, compares them with the run's stdout and stated outcome, asserts no file after a dry run, and asserts an unsafe target is left unaltered.
+_Verify:_ Bats runs an unattended update, parses the report's keys and rows, compares them with the run's stdout and stated outcome, asserts no file after a dry run, and asserts an unsafe target is left unaltered. Against active, stale and unparseable fixture operation-lock owners it asserts status 2, no provider call, a replaced report carrying the refusal detail with no rows, and no owner path or process identifier in the report.
 
-_Evidence:_ `rig_write_last_run_report` and `rig_run_lifecycle_tasks` implement it; `tests/rig-lifecycle.bats` verifies it.
+_Evidence:_ `rig_write_last_run_report`, `rig_run_lifecycle_tasks` and `rig_command_lifecycle_impl` implement it; `tests/rig-lifecycle.bats` verifies it.
 
 ### RIG-STATE-032 — macOS application inventory baseline
 
@@ -386,9 +392,9 @@ Status and doctor MUST project selected failures separately from current observa
 
 _Conformance:_ conforming
 
-_Verify:_ Isolated provider fixtures exercise completed failure and recovery, provider/platform/profile boundaries, independent and reversed concurrent completion, interruption, unsafe and corrupt state, bounds, privacy, clock discrepancy, and byte-preserving read-only and dry-run commands.
+_Verify:_ Isolated provider fixtures exercise completed failure and recovery, provider/platform/profile boundaries, independent and reversed concurrent completion (a fixture writer standing in for one that holds no operation lock under RIG-STATE-025), interruption, unsafe and corrupt state, bounds, privacy, clock discrepancy, and byte-preserving read-only and dry-run commands.
 
-_Evidence:_ `src/rig/25-apply-history.bash` owns storage and shared projection; `src/rig/23-application.bash` brackets actual dispatches and `src/rig/22-observation.bash` adds historical health evidence. The 23 cases in `tests/rig-apply-history.bats` cover the persistence, ordering, filtering, privacy and read-only boundaries across dispatched target kinds; `tests/rig-default-applications.bats` covers a failed and recovered handler assignment and `tests/rig-firewall.bats` a converged firewall apply; the complete local gate passes with 567 Bats tests.
+_Evidence:_ `src/rig/25-apply-history.bash` owns storage and shared projection; `src/rig/23-application.bash` brackets actual dispatches and `src/rig/22-observation.bash` adds historical health evidence. The 24 cases in `tests/rig-apply-history.bats` cover the persistence, ordering, filtering, privacy and read-only boundaries across dispatched target kinds; `tests/rig-default-applications.bats` covers a failed and recovered handler assignment and `tests/rig-firewall.bats` a converged firewall apply; the complete local gate passes with 572 Bats tests.
 
 ### RIG-STATE-036 — Dock folder attributes
 

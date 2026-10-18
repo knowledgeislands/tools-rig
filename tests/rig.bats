@@ -87,7 +87,7 @@ setup() {
   [ "$(grep -Fc 'CALL=apply:app:present' "$ORCHESTRATION_LOG")" -eq 1 ] || false
 }
 
-@test "tool-only target never takes the resource reconciliation lock" {
+@test "tool-only target takes the operation lock but never the resource reconciliation lock" {
   local state_home
   write_resource_fixture
   state_home=$BATS_TEST_TMPDIR/target-state
@@ -99,6 +99,14 @@ setup() {
   rig_test_report_contains "$output" $'base\t-\tskipped\tcatalogue-only\ttarget' || false
   [ ! -s "$RESOURCE_LOG" ] || false
   [ -d "$state_home/reconciliation/macos.lock" ] || false
+  [ ! -e "$state_home/operation/macos.lock" ] || false
+
+  mkdir -p "$state_home/operation/macos.lock"
+  printf 'pid=%s profile=default command=upgrade\n' "$$" >"$state_home/operation/macos.lock/owner"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$state_home" \
+    RIG_PLATFORM=macos RESOURCE_LOG="$RESOURCE_LOG" "$RIG" apply --target base
+  [ "$status" -eq 2 ] || false
+  [[ "$output" == *"operation target 'macos' is active"* ]] || false
 }
 
 @test "resource target applies one resource and records only its receipt" {
