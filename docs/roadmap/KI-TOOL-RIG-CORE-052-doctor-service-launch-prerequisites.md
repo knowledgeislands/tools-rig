@@ -115,3 +115,14 @@ Doctor now says a service cannot start because its program or working directory 
 Origin: the `sol` Observatory outage diagnosed in the Mac Studio bootstrap thread, and Kris Brown's decision on 2026-10-14 to capture it here. A program path matters as much as the working directory: the same plist names a mise-installed Bun by path, and a removed mise install would fail the same way. Whether a missing path makes the service itself a finding, or only annotates its port finding, is a planning question. Capture only; adoption, priority and plan belong to this repository.
 
 Adopted, planned and delivered on 18 October 2026 by the tools-burndown run, under the rig-lane report's RIG-ORDER a) ("plan KI-TOOL-RIG-CORE-055, KI-TOOL-RIG-CORE-052 and KI-TOOL-RIG-CORE-054 to Ready in one ki-plan sitting") and Kris's overnight instruction of 18 October 2026, 04:30 BST, to burn the roadmap down as far as possible and take the recommended course on a judgement call. The record was triage, so its adoption to `deliver` / Now and its plan choices below are provisional, for Kris to confirm at review.
+
+### Independent review
+
+The ways-of-working rig-review run reviewed this record on 18 October 2026, read-only and without having written it, at `92d2d27`, under TOOLS-BLOCKERS in the ways-of-working decisions log. The complete local gate passes there: audit (the existing HOOK-1 warning only), ShellCheck, Bash syntax, assembly drift, the fixture benchmark and mandoc; all 572 Bats tests pass. `scripts/smoke-native-providers` was not run. The review does not accept the record; acceptance stays with Kris.
+
+**Verdict: no blocking findings.** Two low.
+
+- **Low: an error reads as "launchable".** `rig_resource_launch_blocker` returns 1 both for "no blocker" and for a failed section or home lookup, so a configuration read error is silently treated as launchable. Unlikely in practice, because configuration loading has already validated the section.
+- **Low: the Boundary's systemd half has no subject.** Confirmed: no systemd service adapter exists in `src/rig/`, so the launchd-only delivery matches the code base; the record says so in Outstanding concerns.
+
+Confirmed sound: `~` is expanded with the launchd adapter's own rule; a bare program name is left to launchd; a directory or non-executable file is `program-not-executable`; the item counts as one failure however many findings explain it; a port whose owner is blocked gets `cause:owner-unlaunchable` and `restore-owner-launch-path`; doctor makes no `bootstrap`, `bootout` or `kickstart` call.

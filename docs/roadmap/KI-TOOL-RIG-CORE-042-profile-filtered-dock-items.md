@@ -183,3 +183,17 @@ On 12 October 2026 Kris approved this plan as written (state-of-play thread, Dec
 ### Promotion and owner rule
 
 On 14 October 2026 Kris answered two queries from the mac-studio-bootstrap thread (decision 70 in its decisions log): "SOL-DOCK-ZED - prioritise KI-TOOL-RIG-CORE-042, use it to verify rather than manual change" and "SOL-DOCK-EXTRAS - same order as the laptop, filtered by what each profile selects". Under `ki-next` the record moves from Next to Now with its Ready status, plan and approvals unchanged. The ordering rule confirms the approved contract rather than changing it, and the acceptance check on `sol` adds a post-delivery verification step outside `ki-implement`'s fixture-only grant, so no replan is needed. These answers add no authority beyond the existing Ready approval: no personal configuration change and no live apply.
+
+### Independent review
+
+The ways-of-working rig-review run reviewed this record on 18 October 2026, read-only and without having written it, at `92d2d27`, under TOOLS-BLOCKERS in the ways-of-working decisions log. The complete local gate passes there: audit (the existing HOOK-1 warning only), ShellCheck, Bash syntax, assembly drift, the fixture benchmark and mandoc; all 572 Bats tests pass. `scripts/smoke-native-providers` was not run. The review does not accept the record; acceptance stays with Kris.
+
+**Verdict: findings, so not ready to accept as recorded.** One medium finding, two low.
+
+- **Medium: a missing unlinked app still reports `present`.** `rig_dock_missing_linked_item` in `src/rig/20-orchestration.bash` skips every item without `tool`, so only linked items raise `dock-item-path-missing`. The Verify contract asks that "a selected missing app" give unhealthy status and doctor evidence, and Outstanding concerns says the check covers "linked and unlinked included items alike". A throwaway fixture confirmed the gap: with the unlinked `system` app deleted and the Dock still listing it, `rig status --format json` exits 0 and reports the layout `present` with detail `-`. Apply and dry-run still fail on it through preflight, so nothing is mutated wrongly. Either drop the `tool` condition (and rename the helper) or correct the record and specification to say only linked items are checked.
+- **Low: an error is read as "nothing missing".** The helper returns 2 on a configuration read failure, but it is called as `if rig_dock_missing_linked_item`, so that error falls through to the order comparison.
+- **Low: the coverage claim is wider than the new tests.** `tests/rig-dock-profiles.bats` does not exercise two selected layouts conflicting when one filters to empty, an explicit `requires` still blocking a dependent Dock, or a declared folder attribute on an excluded item never being queried. The older suites may cover the unfiltered forms, but "covering every Verify bullet that fixtures can reach" is too strong.
+
+Confirmed sound: membership walks declared `items` order over the full resolved tool selection; a targeted apply keeps `RIG_SELECTED_TOOLS` whole, so a targeted Dock still keeps every selected app; platform exclusion is reported ahead of profile exclusion; links never select tools or add prerequisites; an all-excluded layout applies an empty Dock with no blank-path preflight; read-only commands log no Dock write.
+
+The acceptance check on `sol` remains outstanding by design, and needs the chezmoi declaration, Kris's placement decision and a live apply Kris approves.

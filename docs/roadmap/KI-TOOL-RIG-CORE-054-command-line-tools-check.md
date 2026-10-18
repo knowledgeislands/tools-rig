@@ -117,3 +117,14 @@ Doctor now names missing or outdated Command Line Tools once, before a Homebrew 
 Origin: the `sol` bring-up, captured on Kris Brown's approval of RIG-RECORDS on 2026-10-14 (decision 70 in the thread's decisions log). Planning questions: whether a minor-version lag (26.6 on 26.7) also counts, or only a major one; whether the finding makes doctor unhealthy or stays informational when no Homebrew tool is selected; whether `apply` and `upgrade` should refuse Homebrew work outright while the finding stands. Capture only; adoption, priority and plan belong to this repository.
 
 Adopted, planned and delivered on 18 October 2026 by the tools-burndown run, under the rig-lane report's RIG-ORDER a) ("plan KI-TOOL-RIG-CORE-055, KI-TOOL-RIG-CORE-052 and KI-TOOL-RIG-CORE-054 to Ready in one ki-plan sitting") and Kris's overnight instruction of 18 October 2026, 04:30 BST, to burn the roadmap down as far as possible and take the recommended course on a judgement call. The record was triage, so its adoption to `deliver` / Now and its plan choices below are provisional, for Kris to confirm at review.
+
+### Independent review
+
+The ways-of-working rig-review run reviewed this record on 18 October 2026, read-only and without having written it, at `92d2d27`, under TOOLS-BLOCKERS in the ways-of-working decisions log. The complete local gate passes there: audit (the existing HOOK-1 warning only), ShellCheck, Bash syntax, assembly drift, the fixture benchmark and mandoc; all 572 Bats tests pass. `scripts/smoke-native-providers` was not run. The review does not accept the record; acceptance stays with Kris.
+
+**Verdict: no blocking findings.** Two low.
+
+- **Low: the major-version rule is exact only from macOS 26.** From macOS 26 the Command Line Tools and macOS share their major number, so "installed major below macOS major" is the right test on both Macs today. On macOS 15 and earlier the tools' major ran one ahead (tools 16 on macOS 15), so tools one release behind would pass unnoticed. No machine in the estate runs those releases.
+- **Low: Xcode.app skips the check entirely,** including an outdated Xcode, which the Boundary accepts.
+
+Confirmed sound: the check runs only on macOS with Homebrew work selected; it is one finding with `owner=environment`, counted once and added once to the check total; the isolation helper stubs `xcode-select`, `pkgutil` and `sw_vers` as current, so no test reads the runner's toolchain. The missing `apply --dry-run` warning is a recorded, provisional deviation that the Boundary allowed ("if planning finds it cheap").

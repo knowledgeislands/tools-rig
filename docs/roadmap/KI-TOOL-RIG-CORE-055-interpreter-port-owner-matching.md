@@ -115,3 +115,14 @@ A tool run as `python -m package` now owns its port when the package is the tool
 Origin: the `sol` bring-up, captured on Kris Brown's approval of RIG-RECORDS on 2026-10-14 (decision 70 in the thread's decisions log). The main planning choice is between inferring the import name (simple, but `headroom-ai` to `headroom` is a convention, not a rule) and letting the port or tool declare the command it expects (explicit, one more field). A false `conflicting` on a connection-critical port invites a person to "fix" a working service, so the record matters more than its size suggests. Capture only; adoption, priority and plan belong to this repository.
 
 Adopted, planned and delivered on 18 October 2026 by the tools-burndown run, under the rig-lane report's RIG-ORDER a) ("plan KI-TOOL-RIG-CORE-055, KI-TOOL-RIG-CORE-052 and KI-TOOL-RIG-CORE-054 to Ready in one ki-plan sitting") and Kris's overnight instruction of 18 October 2026, 04:30 BST, to burn the roadmap down as far as possible and take the recommended course on a judgement call. The record was triage, so its adoption to `deliver` / Now and its plan choices below are provisional, for Kris to confirm at review.
+
+### Independent review
+
+The ways-of-working rig-review run reviewed this record on 18 October 2026, read-only and without having written it, at `92d2d27`, under TOOLS-BLOCKERS in the ways-of-working decisions log. The complete local gate passes there: audit (the existing HOOK-1 warning only), ShellCheck, Bash syntax, assembly drift, the fixture benchmark and mandoc; all 572 Bats tests pass. `scripts/smoke-native-providers` was not run. The review does not accept the record; acceptance stays with Kris.
+
+**Verdict: no blocking findings.** Two low.
+
+- **Low: the uv tool path already matched.** An existing test shows a listener under `~/.local/share/uv/tools/headroom-ai/bin/python -m headroom.cli` was already owned through the `/headroom-ai/` path component. The new rule's value is the case the new test pins: a Homebrew or framework Python whose path names no tool. Confirm on `sol` that Headroom's listener is that shape; otherwise the original `conflicting` report had another cause.
+- **Low: only `-m MODULE` with a space matches.** `-mMODULE` and `python path/to/module/__main__.py` stay unmatched, and a locator with a version specifier such as `pkg==1.2` yields no useful module name; both are within the provisional inference choice.
+
+Confirmed sound: a module matches only as a whole word or a dotted prefix, so `headroomx` and `-m pip install headroom` are rejected; service and scheduled-job owners gain no module matching; an unreadable command line still reports ownership unverified rather than a conflict.
