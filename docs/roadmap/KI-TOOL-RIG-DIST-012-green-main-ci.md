@@ -5,13 +5,12 @@ title: Green main CI
 theme: rig
 kind: deliver
 purpose: corrective
-horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: f6160db38ea29b5d29617c297b94368cb6dca0fb
 created_at: 2026-10-18T18:07:57Z
-updated_at: 2026-10-18T18:40:00Z
+updated_at: 2026-10-18T19:43:44Z
 ---
 
 # KI-TOOL-RIG-DIST-012: Green Main CI
@@ -105,6 +104,12 @@ The guards keep their meaning: each skips the iteration unless the lookup succee
 ### Mini recap
 
 CI was red on a newer ShellCheck rule and a stale ki pin; three lines and one pin fix it.
+
+## Done
+
+Kris accepted the record as it stands on 18 October 2026 (RIG-DIST-012-ACCEPT a), ways-of-working decisions log, 20:33 BST owner answers: "do all the recommended items, we just need to move forwards"). The six-part review packet stands: both failing jobs fixed within the boundary, main CI run 39153236499 green, and the 14 records' `theme` left unchanged, as the current harness accepts it.
+
+In the same answers Kris accepted the annotated, unsigned `v0.7.0` tag (RIG-TAG-SIGN a)) as matching the `v0.6.3` practice: both tags are annotated and neither carries a signature.
 
 ## Discussion
 
