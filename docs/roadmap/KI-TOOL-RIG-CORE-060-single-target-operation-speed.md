@@ -5,13 +5,12 @@ title: Single-target operation speed
 purpose: corrective
 theme: rig
 kind: deliver
-horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 4112c6cd19325b2db7a5f13ae91035839ddbaa88
 created_at: 2026-10-17T21:44:09Z
-updated_at: 2026-10-18T04:20:00Z
+updated_at: 2026-10-18T05:37:45Z
 ---
 
 # KI-TOOL-RIG-CORE-060: Single-Target Operation Speed
@@ -130,6 +129,10 @@ The planner gives the same lowest-indexed-ready order: the new test pins an earl
 ### Mini recap
 
 A targeted `laptop` preview on `sol` now takes about 5 seconds instead of 24, with the same output and the same native probes.
+
+## Done
+
+Accepted 2026-10-18 by the ways-of-working rig-review run, provisionally, on Fable's opinion of 18 October, for Kris to confirm. Authority: the ways-of-working decisions log, TOOLS-BLOCKERS ("KI-TOOL-MGIT-CLI-017 and KI-TOOL-RIG-CORE-060: accept, as their independent reviews passed"), taken under FABLE-OPINION and KEEP-PUSHING, on the review packet above and the independent review in Discussion. Not pruned; Kris may reopen it by editing this record.
 
 ## Discussion
 
