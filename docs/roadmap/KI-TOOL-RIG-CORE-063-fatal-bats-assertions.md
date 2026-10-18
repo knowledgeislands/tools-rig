@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-18T17:10:50Z
-updated_at: 2026-10-18T17:10:50Z
+updated_at: 2026-10-18T18:07:57Z
 ---
 
 # Fatal Bats Assertions
@@ -46,3 +46,7 @@ None. Blocks nothing.
 ## Discussion
 
 Origin: the ways-of-working bats-rule run of 18 October 2026. The line counts are that run's read-only sample and should be re-counted against the audit at planning. Planning questions: whether to fix suite by suite so each exposed fault is reviewed on its own, and whether any exposed fault is a real Rig defect that needs its own record. Capture only; adoption, priority and plan belong to this repository.
+
+### Flaky firewall assertion
+
+Finding, unfixed. `assert_no_global_firewall` in `tests/rig-firewall.bats` matches `pfctl (-d|.*-X)` against the whole native log line, so a temporary path containing `-X`, such as the Bats run directory `bats-run-X9wm9S`, makes a correct anchor-scoped `pfctl` call look like a global flush and fails the test at random. The rig-lock-review run of 18 October 2026 saw it once, at test 580, and it passed on re-run. Kris agreed on 18 October 2026 (RIG-FLAKY-FIREWALL a), ways-of-working decisions log, 19:05 BST owner answers) to fold it here as the same kind of test-hygiene debt. The fix should anchor the flag match to `pfctl`'s own arguments, for example `pfctl( [^ ]+)* -(d|X)( |$)`, and keep it fatal.
