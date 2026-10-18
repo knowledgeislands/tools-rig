@@ -3,7 +3,7 @@ id: KI-TOOL-RIG-CORE-058
 area: CORE
 title: Apply lock, handler history
 purpose: corrective
-initiative: rig
+theme: rig
 status: triage
 blocks: []
 blocked_by: []

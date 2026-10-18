@@ -3,7 +3,7 @@ id: KI-TOOL-RIG-DIST-011
 area: DIST
 title: Stale vega rig link
 purpose: corrective
-initiative: rig
+theme: rig
 kind: deliver
 status: draft
 horizon: hold

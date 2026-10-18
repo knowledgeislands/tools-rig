@@ -3,7 +3,7 @@ id: KI-TOOL-RIG-CORE-054
 area: CORE
 title: Command Line Tools check
 purpose: capability
-initiative: rig
+theme: rig
 status: triage
 blocks: []
 blocked_by: []

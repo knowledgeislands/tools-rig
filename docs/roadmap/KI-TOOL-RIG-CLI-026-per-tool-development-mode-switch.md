@@ -3,7 +3,7 @@ id: KI-TOOL-RIG-CLI-026
 area: CLI
 title: Per-tool development mode switch
 purpose: capability
-initiative: rig
+theme: rig
 kind: deliver
 status: draft
 horizon: hold

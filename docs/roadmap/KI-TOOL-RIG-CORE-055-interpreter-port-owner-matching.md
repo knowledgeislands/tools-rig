@@ -3,7 +3,7 @@ id: KI-TOOL-RIG-CORE-055
 area: CORE
 title: Interpreter port owner matching
 purpose: capability
-initiative: rig
+theme: rig
 status: triage
 blocks: []
 blocked_by: []

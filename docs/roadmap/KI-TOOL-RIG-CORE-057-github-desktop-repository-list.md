@@ -3,7 +3,7 @@ id: KI-TOOL-RIG-CORE-057
 area: CORE
 title: GitHub Desktop repository list
 purpose: capability
-initiative: rig
+theme: rig
 status: triage
 blocks: []
 blocked_by: []

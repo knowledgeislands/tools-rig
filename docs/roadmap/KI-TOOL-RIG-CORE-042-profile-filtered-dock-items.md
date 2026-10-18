@@ -2,7 +2,7 @@
 id: KI-TOOL-RIG-CORE-042
 area: CORE
 title: Profile-filtered Dock items
-initiative: rig
+theme: rig
 kind: deliver
 horizon: now
 status: ready

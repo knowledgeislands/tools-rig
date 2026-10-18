@@ -3,7 +3,7 @@ id: KI-TOOL-RIG-CORE-056
 area: CORE
 title: Menu bar order persistence
 purpose: capability
-initiative: rig
+theme: rig
 kind: investigate
 status: draft
 horizon: future

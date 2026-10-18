@@ -3,7 +3,7 @@ id: KI-TOOL-RIG-CORE-060
 area: CORE
 title: Single-target operation speed
 purpose: corrective
-initiative: rig
+theme: rig
 kind: deliver
 horizon: now
 status: awaiting-review

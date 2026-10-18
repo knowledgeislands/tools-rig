@@ -3,7 +3,7 @@ id: KI-TOOL-RIG-CORE-048
 area: CORE
 title: Signed-release install kind
 purpose: capability
-initiative: rig
+theme: rig
 kind: deliver
 status: draft
 horizon: hold

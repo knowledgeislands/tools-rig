@@ -3,7 +3,7 @@ id: KI-TOOL-RIG-CORE-053
 area: CORE
 title: macOS menu bar declarations
 purpose: capability
-initiative: rig
+theme: rig
 status: triage
 blocks: []
 blocked_by: []

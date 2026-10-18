@@ -3,7 +3,7 @@ id: KI-TOOL-RIG-CORE-052
 area: CORE
 title: Doctor service launch prerequisites
 purpose: capability
-initiative: rig
+theme: rig
 status: triage
 blocks: []
 blocked_by: []

@@ -2,7 +2,7 @@
 id: KI-TOOL-RIG-CORE-047
 area: CORE
 title: Tailnet-only listener firewall
-initiative: rig
+theme: rig
 kind: deliver
 horizon: now
 status: awaiting-review
