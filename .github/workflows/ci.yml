@@ -9,7 +9,7 @@ on:
 
 env:
   BATS_VERSION: v1.11.1
-  KI_VERSION: v0.8.4
+  KI_VERSION: v0.11.2
 
 jobs:
   governance:

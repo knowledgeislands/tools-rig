@@ -996,8 +996,12 @@ rig_alias_deprecated_mas() {
     *) return 0 ;;
   esac
   for prefix in "${prefixes[@]}"; do
-    rig_get_value "$section_name" "$prefix$provider_key" && [ "$RIG_VALUE" = homebrew ] || continue
-    rig_get_value "$section_name" "$prefix$kind_key" && [ "$RIG_VALUE" = mas ] || continue
+    if ! rig_get_value "$section_name" "$prefix$provider_key" || [ "$RIG_VALUE" != homebrew ]; then
+      continue
+    fi
+    if ! rig_get_value "$section_name" "$prefix$kind_key" || [ "$RIG_VALUE" != mas ]; then
+      continue
+    fi
     rig_set_value "$section_name" "$prefix$provider_key" mas || return 2
     rig_set_value "$section_name" "$prefix$kind_key" app || return 2
     label=$section_name
@@ -2575,7 +2579,7 @@ rig_sort_selected_resources() {
       candidate=${remaining[$index]}
       dependencies=${remaining_dependencies[$index]}
       index=$((index + 1))
-      [ "$dependencies" != + ] && [ "$dependencies" != - ] || continue
+      case "$dependencies" in +|-) continue ;; esac
       ready=1
       dependencies=${dependencies#$'\n'}
       while [ -n "$dependencies" ]; do
