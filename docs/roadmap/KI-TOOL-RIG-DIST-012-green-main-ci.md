@@ -11,7 +11,7 @@ blocks: []
 blocked_by: []
 baseline_ref: f6160db38ea29b5d29617c297b94368cb6dca0fb
 created_at: 2026-10-18T18:07:57Z
-updated_at: 2026-10-18T18:07:57Z
+updated_at: 2026-10-18T18:40:00Z
 ---
 
 # KI-TOOL-RIG-DIST-012: Green Main CI
@@ -36,7 +36,7 @@ Kris agreed on 18 October 2026 (RIG-CI-RED a), ways-of-working decisions log, 19
 
 ## Current state
 
-Delivered and verified locally; main CI confirmation is recorded under Review.
+Delivered in `8d2d253`; main CI run 39153236499 for `b8f3813` passed every job.
 
 ## Steps
 
@@ -92,11 +92,11 @@ Both failing jobs addressed within the boundary, from baseline `f6160db`; no rec
 
 ### Verification
 
-Local gate passed: `ki repo audit` (FAIL=0, warnings only), ShellCheck, `bash -n`, `scripts/assemble-rig --check`, benchmark, native-provider smoke, Bats, mandoc lint and `git diff --check`. Main CI result recorded in Discussion once observed.
+Local gate passed: `ki repo audit` (FAIL=0, warnings only), ShellCheck, `bash -n`, `scripts/assemble-rig --check`, benchmark, native-provider smoke, Bats (582 of 582), mandoc lint and `git diff --check`. Main CI run 39153236499 for `b8f3813` passed KI governance, Shell lint, Bats on Ubuntu and macOS, and mandoc, the first green `main` run since `efd4eae`.
 
 ### Outstanding concerns
 
-Local ShellCheck cannot reproduce the runner's SC2015 finding, so the lint fix is proved only by CI.
+Local ShellCheck 0.11.0 cannot reproduce the runner's SC2015 finding, so only CI proves the lint fix; it did. RIG-CI-RED a) proposed reclassifying the 14 records' `theme: rig`; moving the pin made that unnecessary, so they are unchanged.
 
 ### Post-change review
 
