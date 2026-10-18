@@ -259,6 +259,23 @@ requires = ["laptop-only"]/'
   assert_read_only
 }
 
+@test "status and doctor report a missing unlinked app drifted" {
+  printf 'System\t%s\tapplications\nShared\t%s\tapplications\nLaptop\t%s\tapplications\nDownloads\t%s\tothers\n' \
+    "$TEST_HOME/Applications/System.app" "$TEST_HOME/Applications/Shared.app" \
+    "$TEST_HOME/Applications/Laptop.app" "$TEST_HOME/Downloads" >"$DOCK_STATE"
+  printf '{"persistent-others":[{"tile-type":"directory-tile","tile-data":{"file-data":{"_CFURLString":"%s/Downloads","_CFURLStringType":0},"showas":2,"displayas":0}}]}' "$TEST_HOME" |
+    "$RIG_TEST_PYTHON" "$BATS_TEST_DIRNAME/helpers/dock-plutil.py" --fixture >"$DOCK_SNAPSHOT"
+  rm -rf "$TEST_HOME/Applications/System.app"
+
+  run_rig status --format json
+  [[ "$output" == *'"state":"drifted"'* ]] || { printf '%s\n' "$output" >&3; false; }
+  [[ "$output" == *'dock-item-path-missing:system'* ]] || false
+  run_rig doctor
+  [ "$status" -ne 0 ] || false
+  [[ "$output" == *'dock-item-path-missing:system'* ]] || { printf '%s\n' "$output" >&3; false; }
+  assert_read_only
+}
+
 @test "an all-excluded layout applies an empty Dock" {
   replace_config 's/^items = .*/items = ["laptop-only"]/'
   run_rig apply --scope resources --profile studio

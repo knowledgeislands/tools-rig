@@ -4858,13 +4858,13 @@ rig_dock_expected_paths() {
   RIG_VALUE=$joined
 }
 
-# A linked item whose path is absent is evidence the Dock cannot agree with,
-# whatever icon the Dock still shows for it.
-rig_dock_missing_linked_item() {
+# An included item whose path is absent, linked or not, is evidence the Dock
+# cannot agree with, whatever icon the Dock still shows for it. Returns 0 with
+# the item in RIG_VALUE, 1 when every path exists, 2 on a configuration error.
+rig_dock_missing_item() {
   local item
 
   for item in "${RIG_DOCK_INCLUDED_ITEMS[@]+"${RIG_DOCK_INCLUDED_ITEMS[@]}"}"; do
-    rig_get_value "dock-item.$item" tool || continue
     rig_get_value "dock-item.$item" path || return 2
     rig_expand_home_value "$RIG_VALUE" || return
     if [ ! -e "$RIG_VALUE" ]; then
@@ -5072,7 +5072,7 @@ rig_dock_observe_attributes() {
 }
 
 rig_dock_observe() {
-  local section_name command output native_status expected actual line path
+  local section_name command output native_status expected actual line path missing_status
 
   section_name=$1
   rig_macos_dockutil_command; command=$RIG_VALUE
@@ -5093,7 +5093,11 @@ rig_dock_observe() {
     path=$RIG_VALUE
     if [ -n "$actual" ]; then actual=$actual$'\n'$path; else actual=$path; fi
   done <<< "$output"
-  if rig_dock_missing_linked_item; then
+  rig_dock_missing_item
+  missing_status=$?
+  if [ "$missing_status" -eq 2 ]; then
+    return 2
+  elif [ "$missing_status" -eq 0 ]; then
     RIG_OBSERVATION=drifted
     RIG_OBSERVATION_DETAIL="dock-item-path-missing:$RIG_VALUE"
   elif [ "$actual" = "$expected" ]; then

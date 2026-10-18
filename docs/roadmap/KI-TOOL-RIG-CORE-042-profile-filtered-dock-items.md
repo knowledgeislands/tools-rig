@@ -10,7 +10,7 @@ blocks: []
 blocked_by: []
 baseline_ref: 30fbebf9929cbb1be500a2023ea463b8ec5a01ca
 created_at: 2026-10-09T15:03:37Z
-updated_at: 2026-10-18T04:10:00Z
+updated_at: 2026-10-18T09:28:46Z
 ---
 
 # KI-TOOL-RIG-CORE-042: Profile-Filtered Dock Items
@@ -40,7 +40,7 @@ The workaround without this record is a chezmoi template that renders one Dock l
 
 ## Current state
 
-Delivered locally to Awaiting review on 18 October 2026 by the tools-burndown run, from baseline `30fbebf`, against fixtures only; see Review. The planning-time source inspection at `bbe1d86` that grounded this plan is superseded by the delivered code. The acceptance check on `sol` has not run.
+Delivered locally to Awaiting review on 18 October 2026 by the tools-burndown run, from baseline `30fbebf`, against fixtures only; see Review. The planning-time source inspection at `bbe1d86` that grounded this plan is superseded by the delivered code. The independent review's findings were fixed the same day by the ways-of-working rig-fixes run, still against fixtures only; see Review fix. The record stays at Awaiting review, and the acceptance check on `sol` has not run.
 
 ## Steps
 
@@ -144,7 +144,7 @@ Withheld by authority: `scripts/smoke-native-providers`, any live apply, and the
 
 - **Deviation, provisional.** The plan asks status and doctor to show missing selected-path evidence. Delivered as an observation detail naming the item, before the order comparison, for linked and unlinked included items alike; there is no separate per-item evidence list in status JSON.
 - **Doctor and status envelopes** carry the filtered result through the existing observation state and detail; they do not list included and excluded items. `show dock:ID` and dry-run do.
-- **Acceptance on `sol`** needs the chezmoi declaration change, which now needs a chezmoi record of its own (see Roadmap), Kris's placement decision for studio-only apps, and Kris's approval of the live run.
+- **Acceptance on `sol`** is outstanding; Review fix lists what it still needs.
 
 ### Post-change review
 
@@ -197,3 +197,19 @@ The ways-of-working rig-review run reviewed this record on 18 October 2026, read
 Confirmed sound: membership walks declared `items` order over the full resolved tool selection; a targeted apply keeps `RIG_SELECTED_TOOLS` whole, so a targeted Dock still keeps every selected app; platform exclusion is reported ahead of profile exclusion; links never select tools or add prerequisites; an all-excluded layout applies an empty Dock with no blank-path preflight; read-only commands log no Dock write.
 
 The acceptance check on `sol` remains outstanding by design, and needs the chezmoi declaration, Kris's placement decision and a live apply Kris approves.
+
+### Review fix
+
+Kris agreed RIG-DOCK-MISSING a) on 18 October 2026 (ways-of-working decisions log, "owner answers, Rig batch"): fix the code so status and doctor check every included Dock app, fixture-only, before acceptance. The ways-of-working rig-fixes run did so from `cacce0c`, with no live apply, native-provider smoke, `sol` or SSH operation.
+
+- **Medium, fixed.** `rig_dock_missing_linked_item` became `rig_dock_missing_item` in `src/rig/20-orchestration.bash` and checks every included item, linked or not, as RIG-STATE-021 and RIG-STATE-036 already require. A new case in `tests/rig-dock-profiles.bats` deletes the unlinked `system` app and asserts status JSON `drifted` with `dock-item-path-missing:system` and a failing doctor, with no Dock write; it fails on the previous executable. `tests/rig-dock-observation.bats` declared folder paths under a non-existent `/fixture` root, which only the linked-only check let pass; its fixtures now live in a test-owned directory, with every assertion unchanged.
+- **Low, fixed.** `rig_dock_observe` now returns the helper's configuration-read error instead of reading it as "nothing missing".
+- **Low, corrected.** The coverage claim in Change Summary is too wide: `tests/rig-dock-profiles.bats` does not itself exercise two selected layouts conflicting when one filters to empty, an explicit `requires` blocking a dependent Dock, or a folder attribute on an excluded item never being queried. Those Verify bullets rest on the older unfiltered suites and on code reading, not on new filtered cases.
+
+The complete local gate in [Develop Rig](../guides/developer/README.md#verify-the-repository) passes except the withheld `scripts/smoke-native-providers`: audit (the existing HOOK-1 and SHELL-FATAL warnings only), ShellCheck, Bash syntax, assembly drift, the fixture benchmark, mandoc and diff checks; all 582 Bats tests pass.
+
+Acceptance still needs, outside this repository's fixture-only authority:
+
+1. **The chezmoi Dock record.** A chezmoi source record of its own (KB-DOTFILES-UE-075 is closed) for moving `[dock.workstation]` to `core` and linking each machine-specific item to its tool, delivered first.
+2. **Kris's placement of studio-only apps** that have no laptop position, such as Adobe Lightroom Classic.
+3. **An approved live run.** Kris's approval of `rig apply` with the Dock in scope on `sol`, run by Kris or an agent Kris authorises for it, then the checks in "Acceptance check on sol", including `rig doctor` on `terra`.
