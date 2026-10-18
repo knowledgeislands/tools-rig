@@ -38,6 +38,8 @@ A macOS update that restores `/etc/pf.conf` removes nothing Rig owns, and the da
 
 Status and doctor stay promptless, at the cost of a firewall reported present while its kernel rules are unverified. The reread under `apply --sudo` is the stronger check.
 
+The restriction matches Tailscale's whole address ranges, not the machine's own tailnet addresses, and names no interface, because Tailscale's interface name changes per machine and per boot. Two residual risks follow. Carrier-grade NAT and some hotspots assign local-network addresses from `100.64.0.0/10`; when the machine's own address falls in that range, a neighbour on the same network passes the rule and reaches the declared port. And macOS accepts a packet for any local address on any interface, so an on-link host can send a forged tailnet-source packet to the machine's tailnet address over the local network; a TCP handshake cannot complete, but one-way UDP can arrive. Narrowing the destination to the machine's own tailnet addresses, refreshed at apply, is the proposed remedy.
+
 Rig leaves pf enabled after retirement. With only Apple's anchors loaded this filters nothing, and it avoids releasing references another component holds.
 
 The attended grant becomes a precondition for any system-domain change, so unattended runs cannot repair a drifted firewall. That is deliberate: a mistake in this domain can lock a person out of their machine.

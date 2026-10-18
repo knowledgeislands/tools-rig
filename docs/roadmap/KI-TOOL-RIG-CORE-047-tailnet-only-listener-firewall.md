@@ -10,7 +10,7 @@ blocks: []
 blocked_by: []
 baseline_ref: 39499cd6566b2fa02f9c66476eda53f052ccb351
 created_at: 2026-10-13T22:48:41Z
-updated_at: 2026-10-13T23:35:15Z
+updated_at: 2026-10-18T09:45:00Z
 ---
 
 # KI-TOOL-RIG-CORE-047: Tailnet-Only Listener Firewall
@@ -157,6 +157,7 @@ All commands were run locally on 14 October 2026 with stdin closed. No live `sud
 
 - The rule normalisation that compares `pfctl -a … -s rules` output with the rendered anchor is proven only against a fixture. Real `pfctl` display formatting must be confirmed in live acceptance; a mismatch would fail apply safely rather than leave rules unloaded.
 - Live acceptance on `terra` and `sol` is withheld and unrun: tailnet SSH and `vnc://`, LAN refusal, survival across restart, and NordVPN on `sol`.
+- The address match is range-based, so a neighbour on a carrier-grade NAT or hotspot network that gives the Mac a `100.64.0.0/10` address can reach the declared port; see [Range correction](#range-correction).
 - If a future macOS drops Apple's `com.apple/*` anchor point, the anchor stops being evaluated and only `apply --sudo` notices. This residual risk is recorded in the ADR.
 - `rig show ITEM --format json` uses the existing generic label converter, which splits raw `key=value` lines such as `port=tcp:5900` at the colon. This is pre-existing behaviour shared by every resource kind, and was left unchanged as outside this record.
 
@@ -185,7 +186,7 @@ allow = ["tailnet"]
 profiles = ["studio"]
 ```
 
-- **Match by address, not interface.** `tailnet` expands to Tailscale's fixed ranges, `100.64.0.0/10` and `fd7a:115c:a1e0::/48`, required on both source and destination. The `utunN` name differs per machine and per boot (evidence above). Requiring the destination to be the machine's own tailnet address as well as the source closes the gap where a device on the local network happens to hold a `100.64.0.0/10` address (some carrier-grade NAT and hotspot networks do). Loopback is always allowed. Arbitrary CIDRs are deliberately not accepted.
+- **Match by address, not interface.** `tailnet` expands to Tailscale's fixed ranges, `100.64.0.0/10` and `fd7a:115c:a1e0::/48`, required on both source and destination. The `utunN` name differs per machine and per boot (evidence above). As planned, this sentence said that requiring the destination to be the machine's own tailnet address closes the gap where a device on the local network holds a `100.64.0.0/10` address. The delivered rule requires only that the destination is in the tailnet range, so it closes that gap only while the Mac's own local-network address is outside the range; see [Range correction](#range-correction). Loopback is always allowed. Arbitrary CIDRs are deliberately not accepted.
 - **Persistence.** The anchor file lives at `/etc/pf.anchors/LOCATOR` and the daemon at `/Library/LaunchDaemons/LOCATOR.plist`; both are third-party files that macOS updates leave in place. The daemon runs `pfctl -E -a com.apple/LOCATOR -f /etc/pf.anchors/LOCATOR` at every boot and again whenever `/etc/pf.conf` changes, so an update that restores `/etc/pf.conf` re-triggers the load. Because Rig never edits `/etc/pf.conf`, an update resetting it removes nothing Rig owns.
 - **Doctor's view.** Without root, doctor sees the files, the daemon and its last exit code, and whether the port listens on all addresses. It cannot see the kernel rules; it says so rather than claiming they are loaded. `apply --sudo` verifies the loaded rules every run.
 - **Drift reasons.** `anchor-missing`, `anchor-changed`, `daemon-missing`, `daemon-changed`, `daemon-not-loaded`, `daemon-last-exit:N`, plus `exposed-beyond-tailnet` when a declared port listens on all addresses and the restriction is not `present`.
@@ -198,6 +199,7 @@ profiles = ["studio"]
 - **macOS updates resetting `/etc/pf.conf`.** Rig never depends on its content beyond Apple's own `anchor "com.apple/*"` line, which is present on 26.5.2 and 27.0. If a future macOS removed that line, the anchor would silently stop being evaluated; doctor cannot see this without root, so `apply --sudo` reread and the live restart check are the guard. Record as a residual risk.
 - **Other pf users.** A VPN client (NordVPN on `sol`) may replace the main ruleset or flush anchors. The daemon's `WatchPaths` does not catch that. Covered by the live NordVPN check; a periodic re-assertion is the fallback if it fails (see FW-PERSIST).
 - **pf left enabled.** Rig enables pf and does not disable it on retirement, so other components' references are never released by Rig. With only Apple's anchors loaded this filters nothing.
+- **Range, not own address.** The rule matches Tailscale's whole ranges on source and destination, not the Mac's own tailnet address, and names no interface. See [Range correction](#range-correction) for the two residual exposures this leaves.
 - **System-domain blast radius.** First Rig resource outside `$HOME`. Tests redirect every system path through `RIG_SYSTEM_ROOT` and stub every privileged command; [AGENTS.md](../../AGENTS.md) already forbids reproducing a destructive defect against the live machine.
 
 ### Decisions for Kris
@@ -232,3 +234,14 @@ The ways-of-working rig-review run reviewed this record on 18 October 2026, read
 - **Low: real `pfctl -s rules` formatting is unproven.** As the record says, normalisation is tested only against a fixture; a mismatch fails apply safely after loading, so it costs a failed run, not an open port.
 
 Confirmed sound: every rule is `quick`, names a declared port and is inbound only; loopback and both tailnet families pass before the block; port 22 and any `allow` other than `tailnet` are rejected; `com.apple.*` locators are refused; read-only commands call no `sudo` or `pfctl`; `pfctl -n` runs before anything is installed; retirement boots out, flushes only `com.apple/LOCATOR` and leaves pf enabled; a firewall counts as grant-needing work only when not present. Live acceptance on `terra` and `sol` stays withheld; the guide states the no-Rig rollback before the apply step, as the connection-critical rule needs.
+
+### Range correction
+
+Kris agreed RIG-FIREWALL-RANGE a) on 18 October 2026 (ways-of-working decisions log, "owner answers, Rig batch"): correct this record, its specification and [ADR-KI-TOOL-RIG-009](/Users/krisbrown/workspaces/knowledge-islands/tools-rig/docs/decisions/ADR-KI-TOOL-RIG-009-system-domain-resources-under-an-attended-grant.md) to state the residual risk honestly, and capture one follow-up to narrow the rule. The ways-of-working rig-fixes run made the correction; no code changed.
+
+The anchor passes a declared port `from 100.64.0.0/10 to 100.64.0.0/10` (and the IPv6 equivalent) on any interface. That leaves two residual exposures:
+
+- **A shared range.** Carrier-grade NAT and some hotspots assign local-network addresses from `100.64.0.0/10`. When the Mac's own local-network address falls in that range, a neighbour on the same network holding such an address passes the rule and reaches the declared port, Screen Sharing on TCP and UDP 5900 included. The account password is then the only barrier, as it is with no restriction at all.
+- **No interface match.** macOS accepts a packet for any local address on any interface, so an on-link host can send a packet with a forged tailnet source to the Mac's tailnet address over the local network and it passes. A TCP handshake cannot complete, because the reply routes into Tailscale, but one-way UDP to 5900 can arrive.
+
+Both are accepted residual risks of the delivered design, now stated in RIG-ORCH-023, the ADR and the operational-resources guide; the guide's earlier claim that such a device "cannot reach the port" was wrong. The same range rule applies to the `linux-nftables` provider. [KI-TOOL-RIG-CORE-062](/Users/krisbrown/workspaces/knowledge-islands/tools-rig/docs/roadmap/KI-TOOL-RIG-CORE-062-own-address-firewall-destination.md) captures narrowing the destination to each Mac's own tailnet addresses, refreshed at apply. This correction does not change the record's status or accept it.

@@ -180,7 +180,7 @@ ports = ["tcp:5900", "udp:5900"]
 allow = ["tailnet"]
 ```
 
-`tailnet` means Tailscale's fixed address ranges, `100.64.0.0/10` and `fd7a:115c:a1e0::/48`. A connection passes only when both its source and destination are in the same range, so a device on a local network that happens to hold a `100.64.0.0/10` address cannot reach the port. Each port is `tcp:N` or `udp:N`. Rig rejects port 22 for either protocol, because SSH is how you undo a mistake. `allow` accepts no other value, and the locator is a reverse-DNS label outside `com.apple`.
+`tailnet` means Tailscale's fixed address ranges, `100.64.0.0/10` and `fd7a:115c:a1e0::/48`. A connection passes only when both its source and destination are in the same range. That shuts out an ordinary local network, but not every one: carrier-grade NAT and some hotspots hand out local addresses from `100.64.0.0/10`, and when your own machine gets one, a neighbour on the same network passes the rule and can reach the port. The rule also names no interface, so a one-way UDP packet with a forged tailnet source can arrive over the local network. On such a network, keep the account password strong or turn the listener off. Each port is `tcp:N` or `udp:N`. Rig rejects port 22 for either protocol, because SSH is how you undo a mistake. `allow` accepts no other value, and the locator is a reverse-DNS label outside `com.apple`.
 
 Rig writes two root-owned files and touches nothing else:
 
