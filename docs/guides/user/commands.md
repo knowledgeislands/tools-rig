@@ -17,7 +17,7 @@ Rig configuration describes the setup you want. Providers install or observe the
 - `rig completion bash|zsh`
 - `rig help [COMMAND]`
 
-Use `rig help COMMAND` or `rig COMMAND --help` for command-local details. Item lookup cannot be combined with selection filters; `--all` and `--profile` are alternative selections. The optional `--profile` selects configuration; it is not a separate lifecycle.
+Use `rig help COMMAND` or `rig COMMAND --help` for command-local details. Item lookup cannot be combined with selection filters, except `--profile` with a Dock target; `--all` and `--profile` are alternative selections. The optional `--profile` selects configuration; it is not a separate lifecycle.
 
 ## Set up configuration
 
@@ -29,7 +29,7 @@ Add categories and declarations to the resulting file, or use capture to prepare
 
 `rig show` displays the selected setup: tools, skills, resources and private ports. `rig show --all` browses all catalogue tools, including unselected ones. `rig show --category ID` filters selected tools; combine it with `--all` to filter the whole tool catalogue.
 
-`rig show ITEM` explains one declaration, including purpose, rationale, relationships and native ownership. Qualify non-tool identities, such as `skill:caveman`, `service:daemon`, `setting:screenshots` or `port:api`. These queries never invoke providers.
+`rig show ITEM` explains one declaration, including purpose, rationale, relationships and native ownership. Qualify non-tool identities, such as `skill:caveman`, `service:daemon`, `setting:screenshots` or `port:api`. For a Dock target, `--profile NAME` (or the default profile) explains which items that profile includes, in order, and which it excludes and why. These queries never invoke providers.
 
 Human-readable tables preserve identifiers and wrap descriptive values rather than abbreviating them. Interactive tables use the terminal's current width; when the columns cannot fit, entries use a labelled, stacked layout. Exceptionally long identifiers remain intact even when wider than the terminal. Redirected output is plain and deterministic, using a 120-column budget independent of `COLUMNS`; unavailable terminal geometry uses the same fallback. Use `--format json` for lossless structured values.
 

@@ -172,13 +172,13 @@ _Evidence:_ `rig_validate_setting` and `rig_validate_macos_platforms` validate t
 
 ### RIG-CONF-018 — Semantic Dock declarations
 
-Schema 1 dock tables MUST require string `name`, `purpose`, `rationale`, and `provider`, plus non-empty `platforms` and `items` string arrays, and MAY contain a `requires` string array. Provider `macos-dock` MUST be built in and restricted to platform `macos`. Every item MUST name one `[dock-item.ID]` table requiring `kind` and `path`; kind `application` MUST reject folder-only fields, while kind `folder` MAY contain `view` and `display`. Item array order MUST define the desired Dock order.
+Schema 1 dock tables MUST require string `name`, `purpose`, `rationale`, and `provider`, plus non-empty `platforms` and `items` string arrays, and MAY contain a `requires` string array. Provider `macos-dock` MUST be built in and restricted to platform `macos`. Every item MUST name one `[dock-item.ID]` table requiring `kind` and `path`; kind `application` MUST reject folder-only fields, while kind `folder` MAY contain `view` and `display`. Any item MAY contain a string `tool` naming an existing tool, validated even when the item is excluded; items MUST NOT carry their own `profiles`. Item array order MUST define the desired Dock order. For a resolved profile and platform, an unlinked item MUST be included, and a linked item MUST be included only when its tool is in the completed tool selection, including transitive requirements. Excluded items MUST be dropped without reordering the rest and MUST carry the reason `profile` or `platform`. A link MUST NOT select its tool or add a prerequisite.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats tests parse applications and folders, preserve selected item order, resolve tool requirements, and reject unknown items, duplicate selected items, unsupported kinds, misplaced fields, and non-macOS use before native invocation.
+_Verify:_ Bats tests parse applications and folders, preserve selected item order, resolve tool requirements, filter linked items by central, item-owned and transitive membership, and reject unknown items, unknown or malformed tool links, item profiles, duplicate selected items, unsupported kinds, misplaced fields, and non-macOS use before native invocation.
 
-_Evidence:_ `rig_validate_dock`, `rig_validate_dock_item`, and `rig_dock_expected_paths` retain and validate semantic item order; `typed macOS resources query and dry-run deterministically` and `typed macOS resources observe and apply through native command fakes` in `tests/rig-macos.bats` cover application and folder declarations through planning and application.
+_Evidence:_ `rig_validate_dock`, `rig_validate_dock_item`, and `rig_dock_expected_paths` retain and validate semantic item order; `typed macOS resources query and dry-run deterministically` and `typed macOS resources observe and apply through native command fakes` in `tests/rig-macos.bats` cover application and folder declarations through planning and application; `rig_dock_resolve_items` and `tests/rig-dock-profiles.bats` cover profile-filtered items.
 
 ### RIG-CONF-019 — Observation-only artifact declarations
 

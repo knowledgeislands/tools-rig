@@ -1111,7 +1111,12 @@ may also declare its
 .B view
 and
 .B display
-semantics. Profiles select settings and Dock layouts through their respective
+semantics. Any item may name an existing
+.B tool
+so that a resolved profile includes it only when that tool is selected,
+keeping the declared order; unlinked items are always included, and a link
+never selects its tool.
+Profiles select settings and Dock layouts through their respective
 arrays; Dock items are selected only by a Dock layout.
 .PP
 .B [port.ID]

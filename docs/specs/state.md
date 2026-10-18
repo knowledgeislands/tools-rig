@@ -222,7 +222,7 @@ _Evidence:_ receipt helpers read a bounded four-field format, compare each row a
 
 ### RIG-STATE-021 — Typed machine-resource state
 
-`rig status` and `rig doctor` MUST compare every selected setting and Dock layout with live built-in provider observations and MUST report non-present state as a finding. `rig apply --dry-run` MUST disclose each proposed defaults value and ordered Dock item without mutation. `rig apply` MUST apply only the selected declarations after full-plan preflight and MUST NOT depend on a workstation provider, provider-owned policy file, or non-Bash runtime.
+`rig status` and `rig doctor` MUST compare every selected setting and Dock layout with live built-in provider observations and MUST report non-present state as a finding. `rig apply --dry-run` MUST disclose each proposed defaults value and ordered Dock item without mutation, naming each Dock item the resolved profile excludes with its reason. Show, status, doctor, dry-run and apply MUST use the same profile-filtered Dock items; a missing path for an included item MUST be reported as drift by status and doctor and MUST fail apply preflight before any Dock mutation, while an excluded item's path and folder attributes MUST NOT be checked. `rig apply` MUST apply only the selected declarations after full-plan preflight and MUST NOT depend on a workstation provider, provider-owned policy file, or non-Bash runtime.
 
 _Conformance:_ conforming
 
@@ -392,7 +392,7 @@ _Evidence:_ `src/rig/25-apply-history.bash` owns storage and shared projection; 
 
 ### RIG-STATE-036 — Dock folder attributes
 
-Dock observation MUST compare declared paths and order before explicitly declared folder `view` and `display` attributes. When paths agree and attribute evidence is needed, Rig MUST read at most one `defaults export com.apple.dock -` snapshot per command and interpret it through native typed `plutil` extraction. Matching MUST use complete normalised paths, never labels, and distinguish raw paths from file URLs with exactly one URL-decoding pass. Binary and XML property lists MUST be supported without a new runtime parser dependency.
+Dock observation MUST use the resolved profile's included items only and MUST compare declared paths and order before explicitly declared folder `view` and `display` attributes; an included item whose path does not exist MUST yield `drifted` with detail `dock-item-path-missing:ITEM` before order is compared, and an excluded item's attributes MUST NOT be queried. When paths agree and attribute evidence is needed, Rig MUST read at most one `defaults export com.apple.dock -` snapshot per command and interpret it through native typed `plutil` extraction. Matching MUST use complete normalised paths, never labels, and distinguish raw paths from file URLs with exactly one URL-decoding pass. Binary and XML property lists MUST be supported without a new runtime parser dependency.
 
 Declared view values map to native values `auto=0`, `fan=1`, `grid=2`, `list=3`; display values map to `stack=0`, `folder=1`. Omitted attributes MUST remain unconstrained. Proven differences MUST take precedence in order, then view, then display, with item-qualified details. Missing, ambiguous, duplicate, malformed or unreadable attribute evidence MUST yield `unknown` only when no declared mismatch has been proven. Observation MUST NOT apply a layout, write defaults or restart the Dock.
 

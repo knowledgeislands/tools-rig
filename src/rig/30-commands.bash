@@ -1627,8 +1627,10 @@ rig_print_profile_resource_tables() {
           rig_table_add_row "$id" "$name" "$provider" "$detail -> $RIG_VALUE"
           ;;
         dock)
-          rig_collect_field_values "$section_name" item
-          detail=${#RIG_QUERY_ITEMS[@]}
+          rig_dock_resolve_items "$section_name" || return
+          detail=${#RIG_DOCK_INCLUDED_ITEMS[@]}
+          [ "${#RIG_DOCK_EXCLUDED_ITEMS[@]}" -eq 0 ] ||
+            detail="$detail of $((detail + ${#RIG_DOCK_EXCLUDED_ITEMS[@]}))"
           rig_table_add_row "$id" "$name" "$provider" "$detail"
           ;;
         firewall)
@@ -1773,13 +1775,22 @@ rig_show_json() {
         printf '],"allow":["tailnet"]'
         ;;
       dock)
-        rig_collect_field_values "$section_name" item
+        rig_dock_resolve_items "$section_name" || return
         printf ',"items":['
         index=0
-        while [ "$index" -lt "${#RIG_QUERY_ITEMS[@]}" ]; do
+        while [ "$index" -lt "${#RIG_DOCK_INCLUDED_ITEMS[@]}" ]; do
           [ "$index" -eq 0 ] || printf ','
-          rig_json_escape "${RIG_QUERY_ITEMS[$index]}"
+          rig_json_escape "${RIG_DOCK_INCLUDED_ITEMS[$index]}"
           printf '"%s"' "$RIG_VALUE"
+          index=$((index + 1))
+        done
+        printf '],"excluded_items":['
+        index=0
+        while [ "$index" -lt "${#RIG_DOCK_EXCLUDED_ITEMS[@]}" ]; do
+          [ "$index" -eq 0 ] || printf ','
+          rig_json_field '{' id "${RIG_DOCK_EXCLUDED_ITEMS[$index]}"
+          rig_json_field ',' reason "${RIG_DOCK_EXCLUDED_REASONS[$index]}"
+          printf '}'
           index=$((index + 1))
         done
         printf ']'
@@ -1845,8 +1856,11 @@ rig_command_show() {
   done
 
   if [ -n "$item" ]; then
-    [ "$all" -eq 0 ] && [ "$category_seen" -eq 0 ] && [ "$profile_seen" -eq 0 ] ||
-      rig_command_syntax_error show || return
+    [ "$all" -eq 0 ] && [ "$category_seen" -eq 0 ] || rig_command_syntax_error show || return
+    case "$item" in
+      dock:*) RIG_SHOW_DOCK_PROFILE=$profile ;;
+      *) [ "$profile_seen" -eq 0 ] || rig_command_syntax_error show || return ;;
+    esac
     rig_show_item "$item" --format "$format"
     return
   fi
@@ -2003,13 +2017,31 @@ rig_collect_resource_memberships() {
 
 rig_explain_dock_items() {
   local section_name section_index field_index field_end item item_section position value
+  local profile filtered selected included index
 
   section_name=$1
   rig_section_index "$section_name" || return 2
   section_index=$RIG_INDEX
+  profile=$RIG_SHOW_DOCK_PROFILE
+  filtered=0
+  rig_current_platform || return
+  value=$RIG_VALUE
+  # An explicit profile must resolve; the default only filters a layout this platform supports.
+  if [ -n "$profile" ] || rig_resource_supports_platform "$section_name" "$value"; then
+    rig_resolve_profile "$profile" "$value" || return
+    rig_dock_resolve_items "$section_name" || return
+    filtered=1
+    selected=no
+    if rig_array_contains "$section_name" "${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}"; then
+      selected=yes
+    fi
+    printf 'dock-profile=%s\ndock-platform=%s\ndock-selected=%s\n' \
+      "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM" "$selected"
+  fi
   field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
   field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
   position=0
+  included=0
   while [ "$field_index" -lt "$field_end" ]; do
     if [ "${RIG_FIELD_KEYS[$field_index]}" = item ]; then
       position=$((position + 1))
@@ -2027,6 +2059,24 @@ rig_explain_dock_items() {
       if rig_get_value "$item_section" display; then
         value=$RIG_VALUE
         printf 'dock-item.%s.display=%s\n' "$position" "$value"
+      fi
+      if rig_get_value "$item_section" tool; then
+        value=$RIG_VALUE
+        printf 'dock-item.%s.tool=%s\n' "$position" "$value"
+      fi
+      if [ "$filtered" -eq 1 ]; then
+        value=
+        index=0
+        while [ "$index" -lt "${#RIG_DOCK_EXCLUDED_ITEMS[@]}" ]; do
+          [ "${RIG_DOCK_EXCLUDED_ITEMS[$index]}" != "$item" ] || value=${RIG_DOCK_EXCLUDED_REASONS[$index]}
+          index=$((index + 1))
+        done
+        if [ -n "$value" ]; then
+          printf 'dock-item.%s.excluded=%s\n' "$position" "$value"
+        else
+          included=$((included + 1))
+          printf 'dock-item.%s.position=%s\n' "$position" "$included"
+        fi
       fi
     fi
     field_index=$((field_index + 1))

@@ -297,7 +297,7 @@ rig_field_kind() {
     setting:name|setting:purpose|setting:rationale|setting:provider|setting:domain|\
     setting:key|setting:value-type|setting:value|\
     dock:name|dock:purpose|dock:rationale|dock:provider|\
-    dock-item:kind|dock-item:path|dock-item:view|dock-item:display|\
+    dock-item:kind|dock-item:path|dock-item:view|dock-item:display|dock-item:tool|\
     port:name|port:purpose|port:rationale|port:protocol|port:port|port:scope|port:mode|port:owner|\
     action:mode|action:description|action:argument-policy)
       RIG_FIELD_KIND=scalar
@@ -405,7 +405,7 @@ rig_toml_field() {
     setting:name|setting:purpose|setting:rationale|setting:provider|setting:domain|\
     setting:key|setting:value-type|setting:value|\
     dock:name|dock:purpose|dock:rationale|dock:provider|\
-    dock-item:kind|dock-item:path|dock-item:view|dock-item:display|\
+    dock-item:kind|dock-item:path|dock-item:view|dock-item:display|dock-item:tool|\
     port:name|port:purpose|port:rationale|port:protocol|port:scope|port:mode|port:owner|\
     action:mode|action:description|action:argument-policy)
       RIG_TOML_FIELD_KEY=$key
@@ -1756,12 +1756,17 @@ rig_validate_dock() {
 }
 
 rig_validate_dock_item() {
-  local section_name kind
+  local section_name kind tool
 
   section_name=$1
   rig_require_field "$section_name" kind || return
   kind=$RIG_VALUE
   rig_require_field "$section_name" path || return
+  if rig_get_value "$section_name" tool; then
+    tool=$RIG_VALUE
+    rig_valid_id "$tool" && rig_reference_exists tool "$tool" ||
+      rig_fail "[$section_name] references unknown tool '$tool'" || return
+  fi
   case "$kind" in
     application)
       if rig_get_value "$section_name" view || rig_get_value "$section_name" display; then

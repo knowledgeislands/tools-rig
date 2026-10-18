@@ -84,6 +84,10 @@ If a public tool requires another tool, that dependency must opt into `public` a
 
 A view can be shown, listed, explained, checked, and exported. Mutating commands reject it, and it never owns reconciliation receipts. Public exports contain only the allow-listed metadata described in the [export guide](exporting.md), never native authority details or observed machine state.
 
+## Share a Dock across profiles
+
+Dock items carry no `profiles` of their own. To give machine profiles one shared Dock order, select the layout in a common profile and link each machine-specific item to its tool with `tool = "ID"`. Each resolved profile then keeps only the items whose tool it selects, in the declared order. See [operational resources](operational-resources.md#share-one-dock-order-across-profiles).
+
 ## Read application scope
 
 After resolving a complete profile, mutating plans identify the reach of each operation:

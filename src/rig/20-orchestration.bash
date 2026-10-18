@@ -204,6 +204,22 @@ rig_prepare_provider_invocation() {
   RIG_VALUE=$executable
 }
 
+# A projected Dock item is either included or named with its exclusion reason.
+rig_append_dock_item_field() {
+  local item index
+
+  item=$1
+  index=0
+  while [ "$index" -lt "${#RIG_DOCK_EXCLUDED_ITEMS[@]}" ]; do
+    if [ "${RIG_DOCK_EXCLUDED_ITEMS[$index]}" = "$item" ]; then
+      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]="excluded-item=$item (${RIG_DOCK_EXCLUDED_REASONS[$index]})"
+      return 0
+    fi
+    index=$((index + 1))
+  done
+  RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]="item=$item"
+}
+
 rig_append_resource_fields() {
   local section_name section_index section_type field_index field_end key output_key
   local restart_policy start_policy run_policy priority
@@ -212,6 +228,9 @@ rig_append_resource_fields() {
   rig_section_index "$section_name" || return 2
   section_index=$RIG_INDEX
   section_type=${RIG_SECTION_TYPES[$section_index]}
+  if [ "$section_type" = dock ]; then
+    rig_dock_resolve_items "$section_name" || return
+  fi
   restart_policy=0
   start_policy=0
   run_policy=0
@@ -222,8 +241,9 @@ rig_append_resource_fields() {
     key=${RIG_FIELD_KEYS[$field_index]}
     output_key=$key
     [ "$key" != resource-dependency ] || output_key=depends-on
-    case "$key" in
-      provider|locator) ;;
+    case "$section_type:$key" in
+      *:provider|*:locator) ;;
+      dock:item) rig_append_dock_item_field "${RIG_FIELD_VALUES[$field_index]}" ;;
       *) RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]="$output_key=${RIG_FIELD_VALUES[$field_index]}" ;;
     esac
     case "$key" in
@@ -860,28 +880,80 @@ rig_setting_apply() {
   "$command" write "$domain" "$key" "-$value_type" "$value" 1>&2
 }
 
-rig_dock_expected_paths() {
-  local section_name section_index field_index field_end item path expanded joined
+# A layout's included items, in declared order: every unlinked item, and each
+# item whose linked tool the resolved profile selects. Without a resolved
+# profile every item is included. Membership never reads installed state.
+rig_dock_resolve_items() {
+  local section_name section_index field_index field_end item tool selected
 
   section_name=$1
+  RIG_DOCK_INCLUDED_ITEMS=()
+  RIG_DOCK_EXCLUDED_ITEMS=()
+  RIG_DOCK_EXCLUDED_REASONS=()
   rig_section_index "$section_name" || return 2
   section_index=$RIG_INDEX
+  selected=$'\n'
+  for tool in "${RIG_SELECTED_TOOLS[@]+"${RIG_SELECTED_TOOLS[@]}"}"; do
+    selected=$selected$tool$'\n'
+  done
   field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
   field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
-  joined=
   while [ "$field_index" -lt "$field_end" ]; do
     if [ "${RIG_FIELD_KEYS[$field_index]}" = item ]; then
       item=${RIG_FIELD_VALUES[$field_index]}
-      rig_get_value "dock-item.$item" path || return 2
-      path=$RIG_VALUE
-      rig_expand_home_value "$path" || return
-      rig_dock_normalize_path "$RIG_VALUE"
-      expanded=$RIG_VALUE
-      if [ -n "$joined" ]; then joined=$joined$'\n'$expanded; else joined=$expanded; fi
+      if [ -n "${RIG_RESOLVED_PROFILE:-}" ] && rig_get_value "dock-item.$item" tool; then
+        tool=$RIG_VALUE
+        case "$selected" in
+          *$'\n'"$tool"$'\n'*) RIG_DOCK_INCLUDED_ITEMS[${#RIG_DOCK_INCLUDED_ITEMS[@]}]=$item ;;
+          *)
+            RIG_DOCK_EXCLUDED_ITEMS[${#RIG_DOCK_EXCLUDED_ITEMS[@]}]=$item
+            if rig_tool_supports_platform "$tool" "${RIG_RESOLVED_PLATFORM:-}"; then
+              RIG_DOCK_EXCLUDED_REASONS[${#RIG_DOCK_EXCLUDED_REASONS[@]}]=profile
+            else
+              RIG_DOCK_EXCLUDED_REASONS[${#RIG_DOCK_EXCLUDED_REASONS[@]}]=platform
+            fi
+            ;;
+        esac
+      else
+        RIG_DOCK_INCLUDED_ITEMS[${#RIG_DOCK_INCLUDED_ITEMS[@]}]=$item
+      fi
     fi
     field_index=$((field_index + 1))
   done
+}
+
+rig_dock_expected_paths() {
+  local section_name item path expanded joined
+
+  section_name=$1
+  rig_dock_resolve_items "$section_name" || return
+  joined=
+  for item in "${RIG_DOCK_INCLUDED_ITEMS[@]+"${RIG_DOCK_INCLUDED_ITEMS[@]}"}"; do
+    rig_get_value "dock-item.$item" path || return 2
+    path=$RIG_VALUE
+    rig_expand_home_value "$path" || return
+    rig_dock_normalize_path "$RIG_VALUE"
+    expanded=$RIG_VALUE
+    if [ -n "$joined" ]; then joined=$joined$'\n'$expanded; else joined=$expanded; fi
+  done
   RIG_VALUE=$joined
+}
+
+# A linked item whose path is absent is evidence the Dock cannot agree with,
+# whatever icon the Dock still shows for it.
+rig_dock_missing_linked_item() {
+  local item
+
+  for item in "${RIG_DOCK_INCLUDED_ITEMS[@]+"${RIG_DOCK_INCLUDED_ITEMS[@]}"}"; do
+    rig_get_value "dock-item.$item" tool || continue
+    rig_get_value "dock-item.$item" path || return 2
+    rig_expand_home_value "$RIG_VALUE" || return
+    if [ ! -e "$RIG_VALUE" ]; then
+      RIG_VALUE=$item
+      return 0
+    fi
+  done
+  return 1
 }
 
 rig_dock_normalize_path() {
@@ -1031,55 +1103,48 @@ rig_dock_find_folder() {
 }
 
 rig_dock_observe_attributes() {
-  local section_name section_index field_index field_end item item_section kind path view display
+  local section_name item item_section kind path view display
   local matched observed view_drift display_drift unavailable
 
   section_name=$1
   view_drift=''; display_drift=''; unavailable=''
-  rig_section_index "$section_name" || return 2
-  section_index=$RIG_INDEX
-  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
-  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
-  while [ "$field_index" -lt "$field_end" ]; do
-    if [ "${RIG_FIELD_KEYS[$field_index]}" = item ]; then
-      item=${RIG_FIELD_VALUES[$field_index]}
-      item_section=dock-item.$item
-      rig_get_value "$item_section" kind || return 2; kind=$RIG_VALUE
-      view=''; display=''
-      if rig_get_value "$item_section" view; then view=$RIG_VALUE; fi
-      if rig_get_value "$item_section" display; then display=$RIG_VALUE; fi
-      if [ "$kind" = folder ] && { [ -n "$view" ] || [ -n "$display" ]; }; then
-        rig_get_value "$item_section" path || return 2
-        rig_expand_home_value "$RIG_VALUE" || return
-        path=$RIG_VALUE
-        [ "$path" = / ] || path=${path%/}
-        matched=0
-        if rig_dock_load_snapshot && rig_dock_find_folder "$path"; then matched=1; fi
-        if [ -n "$view" ]; then
-          observed=
-          if [ "$matched" -eq 1 ] && rig_dock_snapshot_value "persistent-others.$RIG_DOCK_MATCH_INDEX.tile-data.showas" integer; then
-            case "$RIG_VALUE" in 0) observed=auto ;; 1) observed=fan ;; 2) observed=grid ;; 3) observed=list ;; esac
-          fi
-          if [ -z "$observed" ]; then
-            [ -n "$unavailable" ] || unavailable="view-unobservable:$item"
-          elif [ "$observed" != "$view" ]; then
-            [ -n "$view_drift" ] || view_drift="view:$item"
-          fi
+  rig_dock_resolve_items "$section_name" || return
+  for item in "${RIG_DOCK_INCLUDED_ITEMS[@]+"${RIG_DOCK_INCLUDED_ITEMS[@]}"}"; do
+    item_section=dock-item.$item
+    rig_get_value "$item_section" kind || return 2; kind=$RIG_VALUE
+    view=''; display=''
+    if rig_get_value "$item_section" view; then view=$RIG_VALUE; fi
+    if rig_get_value "$item_section" display; then display=$RIG_VALUE; fi
+    if [ "$kind" = folder ] && { [ -n "$view" ] || [ -n "$display" ]; }; then
+      rig_get_value "$item_section" path || return 2
+      rig_expand_home_value "$RIG_VALUE" || return
+      path=$RIG_VALUE
+      [ "$path" = / ] || path=${path%/}
+      matched=0
+      if rig_dock_load_snapshot && rig_dock_find_folder "$path"; then matched=1; fi
+      if [ -n "$view" ]; then
+        observed=
+        if [ "$matched" -eq 1 ] && rig_dock_snapshot_value "persistent-others.$RIG_DOCK_MATCH_INDEX.tile-data.showas" integer; then
+          case "$RIG_VALUE" in 0) observed=auto ;; 1) observed=fan ;; 2) observed=grid ;; 3) observed=list ;; esac
         fi
-        if [ -n "$display" ]; then
-          observed=
-          if [ "$matched" -eq 1 ] && rig_dock_snapshot_value "persistent-others.$RIG_DOCK_MATCH_INDEX.tile-data.displayas" integer; then
-            case "$RIG_VALUE" in 0) observed=stack ;; 1) observed=folder ;; esac
-          fi
-          if [ -z "$observed" ]; then
-            [ -n "$unavailable" ] || unavailable="display-unobservable:$item"
-          elif [ "$observed" != "$display" ]; then
-            [ -n "$display_drift" ] || display_drift="display:$item"
-          fi
+        if [ -z "$observed" ]; then
+          [ -n "$unavailable" ] || unavailable="view-unobservable:$item"
+        elif [ "$observed" != "$view" ]; then
+          [ -n "$view_drift" ] || view_drift="view:$item"
+        fi
+      fi
+      if [ -n "$display" ]; then
+        observed=
+        if [ "$matched" -eq 1 ] && rig_dock_snapshot_value "persistent-others.$RIG_DOCK_MATCH_INDEX.tile-data.displayas" integer; then
+          case "$RIG_VALUE" in 0) observed=stack ;; 1) observed=folder ;; esac
+        fi
+        if [ -z "$observed" ]; then
+          [ -n "$unavailable" ] || unavailable="display-unobservable:$item"
+        elif [ "$observed" != "$display" ]; then
+          [ -n "$display_drift" ] || display_drift="display:$item"
         fi
       fi
     fi
-    field_index=$((field_index + 1))
   done
   if [ -n "$view_drift" ]; then RIG_OBSERVATION=drifted; RIG_OBSERVATION_DETAIL=$view_drift
   elif [ -n "$display_drift" ]; then RIG_OBSERVATION=drifted; RIG_OBSERVATION_DETAIL=$display_drift
@@ -1109,7 +1174,10 @@ rig_dock_observe() {
     path=$RIG_VALUE
     if [ -n "$actual" ]; then actual=$actual$'\n'$path; else actual=$path; fi
   done <<< "$output"
-  if [ "$actual" = "$expected" ]; then
+  if rig_dock_missing_linked_item; then
+    RIG_OBSERVATION=drifted
+    RIG_OBSERVATION_DETAIL="dock-item-path-missing:$RIG_VALUE"
+  elif [ "$actual" = "$expected" ]; then
     rig_dock_observe_attributes "$section_name"
   else
     RIG_OBSERVATION=drifted
@@ -1118,34 +1186,27 @@ rig_dock_observe() {
 }
 
 rig_dock_apply() {
-  local section_name command killall_command section_index field_index field_end item item_section
+  local section_name command killall_command item item_section
   local kind path view display
 
   section_name=$1
   rig_macos_dockutil_command; command=$RIG_VALUE
   rig_macos_killall_command; killall_command=$RIG_VALUE
+  rig_dock_resolve_items "$section_name" || return
   "$command" --remove all --no-restart 1>&2 || return
-  rig_section_index "$section_name" || return 2
-  section_index=$RIG_INDEX
-  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
-  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
-  while [ "$field_index" -lt "$field_end" ]; do
-    if [ "${RIG_FIELD_KEYS[$field_index]}" = item ]; then
-      item=${RIG_FIELD_VALUES[$field_index]}
-      item_section=dock-item.$item
-      rig_get_value "$item_section" kind || return 2; kind=$RIG_VALUE
-      rig_get_value "$item_section" path || return 2
-      rig_expand_home_value "$RIG_VALUE" || return; path=$RIG_VALUE
-      if [ "$kind" = folder ]; then
-        set -- --add "$path"
-        if rig_get_value "$item_section" view; then view=$RIG_VALUE; set -- "$@" --view "$view"; fi
-        if rig_get_value "$item_section" display; then display=$RIG_VALUE; set -- "$@" --display "$display"; fi
-        "$command" "$@" --no-restart 1>&2 || return
-      else
-        "$command" --add "$path" --no-restart 1>&2 || return
-      fi
+  for item in "${RIG_DOCK_INCLUDED_ITEMS[@]+"${RIG_DOCK_INCLUDED_ITEMS[@]}"}"; do
+    item_section=dock-item.$item
+    rig_get_value "$item_section" kind || return 2; kind=$RIG_VALUE
+    rig_get_value "$item_section" path || return 2
+    rig_expand_home_value "$RIG_VALUE" || return; path=$RIG_VALUE
+    if [ "$kind" = folder ]; then
+      set -- --add "$path"
+      if rig_get_value "$item_section" view; then view=$RIG_VALUE; set -- "$@" --view "$view"; fi
+      if rig_get_value "$item_section" display; then display=$RIG_VALUE; set -- "$@" --display "$display"; fi
+      "$command" "$@" --no-restart 1>&2 || return
+    else
+      "$command" --add "$path" --no-restart 1>&2 || return
     fi
-    field_index=$((field_index + 1))
   done
   "$killall_command" Dock 1>&2
 }
@@ -1181,6 +1242,7 @@ rig_macos_resource_preflight() {
         rig_dock_expected_paths "$section_name" || return
         paths=$RIG_VALUE
         while IFS= read -r path; do
+          [ -n "$path" ] || continue
           if [ ! -e "$path" ]; then
             RIG_RESOURCE_PREFLIGHT_DETAIL="dock-item-path-missing:$path"
             return 1

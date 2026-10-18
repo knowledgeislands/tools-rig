@@ -147,7 +147,20 @@ items = ["system-settings", "downloads"]
 profiles = ["workstation"]
 ```
 
-Rig validates resolved item paths before replacing a selected Dock layout. The same exact whole-value home forms are available for Dock paths; other text remains literal.
+### Share one Dock order across profiles
+
+One layout can serve several machine profiles. Link a machine-specific item to the tool that owns it with `tool = "ID"`; each resolved profile then shows only the linked items whose tool it selects, in the declared order, while unlinked items always show:
+
+```toml
+[dock-item.lightroom]
+kind = "application"
+path = "/Applications/Adobe Lightroom Classic/Adobe Lightroom Classic.app"
+tool = "lightroom"
+```
+
+The link only filters. It never selects the tool or makes the Dock wait for it. `rig show dock:primary --profile studio` lists each item's declared position, its compact position when included, or `excluded=profile` or `excluded=platform`.
+
+Rig validates resolved item paths before replacing a selected Dock layout. A missing path for an excluded item is ignored; a missing path for an included item is drift. The same exact whole-value home forms are available for Dock paths; other text remains literal.
 
 Status and doctor compare paths and order, then any folder `view` and `display` values you explicitly declared. An omitted attribute is not constrained. A manually changed declared view or display is drift, with a detail naming the item; inaccessible or ambiguous native evidence is unknown, not agreement. Observation reads one shared native Dock snapshot when needed and never changes the Dock. Check the reported difference and your intended declaration before applying a replacement layout.
 
