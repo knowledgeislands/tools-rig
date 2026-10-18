@@ -131,20 +131,23 @@ restarts, and other imperative actions.
 .SH INSTALLATION
 \&
 .PP
-Install the latest immutable release, currently v0.6.3:
+This checkout is the selected v0.7.0 release candidate, not yet a published
+release. The latest published release, v0.6.3, lets an apply, an upgrade and
+a removal run side by side. After v0.7.0 is published,
+install the immutable preview:
 .PP
 .nf
-curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.6.3/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.7.0/install.sh | bash
 .fi
 .PP
 Pin an exact release explicitly:
 .PP
 .nf
-curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.6.3/install.sh | bash -s -- v0.6.3
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.7.0/install.sh | bash -s -- v0.7.0
 .fi
 .PP
-These URLs name the latest documented immutable release. From a local
-checkout, run
+These installer URLs are not available before publication. From a local
+checkout now, run
 .B ./install.sh \-\-link
 to link both the executable and manual; the linked executable reports a
 development version marker until a release candidate is explicitly selected.
