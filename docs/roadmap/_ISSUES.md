@@ -1,5 +1,5 @@
 ---
-areas: { CLI: 26, CORE: 64, DIST: 11, MIG: 8 }
+areas: { CLI: 26, CORE: 64, DIST: 12, MIG: 8 }
 ---
 
 # Roadmap issue ledger
@@ -8,5 +8,5 @@ This ledger reserves fixed issuing-area namespaces. Allocate the next work item 
 
 - `CLI` reserves through `026`.
 - `CORE` reserves through `064`.
-- `DIST` reserves through `011`.
+- `DIST` reserves through `012`.
 - `MIG` reserves through `008`.
