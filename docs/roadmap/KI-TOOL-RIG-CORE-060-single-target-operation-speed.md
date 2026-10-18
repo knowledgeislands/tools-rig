@@ -11,7 +11,7 @@ blocks: []
 blocked_by: []
 baseline_ref: 4112c6cd19325b2db7a5f13ae91035839ddbaa88
 created_at: 2026-10-17T21:44:09Z
-updated_at: 2026-10-17T21:45:58Z
+updated_at: 2026-10-18T04:20:00Z
 ---
 
 # KI-TOOL-RIG-CORE-060: Single-Target Operation Speed
@@ -130,6 +130,17 @@ The planner gives the same lowest-indexed-ready order: the new test pins an earl
 ### Mini recap
 
 A targeted `laptop` preview on `sol` now takes about 5 seconds instead of 24, with the same output and the same native probes.
+
+### Independent review
+
+The tools-burndown run reviewed the change on 18 October 2026 for RIG-TARGET-SPEED-ACCEPT, at `30fbebf`, without having written it. No findings.
+
+- **Planner.** The waiting list holds every unplanned index below the scan position in ascending order, and is checked before the scan advances, so each step still plans the lowest-indexed ready tool. A duplicated selected tool, which the old loop could never finish, is not reachable: selection is de-duplicated upstream.
+- **Binding selection.** Identifiers carry no dot, so the `binding.TOOL.` prefix is contiguous in the C-collated lookup; ambiguity and no-match errors name only the tool, so walking in name order rather than declaration order changes no message.
+- **Resource ordering, conflicts and cycles.** An unreadable dependency list still never becomes ready, so the "cannot be ordered" failure is unchanged; cached native targets and framed visit strings keep the same comparisons.
+- **Gate.** Audit, ShellCheck, Bash syntax, assembly drift and mandoc pass; all 552 Bats tests pass.
+
+Acceptance stays with Kris.
 
 ## Discussion
 
