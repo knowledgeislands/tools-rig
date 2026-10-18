@@ -10149,7 +10149,7 @@ rig_history_number() {
 }
 
 rig_history_target_valid() {
-  case "$1" in tool:*|skill:*|service:*|scheduled-job:*|setting:*|dock:*) ;; *) return 1 ;; esac
+  case "$1" in tool:*|skill:*|service:*|scheduled-job:*|setting:*|dock:*|default-application:*|firewall:*) ;; *) return 1 ;; esac
   rig_valid_id "${1#*:}"
 }
 
@@ -10274,7 +10274,7 @@ rig_history_prepare() {
         if rig_skill_supports_platform "$id" "$platform"; then
           rig_get_value "$section" authority || return 2; key=skill:$id$'\t'$RIG_VALUE
         fi ;;
-      service|scheduled-job|setting|dock)
+      service|scheduled-job|setting|dock|default-application|firewall)
         if rig_resource_supports_platform "$section" "$platform"; then
           rig_get_value "$section" provider || return 2; provider=$RIG_VALUE; key=$kind:$id$'\t'$provider
         fi ;;

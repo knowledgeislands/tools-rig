@@ -371,6 +371,7 @@ LOG
   [ "$(cat "$DAEMON")" = "$(golden_daemon)" ]
   [ "$(/usr/bin/stat -c %a "$ANCHOR" 2>/dev/null || /usr/bin/stat -f %Lp "$ANCHOR")" = 644 ]
   /usr/bin/grep -F $'macos-pf\tfirewall\tscreen-sharing\torg.rig.test.screen-sharing' "$RECEIPT"
+  /usr/bin/grep -qE '^firewall:screen-sharing'$'\t''macos-pf'$'\t''.*'$'\t''0$' "$HOME/.local/state/rig/apply-history/macos.tsv"
   [ -z "$(/bin/ls -A "$TMPDIR")" ]
   assert_no_global_firewall
 

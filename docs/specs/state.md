@@ -388,7 +388,7 @@ _Conformance:_ conforming
 
 _Verify:_ Isolated provider fixtures exercise completed failure and recovery, provider/platform/profile boundaries, independent and reversed concurrent completion, interruption, unsafe and corrupt state, bounds, privacy, clock discrepancy, and byte-preserving read-only and dry-run commands.
 
-_Evidence:_ `src/rig/25-apply-history.bash` owns storage and shared projection; `src/rig/23-application.bash` brackets actual dispatches and `src/rig/22-observation.bash` adds historical health evidence. The 23 cases in `tests/rig-apply-history.bats` cover all dispatched target kinds and the persistence, ordering, filtering, privacy and read-only boundaries; the complete local gate passes with 353 Bats tests.
+_Evidence:_ `src/rig/25-apply-history.bash` owns storage and shared projection; `src/rig/23-application.bash` brackets actual dispatches and `src/rig/22-observation.bash` adds historical health evidence. The 23 cases in `tests/rig-apply-history.bats` cover the persistence, ordering, filtering, privacy and read-only boundaries across dispatched target kinds; `tests/rig-default-applications.bats` covers a failed and recovered handler assignment and `tests/rig-firewall.bats` a converged firewall apply; the complete local gate passes with 567 Bats tests.
 
 ### RIG-STATE-036 — Dock folder attributes
 

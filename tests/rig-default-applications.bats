@@ -169,6 +169,27 @@ healthy_app() {
   [[ "$output" == *'native confirmation may be required'* ]] || false
 }
 
+@test "a handler dispatch publishes its qualified outcome in the apply history" {
+  write_config
+  healthy_app
+  export RIG_STATE_HOME=$BATS_TEST_TMPDIR/state
+  ledger=$RIG_STATE_HOME/apply-history/macos.tsv
+  export RIG_HANDLER_FIXTURE_BEHAVIOUR=decline
+  run "$RIG" apply
+  [ "$status" -eq 1 ]
+  [[ "$output" != *"apply history unavailable"* ]] || false
+  grep -qE '^default-application:notes'$'\t''macos-handlers'$'\t''.*'$'\t''[1-9][0-9]*$' "$ledger" || false
+  run "$RIG" doctor --format json
+  [[ "$output" == *'"historical_failure_count":1'* ]] || false
+  [[ "$output" == *'default-application:notes'* ]] || false
+  export RIG_HANDLER_FIXTURE_BEHAVIOUR=normal
+  run "$RIG" apply
+  [ "$status" -eq 0 ]
+  grep -qE '^default-application:notes'$'\t''macos-handlers'$'\t''.*'$'\t''0$' "$ledger" || false
+  run "$RIG" doctor --format json
+  [[ "$output" == *'"historical_failure_count":0'* ]] || false
+}
+
 @test "application installation precedes handler assignment and failed install blocks it" {
   write_config
   cat >"$RIG_TEST_PROVIDER_BIN/installer" <<'SH'
