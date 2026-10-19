@@ -32,7 +32,7 @@ A `macos-pf` firewall passes a declared port only when the destination is one of
 
 ## Current state
 
-Read on 19 October 2026 at `7665767`, after [KI-TOOL-RIG-CORE-063](/Users/krisbrown/workspaces/knowledge-islands/tools-rig/docs/roadmap/KI-TOOL-RIG-CORE-063-fatal-bats-assertions.md) landed.
+Read on 19 October 2026 at `7665767`, after [KI-TOOL-RIG-CORE-063](https://github.com/knowledgeislands/tools-rig/blob/766576763a799929f386d2b50df5797312285dc7/docs/roadmap/KI-TOOL-RIG-CORE-063-fatal-bats-assertions.md) landed.
 
 - `rig_firewall_render_anchor` in `src/rig/29-firewall.bash` renders, per declared port, a `lo0` pass, `from 100.64.0.0/10 to 100.64.0.0/10`, `from fd7a:115c:a1e0::/48 to fd7a:115c:a1e0::/48`, then a block. The ranges are the constants `RIG_FIREWALL_TAILNET_IPV4` and `RIG_FIREWALL_TAILNET_IPV6`. Observation compares the rendered anchor byte for byte with the installed one, so any input to the renderer is also an input to drift.
 - The LaunchDaemon only reruns `pfctl -E -a com.apple/LOCATOR -f /etc/pf.anchors/LOCATOR`; it reloads the installed file and cannot rediscover anything.
