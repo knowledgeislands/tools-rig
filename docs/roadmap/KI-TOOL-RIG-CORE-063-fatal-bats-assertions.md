@@ -5,14 +5,13 @@ title: Fatal Bats assertions
 purpose: debt
 theme: rig
 kind: deliver
-horizon: now
-status: awaiting-review
+status: done
 size: s
 blocks: []
 blocked_by: []
 baseline_ref: 41adda24ccafba4d39044a927b96ca01f481e2de
 created_at: 2026-10-18T17:10:50Z
-updated_at: 2026-10-19T22:43:23Z
+updated_at: 2026-10-19T22:56:07Z
 ---
 
 # Fatal Bats Assertions
@@ -120,6 +119,10 @@ The goal holds: a failing mid-test assertion in these suites now fails its test 
 ### Mini recap
 
 Made 64 Bats assertions fatal and de-flaked the firewall global-flush check; full gate green, no Rig defect exposed. Learning route, not promoted: `SHELL-FATAL`'s own continuation handling joins lines, so a mechanical fix must place `|| false` on the continuation's last line; that note would belong with `ki-repo-tools` remediation guidance.
+
+## Done
+
+Accepted 2026-10-19 by Kris Brown on the review packet above, re-verified at `7665767`: no `SHELL-FATAL` finding, the firewall pattern checked on the sample lines, and the complete local gate passing with 582 of 582 Bats tests. Kris said, on 19 October (BURN-WAVE-1, ki.tools-burndown decisions log), "I agree with all the recommendations in here", which set one `ki-accept` pass over every record in Awaiting review.
 
 ## Discussion
 
