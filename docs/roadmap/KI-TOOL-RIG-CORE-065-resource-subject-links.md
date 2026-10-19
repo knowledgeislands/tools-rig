@@ -4,14 +4,16 @@ area: CORE
 title: Resource subject links
 purpose: capability
 theme: rig
-status: triage
+kind: deliver
+horizon: now
+status: ready
 priority: medium
 size: m
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-19T20:49:28Z
-updated_at: 2026-10-19T20:49:28Z
+updated_at: 2026-10-19T23:20:10Z
 ---
 
 # Resource Subject Links and Per-Profile Configured Tools
@@ -38,10 +40,74 @@ Kris chose this shape on 19 October 2026 (SITE-CONFIG-SHAPE a), [Tools burndown 
 
 `rig show` JSON for a fixture `laptop` and `studio` carries `configured_by`. Fixture tests cover a tool configured in one profile and not the other, the subject link selecting its tool, a `requires`-only resource not counting, and public-export byte-identity. The configuration guide documents `tool` on each resource kind, and the RIG-QUERY clause specifies the JSON.
 
+## Current state
+
+Re-read on 19 October 2026 at baseline `969ec58`.
+
+- `[default-application.ID]`'s `tool` is parsed straight into its `requires` field (`rig_toml_field`, `src/rig/10-configuration.bash`), so the subject meaning is not stored apart from the prerequisite meaning. `rig show --format json` reads it back from `requires` as the resource's `tool` key.
+- `[setting.*]`, `[service.*]`, `[scheduled-job.*]` and `[firewall.*]` accept `requires` arrays but no `tool`. `requires` already gives catalogue validation and prerequisite closure.
+- `rig_show_json` (`src/rig/30-commands.bash`) emits tool entries of `id`, `name`, `category` and `purpose` only; `rig_print_profile_tools` prints a fixed four-column table whose exact output `tests/rig.bats` compares.
+- `rig show TOOL` (`rig_command_explain_impl`) is profile-independent and rejects `--profile` (RIG-QUERY-002).
+- `rig export --profile public` renders tools only, never resources (`src/rig/40-publication-lifecycle.bash`), so no subject link can reach it.
+
+### Planning decisions
+
+- **Storage.** Each of the five kinds stores `tool` as a new scalar `subject` field and, as today for default applications, also adds the same identity to `requires`. Validation and closure are therefore the existing `requires` behaviour, and the JSON `tool` key on a default application is unchanged.
+- **Ports and Dock layouts do not count.** A port's `owner = "tool:ID"` names the listener's owner, and a Dock item's `tool` filters presence; neither declares that the resource configures the tool. Counting them would reintroduce the echo the design note set aside. Either can opt in later by gaining `tool`.
+- **`rig show TOOL`** is catalogue-level, so its "Configured by" line lists every declared resource whose subject names the tool, independent of profile, or `none`. The per-profile answer belongs to `rig show [--profile P]`.
+- **Tool table marker.** The profile tool table gains a trailing `CONFIGURED` column, `yes` or blank, only when at least one selected tool is configured, so a profile without subject links renders exactly as today.
+- **Computation.** One pass over the selected resource sections builds the configured-by lists for all tools, so the cost stays linear in resources rather than tools times resources.
+
+## Steps
+
+- [ ] Parse `tool` on `[setting.*]`, `[service.*]`, `[scheduled-job.*]`, `[firewall.*]` and `[default-application.*]` into a scalar `subject` field that also adds a `requires` entry; register `subject` in `rig_field_kind`.
+- [ ] Add a single-pass helper that maps each selected tool to its sorted qualified configuring resources for the resolved profile.
+- [ ] Emit `configured_by` on every `rig show --format json` tool entry; add the conditional `CONFIGURED` column to the profile tool table; add the "Configured by" line to `rig show TOOL`.
+- [ ] Add fixture tests: a tool configured in `laptop` and not in `studio`; the subject link pulling its tool into a profile; a `requires`-only resource not counting; an unknown subject tool failing validation; the `rig show TOOL` line; a profile with no links rendering the unchanged table; public export byte-identical with and without links.
+- [ ] Add a RIG-QUERY clause specifying the complete `rig show` JSON tool entry, and extend RIG-QUERY-003 for the new line; document `tool` on each resource kind in `docs/specs/configuration.md` and in the operational-resources guide.
+- [ ] Reassemble `bin/rig`, update `man/rig.1` if it lists the explanation fields, and run the complete local gate.
+
+## Files touched
+
+- `src/rig/10-configuration.bash`, `src/rig/30-commands.bash` and the assembled `bin/rig`.
+- A new `tests/rig-subject-links.bats`.
+- `docs/specs/queries.md`, `docs/specs/configuration.md`, `docs/guides/user/operational-resources.md`, and `man/rig.1` if it enumerates explanation fields.
+- This record.
+
+## Verify
+
+- The new suite passes with `bats tests/rig-subject-links.bats </dev/null`, and the existing exact-table tests in `tests/rig.bats` still pass unchanged.
+- `rig export --profile public` output is byte-identical between a fixture with subject links and the same fixture without them.
+- [Develop Rig's complete gate](../guides/developer/README.md#verify-the-repository) passes, `bats tests/ </dev/null` included. No live apply.
+
 ## Dependencies / blocks
 
 Not blocked. The chezmoi repository's data step, which adds `tool` to the services and scheduled job that concern a catalogue tool in Kris's Rig configuration, waits for this record; the site shows nothing until that step lands.
 
+## Documentation impact
+
+### Decision Records
+
+None; Kris's SITE-CONFIG-SHAPE answer is the decision, and this record carries its rationale.
+
+### Specifications
+
+A new RIG-QUERY clause for the `rig show` JSON tool entry; RIG-QUERY-003 gains the "Configured by" line; the configuration specification documents `tool` on each of the five resource kinds.
+
+### Guides
+
+The operational-resources guide shows `tool` on a setting and a service.
+
+### Roadmap
+
+This record moves to Awaiting review at delivery.
+
 ## Discussion
+
+### Approval
+
+Kris, 19 October 2026 (TRIAGE-ALL, relayed by the mac-studio-setup State of play): every high-confidence Now recommendation is adopted and delivered to Awaiting review, tools burn-down work first. The rig-triage run of 19 October 2026 recommended this record for Now with high confidence: Kris had already chosen its shape (SITE-CONFIG-SHAPE a) and the rig.midnight.ninja site waits on it. Planning settled the record's open questions as recorded under Planning decisions.
+
+### Origin
 
 Alternatives the design note weighed and set aside: deriving the flag from `requires` (wrong on the only live example), from a preference domain matching an application bundle identifier (needs declared bundle identities and covers no service or job; possible later sugar), a tool-side `configures` list (splits one fact across two tables), and the Dock-item filter meaning (would make configuration divergence a pure echo of tool divergence). The handoff's plain `configured: true|false` was the other option Kris did not take; the list keeps each flag auditable. Today's declared data gives the same answer on terra and sol for every tool, so the site's columns stay identical until Kris declares genuinely host-specific configuration. Planning should settle whether `[port.*]`, whose `owner = "tool:ID"` already names a tool, and Dock layouts should count as configuring resources. Capture only; adoption, priority and plan belong to this repository.
