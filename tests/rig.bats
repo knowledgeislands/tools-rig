@@ -5174,6 +5174,10 @@ artifacts = ["$HOME/bin/home-tool", "~/bin/tilde-tool", "/opt/rig/absolute-tool"
   run "$RIG_NETSTAT_COMMAND" -an
   [ "$status" -eq 1 ]
   [ "$(cat "$RIG_NETSTAT_COMMAND.log")" = '-an' ]
+  case "$RIG_IFCONFIG_COMMAND" in "$BATS_TEST_TMPDIR"/*) ;; *) false ;; esac || false
+  run "$RIG_IFCONFIG_COMMAND" -a
+  [ "$status" -eq 1 ]
+  [ "$(cat "$RIG_IFCONFIG_COMMAND.log")" = '-a' ]
   case "$RIG_NFT" in "$BATS_TEST_TMPDIR"/*) ;; *) false ;; esac || false
   case "$RIG_SYSTEMCTL" in "$BATS_TEST_TMPDIR"/*) ;; *) false ;; esac || false
   case "$RIG_SS_COMMAND" in "$BATS_TEST_TMPDIR"/*) ;; *) false ;; esac || false

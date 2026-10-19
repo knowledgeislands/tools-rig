@@ -16,8 +16,8 @@
 # inherited base directories, moves HOME into the test's own tree, and points
 # the launchd adapter and the three macOS mutators at inert stubs in the test's
 # own tree, launchd in a domain no machine owns. The firewall adapter's system
-# paths are rooted in the test's tree and its pfctl, netstat, nft, systemctl
-# and ss calls refused.
+# paths are rooted in the test's tree and its pfctl, netstat, ifconfig, nft,
+# systemctl and ss calls refused.
 # An explicit override on a
 # single invocation still wins, so a test that stubs one of them itself is
 # unaffected.
@@ -124,9 +124,9 @@ rig_test_isolate() {
 
   # The firewall adapters write beneath /etc and /Library/LaunchDaemons and
   # load live pf or nftables rules. Root their system paths in the test's tree
-  # and refuse every pfctl, netstat, nft, systemctl and ss call, so a forgotten
-  # override fails the assertion it belongs to rather than reaching the
-  # runner's packet filter or service manager.
+  # and refuse every pfctl, netstat, ifconfig, nft, systemctl and ss call, so
+  # a forgotten override fails the assertion it belongs to rather than reaching
+  # the runner's packet filter, interfaces or service manager.
   export RIG_SYSTEM_ROOT=$BATS_TEST_TMPDIR/system-root
   mkdir -p "$RIG_SYSTEM_ROOT"
   stub=$BATS_TEST_TMPDIR/isolated-pfctl
@@ -139,6 +139,13 @@ rig_test_isolate() {
   printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\n" "$*" >>"$0.log"' 'exit 1' >"$stub"
   chmod +x "$stub"
   export RIG_NETSTAT_COMMAND=$stub
+  # The firewall reads the Mac's own tailnet addresses from ifconfig; refuse
+  # it so no rendered anchor names the runner's addresses.
+  stub=$BATS_TEST_TMPDIR/isolated-ifconfig
+  # shellcheck disable=SC2016
+  printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\n" "$*" >>"$0.log"' 'exit 1' >"$stub"
+  chmod +x "$stub"
+  export RIG_IFCONFIG_COMMAND=$stub
   stub=$BATS_TEST_TMPDIR/isolated-nft
   # shellcheck disable=SC2016
   printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\n" "$*" >>"$0.log"' 'exit 1' >"$stub"

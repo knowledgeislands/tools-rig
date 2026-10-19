@@ -65,6 +65,16 @@ printf 'netstat %s\n' "$*" >>"$NATIVE_LOG"
 [ ! -f "$FW_STATE/netstat" ] || cat "$FW_STATE/netstat"
 SH
 
+  # en0 holds a carrier-grade NAT address, as some hotspots hand out; only the
+  # interface that also carries Tailscale's ULA is the tailnet interface.
+  cat >"$FW_BIN/ifconfig" <<'SH'
+#!/usr/bin/env bash
+printf 'ifconfig %s\n' "$*" >>"$NATIVE_LOG"
+[ -f "$FW_STATE/ifconfig" ] || exit 1
+cat "$FW_STATE/ifconfig"
+SH
+  write_interfaces "$(en0_interface)" "$(tailnet_interface utun3 100.101.1.2 fd7a:115c:a1e0::1:2)"
+
   cat >"$RIG_SUDO" <<'SH'
 #!/usr/bin/env bash
 printf 'sudo %s\n' "$*" >>"$NATIVE_LOG"
@@ -90,11 +100,34 @@ case "$1" in
 esac
 exit 97
 SH
-  chmod +x "$FW_BIN/pfctl" "$FW_BIN/launchctl" "$FW_BIN/netstat" "$RIG_SUDO"
+  chmod +x "$FW_BIN/pfctl" "$FW_BIN/launchctl" "$FW_BIN/netstat" "$FW_BIN/ifconfig" "$RIG_SUDO"
   export RIG_PFCTL=$FW_BIN/pfctl
   export RIG_LAUNCHCTL=$FW_BIN/launchctl
   export RIG_NETSTAT_COMMAND=$FW_BIN/netstat
+  export RIG_IFCONFIG_COMMAND=$FW_BIN/ifconfig
   write_config
+}
+
+# Each argument is one interface block of the fixture ifconfig output.
+write_interfaces() {
+  printf 'lo0: flags=8049<UP,LOOPBACK,RUNNING,MULTICAST> mtu 16384\n\tinet 127.0.0.1 netmask 0xff000000\n' \
+    >"$FW_STATE/ifconfig"
+  [ "$#" -eq 0 ] || printf '%s\n' "$@" >>"$FW_STATE/ifconfig"
+}
+
+en0_interface() {
+  printf '%s\n' 'en0: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500' \
+    $'\tinet6 fe80::1c%en0 prefixlen 64 secured scopeid 0xf' \
+    $'\tinet 100.72.5.9 netmask 0xffc00000 broadcast 100.127.255.255' \
+    $'\tstatus: active'
+}
+
+# NAME [IPV4] [IPV6] renders one utun interface; an empty address is omitted.
+tailnet_interface() {
+  printf '%s: flags=8051<UP,POINTOPOINT,RUNNING,MULTICAST> mtu 1280\n' "$1"
+  [ -z "${2:-}" ] || printf '\tinet %s --> %s netmask 0xffffffff\n' "$2" "$2"
+  printf '\tinet6 fe80::9%%%s prefixlen 64 scopeid 0x17\n' "$1"
+  [ -z "${3:-}" ] || printf '\tinet6 %s prefixlen 48\n' "$3"
 }
 
 # Optional overrides replace one field of the fixture declaration.
@@ -146,14 +179,14 @@ terminal() {
 golden_anchor() {
   cat <<'PF'
 # Managed by rig from firewall.screen-sharing. Generated file; rig apply replaces edits.
-# Declared ports accept loopback and tailnet-to-tailnet traffic only.
+# Declared ports accept loopback, and tailnet sources addressing this Mac's own tailnet addresses.
 pass in quick on lo0 proto tcp from any to any port = 5900 flags S/SA keep state
-pass in quick inet proto tcp from 100.64.0.0/10 to 100.64.0.0/10 port = 5900 flags S/SA keep state
-pass in quick inet6 proto tcp from fd7a:115c:a1e0::/48 to fd7a:115c:a1e0::/48 port = 5900 flags S/SA keep state
+pass in quick inet proto tcp from 100.64.0.0/10 to 100.101.1.2 port = 5900 flags S/SA keep state
+pass in quick inet6 proto tcp from fd7a:115c:a1e0::/48 to fd7a:115c:a1e0::1:2 port = 5900 flags S/SA keep state
 block drop in quick proto tcp from any to any port = 5900
 pass in quick on lo0 proto udp from any to any port = 5900 keep state
-pass in quick inet proto udp from 100.64.0.0/10 to 100.64.0.0/10 port = 5900 keep state
-pass in quick inet6 proto udp from fd7a:115c:a1e0::/48 to fd7a:115c:a1e0::/48 port = 5900 keep state
+pass in quick inet proto udp from 100.64.0.0/10 to 100.101.1.2 port = 5900 keep state
+pass in quick inet6 proto udp from fd7a:115c:a1e0::/48 to fd7a:115c:a1e0::1:2 port = 5900 keep state
 block drop in quick proto udp from any to any port = 5900
 PF
 }
@@ -265,7 +298,7 @@ assert_no_global_firewall() {
   [ ! -s "$NATIVE_LOG" ]
 }
 
-@test "dry run projects only declared ports from the tailnet ranges" {
+@test "dry run projects only declared ports to the Mac's own tailnet addresses" {
   local rules
   run "$RIG" apply --dry-run
   [ "$status" -eq 0 ]
@@ -273,8 +306,11 @@ assert_no_global_firewall() {
   [ "$rules" = "$(golden_anchor | /usr/bin/grep -v '^#')" ]
   ! printf '%s\n' "$rules" | /usr/bin/grep -v 'port = 5900' || false
   ! printf '%s\n' "$rules" | /usr/bin/grep -w 22 || false
-  [ "$(printf '%s\n' "$rules" | /usr/bin/grep -c 'from 100.64.0.0/10 to 100.64.0.0/10')" -eq 2 ]
-  [ "$(printf '%s\n' "$rules" | /usr/bin/grep -c 'from fd7a:115c:a1e0::/48 to fd7a:115c:a1e0::/48')" -eq 2 ]
+  [ "$(printf '%s\n' "$rules" | /usr/bin/grep -c 'from 100.64.0.0/10 to 100.101.1.2 ')" -eq 2 ]
+  [ "$(printf '%s\n' "$rules" | /usr/bin/grep -c 'from fd7a:115c:a1e0::/48 to fd7a:115c:a1e0::1:2 ')" -eq 2 ]
+  ! printf '%s\n' "$rules" | /usr/bin/grep -E 'to (100\.64\.0\.0/10|fd7a:115c:a1e0::/48) ' || false
+  ! printf '%s\n' "$output" | /usr/bin/grep -F 100.72.5.9 || false
+  [[ "$output" == *'  destinations=100.101.1.2 fd7a:115c:a1e0::1:2'* ]] || false
   [[ "$output" == *"command=sudo -n pfctl -E -a com.apple/org.rig.test.screen-sharing -f $ANCHOR"* ]] || false
 }
 
@@ -298,6 +334,7 @@ assert_no_global_firewall() {
     { printf 'system root files:\n%s\n' "$listing" >&3; false; }
   run "$RIG" show firewall:screen-sharing
   [[ "$output" == *'Allowed sources: lo0, 100.64.0.0/10, fd7a:115c:a1e0::/48'* ]] || false
+  [[ "$output" == *'Allowed destinations: 100.101.1.2, fd7a:115c:a1e0::1:2'* ]] || false
   [[ "$output" == *'pf anchor: com.apple/org.rig.test.screen-sharing'* ]] || false
   [[ "$output" == *'Observed state: present (kernel-rules-unverified)'* ]] || false
   run "$RIG" show --format json
@@ -486,5 +523,88 @@ LOG
   [ ! -e "$ANCHOR" ]
   [ ! -e "$DAEMON" ]
   ! /usr/bin/grep -F $'macos-pf\tfirewall' "$RECEIPT" || false
+  assert_no_global_firewall
+}
+
+@test "discovery takes only the interface carrying Tailscale's ULA and refuses anything else" {
+  local case_name
+  # Two addresses of one family on the tailnet interface, a second tailnet
+  # interface, a missing family and no tailnet at all are each undiscoverable.
+  for case_name in none second-interface no-ipv4 no-ipv6 two-ipv4 unreadable; do
+    case "$case_name" in
+      none) write_interfaces "$(en0_interface)" ;;
+      second-interface) write_interfaces "$(en0_interface)" \
+        "$(tailnet_interface utun3 100.101.1.2 fd7a:115c:a1e0::1:2)" \
+        "$(tailnet_interface utun7 100.101.1.3 fd7a:115c:a1e0::1:3)" ;;
+      no-ipv4) write_interfaces "$(en0_interface)" "$(tailnet_interface utun3 '' fd7a:115c:a1e0::1:2)" ;;
+      no-ipv6) write_interfaces "$(en0_interface)" "$(tailnet_interface utun3 100.101.1.2 '')" ;;
+      two-ipv4) write_interfaces "$(tailnet_interface utun3 100.101.1.2 fd7a:115c:a1e0::1:2)" \
+        $'\tinet 100.101.1.4 --> 100.101.1.4 netmask 0xffffffff' ;;
+      unreadable) rm "$FW_STATE/ifconfig" ;;
+    esac
+    [ "$(status_row)" = 'unknown tailnet-address-undiscoverable' ] ||
+      { printf '%s: %s\n' "$case_name" "$(status_row)" >&3; false; }
+    run "$RIG" apply --dry-run
+    [[ "$output" == *'destinations=unknown (tailnet-address-undiscoverable); apply installs nothing'* ]] ||
+      { printf '%s: %s\n' "$case_name" "$output" >&3; false; }
+    ! printf '%s\n' "$output" | /usr/bin/grep -E '^  (rule|command)=' || false
+    run "$RIG" show firewall:screen-sharing
+    [[ "$output" == *'Allowed destinations: unknown (tailnet-address-undiscoverable)'* ]] || false
+  done
+
+  # A CGNAT address outside the tailnet interface is never chosen, whichever
+  # order the interfaces appear in.
+  write_interfaces "$(tailnet_interface utun3 100.101.1.2 fd7a:115c:a1e0::1:2)" "$(en0_interface)"
+  run "$RIG" apply --dry-run
+  [[ "$output" == *'  destinations=100.101.1.2 fd7a:115c:a1e0::1:2'* ]] || false
+  ! printf '%s\n' "$output" | /usr/bin/grep -F 100.72.5.9 || false
+  ! /usr/bin/grep -E '^sudo|^pfctl|^launchctl (bootstrap|bootout)' "$NATIVE_LOG" || false
+}
+
+@test "an undiscoverable tailnet address installs and rewrites nothing" {
+  write_interfaces "$(en0_interface)"
+  run env RIG_OUTCOME=always "$RIG" apply
+  [ "$status" -eq 1 ]
+  [[ "$output" == *'skipped'*'tailnet-address-undiscoverable'* ]] || false
+  terminal apply --sudo
+  [[ "$output" == *'"status": 1'* ]] || { cat "$STDOUT" "$STDERR" >&3; false; }
+  [[ "$(cat "$STDOUT" "$STDERR")" == *'tailnet-address-undiscoverable'* ]] || false
+  ! native | /usr/bin/grep -E '^sudo -n -- |^pfctl|^launchctl (bootstrap|bootout)' || false
+  [ -z "$(/usr/bin/find "$RIG_SYSTEM_ROOT" -type f)" ]
+
+  # An installed anchor stays as it is while Tailscale is down.
+  install_present
+  : >"$NATIVE_LOG"
+  terminal apply --sudo
+  [[ "$(cat "$STDOUT" "$STDERR")" == *'tailnet-address-undiscoverable'* ]] || false
+  ! native | /usr/bin/grep -E '^sudo -n -- |^pfctl|^launchctl (bootstrap|bootout)' || false
+  [ "$(cat "$ANCHOR")" = "$(golden_anchor)" ]
+  [ "$(cat "$DAEMON")" = "$(golden_daemon)" ]
+}
+
+@test "a changed tailnet address reports stale and apply rewrites the destinations" {
+  install_present
+  [ "$(status_row)" = 'present kernel-rules-unverified' ]
+  write_interfaces "$(en0_interface)" "$(tailnet_interface utun5 100.101.9.8 fd7a:115c:a1e0::9:8)"
+  [ "$(status_row)" = 'drifted tailnet-address-stale' ]
+  # Any other edit is still an ordinary change.
+  printf '# edited\n' >>"$ANCHOR"
+  [ "$(status_row)" = 'drifted anchor-changed' ]
+  install_present
+
+  : >"$NATIVE_LOG"
+  terminal apply --sudo
+  [[ "$output" == *'"status": 0'* ]] || { cat "$STDOUT" "$STDERR" >&3; false; }
+  [ "$(native | /usr/bin/grep '^sudo -n -- ')" = "$(cat <<'LOG'
+sudo -n -- pfctl -n -f RENDERED-anchor
+sudo -n -- /usr/bin/install -o root -g wheel -m 0644 RENDERED-anchor ROOT/etc/pf.anchors/org.rig.test.screen-sharing
+sudo -n -- pfctl -E -a com.apple/org.rig.test.screen-sharing -f ROOT/etc/pf.anchors/org.rig.test.screen-sharing
+sudo -n -- pfctl -a com.apple/org.rig.test.screen-sharing -s rules
+LOG
+)" ]
+  [ "$(cat "$ANCHOR")" = "$(golden_anchor | /usr/bin/sed -e 's/100\.101\.1\.2 /100.101.9.8 /' -e 's/fd7a:115c:a1e0::1:2 /fd7a:115c:a1e0::9:8 /')" ]
+  [ "$(/usr/bin/grep -c ' to 100.101.9.8 port' "$ANCHOR")" -eq 2 ]
+  [ "$(cat "$DAEMON")" = "$(golden_daemon)" ]
+  [ "$(status_row)" = 'present kernel-rules-unverified' ]
   assert_no_global_firewall
 }

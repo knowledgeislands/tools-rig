@@ -10,7 +10,7 @@ blocks: []
 blocked_by: []
 baseline_ref: 39499cd6566b2fa02f9c66476eda53f052ccb351
 created_at: 2026-10-13T22:48:41Z
-updated_at: 2026-10-19T22:14:04Z
+updated_at: 2026-10-19T23:45:00Z
 ---
 
 # KI-TOOL-RIG-CORE-047: Tailnet-Only Listener Firewall
@@ -335,3 +335,5 @@ The anchor passes a declared port `from 100.64.0.0/10 to 100.64.0.0/10` (and the
 - **No interface match.** macOS accepts a packet for any local address on any interface, so an on-link host can send a packet with a forged tailnet source to the Mac's tailnet address over the local network and it passes. A TCP handshake cannot complete, because the reply routes into Tailscale, but one-way UDP to 5900 can arrive.
 
 Both are accepted residual risks of the delivered design, now stated in RIG-ORCH-023, the ADR and the operational-resources guide; the guide's earlier claim that such a device "cannot reach the port" was wrong. The same range rule applies to the `linux-nftables` provider. [KI-TOOL-RIG-CORE-062](/Users/krisbrown/workspaces/knowledge-islands/tools-rig/docs/roadmap/KI-TOOL-RIG-CORE-062-own-address-firewall-destination.md) captures narrowing the destination to each Mac's own tailnet addresses, refreshed at apply. This correction does not change the record's status or accept it.
+
+KI-TOOL-RIG-CORE-062 delivered that narrowing on 20 October 2026 for `macos-pf` and is awaiting review; the on-link targeted case it leaves is stated in RIG-ORCH-023, the ADR and the guide. An anchor installed under this record's range rule reports `drifted (anchor-changed)` under the new renderer until an attended `rig apply --sudo` rewrites it.

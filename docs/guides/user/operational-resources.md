@@ -186,11 +186,15 @@ ports = ["tcp:5900", "udp:5900"]
 allow = ["tailnet"]
 ```
 
-`tailnet` means Tailscale's fixed address ranges, `100.64.0.0/10` and `fd7a:115c:a1e0::/48`. A connection passes only when both its source and destination are in the same range. That shuts out an ordinary local network, but not every one: carrier-grade NAT and some hotspots hand out local addresses from `100.64.0.0/10`, and when your own machine gets one, a neighbour on the same network passes the rule and can reach the port. The rule also names no interface, so a one-way UDP packet with a forged tailnet source can arrive over the local network. On such a network, keep the account password strong or turn the listener off. Each port is `tcp:N` or `udp:N`. Rig rejects port 22 for either protocol, because SSH is how you undo a mistake. `allow` accepts no other value, and the locator is a reverse-DNS label outside `com.apple`.
+`tailnet` means a source in Tailscale's ranges, `100.64.0.0/10` or `fd7a:115c:a1e0::/48`, sent to your Mac's own tailnet address. Rig reads both of your Mac's tailnet addresses, IPv4 and IPv6, from `ifconfig` each time it checks or applies the firewall, and writes them into the rules. A neighbour on a carrier-grade NAT or hotspot network that hands out `100.64.0.0/10` addresses therefore cannot reach the port by scanning that network.
+
+This is tailnet-only by address, not a guarantee that a connection came through Tailscale. The rule names no interface, because Tailscale's interface name changes from boot to boot. A host on the same local network that deliberately sends to your Mac's tailnet address through that network still passes, over TCP as well as UDP. On an untrusted shared network, turn Screen Sharing or the other listener off.
+
+If Rig cannot find your Mac's tailnet addresses, for example because Tailscale is not running, it reports the firewall as `unknown` with `tailnet-address-undiscoverable` and apply changes nothing. A firewall already installed keeps working, because Tailscale keeps a machine's addresses for its lifetime. If those addresses do change, status reports `tailnet-address-stale` until the next `rig apply --sudo` rewrites them. Each port is `tcp:N` or `udp:N`. Rig rejects port 22 for either protocol, because SSH is how you undo a mistake. `allow` accepts no other value, and the locator is a reverse-DNS label outside `com.apple`.
 
 Rig writes two root-owned files and touches nothing else:
 
-- `/etc/pf.anchors/LOCATOR`, a pf anchor with four rules per port: pass on `lo0`, pass IPv4 tailnet to tailnet, pass IPv6 tailnet to tailnet, then block.
+- `/etc/pf.anchors/LOCATOR`, a pf anchor with four rules per port: pass on `lo0`, pass IPv4 from the tailnet to your Mac's tailnet address, pass the same for IPv6, then block.
 - `/Library/LaunchDaemons/LOCATOR.plist`, a system LaunchDaemon that loads the anchor as `com.apple/LOCATOR` at every boot and whenever `/etc/pf.conf` changes.
 
 Rig never edits `/etc/pf.conf`, never uses the application firewall, and never flushes an anchor it does not own. The anchor sits beneath Apple's own `com.apple/*` anchor point, so a macOS update that restores `/etc/pf.conf` removes nothing Rig owns, and the daemon reloads the anchor afterwards.

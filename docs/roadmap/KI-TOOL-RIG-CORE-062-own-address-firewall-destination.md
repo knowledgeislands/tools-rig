@@ -6,13 +6,13 @@ purpose: capability
 theme: rig
 kind: deliver
 horizon: now
-status: ready
+status: awaiting-review
 size: m
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 9dce7120fcaa8aefb6856876c614f5e40ae537b3
 created_at: 2026-10-18T09:45:00Z
-updated_at: 2026-10-19T23:25:00Z
+updated_at: 2026-10-19T23:47:35Z
 ---
 
 # Own-Address Firewall Destination
@@ -55,14 +55,14 @@ Read on 19 October 2026 at `7665767`, after [KI-TOOL-RIG-CORE-063](https://githu
 
 ## Steps
 
-- [ ] Add `rig_firewall_tailnet_addresses` to `src/rig/29-firewall.bash`: run `${RIG_IFCONFIG_COMMAND:-/sbin/ifconfig}` read-only, apply the discovery rule above, and set `RIG_FIREWALL_SELF_IPV4` and `RIG_FIREWALL_SELF_IPV6` or return non-zero with `tailnet-address-undiscoverable`. Bash 3.2 only; no new runtime dependency.
-- [ ] Render each port's two tailnet pass rules with the discovered destinations; keep the source ranges, the `lo0` pass and the block unchanged. Update the anchor's header comment to name own-address destinations.
-- [ ] In `rig_firewall_observe`, discover before rendering; on failure report `unknown`, `tailnet-address-undiscoverable`, without rendering. When the installed anchor differs from the rendered one only in its pass rules' destinations, report `tailnet-address-stale` instead of `anchor-changed`.
-- [ ] In `rig_firewall_apply` and `rig_firewall_apply_ready`, stop on `unknown`, so an undiscoverable address installs and rewrites nothing and apply reports it as skipped with `tailnet-address-undiscoverable`, with or without the grant; `apply --sudo` repairs a stale address through the existing install, reload and reread path. `rig_firewall_print_projection` and `rig_explain_firewall` show the discovered destinations, or the undiscoverable reason.
-- [ ] Point `tests/helpers/isolate.bash` at an inert `ifconfig` stub through `RIG_IFCONFIG_COMMAND` so no test reads the runner's interfaces, and give `tests/rig-firewall.bats` a fixture `ifconfig` with a local-network `en0` in `100.64.0.0/10` beside a `utun` tailnet interface.
-- [ ] Update the literal expectations in `tests/rig-firewall.bats`, and add cases for: own addresses rendered, the `en0` CGNAT address never chosen, no tailnet interface, two tailnet interfaces, a missing family, `tailnet-address-stale` after an address change, and apply installing nothing when undiscoverable. Every new bare assertion ends `|| false`.
-- [ ] Align RIG-ORCH-023, RIG-STATE-045, RIG-CONF-030 if its wording names the ranges as the match, [ADR-KI-TOOL-RIG-009](/Users/krisbrown/workspaces/knowledge-islands/tools-rig/docs/decisions/ADR-KI-TOOL-RIG-009-system-domain-resources-under-an-attended-grant.md)'s residual-risk paragraph, the operational-resources guide's `tailnet` section, help, manual and changelog. Reassemble `bin/rig`.
-- [ ] Run the complete local gate.
+- [x] Add `rig_firewall_tailnet_addresses` to `src/rig/29-firewall.bash`: run `${RIG_IFCONFIG_COMMAND:-/sbin/ifconfig}` read-only, apply the discovery rule above, and set `RIG_FIREWALL_SELF_IPV4` and `RIG_FIREWALL_SELF_IPV6` or return non-zero with `tailnet-address-undiscoverable`. Bash 3.2 only; no new runtime dependency.
+- [x] Render each port's two tailnet pass rules with the discovered destinations; keep the source ranges, the `lo0` pass and the block unchanged. Update the anchor's header comment to name own-address destinations.
+- [x] In `rig_firewall_observe`, discover before rendering; on failure report `unknown`, `tailnet-address-undiscoverable`, without rendering. When the installed anchor differs from the rendered one only in its pass rules' destinations, report `tailnet-address-stale` instead of `anchor-changed`.
+- [x] In `rig_firewall_apply` and `rig_firewall_apply_ready`, stop on `unknown`, so an undiscoverable address installs and rewrites nothing and apply reports it as skipped with `tailnet-address-undiscoverable`, with or without the grant; `apply --sudo` repairs a stale address through the existing install, reload and reread path. `rig_firewall_print_projection` and `rig_explain_firewall` show the discovered destinations, or the undiscoverable reason.
+- [x] Point `tests/helpers/isolate.bash` at an inert `ifconfig` stub through `RIG_IFCONFIG_COMMAND` so no test reads the runner's interfaces, and give `tests/rig-firewall.bats` a fixture `ifconfig` with a local-network `en0` in `100.64.0.0/10` beside a `utun` tailnet interface.
+- [x] Update the literal expectations in `tests/rig-firewall.bats`, and add cases for: own addresses rendered, the `en0` CGNAT address never chosen, no tailnet interface, two tailnet interfaces, a missing family, `tailnet-address-stale` after an address change, and apply installing nothing when undiscoverable. Every new bare assertion ends `|| false`.
+- [x] Align RIG-ORCH-023, RIG-STATE-045, RIG-CONF-030 if its wording names the ranges as the match, [ADR-KI-TOOL-RIG-009](/Users/krisbrown/workspaces/knowledge-islands/tools-rig/docs/decisions/ADR-KI-TOOL-RIG-009-system-domain-resources-under-an-attended-grant.md)'s residual-risk paragraph, the operational-resources guide's `tailnet` section, help, manual and changelog. Reassemble `bin/rig`.
+- [x] Run the complete local gate.
 
 ## Files touched
 
@@ -102,6 +102,43 @@ RIG-ORCH-023 (rendered rules and residual risk), RIG-STATE-045 (`tailnet-address
 ### Roadmap
 
 This record moves to Awaiting review at delivery; [KI-TOOL-RIG-CORE-047](/Users/krisbrown/workspaces/knowledge-islands/tools-rig/docs/roadmap/KI-TOOL-RIG-CORE-047-tailnet-only-listener-firewall.md)'s Range correction gains a pointer to the delivered narrowing.
+
+## Review
+
+### Delivered
+
+The approved boundary: a `macos-pf` anchor now passes each declared port from Tailscale's ranges only to the Mac's own tailnet IPv4 and IPv6 addresses, discovered read-only from `ifconfig` at every observation and apply. Discovery refuses an ambiguous or incomplete shape, observation reports `tailnet-address-undiscoverable` and `tailnet-address-stale`, and apply installs and rewrites nothing without an address. Excluded as planned: `linux-nftables`, interface matching, arbitrary CIDRs, Tailscale configuration and any live apply. Immutable baseline `9dce7120fcaa8aefb6856876c614f5e40ae537b3` (the Ready commit); the delivery commit follows it on `main`.
+
+### Change Summary
+
+- `src/rig/29-firewall.bash`: `rig_firewall_tailnet_addresses` (paired discovery from the one interface carrying a `fd7a:115c:a1e0::/48` address, honouring `RIG_IFCONFIG_COMMAND`); the renderer names the discovered destinations and refuses to render without them; `rig_firewall_mask_destinations` lets observation report `tailnet-address-stale` when only the pass rules' destinations differ; observation reports `unknown (tailnet-address-undiscoverable)` before rendering; `rig_firewall_apply_ready` skips an undiscoverable firewall with that reason, with or without the grant; the dry-run projection and `show firewall:ID` print the destinations or the reason. `bin/rig` reassembled.
+- `tests/helpers/isolate.bash` refuses `ifconfig` through an inert logging stub; `tests/rig.bats`'s isolation guard asserts it. `tests/rig-firewall.bats` adds a fixture `ifconfig` with a CGNAT `en0` beside a `utun` tailnet interface, updates the golden anchor, and adds three tests: discovery shapes (none, second tailnet interface, missing IPv4, missing IPv6, repeated IPv4, unreadable, interface order), undiscoverable apply installing and rewriting nothing with and without an installed anchor, and a changed address reported stale then repaired by the existing install, reload and reread path.
+- Docs: RIG-ORCH-023 and RIG-STATE-045; ADR-KI-TOOL-RIG-009's residual-risk paragraph; the operational-resources guide's `tailnet` section; `man/rig.1`; `CHANGELOG.md`; a pointer in KI-TOOL-RIG-CORE-047's Range correction. RIG-CONF-030 and the help text do not describe the match, so they are unchanged.
+- Decisions applied: Q-062-SCOPE a) and Q-062-ABSENT a), Kris, 20 October 2026 at 00:16 BST. No approved deviation.
+
+### Verification
+
+- `bats tests/ </dev/null`: 593 of 593 pass; run again with `XDG_STATE_HOME` pointed at a planted directory, 593 of 593 pass and the directory stays empty.
+- `bats tests/rig-firewall.bats </dev/null`: 13 of 13, covering every case in the Steps with fixture-only `ifconfig`, `pfctl`, `launchctl` and `sudo`; read-only commands still log no `sudo`, `pfctl` or load.
+- Shell gate: `shellcheck` clean, `bash -n` clean on every script, `scripts/assemble-rig --check` current, `scripts/benchmark-rig` and `scripts/smoke-native-providers` pass, `mandoc -T lint man/rig.1` clean, `git diff --check` clean.
+- `ki repo audit --skill ki-repo-tools --repo .`: no `SHELL-FATAL` finding. `ki repo audit --repo .`: no failure; its warnings (`.rumdl.toml` template drift, Claude Desktop binding, untracked `.githooks/pre-commit`, roadmap `size` migration notes on other records) predate this change and touch no file it changed.
+- Read-only discovery on `sol`: `rig show firewall:probe` with a throwaway catalogue, the real `/sbin/ifconfig` and stubbed `launchctl`, `netstat`, `sudo` and `pfctl` names `100.90.130.74` and `fd7a:115c:a1e0::b636:824c`, logs no escalation and writes nothing.
+- Not run: the read-only `ifconfig` on `terra` (no remote call in this run) and any live apply, which stays for Kris's separate, attended approval.
+
+### Outstanding concerns
+
+- `sol` and `terra` carry anchors rendered by KI-TOOL-RIG-CORE-047's range rule. Under the new renderer both report `drifted (anchor-changed)`, not `tailnet-address-stale`, because the header comment changed too; an attended `rig apply --sudo` rewrites them. That rollout is connection-critical, needs Kris's separate approval, is attended at the screen, and carries KI-TOOL-RIG-CORE-047's tested SSH rollback and restore path.
+- `terra`'s `ifconfig` shape under Homebrew `tailscaled` is unconfirmed; the record's Verify asks for a read-only check there before any live apply. Not done in this run (no remote calls).
+- `rig apply --sudo` still asks for the administrator grant when the only firewall is undiscoverable, then skips it; harmless, and outside the planned files.
+- The targeted on-link case stays by decision: a host on the same local network sending to the Mac's tailnet address through that network passes, over TCP and UDP.
+
+### Post-change review
+
+The Goal holds for the common case: a neighbour scanning a CGNAT or hotspot network no longer reaches the port, and the remaining targeted case is stated in the specification, ADR and guide without promising authenticated Tailscale ingress. Scope held to the planned files. Regression risk is confined to the `macos-pf` adapter: every rendered anchor now depends on discovery, which refuses rather than guesses, and the full suite passes under the isolation helper, which now refuses `ifconfig`. Ready for Kris's review; live rollout stays separate.
+
+### Mini recap
+
+Own-address destinations, paired IPv4 and IPv6 discovery, stale and undiscoverable reporting, fixture tests and documentation are delivered and verified locally; no live machine was touched. Proposed learning route: none beyond the specification and guide already updated.
 
 ## Discussion
 

@@ -1947,9 +1947,16 @@ membership. Two selected firewalls of one provider restricting the same
 protocol and port are rejected, as are two linux-nftables locators deriving
 the same table name.
 .PP
-Each declared port accepts loopback and connections whose source and
-destination are both in 100.64.0.0/10 or both in fd7a:115c:a1e0::/48, and is
-blocked from anywhere else. Rig owns /etc/pf.anchors/LOCATOR, loaded as the pf
+Each declared macos-pf port accepts loopback, and connections from
+100.64.0.0/10 or fd7a:115c:a1e0::/48 addressed to the machine's own tailnet
+IPv4 or IPv6 address, and is blocked from anywhere else. Rig reads those
+addresses read-only from ifconfig at each check and apply, from the single
+interface holding an fd7a:115c:a1e0::/48 address. When they cannot be found
+the firewall is unknown with tailnet-address-undiscoverable and apply changes
+nothing; a changed address is drifted with tailnet-address-stale. The rule
+names no interface, so it is tailnet-only by address: a host on the same local
+network that sends to the tailnet address through that network still passes,
+over TCP and UDP alike. Rig owns /etc/pf.anchors/LOCATOR, loaded as the pf
 anchor com.apple/LOCATOR, and /Library/LaunchDaemons/LOCATOR.plist, which
 reloads it at boot and whenever /etc/pf.conf changes. Rig never edits
 /etc/pf.conf, calls socketfilterfw, disables pf or flushes another anchor.

@@ -11732,11 +11732,12 @@ rig_default_application_apply() {
 # Cross-module native observations and apply state are shared deliberately.
 # shellcheck disable=SC2034
 
-# A firewall declaration restricts named listeners to loopback and the tailnet
-# with a pf child anchor beneath Apple's com.apple/* anchor point. Rig owns the
-# anchor file and a system LaunchDaemon that reloads it at boot and whenever
-# /etc/pf.conf changes; it never edits /etc/pf.conf, never calls socketfilterfw
-# and never flushes an anchor it does not own. Every system path is resolved
+# A firewall declaration restricts named listeners to loopback and to tailnet
+# sources addressing the Mac's own tailnet addresses, with a pf child anchor
+# beneath Apple's com.apple/* anchor point. Rig owns the anchor file and a
+# system LaunchDaemon that reloads it at boot and whenever /etc/pf.conf
+# changes; it never edits /etc/pf.conf, never calls socketfilterfw and never
+# flushes an anchor it does not own. Every system path is resolved
 # beneath RIG_SYSTEM_ROOT so fixtures can redirect them; the rendered content
 # always names the real paths.
 RIG_FIREWALL_TAILNET_IPV4=100.64.0.0/10
@@ -11868,13 +11869,64 @@ rig_firewall_paths() {
   RIG_FIREWALL_DAEMON=$RIG_VALUE
 }
 
+rig_firewall_ifconfig() {
+  RIG_VALUE=${RIG_IFCONFIG_COMMAND:-/sbin/ifconfig}
+}
+
+# Discover the Mac's own tailnet addresses read-only. The tailnet interface is
+# the single interface holding an address in Tailscale's IPv6 ULA prefix; its
+# one IPv4 address in 100.64.0.0/10 and its one ULA address are the result. A
+# local network that hands out 100.64.0.0/10 never adds Tailscale's ULA, so the
+# pairing separates the two. Anything else is undiscoverable, never guessed.
+rig_firewall_tailnet_addresses() {
+  local command output line interface address tailnet ipv4 ipv6 count4 count6
+
+  RIG_FIREWALL_SELF_IPV4=
+  RIG_FIREWALL_SELF_IPV6=
+  rig_firewall_ifconfig
+  command=$RIG_VALUE
+  RIG_VALUE='tailnet-address-undiscoverable'
+  [ -x "$command" ] || return 1
+  output=$("$command" 2>/dev/null) || return 1
+  interface=; tailnet=
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in [[:space:]]*) ;; *) interface=${line%%:*}; continue ;; esac
+    # shellcheck disable=SC2086
+    set -- $line
+    case "${1:-}:${2:-}" in inet6:fd7a:115c:a1e0:*) ;; *) continue ;; esac
+    [ -z "$tailnet" ] || [ "$tailnet" = "$interface" ] || return 1
+    tailnet=$interface
+  done <<< "$output"
+  [ -n "$tailnet" ] || return 1
+  interface=; ipv4=; ipv6=; count4=0; count6=0
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in [[:space:]]*) ;; *) interface=${line%%:*}; continue ;; esac
+    [ "$interface" = "$tailnet" ] || continue
+    # shellcheck disable=SC2086
+    set -- $line
+    address=${2:-}
+    case "${1:-}:$address" in
+      inet:*[!0-9.]*|inet6:*[!0-9a-f:]*) ;;
+      inet:100.6[4-9].*|inet:100.[7-9][0-9].*|inet:100.1[01][0-9].*|inet:100.12[0-7].*)
+        ipv4=$address; count4=$((count4 + 1)) ;;
+      inet6:fd7a:115c:a1e0:*) ipv6=$address; count6=$((count6 + 1)) ;;
+    esac
+  done <<< "$output"
+  [ "$count4" -eq 1 ] && [ "$count6" -eq 1 ] || return 1
+  RIG_FIREWALL_SELF_IPV4=$ipv4
+  RIG_FIREWALL_SELF_IPV6=$ipv6
+  RIG_VALUE=
+}
+
+# Render from the addresses rig_firewall_tailnet_addresses discovered.
 rig_firewall_render_anchor() {
   local section port protocol number state
 
   section=$1
+  [ -n "${RIG_FIREWALL_SELF_IPV4:-}" ] && [ -n "${RIG_FIREWALL_SELF_IPV6:-}" ] || return 1
   rig_firewall_ports "$section" || return
   printf '# Managed by rig from %s. Generated file; rig apply replaces edits.\n' "$section"
-  printf '# Declared ports accept loopback and tailnet-to-tailnet traffic only.\n'
+  printf '# Declared ports accept loopback, and tailnet sources addressing this Mac'"'"'s own tailnet addresses.\n'
   for port in "${RIG_FIREWALL_PORTS[@]}"; do
     protocol=${port%%:*}
     number=${port#*:}
@@ -11882,9 +11934,9 @@ rig_firewall_render_anchor() {
     [ "$protocol" != tcp ] || state='flags S/SA keep state'
     printf 'pass in quick on lo0 proto %s from any to any port = %s %s\n' "$protocol" "$number" "$state"
     printf 'pass in quick inet proto %s from %s to %s port = %s %s\n' "$protocol" \
-      "$RIG_FIREWALL_TAILNET_IPV4" "$RIG_FIREWALL_TAILNET_IPV4" "$number" "$state"
+      "$RIG_FIREWALL_TAILNET_IPV4" "$RIG_FIREWALL_SELF_IPV4" "$number" "$state"
     printf 'pass in quick inet6 proto %s from %s to %s port = %s %s\n' "$protocol" \
-      "$RIG_FIREWALL_TAILNET_IPV6" "$RIG_FIREWALL_TAILNET_IPV6" "$number" "$state"
+      "$RIG_FIREWALL_TAILNET_IPV6" "$RIG_FIREWALL_SELF_IPV6" "$number" "$state"
     printf 'block drop in quick proto %s from any to any port = %s\n' "$protocol" "$number"
   done
 }
@@ -11920,6 +11972,21 @@ rig_firewall_normalise_rules() {
     # shellcheck disable=SC2086
     set -- $line
     printf '%s\n' "$*"
+  done
+}
+
+# Replace the destination of each tailnet pass rule, so two anchors that differ
+# only in the Mac's own addresses compare equal.
+rig_firewall_mask_destinations() {
+  local line rest
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      'pass in quick inet'*' from '*' to '*' port = '*)
+        rest=${line#* to }
+        line="${line%% to *} to - ${rest#* }" ;;
+    esac
+    printf '%s\n' "$line"
   done
 }
 
@@ -12055,6 +12122,11 @@ rig_firewall_observe() {
   rig_firewall_exposed_ports "$section" || return 0
   exposed=$RIG_VALUE
   RIG_FIREWALL_EXPOSED=$exposed
+  if ! rig_firewall_tailnet_addresses; then
+    RIG_OBSERVATION=unknown
+    RIG_OBSERVATION_DETAIL=$RIG_VALUE
+    return 0
+  fi
   if ! rig_firewall_render_files "$section"; then
     RIG_OBSERVATION=unknown
     RIG_OBSERVATION_DETAIL=render-failed
@@ -12063,10 +12135,13 @@ rig_firewall_observe() {
   reasons=
   if [ ! -f "$RIG_FIREWALL_ANCHOR" ]; then
     RIG_FIREWALL_ANCHOR_STATE=missing; reasons=anchor-missing
-  elif ! cmp -s "$RIG_FIREWALL_RENDERED_ANCHOR" "$RIG_FIREWALL_ANCHOR"; then
-    RIG_FIREWALL_ANCHOR_STATE=changed; reasons=anchor-changed
-  else
+  elif cmp -s "$RIG_FIREWALL_RENDERED_ANCHOR" "$RIG_FIREWALL_ANCHOR"; then
     RIG_FIREWALL_ANCHOR_STATE=current
+  elif [ "$(rig_firewall_mask_destinations <"$RIG_FIREWALL_RENDERED_ANCHOR")" = \
+    "$(rig_firewall_mask_destinations <"$RIG_FIREWALL_ANCHOR")" ]; then
+    RIG_FIREWALL_ANCHOR_STATE=changed; reasons='tailnet-address-stale'
+  else
+    RIG_FIREWALL_ANCHOR_STATE=changed; reasons=anchor-changed
   fi
   if [ ! -f "$RIG_FIREWALL_DAEMON" ]; then
     RIG_FIREWALL_DAEMON_STATE=missing; reasons="$reasons${reasons:+,}daemon-missing"
@@ -12154,12 +12229,17 @@ rig_firewall_preflight_retirement() {
 }
 
 # An absent grant leaves a firewall that needs work untouched; a present one is
-# already satisfied, so apply needs no grant to leave it alone.
+# already satisfied, so apply needs no grant to leave it alone. An undiscoverable
+# tailnet address leaves it untouched with or without the grant.
 rig_firewall_apply_ready() {
   RIG_VALUE=-
-  [ "${RIG_SUDO_GRANTED:-0}" -ne 1 ] || return 0
   rig_firewall_observe "$1" || return
   [ "$RIG_OBSERVATION" != present ] || return 0
+  if [ "$RIG_OBSERVATION_DETAIL" = tailnet-address-undiscoverable ]; then
+    RIG_VALUE=$RIG_OBSERVATION_DETAIL
+    return 1
+  fi
+  [ "${RIG_SUDO_GRANTED:-0}" -ne 1 ] || return 0
   RIG_VALUE=administrator-grant-required
   return 1
 }
@@ -12285,6 +12365,11 @@ rig_firewall_print_projection() {
   rig_firewall_paths "$locator" || return
   printf '  anchor=%s\n' "$RIG_FIREWALL_ANCHOR"
   printf '  daemon=%s\n' "$RIG_FIREWALL_DAEMON"
+  if ! rig_firewall_tailnet_addresses; then
+    printf '  destinations=unknown (%s); apply installs nothing\n' "$RIG_VALUE"
+    return 0
+  fi
+  printf '  destinations=%s %s\n' "$RIG_FIREWALL_SELF_IPV4" "$RIG_FIREWALL_SELF_IPV6"
   while IFS= read -r line; do
     case "$line" in '#'*) continue ;; esac
     printf '  rule=%s\n' "$line"
@@ -12307,6 +12392,11 @@ rig_explain_firewall() {
   locator=$RIG_VALUE
   rig_firewall_paths "$locator" || return
   printf 'Allowed sources: lo0, %s, %s\n' "$RIG_FIREWALL_TAILNET_IPV4" "$RIG_FIREWALL_TAILNET_IPV6"
+  if rig_firewall_tailnet_addresses; then
+    printf 'Allowed destinations: %s, %s\n' "$RIG_FIREWALL_SELF_IPV4" "$RIG_FIREWALL_SELF_IPV6"
+  else
+    printf 'Allowed destinations: unknown (%s)\n' "$RIG_VALUE"
+  fi
   printf 'pf anchor: com.apple/%s\nAnchor file: %s\nDaemon file: %s\n' \
     "$locator" "$RIG_FIREWALL_ANCHOR" "$RIG_FIREWALL_DAEMON"
   rig_current_platform || return
