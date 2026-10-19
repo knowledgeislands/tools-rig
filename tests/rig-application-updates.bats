@@ -57,7 +57,7 @@ healthy_app() {
   run "$RIG" apply
   [ "$status" -eq 0 ]
   [[ "$output" == *'skipped'* ]] || false
-  ! /usr/bin/grep -E 'install|upgrade' "$RIG_TEST_PROVIDER_LOG"
+  ! /usr/bin/grep -E 'install|upgrade' "$RIG_TEST_PROVIDER_LOG" || false
 }
 
 @test "self-updating upgrades visibly skip even when app is absent" {
@@ -99,7 +99,7 @@ healthy_app() {
   [[ "$output" == *'App Management'* ]] || false
   run "$RIG" apply
   [ "$status" -eq 1 ]
-  ! /usr/bin/grep -E 'install' "$RIG_TEST_PROVIDER_LOG"
+  ! /usr/bin/grep -E 'install' "$RIG_TEST_PROVIDER_LOG" || false
 }
 
 @test "residual Caskroom is evidence rather than claimed hand installation" {
@@ -129,7 +129,7 @@ STUB
   write_config managed
   run "$RIG" status
   [ "$status" -eq 1 ]
-  ! /usr/bin/grep -E 'info' "$RIG_TEST_PROVIDER_LOG"
+  ! /usr/bin/grep -E 'info' "$RIG_TEST_PROVIDER_LOG" || false
 }
 
 @test "unreadable metadata is unavailable rather than a guessed managed policy" {
@@ -141,7 +141,7 @@ STUB
   [[ "$output" == *'application-metadata-invalid'* ]] || false
   run "$RIG" apply
   [ "$status" -eq 1 ]
-  ! /usr/bin/grep -E 'install' "$RIG_TEST_PROVIDER_LOG"
+  ! /usr/bin/grep -E 'install' "$RIG_TEST_PROVIDER_LOG" || false
 }
 
 @test "cask metadata reads the API cache and null auto updates need a resolved definition" {
@@ -215,13 +215,13 @@ STUB
   run "$RIG" upgrade
   [ "$status" -eq 1 ]
   [[ "$output" == *'source-mismatch'* ]] || false
-  ! /usr/bin/grep -E 'install|upgrade' "$RIG_TEST_PROVIDER_LOG"
+  ! /usr/bin/grep -E 'install|upgrade' "$RIG_TEST_PROVIDER_LOG" || false
   write_config
   rm "$APP/Contents/MacOS/Subject"
   run "$RIG" apply
   [ "$status" -eq 1 ]
   [[ "$output" == *'artifact-damaged-app'* ]] || false
-  ! /usr/bin/grep -E 'install|upgrade' "$RIG_TEST_PROVIDER_LOG"
+  ! /usr/bin/grep -E 'install|upgrade' "$RIG_TEST_PROVIDER_LOG" || false
 }
 
 @test "self policy rejects Linux and satisfied apps allow dependent installs" {
@@ -273,7 +273,7 @@ variant.mac.updates =/' "$RIG_CONFIG_HOME/rig.toml"
   run "$RIG" upgrade --unattended
   [ "$status" -eq 0 ]
   [[ "$output" == *'self-updating'* ]] || false
-  ! /usr/bin/grep -E 'install|upgrade' "$RIG_TEST_PROVIDER_LOG"
+  ! /usr/bin/grep -E 'install|upgrade' "$RIG_TEST_PROVIDER_LOG" || false
 }
 
 @test "dry-run apply observes no app providers and missing companion does not reinstall a present self app" {
@@ -285,7 +285,7 @@ variant.mac.updates =/' "$RIG_CONFIG_HOME/rig.toml"
   [ ! -s "$RIG_TEST_PROVIDER_LOG" ]
   run "$RIG" apply
   [ "$status" -eq 0 ]
-  ! /usr/bin/grep -E 'install' "$RIG_TEST_PROVIDER_LOG"
+  ! /usr/bin/grep -E 'install' "$RIG_TEST_PROVIDER_LOG" || false
   run "$RIG" doctor
   [ "$status" -eq 1 ]
   [[ "$output" == *'artifact-missing:~/missing-companion'* ]] || false

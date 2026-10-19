@@ -6,13 +6,13 @@ purpose: debt
 theme: rig
 kind: deliver
 horizon: now
-status: ready
+status: awaiting-review
 size: s
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 41adda24ccafba4d39044a927b96ca01f481e2de
 created_at: 2026-10-18T17:10:50Z
-updated_at: 2026-10-19T22:40:00Z
+updated_at: 2026-10-19T22:43:23Z
 ---
 
 # Fatal Bats Assertions
@@ -48,10 +48,10 @@ Re-counted on 19 October 2026 against `ki repo audit --skill ki-repo-tools`: `SH
 
 ## Steps
 
-- [ ] Append ` || false` to each of the 64 reported lines, suite by suite, preserving each line's existing command and redirections.
-- [ ] Run each changed suite with stdin closed; for any test that now fails, establish whether the assertion or the code is wrong. Fix a wrong assertion in place; stop and report a real Rig defect for its own record rather than fixing behaviour here.
-- [ ] Anchor `assert_no_global_firewall`'s `pfctl` match to its own arguments, `pfctl( [^ ]+)* -[dX]( |$)`, keeping it fatal.
-- [ ] Re-run the `SHELL-FATAL` audit and the complete local gate.
+- [x] Append `|| false` to each of the 64 reported lines, suite by suite, preserving each line's existing command and redirections.
+- [x] Run each changed suite with stdin closed; for any test that now fails, establish whether the assertion or the code is wrong. Fix a wrong assertion in place; stop and report a real Rig defect for its own record rather than fixing behaviour here.
+- [x] Anchor `assert_no_global_firewall`'s `pfctl` match to its own arguments, `pfctl( [^ ]+)* -[dX]( |$)`, keeping it fatal.
+- [x] Re-run the `SHELL-FATAL` audit and the complete local gate.
 
 ## Files touched
 
@@ -89,12 +89,43 @@ None; [Continuous verification](../guides/developer/continuous-verification.md) 
 
 This record moves to Awaiting review at delivery.
 
+## Review
+
+### Delivered
+
+Within the approved boundary: every bare `[[ ]]` or `!` assertion in the nine warning suites now ends `|| false`, and `assert_no_global_firewall` matches `pfctl`'s own `-d` or `-X` argument rather than any `-X` on the line. Baseline `41adda24ccafba4d39044a927b96ca01f481e2de`; the delivery commit follows it. No runtime source, `bin/rig`, specification or guide changed, and nothing was applied live.
+
+### Change Summary
+
+- 64 lines across `tests/rig.bats` (17), `tests/rig-app-clis.bats` (17), `tests/rig-application-updates.bats` (8), `tests/rig-default-applications.bats` (7), `tests/rig-software-removal.bats` (7), `tests/rig-skills.bats` (4), `tests/rig-macos.bats` (2), `tests/rig-homebrew-authority.bats` (1) and `tests/rig-human-config.bats` (1) gain `|| false`; the `rig-human-config.bats` assertion is a backslash continuation, so the suffix sits on its final line.
+- `tests/rig-firewall.bats`: the global-firewall pattern becomes `pfctl( [^ ]+)* -[dX]( |$)`, still fatal.
+- No deviations from the plan.
+
+### Verification
+
+- `ki repo audit --skill ki-repo-tools --repo .`: no `SHELL-FATAL` finding (was 9 warnings, 64 lines).
+- Firewall pattern on sample lines: an anchor-scoped `pfctl -E ... -f /tmp/bats-run-X9wm9S/anchor` and `pfctl -a ... -F all` do not match; `pfctl -d`, `pfctl -X token` and `sudo -n -- pfctl -a anchor -F all -X token` do.
+- `bats tests/ </dev/null`: 582 of 582 pass; making the assertions fatal exposed no latent fault.
+- shellcheck, `bash -n` on every script, `scripts/assemble-rig --check`, `scripts/benchmark-rig`, `scripts/smoke-native-providers`, `mandoc -T lint man/rig.1` and `git diff --check`: pass.
+- `ki repo audit --repo .`: no failures; the remaining warnings are other records' `size` migration-window notes and pre-existing judgement items.
+
+### Outstanding concerns
+
+None for this record. The hostile inherited `XDG_STATE_HOME` run was not repeated because `tests/helpers/isolate.bash` did not change.
+
+### Post-change review
+
+The goal holds: a failing mid-test assertion in these suites now fails its test under macOS Bash 3.2, and the audit warning is clear. Scope stayed inside test files and this record. Regression risk is low: each edit only makes an existing check fatal, and the full suite passes. The firewall pattern is strictly narrower than before for path text and unchanged for real `-d` and `-X` arguments. Ready for acceptance review.
+
+### Mini recap
+
+Made 64 Bats assertions fatal and de-flaked the firewall global-flush check; full gate green, no Rig defect exposed. Learning route, not promoted: `SHELL-FATAL`'s own continuation handling joins lines, so a mechanical fix must place `|| false` on the continuation's last line; that note would belong with `ki-repo-tools` remediation guidance.
+
 ## Discussion
 
 ### Approval
 
 Kris, 19 October 2026 23:27 BST, RIG-ORDER a): "All three are high confidence to do them", authorising this record's adoption to Now, planning to Ready and delivery to Awaiting review in one background run.
-
 
 Origin: the ways-of-working bats-rule run of 18 October 2026. The line counts are that run's read-only sample and should be re-counted against the audit at planning. Planning questions: whether to fix suite by suite so each exposed fault is reviewed on its own, and whether any exposed fault is a real Rig defect that needs its own record. Capture only; adoption, priority and plan belong to this repository.
 

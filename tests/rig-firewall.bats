@@ -201,7 +201,7 @@ status_row() {
 }
 
 assert_no_global_firewall() {
-  ! /usr/bin/grep -E 'pf\.conf|socketfilterfw|pfctl (-d|.*-X)' "$NATIVE_LOG" || false
+  ! /usr/bin/grep -E 'pf\.conf|socketfilterfw|pfctl( [^ ]+)* -[dX]( |$)' "$NATIVE_LOG" || false
 }
 
 @test "validation rejects unsafe declarations before any native invocation" {

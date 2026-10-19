@@ -89,7 +89,7 @@ healthy_app() {
   run "$RIG" doctor --format json
   [ "$status" -eq 1 ]
   [[ "$output" == *'handler-mismatch:current:org.legacy.Editor:expected:org.example.Editor'* ]] || false
-  ! /usr/bin/grep '^apply|' "$RIG_HANDLER_FIXTURE_LOG"
+  ! /usr/bin/grep '^apply|' "$RIG_HANDLER_FIXTURE_LOG" || false
   run "$RIG" apply
   [ "$status" -eq 0 ]
   [ "$(cat "$RIG_HANDLER_FIXTURE_STATE/uti-org.example.notes")" = org.example.Editor ]
@@ -107,7 +107,7 @@ healthy_app() {
   printf 'org.example.Editor\n' >"$RIG_HANDLER_FIXTURE_STATE/uti-org.example.notes"
   run "$RIG" apply
   [ "$status" -eq 0 ]
-  ! /usr/bin/grep '^apply|' "$RIG_HANDLER_FIXTURE_LOG"
+  ! /usr/bin/grep '^apply|' "$RIG_HANDLER_FIXTURE_LOG" || false
 }
 
 @test "extension and URL scheme declarations use literal normalised native arguments" {
@@ -153,7 +153,7 @@ healthy_app() {
     [[ "$output" == *'unknown'* ]] || false
     run "$RIG" apply
     [ "$status" -eq 1 ]
-    ! /usr/bin/grep '^apply|' "$RIG_HANDLER_FIXTURE_LOG"
+    ! /usr/bin/grep '^apply|' "$RIG_HANDLER_FIXTURE_LOG" || false
   done
 }
 
@@ -229,7 +229,7 @@ TOML
   run "$RIG" apply
   [ "$status" -eq 1 ]
   [[ "$output" == *'blocked-by:editor'* ]] || false
-  ! /usr/bin/grep '^apply|' "$RIG_HANDLER_FIXTURE_LOG"
+  ! /usr/bin/grep '^apply|' "$RIG_HANDLER_FIXTURE_LOG" || false
 }
 
 @test "profile exclusion remains private and Linux reports unsupported without native calls" {
@@ -316,7 +316,7 @@ TOML
   [[ "$output" == *'"handler_kind":"uti"'* ]] || false
   run "$RIG" export --profile public --output "$BATS_TEST_TMPDIR/public"
   [ "$status" -eq 0 ]
-  ! /usr/bin/grep -R -E 'org.example.Editor|org.example.notes|default-application|Editor.app' "$BATS_TEST_TMPDIR/public"
+  ! /usr/bin/grep -R -E 'org.example.Editor|org.example.notes|default-application|Editor.app' "$BATS_TEST_TMPDIR/public" || false
   [ ! -s "$RIG_HANDLER_FIXTURE_LOG" ]
 }
 
@@ -330,7 +330,7 @@ TOML
   [ "$status" -eq 0 ]
   [ "$(wc -l <"$RIG_HANDLER_FIXTURE_LOG")" = "$before" ]
   [ "$(cat "$RIG_HANDLER_FIXTURE_STATE/uti-org.example.notes")" = org.example.Editor ]
-  ! /usr/bin/grep -R 'default-application' "$HOME/.local/state/rig/resources"
+  ! /usr/bin/grep -R 'default-application' "$HOME/.local/state/rig/resources" || false
 }
 
 @test "missing native adapter and missing owned artifact fail without handler calls" {
@@ -412,7 +412,7 @@ TOML
   run "$RIG" doctor --format json
   [ "$status" -eq 1 ]
   [[ "$output" == *'handler-mismatch:current:-:expected:org.example.Editor'* ]] || false
-  ! /usr/bin/grep '^apply|' "$RIG_HANDLER_FIXTURE_LOG"
+  ! /usr/bin/grep '^apply|' "$RIG_HANDLER_FIXTURE_LOG" || false
   run "$RIG" apply
   [ "$status" -eq 0 ]
 }

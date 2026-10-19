@@ -200,8 +200,8 @@ run_rig() {
   rig_test_report_contains "$output" $'main\tdock\tmacos-dock\tfailed' || false
   rig_test_report_contains "$output" $'dark-mode\tsetting\tmacos-defaults\tcompleted' || false
   grep -F 'defaults <write> <NSGlobalDomain> <AppleInterfaceStyleSwitchesAutomatically> <-bool> <true>' "$MACOS_LOG"
-  ! grep -F 'dockutil <--remove>' "$MACOS_LOG"
-  ! grep -F 'killall <Dock>' "$MACOS_LOG"
+  ! grep -F 'dockutil <--remove>' "$MACOS_LOG" || false
+  ! grep -F 'killall <Dock>' "$MACOS_LOG" || false
   [ ! -e "$BATS_TEST_TMPDIR/state/resources/macos.tsv" ]
 }
 

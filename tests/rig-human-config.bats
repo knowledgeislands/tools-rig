@@ -204,7 +204,7 @@ write_resource_graph_config() {
   [ "$status" -eq 0 ]
   [ -f "$BATS_TEST_TMPDIR/export/rig.json" ]
   ! grep -q 'subject-macos\|subject-linux\|private-macos\|private-linux' \
-    "$BATS_TEST_TMPDIR/export/rig.json"
+    "$BATS_TEST_TMPDIR/export/rig.json" || false
 }
 
 @test "qualified resource dependencies resolve in deterministic topological order" {

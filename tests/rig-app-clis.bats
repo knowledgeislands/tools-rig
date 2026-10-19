@@ -90,11 +90,11 @@ rig_run() {
   write_config
   rig_run status --format json
   [ "$status" -eq 1 ]
-  [[ "$output" == *'"state":"missing"'* ]]
-  [[ "$output" == *'cli-missing:example'* ]]
+  [[ "$output" == *'"state":"missing"'* ]] || false
+  [[ "$output" == *'cli-missing:example'* ]] || false
   rig_run doctor
   [ "$status" -eq 1 ]
-  [[ "$output" == *'cli-missing:example'* ]]
+  [[ "$output" == *'cli-missing:example'* ]] || false
   [ ! -e "$CLI_TEST_DESTINATION" ]
   ! grep -q '^(install|reinstall)' "$CLI_TEST_LOG" || false
 }
@@ -138,7 +138,7 @@ rig_run() {
   write_config
   rig_run apply --dry-run --scope tools
   [ "$status" -eq 0 ]
-  [[ "$output" == *'cli:example:provider'* ]]
+  [[ "$output" == *'cli:example:provider'* ]] || false
   [ ! -e "$CLI_TEST_DESTINATION" ]
   [ ! -s "$CLI_TEST_LOG" ]
 }
@@ -149,7 +149,7 @@ rig_run() {
   write_config
   rig_run status
   [ "$status" -eq 1 ]
-  [[ "$output" == *'cli-source-unavailable:example'* ]]
+  [[ "$output" == *'cli-source-unavailable:example'* ]] || false
   rig_run apply --scope tools
   [ "$status" -eq 0 ]
   [ -x "$CLI_TEST_DESTINATION" ]
@@ -161,10 +161,10 @@ rig_run() {
   write_config link
   rig_run status
   [ "$status" -eq 1 ]
-  [[ "$output" == *'cli-source-unavailable:example'* ]]
+  [[ "$output" == *'cli-source-unavailable:example'* ]] || false
   rig_run apply --scope tools
   [ "$status" -ne 0 ]
-  [[ "$output" == *'source is not executable after installation'* ]]
+  [[ "$output" == *'source is not executable after installation'* ]] || false
 }
 
 @test "wrong target and occupied file or directory are preserved before any installer runs" {
@@ -206,7 +206,7 @@ rig_run() {
   ln -s "$CLI_TEST_ROOT/physical-bin" "$CLI_TEST_ROOT/bin"
   rig_run status
   [ "$status" -eq 1 ]
-  [[ "$output" == *'cli-unsafe-parent:example'* ]]
+  [[ "$output" == *'cli-unsafe-parent:example'* ]] || false
   : >"$CLI_TEST_LOG"
   rig_run apply --scope tools
   [ "$status" -ne 0 ]
@@ -219,12 +219,12 @@ rig_run() {
   export CLI_TEST_REPAIR_EXIT=23
   rig_run apply --scope tools
   [ "$status" -eq 1 ]
-  [[ "$output" == *'exit:23'* ]]
+  [[ "$output" == *'exit:23'* ]] || false
   [ ! -e "$CLI_TEST_DESTINATION" ]
   export CLI_TEST_REPAIR_EXIT=0 CLI_TEST_BROKEN_REPAIR=1
   rig_run apply --scope tools
   [ "$status" -eq 1 ]
-  [[ "$output" == *'remains unhealthy after installation'* ]]
+  [[ "$output" == *'remains unhealthy after installation'* ]] || false
 }
 
 @test "upgrade restores the companion after native upgrade removes it" {
@@ -270,7 +270,7 @@ tools = ["example"]
 TOML
   rig_run show example
   [ "$status" -eq 0 ]
-  [[ "$output" == *'CLI: example (owner=link)'* ]]
+  [[ "$output" == *'CLI: example (owner=link)'* ]] || false
   rig_run export --profile public --output "$CLI_TEST_ROOT/export"
   [ "$status" -eq 0 ]
   ! grep -q 'ExampleCLI|destination|cli.example|Contents/Helpers' "$CLI_TEST_ROOT/export/rig.json" || false
@@ -295,7 +295,7 @@ TOML
   edit_config 's/tools = \["example"\]/tools = ["example", "other"]/'
   rig_run apply --dry-run --scope tools
   [ "$status" -eq 2 ]
-  [[ "$output" == *'is shared by'* ]]
+  [[ "$output" == *'is shared by'* ]] || false
   [ ! -s "$CLI_TEST_LOG" ]
 }
 
@@ -309,10 +309,10 @@ variant.linux.artifacts = ["/etc"]\
 '
   rig_run show example
   [ "$status" -eq 0 ]
-  [[ "$output" == *'CLI: example'* ]]
+  [[ "$output" == *'CLI: example'* ]] || false
   run env RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=linux "$RIG" show example
   [ "$status" -eq 0 ]
-  [[ "$output" != *'CLI: example'* ]]
+  [[ "$output" != *'CLI: example'* ]] || false
 }
 
 @test "an unwritable companion directory is rejected before installation" {
@@ -321,7 +321,7 @@ variant.linux.artifacts = ["/etc"]\
   rig_run apply --scope tools
   chmod 0755 "$CLI_TEST_ROOT/bin"
   [ "$status" -ne 0 ]
-  [[ "$output" == *'destination directory is not writable'* ]]
+  [[ "$output" == *'destination directory is not writable'* ]] || false
   [ ! -s "$CLI_TEST_LOG" ]
   [ ! -e "$CLI_TEST_DESTINATION" ]
 }
@@ -337,7 +337,7 @@ SH
   chmod +x "$RIG_TEST_PROVIDER_BIN/ln"
   rig_run apply --scope tools
   [ "$status" -eq 1 ]
-  [[ "$output" == *'destination changed during link creation'* ]]
+  [[ "$output" == *'destination changed during link creation'* ]] || false
   [ "$(cat "$CLI_TEST_DESTINATION/marker")" = keep ]
   [ ! -L "$CLI_TEST_DESTINATION/ExampleCLI" ]
 }
@@ -390,7 +390,7 @@ SH
   chmod +x "$RIG_TEST_PROVIDER_BIN/ln"
   rig_run apply --scope tools
   [ "$status" -eq 1 ]
-  [[ "$output" == *'cli-unsafe-parent:example'* ]]
+  [[ "$output" == *'cli-unsafe-parent:example'* ]] || false
   [ ! -L "$CLI_TEST_ROOT/outside-bin/example" ]
   [ "$(cat "$CLI_TEST_ROOT/outside-bin/marker")" = keep ]
 }

@@ -32,7 +32,7 @@ TOML
   [[ "$output" == *'planned'* ]] || false
   run "$RIG" apply
   [ "$status" -eq 0 ]
-  ! /usr/bin/grep 'uninstall' "$RIG_TEST_PROVIDER_LOG"
+  ! /usr/bin/grep 'uninstall' "$RIG_TEST_PROVIDER_LOG" || false
 }
 
 @test "removal requires confirmation and refuses EOF or another answer" {
@@ -42,7 +42,7 @@ TOML
   [[ "$output" == *'nothing removed'* ]] || false
   run bash -c 'printf "no\n" | "$1" remove --apply' _ "$RIG"
   [ "$status" -eq 1 ]
-  ! /usr/bin/grep 'uninstall' "$RIG_TEST_PROVIDER_LOG"
+  ! /usr/bin/grep 'uninstall' "$RIG_TEST_PROVIDER_LOG" || false
 }
 
 @test "confirmed removal previews before native cask uninstall" {
@@ -53,7 +53,7 @@ TOML
   [[ "$output" == *'Removal preview'* ]] || false
   [[ "$output" == *'completed'* ]] || false
   [[ "$(cat "$RIG_TEST_PROVIDER_LOG")" == *'brew|uninstall --cask obsolete'* ]] || false
-  ! /usr/bin/grep -E 'zap|force|sudo' "$RIG_TEST_PROVIDER_LOG"
+  ! /usr/bin/grep -E 'zap|force|sudo' "$RIG_TEST_PROVIDER_LOG" || false
 }
 
 @test "undeclared target and contradictory retained installation fail before observations" {
@@ -219,7 +219,7 @@ SH
   rig_test_provider_response brew 'list --cask --versions obsolete' 99 -
   run bash -c 'printf "remove\n" | "$1" remove --apply' _ "$RIG"
   [ "$status" -eq 1 ]
-  ! /usr/bin/grep 'uninstall' "$RIG_TEST_PROVIDER_LOG"
+  ! /usr/bin/grep 'uninstall' "$RIG_TEST_PROVIDER_LOG" || false
   /usr/bin/sed -i.bak 's/provider = "homebrew"/provider = "mas"/;s/kind = "cask"/kind = "app"/;s/locator = "obsolete"/locator = "123"/' "$RIG_CONFIG_HOME/rig.toml"
   rig_test_provider mas
   rig_test_provider_response mas list 0 '123 Subject (1.0)'
@@ -227,7 +227,7 @@ SH
   [ "$status" -eq 1 ]
   [[ "$output" == *'exit:1'* ]] || false
   [[ "$(cat "$RIG_SUDO.log")" == '-n -- '* ]] || false
-  ! /usr/bin/grep 'mas|uninstall' "$RIG_TEST_PROVIDER_LOG"
+  ! /usr/bin/grep 'mas|uninstall' "$RIG_TEST_PROVIDER_LOG" || false
 }
 
 @test "changed observation after confirmation never becomes deletion authority" {
@@ -245,7 +245,7 @@ SH
   run bash -c 'printf "remove\n" | "$1" remove --apply' _ "$RIG"
   [ "$status" -eq 1 ]
   [[ "$output" == *'observation-changed'* ]] || false
-  ! /usr/bin/grep 'uninstall' "$RIG_TEST_PROVIDER_LOG"
+  ! /usr/bin/grep 'uninstall' "$RIG_TEST_PROVIDER_LOG" || false
 }
 
 @test "retired traces never approve removals or create deletion work" {
@@ -263,7 +263,7 @@ TOML
   [ "$status" -eq 0 ]
   [ "$(cat "$HOME/Library/Old/retained")" = keep ]
   [[ "$output" != *'retired-application.traces'* ]] || false
-  ! /usr/bin/grep 'uninstall' "$RIG_TEST_PROVIDER_LOG"
+  ! /usr/bin/grep 'uninstall' "$RIG_TEST_PROVIDER_LOG" || false
 }
 
 @test "version selectors cannot bypass retained npm and mise package protection" {

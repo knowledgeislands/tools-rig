@@ -615,7 +615,7 @@ write_query_config() {
   grep -Fxq 'RIG_VERSION=0.7.0+dev' "$repo_root/bin/rig"
   grep -Fxq '## Pre-1.0 baseline' "$repo_root/CHANGELOG.md"
   grep -Fxq -- '- `rig upgrade`' "$repo_root/CHANGELOG.md"
-  ! grep -Eq '^## \[[0-9]+\.' "$repo_root/CHANGELOG.md"
+  ! grep -Eq '^## \[[0-9]+\.' "$repo_root/CHANGELOG.md" || false
   grep -Fq 'v0.7.0/install.sh' "$repo_root/README.md"
   grep -Fq 'rig 0.7.0+dev' "$repo_root/README.md"
   grep -Fq 'v0.7.0/install.sh' "$repo_root/docs/guides/user/getting-started.md"
@@ -2418,7 +2418,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [[ "$output" == *'Checks: pass=9 warn=0 fail=0 skipped=1 (unit=item)'* ]] || false
   [[ "$output" == *'Summary: findings=0 present=3 catalogue-only=1 incompatible-platform=0'* ]] || false
   [ "$(grep '^CALL=' "$ORCHESTRATION_LOG")" = $'CALL=observe:base:present\nCALL=observe:app:present\nCALL=observe:independent:present' ]
-  ! grep -q '^CALL=apply:' "$ORCHESTRATION_LOG"
+  ! grep -q '^CALL=apply:' "$ORCHESTRATION_LOG" || false
 }
 
 @test "doctor groups actionable findings while preserving shared state treatment" {
@@ -2467,7 +2467,7 @@ services = ["daemon"]' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/launchd.toml"
   [ "$status" -eq 1 ]
   [[ "$output" == *"data: $data_path; owner=configuration; action=replace-with-directory"* ]] || false
   [[ "$output" == *'Summary: findings=1 present=3 catalogue-only=1 incompatible-platform=0'* ]] || false
-  ! grep -q '^CALL=apply:' "$ORCHESTRATION_LOG"
+  ! grep -q '^CALL=apply:' "$ORCHESTRATION_LOG" || false
 }
 
 @test "doctor treats incompatible profile tools as information" {
@@ -3403,7 +3403,7 @@ assert data["profile"]["tools"][0]["rationale"] == "Safer \"choice\" for public 
 assert data["profile"]["tools"][1]["platforms"] == ["linux"]
 ' "$destination/rig.json"
   [ "$status" -eq 0 ]
-  ! grep -R -E 'Secret Tool|private-purpose-token|private-rationale-token|provider-manifest-token|provider-argument-token|private-locator-token|install-argument-token' "$destination"
+  ! grep -R -E 'Secret Tool|private-purpose-token|private-rationale-token|provider-manifest-token|provider-argument-token|private-locator-token|install-argument-token' "$destination" || false
   [ ! -e "$PUBLICATION_MARKER" ]
 }
 
@@ -3427,7 +3427,7 @@ assert tools["beta"]["relationships"] == {
 }
 ' "$destination/rig.json"
   [ "$status" -eq 0 ]
-  ! grep -F 'secret' "$destination/rig.json"
+  ! grep -F 'secret' "$destination/rig.json" || false
 }
 
 @test "export is deterministic across declaration order and active host platform" {
@@ -4319,7 +4319,7 @@ install.locator = "base"
     RIG_PLATFORM=macos "$RIG" apply --scope tools
   [ "$status" -eq 0 ]
   grep -F 'rig-provider-v1 apply runner base executable base' "$RESOURCE_LOG"
-  ! grep -F 'apply-resource' "$RESOURCE_LOG"
+  ! grep -F 'apply-resource' "$RESOURCE_LOG" || false
   [ ! -e "$BATS_TEST_TMPDIR/state/resources/macos.tsv" ]
 
   : >"$RESOURCE_LOG"
@@ -4327,7 +4327,7 @@ install.locator = "base"
     RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RESOURCE_LOG="$RESOURCE_LOG" \
     RIG_PLATFORM=macos "$RIG" apply --scope resources
   [ "$status" -eq 0 ]
-  ! grep -F 'rig-provider-v1 apply runner base executable base' "$RESOURCE_LOG"
+  ! grep -F 'rig-provider-v1 apply runner base executable base' "$RESOURCE_LOG" || false
   grep -F 'rig-provider-v1 apply-resource runner daemon service example.test.daemon' "$RESOURCE_LOG"
   grep -F 'rig-provider-v1 apply-resource runner morning scheduled-job example.test.morning' "$RESOURCE_LOG"
   [ -f "$BATS_TEST_TMPDIR/state/resources/macos.tsv" ]
@@ -4338,7 +4338,7 @@ install.locator = "base"
     RIG_PLATFORM=macos "$RIG" apply --profile default --scope tools
   [ "$status" -eq 0 ]
   grep -F 'rig-provider-v1 apply runner base executable base' "$RESOURCE_LOG"
-  ! grep -F 'apply-resource' "$RESOURCE_LOG"
+  ! grep -F 'apply-resource' "$RESOURCE_LOG" || false
 }
 
 @test "operational resources resolve through profiles and remain inert in queries" {
@@ -4423,8 +4423,8 @@ install.locator = "base"
     RESOURCE_LOG="$RESOURCE_LOG" RIG_PLATFORM=macos "$RIG" apply
   [ "$status" -eq 0 ]
   grep -F 'rig-provider-v1 retire-resource runner daemon service example.test.daemon previous-managed=true' "$RESOURCE_LOG"
-  ! grep -F 'retire-resource runner morning' "$RESOURCE_LOG"
-  ! grep -F $'runner\tservice\tdaemon\t' "$BATS_TEST_TMPDIR/state/resources/macos.tsv"
+  ! grep -F 'retire-resource runner morning' "$RESOURCE_LOG" || false
+  ! grep -F $'runner\tservice\tdaemon\t' "$BATS_TEST_TMPDIR/state/resources/macos.tsv" || false
   grep -F $'runner\tscheduled-job\tmorning\texample.test.morning' "$BATS_TEST_TMPDIR/state/resources/macos.tsv"
 }
 
@@ -4444,7 +4444,7 @@ install.locator = "base"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" \
     RESOURCE_LOG="$RESOURCE_LOG" RIG_PLATFORM=macos "$RIG" apply
   [ "$status" -eq 0 ]
-  ! grep -F retire-resource "$RESOURCE_LOG"
+  ! grep -F retire-resource "$RESOURCE_LOG" || false
   grep -F $'runner\tservice\tdaemon\texample.test.daemon' "$BATS_TEST_TMPDIR/state/resources/macos.tsv"
   grep -F $'runner\tscheduled-job\tmorning\texample.test.morning' "$BATS_TEST_TMPDIR/state/resources/macos.tsv"
 
@@ -4502,9 +4502,9 @@ install.locator = "base"
     RESOURCE_LOG="$RESOURCE_LOG" RIG_PLATFORM=macos "$RIG" apply
   [ "$status" -eq 0 ]
   grep -F 'rig-provider-v1 apply-resource runner renamed service example.test.daemon' "$RESOURCE_LOG"
-  ! grep -F 'retire-resource runner daemon' "$RESOURCE_LOG"
+  ! grep -F 'retire-resource runner daemon' "$RESOURCE_LOG" || false
   grep -F $'runner\tservice\trenamed\texample.test.daemon' "$BATS_TEST_TMPDIR/state/resources/macos.tsv"
-  ! grep -F $'runner\tservice\tdaemon\t' "$BATS_TEST_TMPDIR/state/resources/macos.tsv"
+  ! grep -F $'runner\tservice\tdaemon\t' "$BATS_TEST_TMPDIR/state/resources/macos.tsv" || false
 }
 
 @test "resource apply failure preserves the previous atomic receipt" {
@@ -4533,7 +4533,7 @@ install.locator = "base"
     "$RIG" status --unmanaged
 
   [ "$status" -eq 0 ]
-  ! output_has_table_row $'declared\tsurveyor\tunmanaged\tnative'
+  ! output_has_table_row $'declared\tsurveyor\tunmanaged\tnative' || false
 }
 
 @test "unmanaged locator matching remains inside provider namespace" {
@@ -4635,7 +4635,7 @@ install.locator = "base"
     "$RIG" status --unmanaged
 
   [ "$status" -eq 1 ]
-  ! output_has_table_row $'undeclared-one\tsurveyor\tunmanaged\tnative'
+  ! output_has_table_row $'undeclared-one\tsurveyor\tunmanaged\tnative' || false
   output_has_table_row $'undeclared two\tsurveyor\tunmanaged\t-'
   [[ "$output" == *'Unmanaged: 1'* ]] || false
 }
@@ -4926,7 +4926,7 @@ ports = ["required-api", "on-demand-api", "allocated-api", "free-allocation"]' \
     "$RIG" export --profile public --output "$output_dir"
   [ "$status" -eq 0 ]
   grep -Fq '"id": "alpha"' "$output_dir/rig.json"
-  ! grep -Eq 'required-api|4101|private API|tool:alpha|"port"' "$output_dir/rig.json"
+  ! grep -Eq 'required-api|4101|private API|tool:alpha|"port"' "$output_dir/rig.json" || false
   [ ! -e "$PORT_LSOF_LOG" ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
@@ -5017,7 +5017,7 @@ artifacts = ["$HOME/bin/home-tool", "~/bin/tilde-tool", "/opt/rig/absolute-tool"
   printf 'STDERR<%s>\n' "$(cat "$outcome_file")"
   [ "$status" -eq 2 ]
   grep -F 'rig: error:' "$outcome_file" >/dev/null
-  ! grep -F 'status 2' "$outcome_file" >/dev/null
+  ! grep -F 'status 2' "$outcome_file" >/dev/null || false
   ! grep -E '^rig: status (succeeded|healthy|unhealthy|incomplete|failed):' "$outcome_file" >/dev/null || false
 }
 

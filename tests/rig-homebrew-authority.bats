@@ -31,7 +31,7 @@ run_rig() {
   [ "$status" -eq 0 ]
   grep -Fx 'brew|install --formula example/alpha' "$RIG_TEST_PROVIDER_LOG"
   grep -Fx 'brew|upgrade --formula example/alpha' "$RIG_TEST_PROVIDER_LOG"
-  ! grep -E 'bundle|cleanup|autoupdate|uninstall' "$RIG_TEST_PROVIDER_LOG"
+  ! grep -E 'bundle|cleanup|autoupdate|uninstall' "$RIG_TEST_PROVIDER_LOG" || false
 }
 
 @test "Homebrew retired manifest rejects before provider invocation" {

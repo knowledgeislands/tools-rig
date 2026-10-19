@@ -198,7 +198,7 @@ write_skill_config() {
   run "$RIG" upgrade
   [ "$status" -eq 0 ]
   grep -F 'update caveman --global --yes' "$SKILLS_LOG"
-  ! grep -E 'remove|rm|clean' "$SKILLS_LOG"
+  ! grep -E 'remove|rm|clean' "$SKILLS_LOG" || false
 }
 
 @test "apply orders tools skills resources and no lifecycle removes deselected skills" {
@@ -228,7 +228,7 @@ write_skill_config() {
   [ "$status" -eq 0 ]
   run "$RIG" upgrade --profile minimal --dry-run
   [ "$status" -eq 0 ]
-  ! grep -E 'remove|uninstall|delete' "$SKILLS_LOG"
+  ! grep -E 'remove|uninstall|delete' "$SKILLS_LOG" || false
 }
 
 @test "export format two escapes JSON and excludes private skill metadata" {
@@ -258,7 +258,7 @@ assert skill["rationale"] == "Élan with control"
 assert set(skill) == {"id", "name", "purpose", "rationale", "source"}
 ' "$export_dir/rig.json"
   [ "$status" -eq 0 ]
-  ! grep -E 'skills-cli|claude-code|codex|\.agents|paths?|roots?|runtime|locks?|argv|state|unmanaged|1675' "$export_dir/rig.json"
+  ! grep -E 'skills-cli|claude-code|codex|\.agents|paths?|roots?|runtime|locks?|argv|state|unmanaged|1675' "$export_dir/rig.json" || false
 }
 
 @test "export format two emits reviewed opt-in metadata and deterministic empty skills" {
@@ -281,7 +281,7 @@ assert data["profile"]["skills"] == [{
 }]
 ' "$export_dir/rig.json"
   [ "$status" -eq 0 ]
-  ! grep -E 'skills-cli|claude-code|codex|\.agents|\.local/state|runtime|lock|argv|observ' "$export_dir/rig.json"
+  ! grep -E 'skills-cli|claude-code|codex|\.agents|\.local/state|runtime|lock|argv|observ' "$export_dir/rig.json" || false
 
   sed '/profiles = \["default", "public"\]/d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/private.toml"
   mv "$CONFIG_HOME/private.toml" "$CONFIG_HOME/rig.toml"
