@@ -10,7 +10,7 @@ blocks: []
 blocked_by: []
 baseline_ref: 30fbebf9929cbb1be500a2023ea463b8ec5a01ca
 created_at: 2026-10-09T15:03:37Z
-updated_at: 2026-10-18T09:28:46Z
+updated_at: 2026-10-19T07:30:05Z
 ---
 
 # KI-TOOL-RIG-CORE-042: Profile-Filtered Dock Items
@@ -139,6 +139,17 @@ Delivered locally against fixtures only, from baseline `30fbebf`. No native-prov
 The complete local gate in [Develop Rig](../guides/developer/README.md#verify-the-repository) passes: audit (the existing HOOK-1 warning only), ShellCheck, Bash syntax, assembly drift, the fixture benchmark within budget, mandoc and diff checks. All 563 Bats tests pass. The focused command in Verify passes.
 
 Withheld by authority: `scripts/smoke-native-providers`, any live apply, and the acceptance check on `sol`.
+
+#### Live read-only evidence, 19 October 2026
+
+The ways-of-working rig-live run gathered this on `sol` and, over the tailnet by SSH, on `terra`, under RIG-UPGRADE-MACHINES a) and RIG-DOCK-MISSING a). Both Macs run `rig 0.7.0+dev`, the tools-rig checkout at `424727c` linked as `~/.local/bin/rig`, on macOS 27.0.1. Nothing ran but `rig show`, `rig status`, `rig doctor`, `rig apply --dry-run` and read-only system queries; no apply, sudo or Dock change. A hash of `defaults read com.apple.dock persistent-apps` taken before and after the throwaway-catalogue runs was unchanged on both machines.
+
+- **Personal declaration not yet changed.** On both Macs `[dock.workstation]` still has `profiles = ["laptop"]` and no item carries `tool`. Its chezmoi record, [KB-DOTFILES-UE-091](/Users/krisbrown/.local/share/chezmoi/docs/roadmap/KB-DOTFILES-UE-091-shared-dock-tool-links.md), is still a draft. On `sol`, `rig show dock:workstation` gives `dock-selected=no` for the default `studio` profile and `rig doctor` names no Dock finding: the before-state the acceptance check expects to change, not yet the filtered list with Zed.
+- **`terra` baseline.** With the real configuration, `rig status` reports `dock:workstation` `present` with its full 38-item list, so the laptop Dock agrees today.
+- **Every included app checked, against a throwaway catalogue.** A copy of each Mac's configuration, under temporary `RIG_CONFIG_HOME`, `RIG_STATE_HOME` and `RIG_CACHE_HOME`, moved the layout to `core` and linked each of the 30 items whose ID names a catalogue tool; the 8 others stayed unlinked. On `sol`, `show`, `status`, `doctor` and the Dock-only dry-run agree: 34 of 38 items included with compact positions 1 to 34, and `delta`, `rendapp`, `the-tower` and `chatgpt-current` excluded for `profile`. Zed sits at position 18, between Claude and Visual Studio Code. Status and doctor report the layout `drifted` with detail `order`, not `dock-item-path-missing`, so every included app's path exists on `sol`; a separate path check over the 34 included items found none missing. On `terra` the same fixture reports `drifted` (`order`) with only `chatgpt-current` excluded.
+- **Finding for the personal declaration.** `tool.chatgpt-current` (`/Applications/ChatGPT.app`) is catalogue-only (`profiles = []`), so linking its Dock item excludes ChatGPT from both Docks, `terra`'s included. KB-DOTFILES-UE-091 should leave that item unlinked or select the tool; this is personal configuration, not a Rig defect. The 14 October list naming ChatGPT in both profiles meant this app.
+
+Not proved, because each needs a live change: `rig apply` changing `sol`'s Dock and reporting success; Zed in its place in `dockutil --list` afterwards, with `status` and `doctor` reporting `present`; and `terra` staying `present` once the shared layout is declared. The acceptance check on `sol` stays outstanding.
 
 ### Outstanding concerns
 

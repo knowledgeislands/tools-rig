@@ -10,7 +10,7 @@ blocks: []
 blocked_by: []
 baseline_ref: 39499cd6566b2fa02f9c66476eda53f052ccb351
 created_at: 2026-10-13T22:48:41Z
-updated_at: 2026-10-18T09:45:00Z
+updated_at: 2026-10-19T07:30:05Z
 ---
 
 # KI-TOOL-RIG-CORE-047: Tailnet-Only Listener Firewall
@@ -152,6 +152,18 @@ All commands were run locally on 14 October 2026 with stdin closed. No live `sud
   - `git diff --check`: clean.
 - Hostile isolation run, `XDG_STATE_HOME` and `XDG_CONFIG_HOME` pointed at outside directories: 528 of 528 passed, and the hostile state directory stayed empty.
 - `tests/rig-firewall.bats` covers every Verify case except live acceptance. Its sudo fixture refuses any install or removal outside `RIG_SYSTEM_ROOT`, and every test asserts that no log names `/etc/pf.conf`, `socketfilterfw`, `pfctl -d` or `-X`.
+
+#### Live read-only evidence, 19 October 2026
+
+The ways-of-working rig-live run gathered this on `sol` and, over the tailnet by SSH, on `terra`, under RIG-UPGRADE-MACHINES a) and RIG-FIREWALL-RANGE a). Both Macs run `rig 0.7.0+dev`, the tools-rig checkout at `424727c` linked as `~/.local/bin/rig`, on macOS 27.0.1. Nothing ran but `rig show`, `rig status`, `rig doctor`, `rig apply --dry-run` and unprivileged system queries; no apply, `sudo`, `pfctl` or `launchctl` change.
+
+- **No personal declaration.** Neither Mac's Rig configuration declares a `[firewall.*]`, and the chezmoi source has never held one.
+- **`terra` already carries the restriction, outside Rig's records.** `/etc/pf.anchors/uk.me.kris.rig.firewall.screen-sharing` and its LaunchDaemon property list, root-owned `0644`, date from 14 October 2026 08:49, after the delivery commit `7544d3d`. Rig's state directory holds no receipt for them. `launchctl print system/uk.me.kris.rig.firewall.screen-sharing` shows `/sbin/pfctl -E`, `RunAtLoad`, `WatchPaths` on `/etc/pf.conf`, one run since the 15 October 10:25 restart, and last exit 0. With the [Proposed contract](#proposed-contract-for-owner-review) declaration added to a throwaway copy of the configuration, `rig status` and `rig show` report it `present (kernel-rules-unverified)`: the installed files match the current renderer byte for byte. The live anchor is the range rule the [Range correction](#range-correction) describes, `from 100.64.0.0/10 to 100.64.0.0/10` and the IPv6 equivalent, so the residual `100.64.0.0/10` exposure applies to `terra` today.
+- **`sol` is open.** No Rig anchor or daemon; `*.5900` listens on tcp4 and tcp6 and the application firewall is off. The same throwaway declaration reports `missing (exposed-beyond-tailnet)` in status and doctor, as the contract requires.
+- **Read-only boundary held.** The firewall dry-run on both Macs printed the eight rendered rules and the six `sudo -n` commands (`pfctl -n`, two installs, `launchctl bootstrap system`, `pfctl -E -a`, `pfctl -a … -s rules`) without running them. On `terra` it plans a reconcile although the resource is `present`, because only an attended grant can reread the loaded rules. `/etc/pf.conf` is still Apple's default on both, identical by checksum.
+- **SSH over the tailnet works** from `sol` to `terra` (`100.90.130.74` to `100.96.126.29`) with the restriction installed on `terra`; port 22 is not in the anchor.
+
+Not proved, because each needs a privileged read or a live change: the loaded kernel rules (`sudo pfctl -a com.apple/LOCATOR -s rules`) on `terra`, before or after a restart; `vnc://` over the tailnet; Screen Sharing refused on a LAN address from another device; NordVPN on and off on `sol`; and any `rig apply --sudo`. Live acceptance stays outstanding.
 
 ### Outstanding concerns
 
