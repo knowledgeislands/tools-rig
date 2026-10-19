@@ -10,7 +10,7 @@ blocks: []
 blocked_by: []
 baseline_ref: 39499cd6566b2fa02f9c66476eda53f052ccb351
 created_at: 2026-10-13T22:48:41Z
-updated_at: 2026-10-19T21:08:30Z
+updated_at: 2026-10-19T21:37:25Z
 ---
 
 # KI-TOOL-RIG-CORE-047: Tailnet-Only Listener Firewall
@@ -201,10 +201,29 @@ Each step proves the following:
 
 Still not proved: Screen Sharing reachability over the tailnet, and refusal on a LAN address with fresh flows (existing pf states survive a flush, so these need new connections); NordVPN on and off on `sol`; the real `pfctl -s rules` text against Rig's own normalisation, which the rehearsal compared with `pfctl -nvf` and not through Rig; and any `rig apply --sudo`. `sol` has no restriction installed and needs its own attended rehearsal before its `rig apply --sudo`.
 
+#### Read-only preflight on `sol`, 19 October 2026
+
+The chezmoi work's sol-preflight runs read `sol` without root under SOL-FIREWALL a), and Kris ran one read-only root check at about 22:26 BST under SOL-PF-ROOT. `/etc/pf.conf`, `/etc/pf.anchors/com.apple` and the `com.apple.pfctl` boot job are Apple's stock files. No LaunchDaemon calls `pfctl`, and pf is disabled with no enable references. The one other pf user is NordVPN's privileged helper, `com.nordvpn.macos.helper`, which has run since boot. Its strings carry a complete root ruleset. That ruleset replaces Apple's main ruleset, reloads `/etc/pf.conf` as a sub-anchor, blocks by default and can NAT `100.64.0.0/10`.
+
+The root check printed:
+
+```text
+== root rules: scrub-anchor "com.apple/*" all fragment reassemble | anchor "com.apple/*" all
+== root nat/rdr: nat-anchor "com.apple/*" all | rdr-anchor "com.apple/*" all
+== root dummynet: dummynet-anchor "com.apple/*" all
+== root anchors: NordVPN, com.apple
+== com.apple anchors: com.apple/200.AirDrop, com.apple/250.ApplicationFirewall
+```
+
+Root holds Apple's boot ruleset, which calls only `com.apple/*`. The helper has loaded a root-level `NordVPN` anchor since boot, but no root rule calls it, so pf does not evaluate it. Enabling pf now turns on only Apple's empty anchors and this record's anchor. `sol`'s attended sequence refuses unless that is still so, and unless NordVPN is neither running nor connected, immediately before `rig apply --sudo`. Afterwards it checks that root still calls `com.apple/*` and lists the Rig anchor beneath it.
+
+**Follow-up, not delivered here: NordVPN bypasses the anchor.** When NordVPN connects, its helper replaces root's main ruleset with its own. That ruleset does not call `com.apple/*`, so the Rig anchor stays loaded but is never evaluated, and Screen Sharing is exposed beyond the tailnet for as long as the connection lasts. Under its block-by-default rules, tailnet SSH and Tailscale may also depend on what NordVPN passes. The daemon's `WatchPaths` on `/etc/pf.conf` does not fire, because the helper loads its ruleset without editing that file. `apply --sudo` and the attended post-apply check see the bypass only while it lasts; unprivileged doctor cannot see it at all. Deciding how Rig detects or survives a replaced root ruleset, whether by a periodic re-assertion (FW-PERSIST's alternative), a check of root's calls, or a NordVPN-side setting, needs its own record. That record should start from the live NordVPN on-and-off check above, which is still outstanding.
+
 ### Outstanding concerns
 
 - The rule normalisation that compares `pfctl -a … -s rules` output with the rendered anchor is proven only against a fixture. Real `pfctl` display formatting must be confirmed in live acceptance; a mismatch would fail apply safely rather than leave rules unloaded.
 - Live acceptance is partly run. On `terra`, the attended rehearsal proved the loaded kernel rules, their survival across a restart, tailnet SSH throughout, and the no-Rig rollback and restore. Still outstanding are `vnc://` over the tailnet, LAN refusal with fresh flows, NordVPN on `sol`, `sol`'s own rehearsal, and `rig apply --sudo` on either Mac.
+- A NordVPN connection on `sol` replaces root's pf ruleset and bypasses the anchor; see [Read-only preflight on `sol`](#read-only-preflight-on-sol-19-october-2026). It needs a follow-up record.
 - The address match is range-based, so a neighbour on a carrier-grade NAT or hotspot network that gives the Mac a `100.64.0.0/10` address can reach the declared port; see [Range correction](#range-correction).
 - If a future macOS drops Apple's `com.apple/*` anchor point, the anchor stops being evaluated and only `apply --sudo` notices. This residual risk is recorded in the ADR.
 - `rig show ITEM --format json` uses the existing generic label converter, which splits raw `key=value` lines such as `port=tcp:5900` at the colon. This is pre-existing behaviour shared by every resource kind, and was left unchanged as outside this record.
