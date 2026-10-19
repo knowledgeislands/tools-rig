@@ -1,0 +1,35 @@
+#!/bin/sh
+# Committed pre-commit gate, bound by `core.hooksPath` so every working tree runs it.
+# Without its tools it refuses the commit rather than letting it pass unchecked.
+root="$(git rev-parse --show-toplevel)" || exit 1
+missing=''
+for tool in ki shellcheck bash bats mandoc; do
+  if ! command -v "$tool" >/dev/null 2>&1; then missing="$missing $tool"; fi
+done
+if [ -n "$missing" ]; then
+  echo "pre-commit: the commit gate cannot run; not on PATH:$missing" >&2
+  echo "pre-commit: install them, then commit again." >&2
+  echo "pre-commit: do not bypass with --no-verify; a gate that cannot run is unknown, not a pass." >&2
+  exit 1
+fi
+cd "$root" || exit 1
+# The checks Develop Rig declares that need no live provider, in their CI order.
+shellcheck bin/rig install.sh src/rig/*.bash \
+  scripts/assemble-rig scripts/benchmark-rig scripts/smoke-native-providers || exit 1
+for script in bin/rig install.sh src/rig/*.bash \
+  scripts/assemble-rig scripts/benchmark-rig scripts/smoke-native-providers; do
+  bash -n "$script" || exit 1
+done
+scripts/assemble-rig --check || exit 1
+mandoc -T lint man/rig.1 || exit 1
+# Git exports its hook environment; the tests build their own repositories, so they run without it.
+(unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES \
+    GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_AUTHOR_DATE GIT_CONFIG_PARAMETERS GIT_EDITOR
+  bats tests/ </dev/null) || exit 1
+# The focused shape audit stays check-only; `--staged` keeps evaluation whole-tree but
+# scopes the verdict to the staged paths, and CI keeps the whole-tree verdict. On success
+# it prints one summary line; on failure it runs again in full so the findings show.
+ki repo audit --repo "$root" --skill ki-repo-tools --staged \
+  --concise --progress never --reporter-levels FAIL && exit 0
+ki repo audit --repo "$root" --skill ki-repo-tools --staged
+exit 1
