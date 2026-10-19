@@ -242,7 +242,7 @@ rig_append_resource_fields() {
     output_key=$key
     [ "$key" != resource-dependency ] || output_key=depends-on
     case "$section_type:$key" in
-      *:provider|*:locator) ;;
+      *:provider|*:locator|*:subject) ;;
       dock:item) rig_append_dock_item_field "${RIG_FIELD_VALUES[$field_index]}" ;;
       *) RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]="$output_key=${RIG_FIELD_VALUES[$field_index]}" ;;
     esac

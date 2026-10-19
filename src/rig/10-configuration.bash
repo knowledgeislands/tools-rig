@@ -299,6 +299,7 @@ rig_field_kind() {
     dock:name|dock:purpose|dock:rationale|dock:provider|\
     dock-item:kind|dock-item:path|dock-item:view|dock-item:display|dock-item:tool|\
     port:name|port:purpose|port:rationale|port:protocol|port:port|port:scope|port:mode|port:owner|\
+    setting:subject|service:subject|scheduled-job:subject|firewall:subject|default-application:subject|\
     action:mode|action:description|action:argument-policy)
       RIG_FIELD_KIND=scalar
       ;;
@@ -454,7 +455,10 @@ rig_toml_field() {
       RIG_TOML_FIELD_KEY=member-profile
       RIG_TOML_FIELD_TYPE=array
       ;;
-    default-application:tool) RIG_TOML_FIELD_KEY=requires ; RIG_TOML_FIELD_TYPE=string ;;
+    setting:tool|service:tool|scheduled-job:tool|firewall:tool|default-application:tool)
+      RIG_TOML_FIELD_KEY=subject
+      RIG_TOML_FIELD_TYPE=string
+      ;;
     default-application:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
     default-application:profiles) RIG_TOML_FIELD_KEY=member-profile ; RIG_TOML_FIELD_TYPE=array ;;
     profile:default-applications) RIG_TOML_FIELD_KEY=default-application ; RIG_TOML_FIELD_TYPE=array ;;
@@ -841,7 +845,13 @@ rig_parse_file() {
             ;;
           string)
             rig_toml_parse_string "$value" "$file" "$line_number" || return
-            rig_add_field "$current_section" "$internal_key" "$RIG_VALUE" "$file" "$line_number" || return
+            value=$RIG_VALUE
+            rig_add_field "$current_section" "$internal_key" "$value" "$file" "$line_number" || return
+            # A resource's subject tool is also its prerequisite, so it shares
+            # requires validation and profile closure.
+            if [ "$internal_key" = subject ]; then
+              rig_add_field "$current_section" requires "$value" '<derived subject>' "$line_number" || return
+            fi
             ;;
           array)
             case "$value" in

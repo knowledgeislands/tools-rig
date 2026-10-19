@@ -1030,7 +1030,7 @@ write_query_config() {
     "$RIG" show mgit
 
   [ "$status" -eq 0 ]
-  [ "$output" = $'Tool: mgit\nName: MGit\nCategory: navigation (Navigation)\nPurpose: Navigate many repositories\nRationale: It presents the Knowledge Islands estate\nPlatforms: linux, macos\nRequires: git (Git)\nRelated: fzf (fzf)\nAlternatives: lazygit (LazyGit)\nProfiles: default (inherited), focused (direct), knowledge-islands (direct)\nInstallation: marker (executable: mgit)\nArtifacts: none' ]
+  [ "$output" = $'Tool: mgit\nName: MGit\nCategory: navigation (Navigation)\nPurpose: Navigate many repositories\nRationale: It presents the Knowledge Islands estate\nPlatforms: linux, macos\nRequires: git (Git)\nRelated: fzf (fzf)\nAlternatives: lazygit (LazyGit)\nProfiles: default (inherited), focused (direct), knowledge-islands (direct)\nConfigured by: none\nInstallation: marker (executable: mgit)\nArtifacts: none' ]
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
     "$RIG" show git

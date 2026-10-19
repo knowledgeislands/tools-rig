@@ -6,14 +6,14 @@ purpose: capability
 theme: rig
 kind: deliver
 horizon: now
-status: ready
+status: awaiting-review
 priority: medium
 size: m
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: fd3634cb486f7f35797238dda0a0a0171d68dfdc
 created_at: 2026-10-19T20:49:28Z
-updated_at: 2026-10-19T23:20:10Z
+updated_at: 2026-10-19T23:20:17Z
 ---
 
 # Resource Subject Links and Per-Profile Configured Tools
@@ -60,12 +60,12 @@ Re-read on 19 October 2026 at baseline `969ec58`.
 
 ## Steps
 
-- [ ] Parse `tool` on `[setting.*]`, `[service.*]`, `[scheduled-job.*]`, `[firewall.*]` and `[default-application.*]` into a scalar `subject` field that also adds a `requires` entry; register `subject` in `rig_field_kind`.
-- [ ] Add a single-pass helper that maps each selected tool to its sorted qualified configuring resources for the resolved profile.
-- [ ] Emit `configured_by` on every `rig show --format json` tool entry; add the conditional `CONFIGURED` column to the profile tool table; add the "Configured by" line to `rig show TOOL`.
-- [ ] Add fixture tests: a tool configured in `laptop` and not in `studio`; the subject link pulling its tool into a profile; a `requires`-only resource not counting; an unknown subject tool failing validation; the `rig show TOOL` line; a profile with no links rendering the unchanged table; public export byte-identical with and without links.
-- [ ] Add a RIG-QUERY clause specifying the complete `rig show` JSON tool entry, and extend RIG-QUERY-003 for the new line; document `tool` on each resource kind in `docs/specs/configuration.md` and in the operational-resources guide.
-- [ ] Reassemble `bin/rig`, update `man/rig.1` if it lists the explanation fields, and run the complete local gate.
+- [x] Parse `tool` on `[setting.*]`, `[service.*]`, `[scheduled-job.*]`, `[firewall.*]` and `[default-application.*]` into a scalar `subject` field that also adds a `requires` entry; register `subject` in `rig_field_kind`.
+- [x] Add a single-pass helper that maps each selected tool to its sorted qualified configuring resources for the resolved profile.
+- [x] Emit `configured_by` on every `rig show --format json` tool entry; add the conditional `CONFIGURED` column to the profile tool table; add the "Configured by" line to `rig show TOOL`.
+- [x] Add fixture tests: a tool configured in `laptop` and not in `studio`; the subject link pulling its tool into a profile; a `requires`-only resource not counting; an unknown subject tool failing validation; the `rig show TOOL` line; a profile with no links rendering the unchanged table; public export byte-identical with and without links.
+- [x] Add a RIG-QUERY clause specifying the complete `rig show` JSON tool entry, and extend RIG-QUERY-003 for the new line; document `tool` on each resource kind in `docs/specs/configuration.md` and in the operational-resources guide.
+- [x] Reassemble `bin/rig`, update `man/rig.1` if it lists the explanation fields, and run the complete local gate.
 
 ## Files touched
 
@@ -100,7 +100,42 @@ The operational-resources guide shows `tool` on a setting and a service.
 
 ### Roadmap
 
-This record moves to Awaiting review at delivery.
+This record moved to Awaiting review at delivery.
+
+## Review
+
+### Delivered
+
+Every step as planned: `tool = "ID"` on settings, services, scheduled jobs, firewalls and default applications is stored as a scalar `subject` that also adds one `requires` entry; `rig show --format json` gives every tool entry a `configured_by` array; the profile tool table gains a `CONFIGURED` column only when the profile configures a selected tool; and `rig show TOOL` gains a profile-independent `Configured by` line. Baseline `fd3634cb486f7f35797238dda0a0a0171d68dfdc`; the delivery commit follows it. Nothing was applied live, and Kris's configuration is untouched.
+
+### Change Summary
+
+- `src/rig/10-configuration.bash`: `rig_toml_field` maps `tool` on the five kinds to `subject`; `rig_field_kind` registers it as scalar; `rig_parse_file` adds the derived `requires` entry beside it.
+- `src/rig/20-orchestration.bash`: `rig_append_resource_fields` keeps `subject` out of external provider arguments.
+- `src/rig/30-commands.bash`: `rig_collect_subject_links` makes the single pass over selected or catalogue resources; `rig_tool_configured_by` reads one tool's sorted list; `rig_show_json`, `rig_print_profile_tools` and `rig_command_explain_impl` render it; `rig_explain_resource` prints `tool=` once and hides the derived `requires` entry.
+- `src/rig/00-runtime.bash`: the two subject-link globals; `bin/rig` reassembled.
+- `tests/rig-subject-links.bats`: six tests covering the Done when and Verify cases. `tests/rig.bats`: the exact `rig show TOOL` expectation gains `Configured by: none`.
+- `docs/specs/queries.md`: RIG-QUERY-003 gains the `Configured by` line and new RIG-QUERY-009 specifies the JSON tool entry and table column. `docs/specs/configuration.md` documents the subject `tool` on the five kinds. The operational-resources guide shows `tool` on a service and a setting. `man/rig.1` names the field and the explanation line.
+- Deviation: none. A blank `CONFIGURED` cell ends the row with the table's two-space column separator, as other tables' empty last cells already do.
+
+### Verification
+
+- `bats tests/rig-subject-links.bats </dev/null`: 6 of 6 pass; the exact-table tests in `tests/rig.bats` pass unchanged.
+- `bats tests/ </dev/null`: 589 of 590 passed on the first run; the one failure was the exact `rig show TOOL` comparison in `tests/rig.bats`, which RIG-QUERY-003 now extends with `Configured by: none`. With that expectation updated, the test passes, so all 590 pass.
+- `ki repo audit --repo .`: no failures; warnings are the pre-existing `size` migration-window notes, the `.rumdl.toml` template drift, the Claude Desktop definition note and the hooks-migration HOOK-1 note, none touched here.
+- shellcheck, `bash -n` on every script, `scripts/assemble-rig --check`, `scripts/benchmark-rig`, `scripts/smoke-native-providers`, `mandoc -T lint man/rig.1` and `git diff --check`: pass.
+
+### Outstanding concerns
+
+The new suite exercises settings and services directly; default applications are covered by the existing `tool=editor` explanation test, while firewalls and scheduled jobs share the same parse path without a dedicated case. The rig.midnight.ninja site shows nothing until the chezmoi repository adds `tool` to Kris's declarations, which is outside this record.
+
+### Post-change review
+
+The goal holds: a consumer reads "configured on this host" per profile from `configured_by`, and `requires`-only links, ports and Dock filters stay out, as planned. Public export is byte-identical with and without links. Regression risk is low: profiles without links render exactly as before, and the derived `requires` entry reuses existing validation and closure. Ready for acceptance review.
+
+### Mini recap
+
+Added an explicit subject link and reported it in `rig show` JSON, table and explanation, with a new RIG-QUERY-009 clause. Learning route, not promoted: storing the subject apart from `requires` let the explanation keep one `tool=` line for default applications while the link reuses prerequisite closure unchanged.
 
 ## Discussion
 

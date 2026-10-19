@@ -43,7 +43,7 @@ rationale = "The selected development profile depends on the endpoint"
 provider = "launchd"
 locator = "example.daemon"
 platforms = ["macos"]
-requires = ["example"]
+tool = "example"
 desired-state = "running"
 program = ["~/bin/example", "serve", "--foreground"]
 environment = ["EXAMPLE_CONFIG=~/.config/example/config.toml"]
@@ -55,6 +55,10 @@ profiles = ["workstation"]
 ```
 
 The provider field identifies native authority. Rig already knows how supported launchd resources are observed, rendered, loaded, stopped, and retired.
+
+`tool = "example"` says that this service configures the catalogue tool `example`. Settings, scheduled jobs, firewalls and default applications take the same field. The tool is also a prerequisite, exactly as `requires = ["example"]` would make it, so selecting the resource selects the tool. Use `requires` alone when a resource only needs a tool without configuring it, as a Dock layout needs `dockutil`.
+
+`rig show TOOL` then lists the resource under `Configured by`, and `rig show --format json` reports it in that tool's `configured_by` array for each profile that selects the resource. The tool table gains a `CONFIGURED` column when the profile configures any selected tool.
 
 ## Declare a scheduled job
 
@@ -117,6 +121,8 @@ value-type = "bool"
 value = "true"
 profiles = ["workstation"]
 ```
+
+Add `tool = "ID"` when the setting configures one catalogue tool, such as an application's own preference domain.
 
 The explicit value type lets Rig validate, compare, and apply the setting without a provider-owned YAML file or arbitrary workstation script.
 

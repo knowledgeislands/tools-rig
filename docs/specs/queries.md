@@ -26,13 +26,13 @@ _Evidence:_ `rig_command_show`, catalogue selection helpers and `tests/rig.bats`
 
 ### RIG-QUERY-003 — Explain a tool
 
-`rig show TOOL` MUST report the tool's name, category, purpose, rationale, platforms, relationships, profile membership, and compatible installation metadata. Each `Requires`, `Related`, and `Alternatives` endpoint MUST render as `identifier (Display Name)` in declaration order, or `none` when empty; the structured export MUST retain identifiers.
+`rig show TOOL` MUST report the tool's name, category, purpose, rationale, platforms, relationships, profile membership, the resources that configure it, and compatible installation metadata. Its `Configured by` line MUST list, independent of profile, every declared resource whose subject `tool` names the tool as a qualified `kind:id` identity in bytewise order, or `none`. Each `Requires`, `Related`, and `Alternatives` endpoint MUST render as `identifier (Display Name)` in declaration order, or `none` when empty; the structured export MUST retain identifiers.
 
 _Conformance:_ conforming
 
 _Verify:_ Bats tests explain fixture tools and assert every declared and derived field, `none` for absent relationships, ordered `identifier (Display Name)` endpoints, and punctuation in names.
 
-_Evidence:_ `rig_join_query_tool_names` resolves the three tool relationship fields for `rig_command_explain_impl`; `tests/rig.bats` checks exact identity and meaning fields plus sorted platforms, named requirements and relationships, profile membership, and active-platform installation.
+_Evidence:_ `rig_join_query_tool_names` resolves the three tool relationship fields for `rig_command_explain_impl`; `tests/rig.bats` checks exact identity and meaning fields plus sorted platforms, named requirements and relationships, profile membership, and active-platform installation; `tests/rig-subject-links.bats` checks the `Configured by` line.
 
 ### RIG-QUERY-004 — Declarative query boundary
 
@@ -83,3 +83,13 @@ _Conformance:_ conforming
 _Verify:_ Run isolated Bats tests for valid, invalid, unavailable and dry-run cases.
 
 _Evidence:_ `rig_print_profile_skills`, `rig_explain_skill` and `tests/rig-skills.bats` verify inert declaration queries.
+
+### RIG-QUERY-009 — Show JSON tool entry
+
+Every `tools[]` entry in `rig show [--profile NAME] --format json` MUST carry string `id`, `name`, `category` and `purpose`, in that order, followed by a `configured_by` array. `configured_by` MUST list, as qualified `kind:id` identities in bytewise order, each setting, service, scheduled job, firewall or default application selected by the resolved profile whose subject `tool` names the entry's tool, and MUST be empty when there is none. A `requires`-only link, a port owner and a Dock item's `tool` filter MUST NOT count. The human tool table MUST add a trailing `CONFIGURED` column marking each configured tool `yes` only when the profile configures at least one selected tool, and MUST otherwise render unchanged.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats tests compare the JSON tool entries of two profiles that select the same tools with and without subject links, a profile whose only member arrives through a subject link, a `requires`-only resource, the conditional table column, and byte-identical public export with and without links.
+
+_Evidence:_ `rig_collect_subject_links` and `rig_tool_configured_by` feed `rig_show_json` and `rig_print_profile_tools`; `tests/rig-subject-links.bats` covers the clause.

@@ -1334,13 +1334,16 @@ rig_buffer_mutation_report() {
 }
 
 rig_print_profile_tools() {
-  local index tool name category purpose
+  local index tool name category purpose configured
 
+  rig_collect_subject_links selected || return
   rig_table_reset
   rig_table_add_column ID 24 end keep
   rig_table_add_column NAME 24
   rig_table_add_column CATEGORY 16
   rig_table_add_column PURPOSE 72
+  # Only a profile that configures a selected tool gains the marker column.
+  [ "${#RIG_SUBJECT_TOOLS[@]}" -eq 0 ] || rig_table_add_column CONFIGURED 10 end keep
   index=0
   while [ "$index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
     tool=${RIG_SELECTED_TOOLS[$index]}
@@ -1350,7 +1353,14 @@ rig_print_profile_tools() {
     category=$RIG_VALUE
     rig_get_value "tool.$tool" purpose || return
     purpose=$RIG_VALUE
-    rig_table_add_row "$tool" "$name" "$category" "$purpose"
+    if [ "${#RIG_SUBJECT_TOOLS[@]}" -eq 0 ]; then
+      rig_table_add_row "$tool" "$name" "$category" "$purpose"
+    else
+      rig_tool_configured_by "$tool"
+      configured=
+      [ "${#RIG_QUERY_ITEMS[@]}" -eq 0 ] || configured=yes
+      rig_table_add_row "$tool" "$name" "$category" "$purpose" "$configured"
+    fi
     index=$((index + 1))
   done
   rig_table_print
@@ -1696,10 +1706,57 @@ rig_print_profile_skills() {
   rig_table_print
 }
 
+# Collect each resource's subject tool once, so per-tool lookups scan only the
+# links. Scope "selected" reads the resolved profile; "catalogue" every section.
+rig_collect_subject_links() {
+  local scope index section_name section_index kind
+  local -a sections
+
+  scope=$1
+  RIG_SUBJECT_TOOLS=()
+  RIG_SUBJECT_RESOURCES=()
+  sections=()
+  if [ "$scope" = selected ]; then
+    sections=("${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}")
+  else
+    index=0
+    while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+      sections[${#sections[@]}]=${RIG_SECTION_NAMES[$index]}
+      index=$((index + 1))
+    done
+  fi
+  for section_name in "${sections[@]+"${sections[@]}"}"; do
+    rig_section_index "$section_name" || return 2
+    section_index=$RIG_INDEX
+    kind=${RIG_SECTION_TYPES[$section_index]}
+    case "$kind" in setting|service|scheduled-job|firewall|default-application) ;; *) continue ;; esac
+    rig_get_value "$section_name" subject || continue
+    RIG_SUBJECT_TOOLS[${#RIG_SUBJECT_TOOLS[@]}]=$RIG_VALUE
+    RIG_SUBJECT_RESOURCES[${#RIG_SUBJECT_RESOURCES[@]}]=$kind:${RIG_SECTION_IDS[$section_index]}
+  done
+}
+
+# Fill RIG_QUERY_ITEMS with the collected resources that configure one tool.
+rig_tool_configured_by() {
+  local tool index
+
+  tool=$1
+  RIG_QUERY_ITEMS=()
+  index=0
+  while [ "$index" -lt "${#RIG_SUBJECT_TOOLS[@]}" ]; do
+    if [ "${RIG_SUBJECT_TOOLS[$index]}" = "$tool" ]; then
+      RIG_QUERY_ITEMS[${#RIG_QUERY_ITEMS[@]}]=${RIG_SUBJECT_RESOURCES[$index]}
+    fi
+    index=$((index + 1))
+  done
+  rig_sort_query_items
+}
+
 rig_show_json() {
   local index tool name category purpose skill authority runtimes section_name section_index id kind provider value
   local separator
 
+  rig_collect_subject_links selected || return
   rig_json_envelope show
   printf ',"tools":['
   separator=
@@ -1711,7 +1768,16 @@ rig_show_json() {
     rig_json_field ',' name "$name"
     rig_json_field ',' category "$category"
     rig_json_field ',' purpose "$purpose"
-    printf '}'
+    rig_tool_configured_by "$tool"
+    printf ',"configured_by":['
+    index=0
+    while [ "$index" -lt "${#RIG_QUERY_ITEMS[@]}" ]; do
+      [ "$index" -eq 0 ] || printf ','
+      rig_json_escape "${RIG_QUERY_ITEMS[$index]}"
+      printf '"%s"' "$RIG_VALUE"
+      index=$((index + 1))
+    done
+    printf ']}'
     separator=,
   done
   printf '],"skills":['
@@ -2084,7 +2150,7 @@ rig_explain_dock_items() {
 }
 
 rig_explain_resource() {
-  local target kind id section_name section_index field_index field_end key value profiles
+  local target kind id section_name section_index field_index field_end key value profiles subject derived_pending
 
   target=$1
   kind=${target%%:*}
@@ -2101,13 +2167,26 @@ rig_explain_resource() {
   rig_join_query_items
   profiles=$RIG_VALUE
   printf 'Resource: %s\nKind: %s\nID: %s\nProfiles: %s\n' "$target" "$kind" "$id" "$profiles"
+  subject=
+  derived_pending=0
+  if rig_get_value "$section_name" subject; then
+    subject=$RIG_VALUE
+  fi
   field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
   field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
   while [ "$field_index" -lt "$field_end" ]; do
     key=${RIG_FIELD_KEYS[$field_index]}
     value=${RIG_FIELD_VALUES[$field_index]}
     [ "$key" != resource-dependency ] || key=depends-on
-    if [ "$kind" = default-application ] && [ "$key" = requires ]; then key=tool; fi
+    # The subject link is authored as tool; its derived requires entry is not.
+    if [ "$key" = subject ]; then
+      key=tool
+      derived_pending=1
+    elif [ "$key" = requires ] && [ "$value" = "$subject" ] && [ "$derived_pending" -eq 1 ]; then
+      derived_pending=0
+      field_index=$((field_index + 1))
+      continue
+    fi
     printf '%s=%s\n' "$key" "$value"
     field_index=$((field_index + 1))
   done
@@ -2155,7 +2234,7 @@ rig_explain_skill() {
 
 rig_command_explain_impl() {
   local tool name category category_name purpose rationale platforms requires related alternatives profiles platform binding
-  local artifacts
+  local artifacts configured_by
 
   if [ "$#" -eq 1 ]; then
     case "$1" in
@@ -2206,11 +2285,16 @@ rig_command_explain_impl() {
   rig_collect_profile_memberships "$tool"
   rig_join_query_items
   profiles=$RIG_VALUE
+  rig_collect_subject_links catalogue || return
+  rig_tool_configured_by "$tool"
+  rig_join_query_items
+  configured_by=${RIG_VALUE:-none}
 
   printf 'Tool: %s\nName: %s\nCategory: %s (%s)\nPurpose: %s\nRationale: %s\n' \
     "$tool" "$name" "$category" "$category_name" "$purpose" "$rationale"
   printf 'Platforms: %s\nRequires: %s\nRelated: %s\nAlternatives: %s\nProfiles: %s\n' \
     "$platforms" "$requires" "$related" "$alternatives" "$profiles"
+  printf 'Configured by: %s\n' "$configured_by"
   printf 'Installation: %s\n' "$binding"
     printf 'Artifacts: %s\n' "$artifacts"
   rig_show_tool_clis "$tool" "$platform"
