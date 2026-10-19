@@ -4,13 +4,12 @@ area: CORE
 title: Profile-filtered Dock items
 theme: rig
 kind: deliver
-horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 30fbebf9929cbb1be500a2023ea463b8ec5a01ca
 created_at: 2026-10-09T15:03:37Z
-updated_at: 2026-10-19T07:30:05Z
+updated_at: 2026-10-19T22:17:32Z
 ---
 
 # KI-TOOL-RIG-CORE-042: Profile-Filtered Dock Items
@@ -164,6 +163,10 @@ Existing Dock regressions (paths, URLs, order, folder attributes, snapshots, the
 ### Mini recap
 
 One Dock layout can now serve laptop and studio: each machine shows only the apps its profile selects, in the shared order.
+
+## Done
+
+Accepted 2026-10-19 by Kris Brown on the review packet above. Kris said, on 19 October, "I think we should accept all the awaiting reviews."
 
 ## Discussion
 
