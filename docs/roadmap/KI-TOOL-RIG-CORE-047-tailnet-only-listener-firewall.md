@@ -10,7 +10,7 @@ blocks: []
 blocked_by: []
 baseline_ref: 39499cd6566b2fa02f9c66476eda53f052ccb351
 created_at: 2026-10-13T22:48:41Z
-updated_at: 2026-10-19T07:30:05Z
+updated_at: 2026-10-19T21:08:30Z
 ---
 
 # KI-TOOL-RIG-CORE-047: Tailnet-Only Listener Firewall
@@ -165,10 +165,46 @@ The ways-of-working rig-live run gathered this on `sol` and, over the tailnet by
 
 Not proved, because each needs a privileged read or a live change: the loaded kernel rules (`sudo pfctl -a com.apple/LOCATOR -s rules`) on `terra`, before or after a restart; `vnc://` over the tailnet; Screen Sharing refused on a LAN address from another device; NordVPN on and off on `sol`; and any `rig apply --sudo`. Live acceptance stays outstanding.
 
+#### Attended rollback rehearsal on `terra`, 19 October 2026
+
+Kris ran the rehearsal at the machine from 22:03 to 22:06 BST, under RIG-FIREWALL-REHEARSE a) and RIG-FIREWALL-RUN a) in the chezmoi work's decisions log. Terminal A was `ssh -t terra` from `sol`, and stayed open throughout. Terminal B was a plain shell on `sol` that opened a fresh SSH connection for each check. The sequence was reviewed blind before it ran. Every block wrote the locator out literally, used no shell variables, checked that it was on `terra` in an SSH session, and refused without changing anything if `terra` was not in the expected state. The removal step restored automatically after 300 seconds, or at once if the session dropped. Kris's output, verbatim:
+
+```text
+A0 (before): pf enabled: yes | daemon loaded: yes, last exit 0: yes
+anchor rules: 8, match file: yes | parent calls anchor: yes
+TOKENS: 546 pfctl 7339458489387109918 0 days 00:54:05
+A0 RESULT: PROTECTED
+B PASS 22:03:06: fresh SSH to terra, daemon loaded
+A1: reload rc=0 | match file: yes | pf enabled: yes | parent calls anchor: yes | references 3 -> 3
+A1 RESULT: RELOAD PROVEN
+A2: REMOVED 22:04:26: anchor empty, daemon absent.
+B PASS 22:04:59: fresh SSH to terra, daemon absent
+RESTORING 22:05:17
+bootstrap rc=0 | new run exit 0: yes | match file: yes | pf enabled: yes | parent calls anchor: yes | references 3 -> 4
+A2 RESULT: RESTORED
+B PASS 22:05:40: fresh SSH to terra, daemon loaded
+A0 (after): pf enabled: yes | daemon loaded: yes, last exit 0: yes
+anchor rules: 8, match file: yes | parent calls anchor: yes
+TOKENS: 14331 pfctl 4286484510776417438 0 days 00:00:45; 546 pfctl 7339458489387109918 0 days 00:57:40
+A0 RESULT: PROTECTED
+```
+
+Each step proves the following:
+
+- **A0, before and after: the loaded kernel rules.** `sudo pfctl -a com.apple/uk.me.kris.rig.firewall.screen-sharing -s rules` printed eight rules, identical apart from whitespace to `pfctl -nvf` of the anchor file. pf was enabled, and Apple's `anchor "com.apple/*"` in the main ruleset calls the child anchor. The LaunchDaemon was loaded with last exit 0.
+- **Survival across a restart.** In the A0 before, the only enable reference belonged to `pfctl` pid 546. It was 54 minutes old, so it dated from `terra`'s 21:07 BST boot. The daemon's `RunAtLoad` had reloaded and enabled the anchor at boot without anyone touching it.
+- **A1: a reload changes nothing.** Reloading the same file without `-E` exited 0. The rules still matched and the reference count stayed the same.
+- **A2: the emergency rollback leaves SSH working.** `launchctl bootout system/LOCATOR` followed by a flush of the anchor's rules left the anchor empty and the daemon absent, and a fresh SSH connection from `sol` succeeded at 22:04:59. The flush was `-F rules`. Rig's retirement path uses `-F all` on the same anchor.
+- **A2: the restore works.** `launchctl bootstrap system /Library/LaunchDaemons/LOCATOR.plist` exited 0 and the daemon's new run exited 0. The eight rules matched the file again, pf stayed enabled and the parent anchor still called the child. The bootstrap's `pfctl -E` added an enable reference (3 → 4 lines; pid 14331 beside pid 546), and pf has no way to release the earlier one. That is harmless, and it is consistent with Rig never disabling pf. Fresh SSH succeeded again at 22:05:40.
+
+**First attempt, 21:07 BST.** An earlier hand-run sequence set the locator in a shell variable `L`, which then expanded in a block pasted separately. In the shell that ran `sudo launchctl bootout system/$L`, `L` was empty. The command became `launchctl bootout system/`, which boots out the whole system domain, and `terra` shut down (launchd logged `bootout initiated by: launchctl … slaying domain … committing to system shutdown`). The flush never ran. pf, the anchor and the restore path played no part, and `terra` came back with the restriction loaded, as the restart evidence above shows. The hazard lay only in the hand-run sequence, which is why the rehearsal above writes the locator literally. Rig's own firewall path is not exposed to it: `rig_firewall_locator_valid` rejects an empty locator, both at validation and in retirement preflight, and Rig runs bootout only after `launchctl print system/LOCATOR` reports the service loaded.
+
+Still not proved: Screen Sharing reachability over the tailnet, and refusal on a LAN address with fresh flows (existing pf states survive a flush, so these need new connections); NordVPN on and off on `sol`; the real `pfctl -s rules` text against Rig's own normalisation, which the rehearsal compared with `pfctl -nvf` and not through Rig; and any `rig apply --sudo`. `sol` has no restriction installed and needs its own attended rehearsal before its `rig apply --sudo`.
+
 ### Outstanding concerns
 
 - The rule normalisation that compares `pfctl -a … -s rules` output with the rendered anchor is proven only against a fixture. Real `pfctl` display formatting must be confirmed in live acceptance; a mismatch would fail apply safely rather than leave rules unloaded.
-- Live acceptance on `terra` and `sol` is withheld and unrun: tailnet SSH and `vnc://`, LAN refusal, survival across restart, and NordVPN on `sol`.
+- Live acceptance is partly run. On `terra`, the attended rehearsal proved the loaded kernel rules, their survival across a restart, tailnet SSH throughout, and the no-Rig rollback and restore. Still outstanding are `vnc://` over the tailnet, LAN refusal with fresh flows, NordVPN on `sol`, `sol`'s own rehearsal, and `rig apply --sudo` on either Mac.
 - The address match is range-based, so a neighbour on a carrier-grade NAT or hotspot network that gives the Mac a `100.64.0.0/10` address can reach the declared port; see [Range correction](#range-correction).
 - If a future macOS drops Apple's `com.apple/*` anchor point, the anchor stops being evaluated and only `apply --sudo` notices. This residual risk is recorded in the ADR.
 - `rig show ITEM --format json` uses the existing generic label converter, which splits raw `key=value` lines such as `port=tcp:5900` at the colon. This is pre-existing behaviour shared by every resource kind, and was left unchanged as outside this record.
