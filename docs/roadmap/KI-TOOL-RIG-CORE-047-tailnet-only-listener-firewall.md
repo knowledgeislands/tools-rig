@@ -10,7 +10,7 @@ blocks: []
 blocked_by: []
 baseline_ref: 39499cd6566b2fa02f9c66476eda53f052ccb351
 created_at: 2026-10-13T22:48:41Z
-updated_at: 2026-10-19T21:37:25Z
+updated_at: 2026-10-19T22:03:13Z
 ---
 
 # KI-TOOL-RIG-CORE-047: Tailnet-Only Listener Firewall
@@ -219,10 +219,33 @@ Root holds Apple's boot ruleset, which calls only `com.apple/*`. The helper has 
 
 **Follow-up, not delivered here: NordVPN bypasses the anchor.** When NordVPN connects, its helper replaces root's main ruleset with its own. That ruleset does not call `com.apple/*`, so the Rig anchor stays loaded but is never evaluated, and Screen Sharing is exposed beyond the tailnet for as long as the connection lasts. Under its block-by-default rules, tailnet SSH and Tailscale may also depend on what NordVPN passes. The daemon's `WatchPaths` on `/etc/pf.conf` does not fire, because the helper loads its ruleset without editing that file. `apply --sudo` and the attended post-apply check see the bypass only while it lasts; unprivileged doctor cannot see it at all. Deciding how Rig detects or survives a replaced root ruleset, whether by a periodic re-assertion (FW-PERSIST's alternative), a check of root's calls, or a NordVPN-side setting, needs its own record. That record should start from the live NordVPN on-and-off check above, which is still outstanding.
 
+#### Attended apply on `sol`, 19 October 2026
+
+Kris applied `[firewall.screen-sharing-tailnet]` to `sol` at its own console from 22:50 to 23:06 BST, running the chezmoi work's sol-apply sequence block by block. Terminal S was a plain shell on `sol`; terminal T was `ssh -A -t terra` from `sol`, and each T run opened a fresh SSH connection and fresh port probes. Kris pasted this evidence:
+
+- **S1, declaration.** The rendered `55-ports.toml` matched the reviewed SHA-256 `7331ebae…67c2` and was applied alone, and `rig apply --dry-run` planned the firewall.
+- **T before the apply.** SSH passed, daemon absent. Tailnet 5900 answered (`RFB 003.889`). LAN `192.168.1.37` 5900 answered and LAN 22 was open.
+- **S2, pre-apply gate: READY.** pf was disabled, the root `NordVPN` anchor was empty and uncalled, Apple's `200.AirDrop` and `250.ApplicationFirewall` anchors held 0 rules, and no VPN was active.
+- **S3, apply.** `rig apply --sudo --target firewall:screen-sharing-tailnet` reported completed=1, failed=0.
+- **S4, post-apply check: PROTECTED.** Every field was yes. The anchor held 8 rules matching the file, and both enable references belonged to `pfctl`.
+- **T after the apply.** SSH passed, daemon loaded. Tailnet 5900 answered; LAN 5900 was blocked and LAN 22 stayed open.
+- **U, undo rehearsal: UNDONE.** The daemon was booted out, the anchor's rules went to 0, both files moved to `/var/root/rig-firewall-undo/20261019T225608/`, and pf was disabled. T afterwards matched T before the apply.
+- **Re-apply.** The gate first refused with `the Rig anchor is already loaded`; see the first follow-up below. With the gate corrected, the re-apply completed=1, failed=0, S4 was PROTECTED again, and T matched T after the first apply.
+- **R, Rig's view.** `rig doctor` reported findings=3, the same three as before the apply (utm through mas, the `default-application.toml` handler drift and the historical TOML-handler failure), with no firewall finding. The R block as written hung; see the second follow-up below. A plain `rig doctor` completed.
+- **V, end to end.** From `terra`, Finder's Connect to Server opened `vnc://100.90.130.74`.
+
+This proves on `sol` what the `terra` rehearsal left open: `rig apply --sudo` itself, twice; Rig's reread of the loaded rules against real `pfctl -s rules` output, since apply completes only when the reread matches the rendered anchor; Screen Sharing over the tailnet, both by its RFB greeting and by `vnc://`; refusal on the LAN address with fresh flows while LAN SSH stays open; and the full undo back to the state before the apply, including `pfctl -d` when only `pfctl` holds enable references. NordVPN was off throughout, so its bypass above is still unproved either way.
+
+**Follow-up, not delivered here: a pre-apply gate must test the Rig anchor's contents.** After the undo flushed the anchor with `-F rules`, and even after `-F all` left it with 0 rules, nat, tables and sub-anchors, macOS kept the empty `com.apple/uk.me.kris.rig.firewall.screen-sharing` listed under `com.apple`, exactly as it keeps the empty AirDrop and ApplicationFirewall anchors. A name stays listed until a restart, so a gate that refuses on the name refuses every re-apply after an undo. The sequence's S2 and S3 gate was corrected at the console to refuse only if the Rig anchor holds rules, nat, tables or anchors. Rig's own apply path does not test anchor names, so only attended sequences are affected; any future gate or runbook should test contents.
+
+**Follow-up, not delivered here: never hide stderr from an attended `rig doctor`.** The R block discarded stderr and filtered stdout, so a prompt Rig wrote was invisible and the block appeared to hang. An attended check runs `rig doctor` with stderr visible, and filters only a copy of stdout if it filters at all.
+
+**Follow-up, not delivered here: NordVPN on `terra`.** `terra`'s interaction with NordVPN is still open. A separate read-only run checks it.
+
 ### Outstanding concerns
 
-- The rule normalisation that compares `pfctl -a … -s rules` output with the rendered anchor is proven only against a fixture. Real `pfctl` display formatting must be confirmed in live acceptance; a mismatch would fail apply safely rather than leave rules unloaded.
-- Live acceptance is partly run. On `terra`, the attended rehearsal proved the loaded kernel rules, their survival across a restart, tailnet SSH throughout, and the no-Rig rollback and restore. Still outstanding are `vnc://` over the tailnet, LAN refusal with fresh flows, NordVPN on `sol`, `sol`'s own rehearsal, and `rig apply --sudo` on either Mac.
+- Live acceptance is run on `sol` apart from NordVPN. The `terra` rehearsal proved the loaded kernel rules, their survival across a restart and the no-Rig rollback and restore; the [attended apply on `sol`](#attended-apply-on-sol-19-october-2026) proved `rig apply --sudo`, Rig's reread against real `pfctl` output, `vnc://` over the tailnet, LAN refusal with fresh flows and the undo. Still outstanding are NordVPN on and off on either Mac, and `rig apply --sudo` on `terra`, whose restriction predates Rig's records.
+- Two lessons from the `sol` apply for attended sequences, recorded in that section: a gate tests the Rig anchor's contents, not its listed name, and an attended `rig doctor` never hides stderr.
 - A NordVPN connection on `sol` replaces root's pf ruleset and bypasses the anchor; see [Read-only preflight on `sol`](#read-only-preflight-on-sol-19-october-2026). It needs a follow-up record.
 - The address match is range-based, so a neighbour on a carrier-grade NAT or hotspot network that gives the Mac a `100.64.0.0/10` address can reach the declared port; see [Range correction](#range-correction).
 - If a future macOS drops Apple's `com.apple/*` anchor point, the anchor stops being evaluated and only `apply --sudo` notices. This residual risk is recorded in the ADR.
