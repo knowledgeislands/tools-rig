@@ -10,7 +10,7 @@ blocks: []
 blocked_by: []
 baseline_ref: 39499cd6566b2fa02f9c66476eda53f052ccb351
 created_at: 2026-10-13T22:48:41Z
-updated_at: 2026-10-19T22:03:13Z
+updated_at: 2026-10-19T22:14:04Z
 ---
 
 # KI-TOOL-RIG-CORE-047: Tailnet-Only Listener Firewall
@@ -217,7 +217,7 @@ The root check printed:
 
 Root holds Apple's boot ruleset, which calls only `com.apple/*`. The helper has loaded a root-level `NordVPN` anchor since boot, but no root rule calls it, so pf does not evaluate it. Enabling pf now turns on only Apple's empty anchors and this record's anchor. `sol`'s attended sequence refuses unless that is still so, and unless NordVPN is neither running nor connected, immediately before `rig apply --sudo`. Afterwards it checks that root still calls `com.apple/*` and lists the Rig anchor beneath it.
 
-**Follow-up, not delivered here: NordVPN bypasses the anchor.** When NordVPN connects, its helper replaces root's main ruleset with its own. That ruleset does not call `com.apple/*`, so the Rig anchor stays loaded but is never evaluated, and Screen Sharing is exposed beyond the tailnet for as long as the connection lasts. Under its block-by-default rules, tailnet SSH and Tailscale may also depend on what NordVPN passes. The daemon's `WatchPaths` on `/etc/pf.conf` does not fire, because the helper loads its ruleset without editing that file. `apply --sudo` and the attended post-apply check see the bypass only while it lasts; unprivileged doctor cannot see it at all. Deciding how Rig detects or survives a replaced root ruleset, whether by a periodic re-assertion (FW-PERSIST's alternative), a check of root's calls, or a NordVPN-side setting, needs its own record. That record should start from the live NordVPN on-and-off check above, which is still outstanding.
+**Follow-up, not delivered here: NordVPN bypasses the anchor.** When NordVPN connects, its helper replaces root's main ruleset with its own. That ruleset does not call `com.apple/*`, so the Rig anchor stays loaded but is never evaluated, and Screen Sharing is exposed beyond the tailnet for as long as the connection lasts. Under its block-by-default rules, tailnet SSH and Tailscale may also depend on what NordVPN passes. The daemon's `WatchPaths` on `/etc/pf.conf` does not fire, because the helper loads its ruleset without editing that file. `apply --sudo` and the attended post-apply check see the bypass only while it lasts; unprivileged doctor cannot see it at all. Deciding how Rig detects or survives a replaced root ruleset, whether by a periodic re-assertion (FW-PERSIST's alternative), a check of root's calls, or a NordVPN-side setting, needs its own record. That record should start from the live NordVPN on-and-off check above, which is still outstanding. [KI-TOOL-RIG-CORE-068](KI-TOOL-RIG-CORE-068-replaced-pf-root-ruleset-bypass.md) is that record, captured on 19 October 2026 under TERRA-NORDVPN a).
 
 #### Attended apply on `sol`, 19 October 2026
 
@@ -240,13 +240,13 @@ This proves on `sol` what the `terra` rehearsal left open: `rig apply --sudo` it
 
 **Follow-up, not delivered here: never hide stderr from an attended `rig doctor`.** The R block discarded stderr and filtered stdout, so a prompt Rig wrote was invisible and the block appeared to hang. An attended check runs `rig doctor` with stderr visible, and filters only a copy of stdout if it filters at all.
 
-**Follow-up, not delivered here: NordVPN on `terra`.** `terra`'s interaction with NordVPN is still open. A separate read-only run checks it.
+**Follow-up, not delivered here: NordVPN on `terra`.** `terra`'s interaction with NordVPN is still open. A separate read-only run checked it and found the same bypass from the helper's template, and [KI-TOOL-RIG-CORE-068](KI-TOOL-RIG-CORE-068-replaced-pf-root-ruleset-bypass.md) now owns detecting it.
 
 ### Outstanding concerns
 
 - Live acceptance is run on `sol` apart from NordVPN. The `terra` rehearsal proved the loaded kernel rules, their survival across a restart and the no-Rig rollback and restore; the [attended apply on `sol`](#attended-apply-on-sol-19-october-2026) proved `rig apply --sudo`, Rig's reread against real `pfctl` output, `vnc://` over the tailnet, LAN refusal with fresh flows and the undo. Still outstanding are NordVPN on and off on either Mac, and `rig apply --sudo` on `terra`, whose restriction predates Rig's records.
 - Two lessons from the `sol` apply for attended sequences, recorded in that section: a gate tests the Rig anchor's contents, not its listed name, and an attended `rig doctor` never hides stderr.
-- A NordVPN connection on `sol` replaces root's pf ruleset and bypasses the anchor; see [Read-only preflight on `sol`](#read-only-preflight-on-sol-19-october-2026). It needs a follow-up record.
+- A NordVPN connection on `sol` replaces root's pf ruleset and bypasses the anchor; see [Read-only preflight on `sol`](#read-only-preflight-on-sol-19-october-2026). [KI-TOOL-RIG-CORE-068](KI-TOOL-RIG-CORE-068-replaced-pf-root-ruleset-bypass.md) owns detecting it.
 - The address match is range-based, so a neighbour on a carrier-grade NAT or hotspot network that gives the Mac a `100.64.0.0/10` address can reach the declared port; see [Range correction](#range-correction).
 - If a future macOS drops Apple's `com.apple/*` anchor point, the anchor stops being evaluated and only `apply --sudo` notices. This residual risk is recorded in the ADR.
 - `rig show ITEM --format json` uses the existing generic label converter, which splits raw `key=value` lines such as `port=tcp:5900` at the colon. This is pre-existing behaviour shared by every resource kind, and was left unchanged as outside this record.
