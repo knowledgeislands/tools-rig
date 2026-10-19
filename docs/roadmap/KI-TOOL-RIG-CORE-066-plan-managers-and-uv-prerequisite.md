@@ -6,14 +6,14 @@ purpose: corrective
 theme: rig
 kind: deliver
 horizon: now
-status: ready
+status: awaiting-review
 priority: medium
 size: s
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: d0ea7430d4dd016596459b25c6612a30d70e4666
 created_at: 2026-10-19T20:49:28Z
-updated_at: 2026-10-19T22:55:30Z
+updated_at: 2026-10-19T23:08:40Z
 ---
 
 # Doctor Reports the Selected Plan's Managers, and uv Installs Before Its Tools
@@ -45,11 +45,11 @@ Re-read on 19 October 2026 at baseline `cc4e993545d3f1ba792653d88988446e6558ae16
 
 ## Steps
 
-- [ ] Add a failing fixture test to `tests/rig-bootstrap-staging.bats`: a mise-hosted `uv` tool and a uv-bound consumer that `requires = ["uv"]`, with uv absent until `mise install uv` runs. Confirm it fails with `provider 'uv' executable is unavailable` before any change.
-- [ ] Add `uv:mise:tool:uv|uv:mise:tool:uv@*` to the deferral cases in `rig_apply_provider_prerequisite` (`src/rig/21-provider-state.bash`), and reassemble `bin/rig`.
-- [ ] Add a companion test proving a uv consumer without `requires = ["uv"]` is still refused, so the deferral stays explicit.
-- [ ] Align RIG-ORCH-018 in `docs/specs/orchestration.md` to name the mise uv prerequisite and its evidence.
-- [ ] Run the complete local gate.
+- [x] Add a failing fixture test to `tests/rig-bootstrap-staging.bats`: a mise-hosted `uv` tool and a uv-bound consumer that `requires = ["uv"]`, with uv absent until `mise install uv` runs. Confirm it fails with `provider 'uv' executable is unavailable` before any change.
+- [x] Add `uv:mise:tool:uv|uv:mise:tool:uv@*` to the deferral cases in `rig_apply_provider_prerequisite` (`src/rig/21-provider-state.bash`), and reassemble `bin/rig`.
+- [x] Add a companion test proving a uv consumer without `requires = ["uv"]` is still refused, so the deferral stays explicit.
+- [x] Align RIG-ORCH-018 in `docs/specs/orchestration.md` to name the mise uv prerequisite and its evidence.
+- [x] Run the complete local gate.
 
 ## Files touched
 
@@ -85,6 +85,39 @@ None; no guide enumerates the deferral cases.
 ### Roadmap
 
 This record moves to Awaiting review at delivery.
+
+## Review
+
+### Delivered
+
+Within the narrowed boundary recorded under Current state: a first `rig apply` now installs uv through a declared, selected mise prerequisite before preflighting the uv tools that require it, and still refuses a uv consumer that does not declare `requires = ["uv"]`. G2, the doctor manager list, was not delivered; it waits on the RIG-TRIAGE query. Baseline `d0ea7430d4dd016596459b25c6612a30d70e4666`; the delivery commit follows it. Nothing was applied live.
+
+### Change Summary
+
+- `src/rig/21-provider-state.bash`: `rig_apply_provider_prerequisite` gains the `uv:mise:tool:uv` and `uv:mise:tool:uv@*` deferral cases; `bin/rig` reassembled.
+- `tests/rig-bootstrap-staging.bats`: a `write_uv_fixture` helper and two tests, the mise uv staging order and the refusal without an explicit `requires`.
+- `docs/specs/orchestration.md`: RIG-ORCH-018 names the mise uv prerequisite and its evidence.
+- Deviation: G2 is out of this delivery because its premise does not match the code (Current state); no other deviation.
+
+### Verification
+
+- New staging test failed before the code change with `provider 'uv' executable is unavailable`, confirming G3 by fixture, and passes after it, with `mise install uv` logged before `uv tool install ruff`.
+- Refusal companion and the eight existing staging tests pass, including the two using uv as an unrelated missing provider.
+- `bats tests/ </dev/null`: 584 of 584 pass.
+- `ki repo audit --repo .`: no failures; warnings are the pre-existing `size` migration-window notes and judgement items.
+- shellcheck, `bash -n` on every script, `scripts/assemble-rig --check`, `scripts/benchmark-rig`, `scripts/smoke-native-providers`, `mandoc -T lint man/rig.1` and `git diff --check`: pass.
+
+### Outstanding concerns
+
+G2 is undelivered and needs Kris's disposition: fold it into [KI-TOOL-RIG-CORE-067](KI-TOOL-RIG-CORE-067-package-managers-as-catalogue-tools.md), whose per-manager finding is the useful part, or re-scope it here. The fix is proven by fixture only; the first real proof is the next attended fresh-Mac apply.
+
+### Post-change review
+
+The G3 goal holds: the deferral matrix now covers the one manager Kris's configuration hosts on mise but Rig did not defer. The change adds two case patterns and stays inside RIG-ORCH-018's explicit-prerequisite rule, so regression risk is low; every other preflight refusal is unchanged. Ready for acceptance review of G3, with G2's disposition open.
+
+### Mini recap
+
+Added uv-from-mise to apply's manager deferral, proved test-first, full gate green. G2 turned out to describe the configuration-failure path, so it went to Kris rather than into code. Learning route, not promoted: `bats --jobs` needs GNU parallel, absent on this Mac, so the developer guide's serial `bats tests/` stays the gate.
 
 ## Discussion
 

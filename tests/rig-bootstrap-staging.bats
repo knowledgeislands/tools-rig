@@ -223,3 +223,92 @@ SCRIPT
   [[ "$output" == *'later-preflight-status=2'* ]] || false
   [ ! -e "$CALL_LOG" ]
 }
+
+write_uv_fixture() {
+  cat >"$FAKE_BIN/mise" <<'SCRIPT'
+#!/usr/bin/env bash
+printf 'mise\t%s\n' "$*" >>"$RIG_TEST_LOG"
+case "$1:$2" in
+  install:uv)
+    cp "$FAKE_BIN/uv.ready" "$FAKE_BIN/uv"
+    chmod +x "$FAKE_BIN/uv"
+    ;;
+  which:*) exit 1 ;;
+esac
+SCRIPT
+  cat >"$FAKE_BIN/uv.ready" <<'SCRIPT'
+#!/usr/bin/env bash
+printf 'uv\t%s\n' "$*" >>"$RIG_TEST_LOG"
+case "$1:$2" in
+  tool:list) exit 0 ;;
+esac
+SCRIPT
+  chmod +x "$FAKE_BIN/mise"
+
+  cat >"$CONFIG_HOME/rig.toml" <<CONFIG
+[rig]
+schema = 1
+default-profile = "default"
+
+[category.core]
+name = "Core"
+purpose = "Exercise the mise uv prerequisite"
+
+[tool.uv]
+name = "uv"
+category = "core"
+purpose = "Provide uv"
+rationale = "The selected Python tool requires uv"
+platforms = ["any"]
+install.provider = "mise"
+install.kind = "tool"
+install.locator = "uv"
+install.platforms = ["any"]
+
+[tool.ruff]
+name = "Ruff"
+category = "core"
+purpose = "Exercise uv installation"
+rationale = "The fixture needs one uv tool"
+platforms = ["any"]
+requires = ["uv"]
+install.provider = "uv"
+install.kind = "tool"
+install.locator = "ruff"
+install.platforms = ["any"]
+
+[profile.default]
+tools = ["uv", "ruff"]
+
+[provider.mise]
+executable = "$FAKE_BIN/mise"
+
+[provider.uv]
+executable = "$FAKE_BIN/uv"
+CONFIG
+}
+
+@test "apply installs a declared mise uv prerequisite before its uv tools" {
+  write_uv_fixture
+
+  run_rig apply
+
+  [ "$status" -eq 0 ] || { printf '%s\n' "$output" >&3; false; }
+  grep -Fqx $'mise\tinstall uv' "$CALL_LOG" || false
+  grep -Fqx $'uv\ttool install ruff' "$CALL_LOG" || false
+  [ "$(grep -n $'^mise\tinstall uv$' "$CALL_LOG" | cut -d: -f1)" -lt "$(grep -n $'^uv\ttool install ruff$' "$CALL_LOG" | cut -d: -f1)" ] || false
+  rig_test_report_contains "$output" $'uv\tmise\tcompleted\t-' || false
+  rig_test_report_contains "$output" $'ruff\tuv\tcompleted\t-' || false
+}
+
+@test "apply refuses a missing uv without an explicit selected mise prerequisite" {
+  write_uv_fixture
+  sed '/requires = \["uv"\]/d' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/without-dependency"
+  mv "$CONFIG_HOME/without-dependency" "$CONFIG_HOME/rig.toml"
+
+  run_rig apply --dry-run
+
+  [ "$status" -eq 2 ] || false
+  [[ "$output" == *"provider 'uv' executable is unavailable"* ]] || false
+  [ ! -e "$CALL_LOG" ] || false
+}

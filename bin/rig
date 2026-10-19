@@ -6721,7 +6721,8 @@ rig_apply_provider_prerequisite() {
       case "$adapter:$provider:$kind:$locator" in
         mise:homebrew:formula:mise|mise:homebrew:formula:homebrew/core/mise|\
           mas:homebrew:formula:mas|mas:homebrew:formula:homebrew/core/mas|\
-          npm:mise:tool:node|npm:mise:tool:node@*)
+          npm:mise:tool:node|npm:mise:tool:node@*|\
+          uv:mise:tool:uv|uv:mise:tool:uv@*)
           rig_tool_requires_tool "$consumer" "$prerequisite" && return 0
           ;;
       esac

@@ -26,13 +26,13 @@ _Evidence:_ `rig_resolve_profile` accepts an explicit profile independently of t
 
 ### RIG-ORCH-018 — Declared apply prerequisites
 
-Apply MUST preflight the selected plan before mutation and MAY defer only a missing built-in manager with a selected, explicitly required supported prerequisite. Homebrew itself MUST already be available. A declared Homebrew mise prerequisite, a declared Homebrew mas prerequisite and a declared mise node prerequisite MAY make later mise, mas and npm work available; Rig MUST recheck availability before dependent dispatch and MUST NOT suppress unrelated preflight failures. Targeted apply MUST NOT expand to unrelated manager declarations. Rig MUST NOT read a Brewfile or manage Homebrew autoupdate policy.
+Apply MUST preflight the selected plan before mutation and MAY defer only a missing built-in manager with a selected, explicitly required supported prerequisite. Homebrew itself MUST already be available. A declared Homebrew mise prerequisite, a declared Homebrew mas prerequisite, a declared mise node prerequisite and a declared mise uv prerequisite MAY make later mise, mas, npm and uv work available; Rig MUST recheck availability before dependent dispatch and MUST NOT suppress unrelated preflight failures. Targeted apply MUST NOT expand to unrelated manager declarations. Rig MUST NOT read a Brewfile or manage Homebrew autoupdate policy.
 
 _Conformance:_ conforming
 
 _Verify:_ Isolated Bats fixtures exercise successful, invalid and dry-run behavior without changing the live workstation.
 
-_Evidence:_ `rig_apply_provider_prerequisite`, `rig_preflight_apply` and `tests/rig-bootstrap-staging.bats` cover selected closure, staging, rechecks and failures.
+_Evidence:_ `rig_apply_provider_prerequisite`, `rig_preflight_apply` and `tests/rig-bootstrap-staging.bats` cover selected closure, staging, rechecks and failures, including the mise uv prerequisite and its refusal without an explicit `requires`.
 
 ### RIG-ORCH-007 — Profile composition
 
