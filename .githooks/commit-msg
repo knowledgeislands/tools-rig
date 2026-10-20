@@ -1,0 +1,10 @@
+#!/bin/sh
+# Canonical commit-msg for a ki-repo-tools repository without a package.json, composed by ki-repo.
+# Copied byte-exact from ki-repo-tools's assets/githooks/no-package/commit-msg; HOOK-4 compares it, so do not edit it here.
+if ! command -v ki >/dev/null 2>&1; then
+  echo "commit-msg: the commit gate cannot run; not on PATH: ki" >&2
+  echo "commit-msg: install it, then commit again." >&2
+  echo "commit-msg: do not bypass with --no-verify; a gate that cannot run is unknown, not a pass." >&2
+  exit 1
+fi
+ki git check-message "$1" || exit 1

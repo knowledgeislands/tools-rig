@@ -36,6 +36,11 @@ license = "MIT"
 
 [skills.ki-repo-tools]
 
+[[skills.ki-repo-tools.assembled]]
+artifact = "bin/rig"
+sources = ["src/rig"]
+check = ["scripts/assemble-rig", "--check"]
+
 # -----------------------------------------------------------------------------
 # Governance and runtime
 # -----------------------------------------------------------------------------
