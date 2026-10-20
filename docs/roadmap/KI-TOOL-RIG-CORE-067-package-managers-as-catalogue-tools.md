@@ -5,7 +5,7 @@ title: Managers as catalogue tools
 purpose: capability
 theme: rig
 kind: deliver
-status: draft
+status: ready
 horizon: next
 priority: medium
 size: l
@@ -13,7 +13,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-19T20:49:28Z
-updated_at: 2026-10-20T05:03:22Z
+updated_at: 2026-10-20T22:21:02Z
 ---
 
 # Package Managers as Catalogue Tools
@@ -53,15 +53,15 @@ Grounded at `973073e` on 20 October 2026 from source only.
 
 ## Steps
 
-- [ ] **Gate.** The five queries answered and this plan adjusted to the answers. Without that, stop.
-- [ ] **1. Decision Record.** Subject to PLAN067-ADR, write ADR-KI-TOOL-RIG-011 (proposed): managers are catalogue tools that declare `provides`; Rig derives manager edges from the consumer's bound provider; Homebrew is observed and never installed.
+- [x] **Gate.** The five queries answered and this plan adjusted to the answers. Without that, stop.
+- [x] **1. Decision Record.** Per PLAN067-ADR, write [ADR-KI-TOOL-RIG-011](../decisions/ADR-KI-TOOL-RIG-011-package-managers-as-catalogue-tools.md) (proposed): managers are catalogue tools that declare `provides`; Rig derives manager edges from the consumer's bound provider; Homebrew is observed and never installed. Written and indexed with the Ready sign-off, as the owner directed; delivery marks it current once the code lands.
 - [ ] **2. `provides` field.** Accept optional `provides` on `[tool.*]`, naming one of the built-in manager adapters (`homebrew`, `mas`, `mise`, `npm`, `uv`, `chezmoi`). Reject an unknown manager, two tools providing the same manager, and `provides` on a variant. A tool with `provides = "homebrew"` needs no installation binding.
-- [ ] **3. Derived edges.** During plan resolution, for each selected tool bound to a built-in manager that a selected tool provides, add an ordering edge to the providing tool, using the binding for the resolved platform. Edges join hand-written `requires` per PLAN067-EDGES and enter cycle detection. They are never written into the public projection.
-- [ ] **4. Data-driven deferral.** `rig_apply_provider_prerequisite` defers a missing manager when the providing tool is earlier in the selected plan, whether by derived or declared edge. The fixed matrix stays only as PLAN067-MATRIX decides. Homebrew is never deferred: a tool providing it is observation-only.
+- [ ] **3. Derived edges.** During plan resolution, for each selected tool bound to a built-in manager that a selected tool provides, add an ordering edge to the providing tool, using the binding for the resolved platform. Edges sit beside hand-written `requires` (PLAN067-EDGES): the plan order is their union, a duplicate is accepted silently, both enter cycle detection, and `rig explain` labels each edge `derived` or `declared`. They are never written into the public projection.
+- [ ] **4. Data-driven deferral.** `rig_apply_provider_prerequisite` defers a missing manager when the providing tool is earlier in the selected plan, whether by derived or declared edge. The fixed matrix stays as the fallback for a manager no selected tool provides (PLAN067-MATRIX). Homebrew is never deferred: a tool providing it is observation-only.
 - [ ] **5. One manager-level finding.** A missing provided manager reports once, on the providing tool (`homebrew: unavailable (manager-missing); action=install-homebrew`, other managers `action=run-rig-apply`), and each dependant reports `unknown (blocked-by:<manager tool>)`. Without `provides`, today's per-tool finding stays.
 - [ ] **6. Doctor manager report (G2).** On the loaded-configuration path, doctor adds one `managers` block listing each manager the selected plan binds, built-in and custom, with `available` or `unavailable`, the owning tool or `provider:<id>`, and an action. A custom provider's availability is its executable's. The broken-configuration path keeps its fixed list, extended with `mas`.
-- [ ] **7. Missing-provider check (G4).** Subject to PLAN067-OPTIN, `rig doctor` warns `manager-not-declared:<manager>` for a selected tool bound to a built-in manager that no selected tool provides.
-- [ ] **8. Fixtures.** Extend `tests/rig-provider-fixtures.bats` (or a new `tests/rig-managers.bats`) with `rig_test_provider` stubs: derived order without `requires`, Homebrew observed and never installed, one manager finding with blocked dependants, deferral through a derived edge, duplicate and unknown `provides` rejected, variant platforms choosing different managers, the doctor block including a custom provider, and an unchanged configuration without `provides`.
+- [ ] **7. Missing-provider check (G4).** Only once the catalogue declares at least one `provides` (PLAN067-OPTIN), `rig doctor` warns `manager-not-declared:<manager>` for a selected tool bound to a built-in manager that no selected tool provides.
+- [ ] **8. Fixtures.** Extend `tests/rig-provider-fixtures.bats` (or a new `tests/rig-managers.bats`) with `rig_test_provider` stubs: derived order without `requires`, a duplicate hand-written edge accepted and labelled `declared`, the fixed-matrix fallback with no `provides`, Homebrew observed and never installed, one manager finding with blocked dependants, deferral through a derived edge, duplicate and unknown `provides` rejected, variant platforms choosing different managers, the doctor block including a custom provider, and an unchanged configuration without `provides`.
 - [ ] **9. Documents and assembly.** Amend the specifications and guides under [Documentation impact](#documentation-impact), add a CHANGELOG entry, run `scripts/assemble-rig`, then the gate under [Verify](#verify).
 
 ## Files touched
@@ -71,7 +71,7 @@ Grounded at `973073e` on 20 October 2026 from source only.
 - `src/rig/22-observation.bash`, `src/rig/30-commands.bash` — manager finding, doctor block, warning.
 - `bin/rig` — regenerated, never edited.
 - `tests/` — the fixture cases in step 8.
-- `docs/decisions/ADR-KI-TOOL-RIG-011-*.md` (subject to PLAN067-ADR), `docs/specs/catalogue.md`, `docs/specs/orchestration.md`, `docs/specs/state.md`, `docs/guides/user/getting-started.md`, `docs/guides/user/commands.md`, `man/rig.1`, `CHANGELOG.md`.
+- `docs/decisions/ADR-KI-TOOL-RIG-011-package-managers-as-catalogue-tools.md` and `docs/decisions/README.md` (written at Ready; delivery sets it current), `docs/specs/catalogue.md`, `docs/specs/orchestration.md`, `docs/specs/state.md`, `docs/guides/user/getting-started.md`, `docs/guides/user/commands.md`, `man/rig.1`, `CHANGELOG.md`.
 - This record.
 
 ## Verify
@@ -82,17 +82,17 @@ Grounded at `973073e` on 20 October 2026 from source only.
 
 ## Dependencies / blocks
 
-Not blocked. It supersedes the hard-coded uv-from-mise deferral that [KI-TOOL-RIG-CORE-066](https://github.com/knowledgeislands/tools-rig/blob/028aaae74b69b24e70fe5b5f2307d8b53a16653f/docs/roadmap/KI-TOOL-RIG-CORE-066-plan-managers-and-uv-prerequisite.md) added, subject to PLAN067-MATRIX, and owns that record's G2.
+Not blocked. It supersedes the hard-coded uv-from-mise deferral that [KI-TOOL-RIG-CORE-066](https://github.com/knowledgeislands/tools-rig/blob/028aaae74b69b24e70fe5b5f2307d8b53a16653f/docs/roadmap/KI-TOOL-RIG-CORE-066-plan-managers-and-uv-prerequisite.md) added, which stays as the fallback for a manager no catalogue tool provides (PLAN067-MATRIX), and owns that record's G2.
 
 ## Documentation impact
 
 ### Decision Records
 
-ADR-KI-TOOL-RIG-011, subject to PLAN067-ADR. [ADR-KI-TOOL-RIG-005](../decisions/ADR-KI-TOOL-RIG-005-provider-execution-contract.md)'s native-tool boundary is unchanged: Rig still never installs Homebrew or orchestrates Brewfiles.
+[ADR-KI-TOOL-RIG-011](../decisions/ADR-KI-TOOL-RIG-011-package-managers-as-catalogue-tools.md), written and indexed at Ready as `proposed`; delivery sets it `current`. [ADR-KI-TOOL-RIG-005](../decisions/ADR-KI-TOOL-RIG-005-provider-execution-contract.md)'s native-tool boundary is unchanged: Rig still never installs Homebrew or orchestrates Brewfiles.
 
 ### Specifications
 
-RIG-CAT-004 gains derived manager edges and a new catalogue requirement for `provides` (next free `RIG-CAT-010`); RIG-ORCH-018 changes from a fixed deferral list to provider-derived deferral; a new state requirement covers the manager finding and doctor block (next free `RIG-STATE-048`, or the next after [KI-TOOL-RIG-CORE-053](KI-TOOL-RIG-CORE-053-macos-menu-bar-declarations.md) if that lands first).
+RIG-CAT-004 gains derived manager edges and a new catalogue requirement for `provides` (next free `RIG-CAT-010`); RIG-ORCH-018 changes from a fixed deferral list to provider-derived deferral; a new state requirement covers the manager finding and doctor block (next free `RIG-STATE-049`, since [KI-TOOL-RIG-CORE-053](KI-TOOL-RIG-CORE-053-macos-menu-bar-declarations.md) took `RIG-STATE-048`).
 
 ### Guides
 
@@ -109,3 +109,5 @@ A no-code interim exists: declare `[tool.homebrew]` as a catalogue-only public t
 G2 fold: KI-TOOL-RIG-CORE-066's G2 asked doctor to derive its manager list from the selected plan, covering mas and custom providers, with an action when one is missing. Its fixed `brew uv mise npm chezmoi` line runs only on doctor's configuration-failure path, where no plan exists; with a loaded configuration a missing manager surfaces per dependent tool as `unavailable` with `action=install-or-configure-provider`. Planning decides where the plan-derived manager report sits on the loaded-configuration path, how custom providers report availability, and whether the broken-configuration line keeps its fixed list.
 
 Adoption: Kris's OVERNIGHT decision of 20 October 2026 at 00:28 BST ([mac-studio-setup decisions log](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.mac-studio-setup/decisions.md)) authorised acting on the [triage review](/Users/krisbrown/.local/state/ki/agents/mac-studio-setup/triage-review.report.md)'s high-confidence recommendations: RIG-MANAGERS a), confidence high, folds G2 here, and RIG-TRIAGE's Next adoption, confidence high, follows because catalogue-derived manager prerequisites and one manager-level finding sit inside Rig's manager-of-managers boundary while platform variants and edge semantics need design before Ready.
+
+Gate: Kris's sign-off of 20 October 2026 at 23:16 BST in the [ways-of-working decisions log](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.ways-of-working/decisions.md), "query sign-offs, first batch", took PLAN067-READY as a) with the four recommended answers: PLAN067-EDGES a), derived manager edges sit beside hand-written `requires` and a duplicate is accepted silently; PLAN067-OPTIN a), the missing-provider check runs only once the catalogue declares a `provides`; PLAN067-MATRIX a), the fixed deferral matrix stays as the fallback for a manager no catalogue tool provides; PLAN067-ADR a), ADR-KI-TOOL-RIG-011 records the move. The plan above is adjusted to those answers and the record is Ready.
