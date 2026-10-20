@@ -26,7 +26,7 @@ A catalogue tool can declare `provides = "MANAGER"` for a built-in manager, Home
 
 The [rig site configuration design note](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.tools-burndown/design/rig-site-config.md), section 3, found package managers half-modelled. mas, mise, node, npm and uv are ordinary catalogue tools with hand-written `requires` links, but Homebrew, the manager behind 128 of Kris's 170 installation-bearing tools, sits outside the catalogue: it must pre-exist (RIG-ORCH-018), has no rationale or public card, and a missing Homebrew surfaces as one `unavailable` finding per dependent tool (G1). Nothing checks that a tool installed by mas, mise, npm or uv declares the matching `requires`, so a new App Store tool without `requires = ["mas"]` would fail a fresh-Mac apply with no warning (G4).
 
-Kris chose on 19 October 2026 (MANAGERS-AS-TOOLS a), [Tools burndown decisions log](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.tools-burndown/decisions.md)) to capture this model change as its own record, separate from the small fixes in [KI-TOOL-RIG-CORE-066](KI-TOOL-RIG-CORE-066-plan-managers-and-uv-prerequisite.md).
+Kris chose on 19 October 2026 (MANAGERS-AS-TOOLS a), [Tools burndown decisions log](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.tools-burndown/decisions.md)) to capture this model change as its own record, separate from the small fixes in [KI-TOOL-RIG-CORE-066](https://github.com/knowledgeislands/tools-rig/blob/4ca939fa230b3e9eb02d9a170491a544a51b3651/docs/roadmap/KI-TOOL-RIG-CORE-066-plan-managers-and-uv-prerequisite.mdCORE-066).
 
 ## Boundary
 
