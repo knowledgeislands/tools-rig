@@ -12,7 +12,7 @@ blocks: []
 blocked_by: []
 baseline_ref: 2054674ff4c58e87b16c3a38d6ee0961489d6960
 created_at: 2026-10-14T10:30:00Z
-updated_at: 2026-10-20T06:15:00Z
+updated_at: 2026-10-20T22:21:02Z
 ---
 
 # macOS Menu Bar Declarations
@@ -184,3 +184,5 @@ Origin: Kris Brown's request on 2026-10-14, investigated read-only on terra and 
 Adoption: Kris's OVERNIGHT decision of 20 October 2026 at 00:28 BST ([mac-studio-setup decisions log](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.mac-studio-setup/decisions.md)) authorised acting on the [triage review](/Users/krisbrown/.local/state/ki/agents/mac-studio-setup/triage-review.report.md)'s high-confidence recommendations: adopted into Next, confidence high, as a portable, explicitly requested observe-only resource, with current-host reads and status-item ordering still to shape. [KI-TOOL-RIG-CORE-056](KI-TOOL-RIG-CORE-056-menu-bar-order-persistence.md) stays a separate Future investigation; the suggested merge was not taken.
 
 Gate: the coordinator's decision of 2026-10-20 06:53 BST in the [ways-of-working decisions log](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.ways-of-working/decisions.md), under Kris's OVERNIGHT-BURNDOWN authority of 20 October 2026, directed delivery of this record. PLAN053-MODEL, PLAN053-LOGIN and PLAN053-READY were each taken as their recommended a): the user-domain `NSStatusItem` keys replace unit 1's current-host scope, unit 3 stays out, and the plan is Ready. PLAN053-READY carried medium confidence because this is the first observe-only setup resource; the owner should confirm that shape at review.
+
+Shape sign-off: Kris's sign-off of 20 October 2026 at 23:16 BST in the [ways-of-working decisions log](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.ways-of-working/decisions.md), "query sign-offs, first batch", took RIG-053-SHAPE as a): Kris accepts the observe-only shape as delivered. A menu bar layout is declared, status and doctor report its drift, apply skips it with the Command-drag reminder, and Rig never writes a menu bar value and never fails a run over one. This settles the shape PLAN053-READY left for review; it is not acceptance. The record stays Awaiting review until the broken pre-commit test hook is repaired, which the tools burndown owns.
