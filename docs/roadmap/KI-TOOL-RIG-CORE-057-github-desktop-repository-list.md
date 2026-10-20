@@ -4,12 +4,13 @@ area: CORE
 title: GitHub Desktop repository list
 purpose: capability
 theme: rig
-status: triage
+status: cancelled
+resolution: rejected
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-14T23:36:20Z
-updated_at: 2026-10-14T23:36:20Z
+updated_at: 2026-10-20T04:35:57Z
 ---
 
 # GitHub Desktop Repository List
@@ -34,9 +35,9 @@ The nearest precedent is `ki vscode`, which reconciles VS Code from the ki regis
 - In: a macOS Rig step, run by `rig apply` when GitHub Desktop is selected, that reads `~/workspaces/.mgit.toml` and the eight territory manifests it names, opens each listed checkout present on disk through the `github` shim with a pause between opens, and reports added, already-present and missing paths; idempotence, so a repeat run adds nothing; a dry-run listing; specification text and isolated tests with a stubbed shim and fixture manifests.
 - Out: removing or reordering GitHub Desktop entries; editing the app's IndexedDB or Local Storage; GitHub accounts, sign-in or credentials; cloning missing checkouts (mgit owns that); Linux and Windows.
 
-## Dependencies / blocks
+## Cancelled
 
-Not blocked; blocks nothing. Whether Rig reads mgit manifests directly or asks `mgit` for the list is a planning question; the product boundary keeps a person's paths in configuration, not in `bin/rig`.
+Approved by Kris on 20 October 2026 under SWEEP-CANCEL a), recorded in Knowledge Islands Principal `+/_WORK/ki.ways-of-working/decisions.md`: "I agree with sweep merge ... and also cancel the rig record". Rejected as won't do: the one-off GitHub Desktop reset on `sol` was done by hand, and a Rig step for it would run rarely. The idea is kept as a line on the [Rig theme page](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/Streams/Themes/rig.md) in Knowledge Islands Principal; this record has no Project. Nothing was built.
 
 ## Discussion
 

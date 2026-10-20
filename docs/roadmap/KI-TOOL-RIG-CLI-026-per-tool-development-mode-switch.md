@@ -5,17 +5,13 @@ title: Per-tool development mode switch
 purpose: capability
 theme: rig
 kind: deliver
-status: draft
-horizon: hold
-hold:
-  reason: parked
-  condition: Rig's held Techne-boundary work resumes, or Kris adopts the switch sooner
-  review: 2026-11-16
+status: cancelled
+resolution: rejected
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-14T09:36:23Z
-updated_at: 2026-10-14T09:36:23Z
+updated_at: 2026-10-20T04:35:57Z
 ---
 
 # Per-Tool Development Mode Switch
@@ -33,9 +29,9 @@ Kris Brown asked for this on 2026-10-14, choosing option (a) in the Techne threa
 - In: a `rig dev` command with `local` and `release` verbs, a tool name or `all`, and a read-only report of each tool's current mode; finding checkouts through `ki registry`; calling each tool's own `install.sh --link` for local mode and its release install for release mode; a warning naming tools that call each other in mixed modes; specifications and isolated tests.
 - Out: changing any tool's installer, which stays that tool's own hook; building or releasing tools; cloning missing checkouts; managing MCP servers, which run from their checkouts under mcporter.
 
-## Dependencies / blocks
+## Cancelled
 
-Not blocked; it blocks nothing.
+Approved by Kris on 20 October 2026 under SWEEP-RIG-026 a), recorded in Knowledge Islands Principal `+/_WORK/ki.ways-of-working/decisions.md`: "we can cancel the development mode switch ... There's already enough command surface". Rejected: each tool's own `install.sh --link` and release install stay the way to switch. The idea is kept as an Idea line on the [Rig theme page](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/Streams/Themes/rig.md) in Knowledge Islands Principal. Nothing was built.
 
 ## Discussion
 

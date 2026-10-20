@@ -5,17 +5,13 @@ title: Stale vega rig link
 purpose: corrective
 theme: rig
 kind: deliver
-status: draft
-horizon: hold
-hold:
-  reason: waiting-for
-  condition: The Techne Programme Hold lifts, so vega may be changed
-  review: 2026-11-16
+status: cancelled
+resolution: obsolete
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-14T09:36:23Z
-updated_at: 2026-10-14T09:36:23Z
+updated_at: 2026-10-20T04:35:57Z
 ---
 
 # Stale vega Rig Link
@@ -33,9 +29,9 @@ As reported on 14 October 2026, `~/.local/bin/rig` on `vega` still points at the
 - In: relinking `vega`'s `rig` through the checkout's `install.sh --link`, or a release install, and its manual page; verifying `rig --version` there.
 - Out: any other change on `vega`; running `rig apply` there; other hosts.
 
-## Dependencies / blocks
+## Cancelled
 
-Not blocked by other records; it waits on the Techne Programme Hold and blocks nothing.
+Approved by Kris on 20 October 2026 under SWEEP-CONVERT a), recorded in Knowledge Islands Principal `+/_WORK/ki.ways-of-working/decisions.md`: "I agree with sweep merge ... should become message records". This is a one-off machine fix on `vega`, not Rig product work, so under HANDOFF-AS-MESSAGE it is cancelled as obsolete as a record and goes as one line to `ki.agent-host`'s `messages.md` in Knowledge Islands Principal: relink `~/.local/bin/rig` and its manual page with `install.sh --link` or a release install, then check `rig --version`. Nothing on `vega` has changed.
 
 ## Discussion
 
