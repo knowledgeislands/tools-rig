@@ -5,14 +5,13 @@ title: Command-line convention departures
 purpose: debt
 theme: rig
 kind: deliver
-horizon: now
-status: awaiting-review
+status: done
 size: m
 blocks: []
 blocked_by: []
 baseline_ref: 2b4e2efda0d8ce7e62427e5d29d0e8d737ec065c
 created_at: 2026-10-18T19:22:21Z
-updated_at: 2026-10-20T01:55:00Z
+updated_at: 2026-10-20T04:23:51Z
 ---
 
 # Command-Line Convention Departures
@@ -143,8 +142,16 @@ The Goal holds: each of the four departures is fixed for every command that take
 
 One inventory-driven normaliser now gives Rig the house option grammar, documented on every aligned surface and in `RIG-PORT-014`, with isolated tests; no live machine was touched. Proposed learning route: none beyond the command-surface guide already updated.
 
+## Done
+
+Accepted 2026-10-20 by Kris Brown on the review packet above.
+
 ## Discussion
 
 Capture only; adoption, priority and plan belong to this repository. The fix is due at Rig's next change. Planning questions: whether `--format text|json` stays as Rig's form, with `--json` added as an alias, or the conventions reference settles one house form first; and whether `--` handling is confirmed absent by a test before it is added.
 
 Planned on 19 October 2026 under Kris's RIG-ORDER decision of that evening, option a ("All three are high confidence to do them"). The conventions reference already settles `--json` as the house form, so `--json` is added and `--format` kept as its equivalent. A direct probe confirmed `--` absent; the new tests prove the handling once it is added.
+
+### Acceptance
+
+Accepted on 20 October 2026 under ACCEPT-BUNDLE, SWEEP-ACCEPT-TOOLS-BURNDOWN a), as recorded in Knowledge Islands Principal `+/_WORK/ki.ways-of-working/decisions.md` (05:20 BST). Kris: "let's sweep through all the acceptance of the observatory, and then get everything that's been accepted so far pruned. Same for the tools burned down". The bundle covered exactly KI-TOOL-RIG-CLI-027, KI-TOOL-RIG-CORE-065 and KI-TOOL-RIG-CORE-066, after a blind review of each packet.

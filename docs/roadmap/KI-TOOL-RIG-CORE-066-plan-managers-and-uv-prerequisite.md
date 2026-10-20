@@ -5,15 +5,14 @@ title: uv prerequisite from mise
 purpose: corrective
 theme: rig
 kind: deliver
-horizon: now
-status: awaiting-review
+status: done
 priority: medium
 size: s
 blocks: []
 blocked_by: []
 baseline_ref: d0ea7430d4dd016596459b25c6612a30d70e4666
 created_at: 2026-10-19T20:49:28Z
-updated_at: 2026-10-19T23:58:00Z
+updated_at: 2026-10-20T04:23:51Z
 ---
 
 # uv Installs Through mise Before Its Tools
@@ -119,6 +118,10 @@ The G3 goal holds: the deferral matrix now covers the one manager Kris's configu
 
 Added uv-from-mise to apply's manager deferral, proved test-first, full gate green. G2 turned out to describe the configuration-failure path, so it went to Kris rather than into code. Learning route, not promoted: `bats --jobs` needs GNU parallel, absent on this Mac, so the developer guide's serial `bats tests/` stays the gate.
 
+## Done
+
+Accepted 2026-10-20 by Kris Brown on the review packet above.
+
 ## Discussion
 
 ### Approval
@@ -132,3 +135,7 @@ Kris's OVERNIGHT decision of 20 October 2026 at 00:28 BST ([mac-studio-setup dec
 ### Origin
 
 Planning should confirm G3 with a fixture test before changing code, and decide whether doctor's line keeps listing chezmoi when no tool binds the `chezmoi` provider. If KI-TOOL-RIG-CORE-067 is adopted first, its derived matrix may absorb G3 and leave only G2 here. Capture only; adoption, priority and plan belong to this repository.
+
+### Acceptance
+
+Accepted on 20 October 2026 under ACCEPT-BUNDLE, SWEEP-ACCEPT-TOOLS-BURNDOWN a), as recorded in Knowledge Islands Principal `+/_WORK/ki.ways-of-working/decisions.md` (05:20 BST). Kris: "let's sweep through all the acceptance of the observatory, and then get everything that's been accepted so far pruned. Same for the tools burned down". The bundle covered exactly KI-TOOL-RIG-CLI-027, KI-TOOL-RIG-CORE-065 and KI-TOOL-RIG-CORE-066, after a blind review of each packet.

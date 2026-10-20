@@ -5,15 +5,14 @@ title: Resource subject links
 purpose: capability
 theme: rig
 kind: deliver
-horizon: now
-status: awaiting-review
+status: done
 priority: medium
 size: m
 blocks: []
 blocked_by: []
 baseline_ref: fd3634cb486f7f35797238dda0a0a0171d68dfdc
 created_at: 2026-10-19T20:49:28Z
-updated_at: 2026-10-19T23:20:17Z
+updated_at: 2026-10-20T04:23:51Z
 ---
 
 # Resource Subject Links and Per-Profile Configured Tools
@@ -137,6 +136,10 @@ The goal holds: a consumer reads "configured on this host" per profile from `con
 
 Added an explicit subject link and reported it in `rig show` JSON, table and explanation, with a new RIG-QUERY-009 clause. Learning route, not promoted: storing the subject apart from `requires` let the explanation keep one `tool=` line for default applications while the link reuses prerequisite closure unchanged.
 
+## Done
+
+Accepted 2026-10-20 by Kris Brown on the review packet above.
+
 ## Discussion
 
 ### Approval
@@ -146,3 +149,7 @@ Kris, 19 October 2026 (TRIAGE-ALL, relayed by the mac-studio-setup State of play
 ### Origin
 
 Alternatives the design note weighed and set aside: deriving the flag from `requires` (wrong on the only live example), from a preference domain matching an application bundle identifier (needs declared bundle identities and covers no service or job; possible later sugar), a tool-side `configures` list (splits one fact across two tables), and the Dock-item filter meaning (would make configuration divergence a pure echo of tool divergence). The handoff's plain `configured: true|false` was the other option Kris did not take; the list keeps each flag auditable. Today's declared data gives the same answer on terra and sol for every tool, so the site's columns stay identical until Kris declares genuinely host-specific configuration. Planning should settle whether `[port.*]`, whose `owner = "tool:ID"` already names a tool, and Dock layouts should count as configuring resources. Capture only; adoption, priority and plan belong to this repository.
+
+### Acceptance
+
+Accepted on 20 October 2026 under ACCEPT-BUNDLE, SWEEP-ACCEPT-TOOLS-BURNDOWN a), as recorded in Knowledge Islands Principal `+/_WORK/ki.ways-of-working/decisions.md` (05:20 BST). Kris: "let's sweep through all the acceptance of the observatory, and then get everything that's been accepted so far pruned. Same for the tools burned down". The bundle covered exactly KI-TOOL-RIG-CLI-027, KI-TOOL-RIG-CORE-065 and KI-TOOL-RIG-CORE-066, after a blind review of each packet.
