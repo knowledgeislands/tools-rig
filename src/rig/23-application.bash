@@ -268,6 +268,11 @@ rig_preflight_apply() {
   while [ "$index" -lt "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" ]; do
     section_name=${RIG_RESOURCE_PLAN_SECTIONS[$index]}
     RIG_RESOURCE_PREFLIGHT_DETAIL=
+    if rig_resource_observe_only "$section_name"; then
+      RIG_RESOURCE_PREFLIGHT_DETAILS[$index]=
+      index=$((index + 1))
+      continue
+    fi
     rig_preflight_resource "$section_name" apply-resource
     native_status=$?
     case "$native_status" in
@@ -352,6 +357,19 @@ rig_resource_blocker() {
   return 1
 }
 
+# A built-in observe-only provider reports drift for the owner to correct by
+# hand. A custom provider without resource-apply still fails its preflight.
+rig_resource_observe_only() {
+  local provider
+
+  rig_get_value "$1" provider || return 2
+  provider=$RIG_VALUE
+  rig_provider_adapter "$provider" || return 2
+  [ "$RIG_VALUE" != custom ] &&
+    rig_provider_has_capability "$provider" resource-observe &&
+    ! rig_provider_has_capability "$provider" resource-apply
+}
+
 rig_resource_locator_summary() {
   local section_name kind domain key
 
@@ -365,7 +383,7 @@ rig_resource_locator_summary() {
       RIG_VALUE=$domain/$key
       ;;
     default-application) rig_default_application_identity "$section_name" ;;
-    dock) RIG_VALUE=${section_name#*.} ;;
+    dock|menu-bar) RIG_VALUE=${section_name#*.} ;;
     *) return 2 ;;
   esac
 }
@@ -405,7 +423,7 @@ rig_print_resource_projection() {
   case "$adapter" in
     macos-pf) rig_firewall_print_projection "$section_name"; return ;;
     linux-nftables) rig_nftables_print_projection "$section_name"; return ;;
-    launchd|macos-defaults|macos-dock|macos-handlers)
+    launchd|macos-defaults|macos-dock|macos-menu-bar|macos-handlers)
     RIG_INVOKE_ARGUMENTS=()
     rig_append_resource_fields "$section_name" || return
     index=0
@@ -587,7 +605,7 @@ rig_apply_select_targets() {
         RIG_APPLY_PORT_TARGETS[${#RIG_APPLY_PORT_TARGETS[@]}]=$target
         RIG_APPLY_DIRECT[${#RIG_APPLY_DIRECT[@]}]=$owner
         ;;
-      service:*|scheduled-job:*|setting:*|dock:*|default-application:*|firewall:*)
+      service:*|scheduled-job:*|setting:*|dock:*|menu-bar:*|default-application:*|firewall:*)
         section_name=${target/:/.}
         rig_array_contains "$section_name" "${RIG_RESOURCE_PLAN_SECTIONS[@]+"${RIG_RESOURCE_PLAN_SECTIONS[@]}"}" ||
           { syntax_error "unknown target '$target' in profile '$RIG_RESOLVED_PROFILE'"; return 2; }
@@ -921,6 +939,12 @@ rig_command_apply_impl() {
       failed=$((failed + 1))
       operational_failure=1
       [ "$dry_run" -eq 1 ] || rig_progress_result failed "$provider:$kind.$id" declaration
+    elif rig_resource_observe_only "$section_name"; then
+      RIG_RESOURCE_PLAN_RESULTS[$index]=skipped
+      RIG_RESOURCE_PLAN_DETAILS[$index]=observe-only
+      skipped=$((skipped + 1))
+      printf 'rig: %s: observe-only; reorder by Command-dragging the icons\n' "$section_name" >&2
+      [ "$dry_run" -eq 1 ] || rig_progress_result skipped "$provider:$kind.$id" declaration
     elif [ "$dry_run" -eq 1 ]; then
       RIG_RESOURCE_PLAN_RESULTS[$index]=planned
       RIG_RESOURCE_PLAN_DETAILS[$index]=reconcile:$locator

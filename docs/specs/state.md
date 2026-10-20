@@ -519,3 +519,13 @@ _Conformance:_ conforming
 _Verify:_ Stubbed `xcode-select`, `pkgutil` and `sw_vers` cover missing, outdated, current and Xcode.app selections and a plan without Homebrew, and assert the exact read-only arguments.
 
 _Evidence:_ `rig_doctor_command_line_tools`; `doctor names missing or outdated Command Line Tools once for Homebrew work` in `tests/rig-homebrew-authority.bats`.
+
+### RIG-STATE-048 — Menu bar layout observation
+
+Menu bar observation MUST use the resolved profile's included items only and MUST read each distinct item `domain` at most once per observation with `defaults read DOMAIN`. An item's position MUST be the value of `"NSStatusItem Preferred Position AUTOSAVE"`, and a value that is not a non-negative decimal number MUST be treated as absent. An item MUST count as shown when `"NSStatusItem VisibleCC AUTOSAVE"` is `1`, `true` or `YES`, hidden when it is `0`, `false` or `NO`, and otherwise shown exactly when it has a position. Observation MUST report, in this precedence, `unknown` with detail `domain-unreadable:DOMAIN` when a domain cannot be read; `missing` with detail `menu-bar-item-unplaced:ITEM` when an item declared visible has no position; `drifted` with detail `visibility:ITEM` when shown and declared visibility differ; `drifted` with detail `order:EARLIER-before-LATER` naming the first consecutive pair of visible declared items whose positions do not strictly decrease from left to right; and otherwise `present`. A hidden item MUST take no part in the order comparison. Observation MUST invoke no other native command and MUST NOT write any preference.
+
+_Conformance:_ conforming
+
+_Verify:_ An isolated `defaults` fixture that accepts only `read DOMAIN` covers a present layout read once per domain, order drift including tied and fractional positions, a hidden item excluded from the order, visibility drift in both directions, unplaced precedence, an unreadable domain, and profile and platform exclusion, and asserts that the native log holds reads only.
+
+_Evidence:_ `rig_menu_bar_observe`, `rig_menu_bar_value` and `rig_menu_bar_offset_greater` implement the observation; `tests/rig-menu-bar.bats` covers every outcome and its precedence.

@@ -78,7 +78,7 @@ _Evidence:_ `rig_add_field`, `rig_normalize_artifact_identity`, and `rig_expand_
 
 ### RIG-CONF-008 — Canonical table identities
 
-Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[skill.ID]`, `[profile.ID]`, `[provider.ID]`, `[service.ID]`, `[scheduled-job.ID]`, `[setting.ID]`, `[dock.ID]`, `[dock-item.ID]`, `[port.ID]`, `[retired-application.ID]`, `[remove.ID]`, `[default-application.ID]`, `[firewall.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`. Any other table shape MUST be rejected. Installation metadata MUST remain in its owning tool table.
+Schema 1 MUST accept `[rig]`, `[category.ID]`, `[tool.ID]`, `[skill.ID]`, `[profile.ID]`, `[provider.ID]`, `[service.ID]`, `[scheduled-job.ID]`, `[setting.ID]`, `[dock.ID]`, `[dock-item.ID]`, `[menu-bar.ID]`, `[menu-bar-item.ID]`, `[port.ID]`, `[retired-application.ID]`, `[remove.ID]`, `[default-application.ID]`, `[firewall.ID]`, and `[action.PROVIDER.NAME]` table identities. Every identity segment MUST match `[a-z][a-z0-9-]*`. Any other table shape MUST be rejected. Installation metadata MUST remain in its owning tool table.
 
 _Conformance:_ conforming
 
@@ -301,3 +301,13 @@ _Conformance:_ conforming
 _Verify:_ Isolated fixtures reject a wrong provider or a provider paired with the other platform, malformed, duplicate or SSH ports, any other `allow` value, missing ports, unknown requirements, a duplicate locator and a colliding nftables table name, each with an empty native-command log.
 
 _Evidence:_ `rig_validate_firewall`, `rig_firewall_locator_valid`, `rig_firewall_port_valid`, `rig_nftables_validate_platforms` and `rig_nftables_validate_table` enforce the declaration; `tests/rig-firewall.bats` and `tests/rig-firewall-linux.bats` cover every rejection.
+
+### RIG-CONF-031 — Observe-only menu bar declarations
+
+`[menu-bar.ID]` MUST require string `name`, `purpose`, `rationale`, and `provider`, plus non-empty `platforms` and `items` string arrays, and MAY contain `requires`, `depends-on` and item `profiles`; central profiles MAY select `menu-bars`. Provider `macos-menu-bar` MUST be built in and restricted to platform `macos`, and no declaration MAY name a menu bar in `depends-on`. Every item MUST name one `[menu-bar-item.ID]` table requiring a `domain`, which MUST be a dotted preference-domain name of letters, digits, `.`, `_` and `-` that neither starts with `.` or `-`, and an `autosave` name free of quotes, backslashes and control characters. An item MAY contain a string `tool` naming an existing tool and a boolean `visible`, which MUST be bare `true` or `false` and defaults to `true`; items MUST NOT carry their own `profiles`, and an items array MUST NOT repeat an item. Item array order MUST define the desired left-to-right order of the visible items, and item filtering by profile and platform MUST follow RIG-CONF-018. Every rejection MUST happen before any native invocation.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats fixtures reject a wrong provider, a non-macOS platform, an empty or repeated item, an unknown item or tool, an invalid domain or autosave name and a non-boolean `visible`, each with an empty native-command log, and filter linked items by profile and platform.
+
+_Evidence:_ `rig_validate_menu_bar`, `rig_validate_menu_bar_item` and the `boolean` field type enforce the declaration; `rig_dock_resolve_items` filters items for both Dock and menu bar layouts; `tests/rig-menu-bar.bats` covers validation and filtering.

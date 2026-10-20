@@ -5,14 +5,14 @@ title: macOS menu bar declarations
 purpose: capability
 theme: rig
 kind: deliver
-status: draft
-horizon: next
+status: awaiting-review
+horizon: now
 size: l
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 2054674ff4c58e87b16c3a38d6ee0961489d6960
 created_at: 2026-10-14T10:30:00Z
-updated_at: 2026-10-20T04:56:18Z
+updated_at: 2026-10-20T06:15:00Z
 ---
 
 # macOS Menu Bar Declarations
@@ -91,12 +91,12 @@ Grounded at `973073e` on 20 October 2026 from source and read-only `defaults rea
 
 ## Steps
 
-- [ ] **Gate.** PLAN053-MODEL, PLAN053-LOGIN and PLAN053-READY answered and this plan adjusted to the answers. Without that, stop.
-- [ ] **1. Declarations.** Register `menu-bar` (setup) and `menu-bar-item` (component) in `RIG_DECLARATION_REGISTRY`. `[menu-bar.ID]` requires `name`, `purpose`, `rationale`, fixed `provider = "macos-menu-bar"`, macOS-only `platforms` and a non-empty ordered `items` array, and accepts `profiles`, `requires` and `depends-on` as Dock layouts do. `[menu-bar-item.ID]` requires `domain` and `autosave`, and accepts `visible` (bool, default `true`) and a subject `tool`. Profiles gain `menu-bars`. Validation rejects unknown or repeated items, a bad domain or an empty autosave name before any native call.
-- [ ] **2. Observation.** Add `rig_menu_bar_observe` beside `rig_dock_observe`. It resolves items with the Dock's profile filter (generalise `rig_dock_resolve_items` rather than copy it), reads each item's `NSStatusItem Preferred Position <autosave>` and `NSStatusItem VisibleCC <autosave>` once per domain through `rig_macos_defaults_command`, and reports, in this precedence: `missing` with `menu-bar-item-unplaced:<item>` when a position is absent; `drifted` with `visibility:<item>` for the first item whose visibility differs; `drifted` with `order:<left>-before-<right>` for the first declared pair whose offsets do not strictly decrease; otherwise `present`. A domain that cannot be read gives `unknown` with `domain-unreadable:<domain>`. Hidden items are excluded from the order comparison.
-- [ ] **3. Observe-only apply.** Register `macos-menu-bar:resource-observe` only. `rig apply` and `rig apply --target menu-bar:ID` make no change, write no `defaults` and run no `killall`, and print `rig: menu-bar.ID: observe-only; reorder by Command-dragging the icons` without failing the run. `rig explain` and `rig show` describe the resource the same way.
-- [ ] **4. Fixtures.** Add `tests/rig-menu-bar.bats`, isolated with `rig_test_isolate`, whose `defaults` stub serves fixed status-item keys per domain. Cover present, each drift detail, unplaced and unreadable cases, profile and platform exclusion, a hidden item ignored in order, validation failures, and an apply that logs no `defaults write` or `killall`.
-- [ ] **5. Documents and assembly.** Add the specifications, guide section and manual entries under [Documentation impact](#documentation-impact), a CHANGELOG entry, run `scripts/assemble-rig`, then the gate under [Verify](#verify).
+- [x] **Gate.** PLAN053-MODEL, PLAN053-LOGIN and PLAN053-READY answered and this plan adjusted to the answers. Without that, stop.
+- [x] **1. Declarations.** Register `menu-bar` (setup) and `menu-bar-item` (component) in `RIG_DECLARATION_REGISTRY`. `[menu-bar.ID]` requires `name`, `purpose`, `rationale`, fixed `provider = "macos-menu-bar"`, macOS-only `platforms` and a non-empty ordered `items` array, and accepts `profiles`, `requires` and `depends-on` as Dock layouts do. `[menu-bar-item.ID]` requires `domain` and `autosave`, and accepts `visible` (bool, default `true`) and a subject `tool`. Profiles gain `menu-bars`. Validation rejects unknown or repeated items, a bad domain or an empty autosave name before any native call.
+- [x] **2. Observation.** Add `rig_menu_bar_observe` beside `rig_dock_observe`. It resolves items with the Dock's profile filter (generalise `rig_dock_resolve_items` rather than copy it), reads each item's `NSStatusItem Preferred Position <autosave>` and `NSStatusItem VisibleCC <autosave>` once per domain through `rig_macos_defaults_command`, and reports, in this precedence: `missing` with `menu-bar-item-unplaced:<item>` when a position is absent; `drifted` with `visibility:<item>` for the first item whose visibility differs; `drifted` with `order:<left>-before-<right>` for the first declared pair whose offsets do not strictly decrease; otherwise `present`. A domain that cannot be read gives `unknown` with `domain-unreadable:<domain>`. Hidden items are excluded from the order comparison.
+- [x] **3. Observe-only apply.** Register `macos-menu-bar:resource-observe` only. `rig apply` and `rig apply --target menu-bar:ID` make no change, write no `defaults` and run no `killall`, and print `rig: menu-bar.ID: observe-only; reorder by Command-dragging the icons` without failing the run. `rig explain` and `rig show` describe the resource the same way.
+- [x] **4. Fixtures.** Add `tests/rig-menu-bar.bats`, isolated with `rig_test_isolate`, whose `defaults` stub serves fixed status-item keys per domain. Cover present, each drift detail, unplaced and unreadable cases, profile and platform exclusion, a hidden item ignored in order, validation failures, and an apply that logs no `defaults write` or `killall`.
+- [x] **5. Documents and assembly.** Add the specifications, guide section and manual entries under [Documentation impact](#documentation-impact), a CHANGELOG entry, run `scripts/assemble-rig`, then the gate under [Verify](#verify).
 
 ## Files touched
 
@@ -135,8 +135,52 @@ A menu-bar section in the [operational resources guide](../guides/user/operation
 
 This record only.
 
+## Review
+
+### Delivered
+
+Observe-only macOS menu bar layouts. `[menu-bar.ID]` with provider `macos-menu-bar` names ordered `[menu-bar-item.ID]` icons by preference `domain` and `autosave` name, with optional `visible` and `tool`. Status and doctor report `unknown`, `missing`, visibility drift or order drift from read-only `defaults read DOMAIN` evidence; apply, dry-run and a targeted apply skip the layout as `observe-only` without a native call and without failing the run; show and explain mark it observe-only.
+
+### Change Summary
+
+- `05-declarations.bash`: registry entries `menu-bar` (setup) and `menu-bar-item` (component).
+- `10-configuration.bash`: fields, a new `boolean` TOML field type for `visible`, central and item-owned profile selection, `rig_validate_menu_bar` and `rig_validate_menu_bar_item`, and the native-target conflict rule shared with the Dock.
+- `20-orchestration.bash`: the `macos-menu-bar:resource-observe` capability, `rig_dock_resolve_items` generalised to either item kind, and `rig_menu_bar_observe` with its value and offset helpers. Observation lives here beside `rig_dock_observe`, not in `22-observation.bash` as the plan guessed.
+- `23-application.bash`: `rig_resource_observe_only` and the apply-loop branch that records `skipped observe-only`.
+- `30-commands.bash`: status counts, the profile table, show text and JSON, and explain output for menu bar layouts. This file was not in the plan's list.
+- `bin/rig` regenerated; `tests/rig-menu-bar.bats` new.
+- Documents: RIG-CONF-031 and the RIG-CONF-008 identity list, RIG-STATE-048, RIG-ORCH-046, a guide section and the Getting Started list entry, the manual page, a CHANGELOG entry, and one in-place paragraph in ADR-KI-TOOL-RIG-006 naming observation-only layouts, since its decision describes every layout as reconciled.
+
+### Verification
+
+Run on 20 October 2026 in the delivery worktree at baseline `2054674` plus this change:
+
+- `bats tests/ </dev/null`: 611 of 611 pass, including the 9 tests in `tests/rig-menu-bar.bats` and the unchanged Dock suites `tests/rig-dock-observation.bats` and `tests/rig-dock-profiles.bats` after the shared item resolution change.
+- `shellcheck` and `bash -n` over the gate's script list, plus `shellcheck tests/rig-menu-bar.bats`: clean.
+- `scripts/assemble-rig --check`, `scripts/benchmark-rig`, `scripts/smoke-native-providers`, `mandoc -T lint man/rig.1` and `git diff --check`: pass.
+- `ki repo audit --repo .`: fails only RUNTIMES-2 in the worktree, as Outstanding concerns explains; on the primary checkout at baseline it fails only the pre-existing SHELL-HOOK check.
+- Every menu bar test asserts through the `defaults` fixture log that only `defaults read DOMAIN` ran, and that the `killall` and isolated `defaults` logs are empty. No test or delivery step wrote a preference or restarted a process.
+
+### Outstanding concerns
+
+- The whole-tree `ki repo audit` fails the pre-existing SHELL-HOOK check on `main` because `.githooks/pre-commit` runs Bats. It is outside this record and was left alone because another session changed `.githooks/` in the last day. In the delivery worktree the audit also reports RUNTIMES-2, because the ignored runtime activation directories exist only in the primary checkout.
+- During test development one run unset `RIG_DEFAULTS` and reached the real `/usr/bin/defaults read` for two domains on this workstation. Those were reads only and nothing was written; the test now uses the isolation stub.
+- A menu bar layout cannot be a `depends-on` target, because nothing can wait for a layout Rig never applies.
+- A sandboxed application whose preferences live in its container observes as `unknown` (`domain-unreadable`), as Current state predicted; container domains are not supported.
+- The live owner check, `rig status` on `sol` with a declared layout, remains after release, as Verify states.
+
+### Post-change review
+
+The gate decisions are recorded under Discussion. Design choices a reviewer should confirm: an item with no recorded position counts as not shown; an item declared hidden needs no position; a malformed position counts as absent; an unreadable domain outranks every other finding; and observe-only applies only to built-in adapters, so a custom provider without resource apply still fails preflight.
+
+### Mini recap
+
+Rig can now declare a menu bar once and report how each Mac differs, while leaving every icon where the owner put it.
+
 ## Discussion
 
 Origin: Kris Brown's request on 2026-10-14, investigated read-only on terra and sol the same day. On 14 October 2026 Kris chose observe-only order over Rig writing positions with app restarts or adopting a menu-bar manager, and the record was trimmed to report-only: the earlier proposal to apply Control Centre module visibility and restart the reading process was dropped with the enforcement options. Capture only; adoption, priority and plan belong to this repository.
 
 Adoption: Kris's OVERNIGHT decision of 20 October 2026 at 00:28 BST ([mac-studio-setup decisions log](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.mac-studio-setup/decisions.md)) authorised acting on the [triage review](/Users/krisbrown/.local/state/ki/agents/mac-studio-setup/triage-review.report.md)'s high-confidence recommendations: adopted into Next, confidence high, as a portable, explicitly requested observe-only resource, with current-host reads and status-item ordering still to shape. [KI-TOOL-RIG-CORE-056](KI-TOOL-RIG-CORE-056-menu-bar-order-persistence.md) stays a separate Future investigation; the suggested merge was not taken.
+
+Gate: the coordinator's decision of 2026-10-20 06:53 BST in the [ways-of-working decisions log](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.ways-of-working/decisions.md), under Kris's OVERNIGHT-BURNDOWN authority of 20 October 2026, directed delivery of this record. PLAN053-MODEL, PLAN053-LOGIN and PLAN053-READY were each taken as their recommended a): the user-domain `NSStatusItem` keys replace unit 1's current-host scope, unit 3 stays out, and the plan is Ready. PLAN053-READY carried medium confidence because this is the first observe-only setup resource; the owner should confirm that shape at review.

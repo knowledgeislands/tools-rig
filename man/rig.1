@@ -213,11 +213,12 @@ and
 .B \-\-profile
 options are mutually exclusive.
 .TP
-.BI "rig show " TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|port:ID
+.BI "rig show " TOOL|skill:ID|service:ID|scheduled-job:ID|setting:ID|dock:ID|menu-bar:ID|port:ID
 Explain identity, purpose, rationale, installation metadata, relationships,
 native authority, profile membership, and for a tool the resources that
-configure it, as applicable. Dock explanations
-include ordered items; ports include TCP number, bind scope, mode, and owner.
+configure it, as applicable. Dock and menu bar explanations
+include ordered items, and a menu bar is marked observe-only;
+ports include TCP number, bind scope, mode, and owner.
 Item explanations accept only the format option, not profile/category/all
 selection options.
 .PP
@@ -528,8 +529,10 @@ Reconcile one selected tool ID, or a qualified
 .BR scheduled-job:ID ,
 .BR setting:ID ,
 .BR dock:ID ,
+.BR menu-bar:ID ,
 or
 .BR port:ID .
+A menu bar target is skipped as observe-only.
 Repeat the option for several exact targets. Missing prerequisites are included
 and labelled as dependencies; already-present prerequisites are omitted. A
 .B \-\-scope
@@ -1198,6 +1201,39 @@ never selects its tool.
 Profiles select settings and Dock layouts through their respective
 arrays; Dock items are selected only by a Dock layout.
 .PP
+.B [menu-bar.ID]
+declares one observe-only macOS menu bar layout. It requires
+.BR name ,
+.BR purpose ,
+.BR rationale ,
+.BR provider ,
+and non-empty
+.B platforms
+and
+.B items
+arrays, and accepts
+.BR requires ,
+.B depends-on
+and item-owned
+.BR profiles ;
+profiles may also select it through
+.BR menu-bars .
+The provider is the built-in
+.BR macos-menu-bar .
+Each item names one
+.B [menu-bar-item.ID]
+table with the preference
+.B domain
+that records the icon and its
+.B autosave
+name. An item may set
+.B visible = false
+for an icon that should be hidden, and may name an existing
+.B tool
+with the same profile filtering as a Dock item. The visible items' array
+order is the desired left-to-right order. No declaration may depend on a
+menu bar layout.
+.PP
 .B [port.ID]
 declares one private TCP allocation. It requires
 .BR name ,
@@ -1247,8 +1283,9 @@ configuration. The built-in identities are
 .BR launchd ,
 .BR macos-applications ,
 .BR macos-defaults ,
+.BR macos-dock ,
 and
-.BR macos-dock .
+.BR macos-menu-bar .
 Where documented, a built-in provider table may override its native
 .B executable
 and literal
@@ -1694,6 +1731,7 @@ Tool|Observe, apply, upgrade|No automatic removal
 Skill|Observe, apply, upgrade where supported|No automatic removal
 Service or scheduled job|Observe, apply, receipt-backed retire|No retirement; deleting the declaration retires it
 Setting or Dock layout|Observe and apply|No automatic reversal
+Menu bar layout|Observe only|No mutation
 Private port|Observe only|No mutation
 .TE
 .PP
@@ -1730,7 +1768,14 @@ unconstrained. Observation compares full paths, never item labels, using one
 native Dock snapshot when attribute evidence is needed. Proven order, view
 and display mismatches take precedence in that order; incomplete attribute
 evidence is unknown, not agreement. Observation never rewrites defaults or
-restarts the Dock. Native macOS
+restarts the Dock. The built-in
+.B macos-menu-bar
+integration only observes: it reads each item's domain once with
+.BR "defaults read" ,
+reports an unreadable domain as unknown, an unplaced visible icon as
+missing, and visibility or order differences as drift, and apply skips the
+layout as observe-only. Reorder menu bar icons by Command-dragging them.
+Native macOS
 application inventory is read-only. These integrations require neither
 provider tables nor external executables and remain unavailable without
 mutation on other platforms.

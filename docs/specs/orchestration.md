@@ -249,6 +249,16 @@ _Verify:_ Bats fakes `sudo`, `nft`, `systemctl` and `ss` with `RIG_PLATFORM=linu
 
 _Evidence:_ `rig_nftables_render_rules`, `rig_nftables_render_unit`, `rig_nftables_apply`, `rig_nftables_retire` and `tests/rig-firewall-linux.bats` implement and cover the adapter.
 
+### RIG-ORCH-046 — Built-in observe-only menu bar adapter
+
+On macOS, Rig MUST observe `macos-menu-bar` layouts through its built-in adapter with no provider or action declaration, and MUST leave the adapter unavailable without invocation on other platforms. The adapter MUST declare observation only. Apply, including dry-run and a targeted apply, MUST record a selected menu bar layout as `skipped` with detail `observe-only`, MUST print that its icons are reordered by Command-dragging them, MUST invoke no native command for it, MUST NOT count it as a failure and MUST record no apply history or receipt for it. `rig show` and `rig explain` MUST report the layout as observe-only. A custom provider that lacks resource apply MUST still fail apply preflight; observe-only applies only to built-in adapters that declare observation without apply.
+
+_Conformance:_ conforming
+
+_Verify:_ Bats runs dry-run, targeted and complete apply against an isolated `defaults` fixture and asserts exit status zero, the skipped row and message, and an empty native log, and checks the observe-only marker in show text, JSON and explain output.
+
+_Evidence:_ `rig_resource_observe_only`, the observe-only branch of the apply loop in `src/rig/23-application.bash`, the `macos-menu-bar:resource-observe` capability and `tests/rig-menu-bar.bats`.
+
 ### RIG-ORCH-024 — Declaration-scoped upgrades
 
 `rig upgrade` MUST advance selected provider-managed Homebrew, mas, uv, mise and npm tools and supported Skills CLI skills through fixed native operations. It MUST NOT invoke Homebrew Bundle or provider-wide maintenance. Unavailable executables and unsupported operations MUST remain visible per task, while independent work continues. Native dependencies MAY change as part of a declared provider operation; Rig MUST NOT remove unknown packages or dispatch a second package list.

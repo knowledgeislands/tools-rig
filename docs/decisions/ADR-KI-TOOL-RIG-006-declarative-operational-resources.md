@@ -24,6 +24,8 @@ Built-in resource adapters own supported native operations. External resource pr
 
 Private TCP ports are related operational declarations, but are observation-only. They describe an expected number, bind scope, mode, and qualified owner. Rig may compare that intent with listeners; it never opens, reserves, closes, kills, or publishes a socket.
 
+A semantic layout whose native platform offers no supported write, such as the macOS menu bar, is likewise observation-only. Rig compares it with native evidence and reports drift; apply leaves it unchanged and the owner corrects it by hand.
+
 Detailed resource fields, supported providers, state vocabulary, application rules, and receipt semantics belong to the Specifications.
 
 ## Consequences

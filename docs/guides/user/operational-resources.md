@@ -170,6 +170,55 @@ Rig validates resolved item paths before replacing a selected Dock layout. A mis
 
 Status and doctor compare paths and order, then any folder `view` and `display` values you explicitly declared. An omitted attribute is not constrained. A manually changed declared view or display is drift, with a detail naming the item; inaccessible or ambiguous native evidence is unknown, not agreement. Observation reads one shared native Dock snapshot when needed and never changes the Dock. Check the reported difference and your intended declaration before applying a replacement layout.
 
+## Observe a menu bar layout
+
+A menu bar layout names the icons you expect, left to right, and whether each is shown. Rig observes it but never changes it: macOS gives no supported way to move another application's icon, so you rearrange icons yourself by holding Command and dragging them.
+
+Each item names the preference domain that records the icon and the icon's autosave name. To find them, list the position keys in a candidate domain:
+
+```sh
+defaults read com.apple.controlcenter | grep 'NSStatusItem'
+```
+
+A line such as `"NSStatusItem Preferred Position Sound" = 325;` gives the autosave name `Sound`. Third-party applications usually record their icons in their own domain, often with names such as `Item-0`:
+
+```toml
+[menu-bar-item.dropbox]
+domain = "com.getdropbox.dropbox"
+autosave = "Item-0"
+tool = "dropbox"
+
+[menu-bar-item.sound]
+domain = "com.apple.controlcenter"
+autosave = "Sound"
+
+[menu-bar-item.wifi]
+domain = "com.apple.controlcenter"
+autosave = "WiFi"
+visible = false
+
+[menu-bar.main]
+name = "Main menu bar"
+purpose = "Keep status icons in a predictable order"
+rationale = "A stable order makes each icon quick to find"
+provider = "macos-menu-bar"
+platforms = ["macos"]
+items = ["dropbox", "sound", "wifi"]
+profiles = ["workstation"]
+```
+
+`visible` defaults to `true`; a hidden item takes no part in the order. A `tool` link filters the item by profile in the same way as a Dock item and never selects the tool.
+
+Status and doctor read each domain once and report one finding:
+
+- `present`: every visible item is shown in the declared order and every hidden item is hidden.
+- `unknown` with `domain-unreadable:DOMAIN`: Rig could not read that domain, often because the application has never run.
+- `missing` with `menu-bar-item-unplaced:ITEM`: the item should be shown but has no recorded position.
+- `drifted` with `visibility:ITEM`: the item is shown when declared hidden, or hidden when declared shown.
+- `drifted` with `order:EARLIER-before-LATER`: the first pair of visible items that sit in the wrong order.
+
+`rig apply` skips a menu bar layout with `observe-only`, prints a reminder to Command-drag the icons, and does not count it as a failure. `rig show menu-bar:main` lists each item, its domain and autosave name, its visibility and its compact position, or why the profile excludes it.
+
 ## Restrict a listener to the tailnet
 
 Some macOS listeners, such as Screen Sharing on port 5900, bind every address and offer no setting to bind one interface. A `[firewall.ID]` declaration keeps chosen ports reachable from loopback and from other devices on your tailnet, and blocks them from any other network:

@@ -16,10 +16,11 @@ Rig describes your working setup and compares it with the machine. Its supported
 - **Default applications:** declare which installed application opens a content type, extension or URL scheme on macOS. See [Declare default applications](default-applications.md).
 - **Firewall restrictions:** keep chosen macOS listener ports reachable only from loopback and your tailnet. See [Restrict a listener to the tailnet](operational-resources.md#restrict-a-listener-to-the-tailnet).
 - **Dock layouts:** compare and apply an ordered macOS Dock containing applications and folders.
+- **Menu bar layouts:** observe the order and visibility of macOS menu bar icons. Rig reports drift but never rearranges them. See [Observe a menu bar layout](operational-resources.md#observe-a-menu-bar-layout).
 - **Private ports:** record TCP allocations and check listener ownership and scope. Rig does not open, reserve or close ports.
 - **Retired applications:** observe explicitly declared macOS application traces after retirement. These records are observation-only and do not remove retained files. See [Review retired applications](retired-applications.md).
 
-The [operational resources and private ports guide](operational-resources.md) covers services, scheduled jobs, settings, Dock layouts and ports.
+The [operational resources and private ports guide](operational-resources.md) covers services, scheduled jobs, settings, Dock and menu bar layouts and ports.
 
 Supported installation methods for tools and apps are:
 
@@ -33,7 +34,7 @@ Supported installation methods for tools and apps are:
 - **Direct download:** standalone executables downloaded over HTTPS with a required SHA-256 checksum.
 - **External providers:** explicitly trusted custom executables when a built-in provider cannot express the required observation or application. See [Use external providers safely](provider-actions.md).
 
-Profiles select the active items that belong on a machine or in a role. The catalogue records tool purpose and your rationale; native providers retain their own execution semantics, credentials and installation state. Tool declarations can select different installation methods on macOS and Linux, while the built-in service, scheduled-job, settings and Dock providers are macOS-specific.
+Profiles select the active items that belong on a machine or in a role. The catalogue records tool purpose and your rationale; native providers retain their own execution semantics, credentials and installation state. Tool declarations can select different installation methods on macOS and Linux, while the built-in service, scheduled-job, settings, Dock and menu bar providers are macOS-specific.
 
 ## Install the public preview
 

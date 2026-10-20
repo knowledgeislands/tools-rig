@@ -119,6 +119,7 @@ rig_provider_has_capability() {
       macos-applications:inventory|\
       macos-defaults:resource-observe|macos-defaults:resource-apply|\
       macos-dock:resource-observe|macos-dock:resource-apply|\
+      macos-menu-bar:resource-observe|\
     macos-handlers:resource-observe|macos-handlers:resource-apply|\
       macos-pf:resource-observe|macos-pf:resource-apply|macos-pf:resource-retire|\
       linux-nftables:resource-observe|linux-nftables:resource-apply|linux-nftables:resource-retire|\
@@ -228,9 +229,7 @@ rig_append_resource_fields() {
   rig_section_index "$section_name" || return 2
   section_index=$RIG_INDEX
   section_type=${RIG_SECTION_TYPES[$section_index]}
-  if [ "$section_type" = dock ]; then
-    rig_dock_resolve_items "$section_name" || return
-  fi
+  case "$section_type" in dock|menu-bar) rig_dock_resolve_items "$section_name" || return ;; esac
   restart_policy=0
   start_policy=0
   run_policy=0
@@ -243,7 +242,7 @@ rig_append_resource_fields() {
     [ "$key" != resource-dependency ] || output_key=depends-on
     case "$section_type:$key" in
       *:provider|*:locator|*:subject) ;;
-      dock:item) rig_append_dock_item_field "${RIG_FIELD_VALUES[$field_index]}" ;;
+      dock:item|menu-bar:item) rig_append_dock_item_field "${RIG_FIELD_VALUES[$field_index]}" ;;
       *) RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]="$output_key=${RIG_FIELD_VALUES[$field_index]}" ;;
     esac
     case "$key" in
@@ -880,13 +879,15 @@ rig_setting_apply() {
   "$command" write "$domain" "$key" "-$value_type" "$value" 1>&2
 }
 
-# A layout's included items, in declared order: every unlinked item, and each
-# item whose linked tool the resolved profile selects. Without a resolved
-# profile every item is included. Membership never reads installed state.
+# A Dock or menu-bar layout's included items, in declared order: every
+# unlinked item, and each item whose linked tool the resolved profile selects.
+# Without a resolved profile every item is included. Membership never reads
+# installed state. A layout's items are the matching component kind.
 rig_dock_resolve_items() {
-  local section_name section_index field_index field_end item tool selected
+  local section_name section_index field_index field_end item item_kind tool selected
 
   section_name=$1
+  item_kind=${section_name%%.*}-item
   RIG_DOCK_INCLUDED_ITEMS=()
   RIG_DOCK_EXCLUDED_ITEMS=()
   RIG_DOCK_EXCLUDED_REASONS=()
@@ -901,7 +902,7 @@ rig_dock_resolve_items() {
   while [ "$field_index" -lt "$field_end" ]; do
     if [ "${RIG_FIELD_KEYS[$field_index]}" = item ]; then
       item=${RIG_FIELD_VALUES[$field_index]}
-      if [ -n "${RIG_RESOLVED_PROFILE:-}" ] && rig_get_value "dock-item.$item" tool; then
+      if [ -n "${RIG_RESOLVED_PROFILE:-}" ] && rig_get_value "$item_kind.$item" tool; then
         tool=$RIG_VALUE
         case "$selected" in
           *$'\n'"$tool"$'\n'*) RIG_DOCK_INCLUDED_ITEMS[${#RIG_DOCK_INCLUDED_ITEMS[@]}]=$item ;;
@@ -1215,6 +1216,131 @@ rig_dock_apply() {
   "$killall_command" Dock 1>&2
 }
 
+# Read one AppKit status-item value from a captured defaults domain. Keys with
+# spaces are quoted; a quoted value has its quotes removed.
+rig_menu_bar_value() {
+  local dump key line value
+
+  dump=$1
+  key=$2
+  while IFS= read -r line; do
+    line=${line#"${line%%[![:space:]]*}"}
+    case "$line" in
+      "\"$key\" = "*\;)
+        value=${line#"\"$key\" = "}
+        value=${value%\;}
+        value=${value#\"}
+        value=${value%\"}
+        RIG_VALUE=$value
+        return 0
+        ;;
+    esac
+  done <<< "$dump"
+  return 1
+}
+
+# Succeed when decimal offset $1 is strictly greater than $2.
+rig_menu_bar_offset_greater() {
+  local left right left_whole right_whole left_fraction right_fraction
+  local LC_ALL=C
+
+  left=$1
+  right=$2
+  left_whole=${left%%.*}
+  right_whole=${right%%.*}
+  left_fraction=
+  right_fraction=
+  [ "$left" = "$left_whole" ] || left_fraction=${left#*.}
+  [ "$right" = "$right_whole" ] || right_fraction=${right#*.}
+  [ "$((10#$left_whole))" -eq "$((10#$right_whole))" ] ||
+    { [ "$((10#$left_whole))" -gt "$((10#$right_whole))" ]; return; }
+  while [ "${#left_fraction}" -lt "${#right_fraction}" ]; do left_fraction=${left_fraction}0; done
+  while [ "${#right_fraction}" -lt "${#left_fraction}" ]; do right_fraction=${right_fraction}0; done
+  [[ "$left_fraction" > "$right_fraction" ]]
+}
+
+# Menu-bar order is AppKit's per-domain pixel offset from the right edge, so a
+# larger offset sits further left. Each domain is read once. Rig only observes:
+# the owner reorders the icons by Command-dragging them.
+rig_menu_bar_observe() {
+  local section_name command item item_section domain autosave declared dump index found
+  local position shown unreadable unplaced visibility order previous previous_position
+  local -a domains dumps readable
+
+  section_name=$1
+  rig_macos_defaults_command; command=$RIG_VALUE
+  rig_dock_resolve_items "$section_name" || return
+  domains=()
+  dumps=()
+  readable=()
+  unreadable=
+  unplaced=
+  visibility=
+  order=
+  previous=
+  previous_position=
+  for item in "${RIG_DOCK_INCLUDED_ITEMS[@]+"${RIG_DOCK_INCLUDED_ITEMS[@]}"}"; do
+    item_section=menu-bar-item.$item
+    rig_get_value "$item_section" domain || return 2; domain=$RIG_VALUE
+    rig_get_value "$item_section" autosave || return 2; autosave=$RIG_VALUE
+    declared=true
+    if rig_get_value "$item_section" visible; then declared=$RIG_VALUE; fi
+    found=
+    index=0
+    while [ "$index" -lt "${#domains[@]}" ]; do
+      [ "${domains[$index]}" != "$domain" ] || { found=$index; break; }
+      index=$((index + 1))
+    done
+    if [ -z "$found" ]; then
+      found=${#domains[@]}
+      domains[$found]=$domain
+      if dumps[$found]=$("$command" read "$domain" 2>/dev/null); then
+        readable[$found]=1
+      else
+        readable[$found]=0
+      fi
+    fi
+    if [ "${readable[$found]}" -ne 1 ]; then
+      [ -n "$unreadable" ] || unreadable=domain-unreadable:$domain
+      continue
+    fi
+    dump=${dumps[$found]}
+    position=
+    if rig_menu_bar_value "$dump" "NSStatusItem Preferred Position $autosave"; then
+      case "$RIG_VALUE" in
+        ''|.*|*.|*.*.*|*[!0-9.]*) ;;
+        *) position=$RIG_VALUE ;;
+      esac
+    fi
+    # An item with no recorded position has never been shown.
+    shown=false
+    [ -z "$position" ] || shown=true
+    if rig_menu_bar_value "$dump" "NSStatusItem VisibleCC $autosave"; then
+      case "$RIG_VALUE" in 1|true|YES) shown=true ;; 0|false|NO) shown=false ;; esac
+    fi
+    if [ "$declared" = true ] && [ -z "$position" ]; then
+      [ -n "$unplaced" ] || unplaced=menu-bar-item-unplaced:$item
+      continue
+    fi
+    if [ "$shown" != "$declared" ]; then
+      [ -n "$visibility" ] || visibility=visibility:$item
+    fi
+    # A hidden item takes no part in the order.
+    [ "$declared" = true ] || continue
+    if [ -n "$previous" ] && [ -z "$order" ] &&
+      ! rig_menu_bar_offset_greater "$previous_position" "$position"; then
+      order=order:$previous-before-$item
+    fi
+    previous=$item
+    previous_position=$position
+  done
+  if [ -n "$unreadable" ]; then RIG_OBSERVATION=unknown; RIG_OBSERVATION_DETAIL=$unreadable
+  elif [ -n "$unplaced" ]; then RIG_OBSERVATION=missing; RIG_OBSERVATION_DETAIL=$unplaced
+  elif [ -n "$visibility" ]; then RIG_OBSERVATION=drifted; RIG_OBSERVATION_DETAIL=$visibility
+  elif [ -n "$order" ]; then RIG_OBSERVATION=drifted; RIG_OBSERVATION_DETAIL=$order
+  else RIG_OBSERVATION=present; RIG_OBSERVATION_DETAIL=-; fi
+}
+
 rig_macos_resource_preflight() {
   local section_name verb adapter command killall_command paths path value_type value
 
@@ -1235,6 +1361,10 @@ rig_macos_resource_preflight() {
           rig_expand_home_value "$value" || return
         fi
       fi
+      ;;
+    macos-menu-bar)
+      rig_macos_defaults_command; command=$RIG_VALUE
+      rig_executable_available "$command" || rig_fail "provider '$adapter' executable unavailable: $command" || return
       ;;
     macos-dock)
       rig_macos_dockutil_command; command=$RIG_VALUE
@@ -1293,7 +1423,7 @@ rig_preflight_resource() {
     return
   fi
   case "$adapter" in
-    macos-defaults|macos-dock)
+    macos-defaults|macos-dock|macos-menu-bar)
       rig_macos_resource_preflight "$section_name" "$verb" "$adapter"
       return
       ;;
@@ -1337,6 +1467,7 @@ rig_observe_resource() {
   case "$adapter" in
     macos-defaults) rig_setting_observe "$section_name"; return ;;
     macos-dock) rig_dock_observe "$section_name"; return ;;
+    macos-menu-bar) rig_menu_bar_observe "$section_name"; return ;;
   esac
   rig_capture_invocation "$executable"
   if [ "$RIG_NATIVE_STATUS" -ne 0 ]; then

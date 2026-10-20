@@ -888,11 +888,13 @@ RIG_DECLARATION_REGISTRY=(
   'setting|setup|1|Settings'
   'default-application|setup|1|Default applications'
   'dock|setup|1|Dock layouts'
+  'menu-bar|setup|1|Menu bar layouts'
   'firewall|setup|1|Firewall restrictions'
   'port|setup|1|Private ports'
   'retired-application|observation|1|Retired applications'
   'remove|supporting|1|Software removals'
   'dock-item|component|1|Dock items'
+  'menu-bar-item|component|1|Menu bar items'
   'rig|supporting|0|Rig configuration'
   'category|supporting|1|Categories'
   'profile|supporting|1|Profiles'
@@ -1222,6 +1224,8 @@ rig_field_kind() {
     setting:key|setting:value-type|setting:value|\
     dock:name|dock:purpose|dock:rationale|dock:provider|\
     dock-item:kind|dock-item:path|dock-item:view|dock-item:display|dock-item:tool|\
+    menu-bar:name|menu-bar:purpose|menu-bar:rationale|menu-bar:provider|\
+    menu-bar-item:domain|menu-bar-item:autosave|menu-bar-item:tool|menu-bar-item:visible|\
     port:name|port:purpose|port:rationale|port:protocol|port:port|port:scope|port:mode|port:owner|\
     setting:subject|service:subject|scheduled-job:subject|firewall:subject|default-application:subject|\
     action:mode|action:description|action:argument-policy)
@@ -1234,7 +1238,7 @@ rig_field_kind() {
     tool:install-platform|tool:install-argument|tool:install-executable|\
     skill:platform|skill:runtime|skill:requires|skill:member-profile|\
     profile:profile|profile:inherit|profile:tool|profile:skill|profile:service|profile:scheduled-job|\
-    profile:setting|profile:dock|profile:port|profile:default-application|profile:firewall|\
+    profile:setting|profile:dock|profile:menu-bar|profile:port|profile:default-application|profile:firewall|\
     provider:argument|provider:capability|provider:autoupdate-option|\
     binding:platform|binding:argument|binding:observe-executable|\
     service:platform|service:requires|service:program|service:environment|service:member-profile|\
@@ -1244,6 +1248,7 @@ rig_field_kind() {
     scheduled-job:resource-dependency|scheduled-job:associated-application|\
     setting:platform|setting:requires|setting:member-profile|setting:resource-dependency|\
     dock:platform|dock:requires|dock:item|dock:member-profile|dock:resource-dependency|\
+    menu-bar:platform|menu-bar:requires|menu-bar:item|menu-bar:member-profile|menu-bar:resource-dependency|\
     default-application:platform|default-application:requires|default-application:member-profile|\
     firewall:platform|firewall:requires|firewall:member-profile|firewall:resource-dependency|\
     firewall:port|firewall:allow|\
@@ -1331,6 +1336,8 @@ rig_toml_field() {
     setting:key|setting:value-type|setting:value|\
     dock:name|dock:purpose|dock:rationale|dock:provider|\
     dock-item:kind|dock-item:path|dock-item:view|dock-item:display|dock-item:tool|\
+    menu-bar:name|menu-bar:purpose|menu-bar:rationale|menu-bar:provider|\
+    menu-bar-item:domain|menu-bar-item:autosave|menu-bar-item:tool|\
     port:name|port:purpose|port:rationale|port:protocol|port:scope|port:mode|port:owner|\
     action:mode|action:description|action:argument-policy)
       RIG_TOML_FIELD_KEY=$key
@@ -1373,9 +1380,10 @@ rig_toml_field() {
     profile:scheduled-jobs) RIG_TOML_FIELD_KEY=scheduled-job ; RIG_TOML_FIELD_TYPE=array ;;
     profile:settings) RIG_TOML_FIELD_KEY=setting ; RIG_TOML_FIELD_TYPE=array ;;
     profile:docks) RIG_TOML_FIELD_KEY=dock ; RIG_TOML_FIELD_TYPE=array ;;
+    profile:menu-bars) RIG_TOML_FIELD_KEY=menu-bar ; RIG_TOML_FIELD_TYPE=array ;;
     profile:ports) RIG_TOML_FIELD_KEY=port ; RIG_TOML_FIELD_TYPE=array ;;
     service:platforms|scheduled-job:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
-    service:profiles|scheduled-job:profiles|setting:profiles|dock:profiles)
+    service:profiles|scheduled-job:profiles|setting:profiles|dock:profiles|menu-bar:profiles)
       RIG_TOML_FIELD_KEY=member-profile
       RIG_TOML_FIELD_TYPE=array
       ;;
@@ -1396,7 +1404,7 @@ rig_toml_field() {
     remove:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
     remove:profiles|port:profiles) RIG_TOML_FIELD_KEY=member-profile ; RIG_TOML_FIELD_TYPE=array ;;
     service:requires|scheduled-job:requires) RIG_TOML_FIELD_KEY=requires ; RIG_TOML_FIELD_TYPE=array ;;
-    service:depends-on|scheduled-job:depends-on|setting:depends-on|dock:depends-on)
+    service:depends-on|scheduled-job:depends-on|setting:depends-on|dock:depends-on|menu-bar:depends-on)
       RIG_TOML_FIELD_KEY='resource-dependency'
       RIG_TOML_FIELD_TYPE=array
       ;;
@@ -1408,9 +1416,10 @@ rig_toml_field() {
       ;;
     scheduled-job:schedule.calendar) RIG_TOML_FIELD_KEY='schedule-calendar' ; RIG_TOML_FIELD_TYPE=array ;;
     scheduled-job:schedule.interval) RIG_TOML_FIELD_KEY='schedule-interval' ; RIG_TOML_FIELD_TYPE=string ;;
-    setting:platforms|dock:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
-    setting:requires|dock:requires) RIG_TOML_FIELD_KEY=requires ; RIG_TOML_FIELD_TYPE=array ;;
-    dock:items) RIG_TOML_FIELD_KEY=item ; RIG_TOML_FIELD_TYPE=array ;;
+    setting:platforms|dock:platforms|menu-bar:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
+    setting:requires|dock:requires|menu-bar:requires) RIG_TOML_FIELD_KEY=requires ; RIG_TOML_FIELD_TYPE=array ;;
+    dock:items|menu-bar:items) RIG_TOML_FIELD_KEY=item ; RIG_TOML_FIELD_TYPE=array ;;
+    menu-bar-item:visible) RIG_TOML_FIELD_KEY=visible ; RIG_TOML_FIELD_TYPE=boolean ;;
     provider:arguments) RIG_TOML_FIELD_KEY=argument ; RIG_TOML_FIELD_TYPE=array ;;
     provider:capabilities) RIG_TOML_FIELD_KEY=capability ; RIG_TOML_FIELD_TYPE=array ;;
     provider:autoupdate-options) RIG_TOML_FIELD_KEY=autoupdate-option ; RIG_TOML_FIELD_TYPE=array ;;
@@ -1767,6 +1776,13 @@ rig_parse_file() {
             esac
             rig_add_field "$current_section" "$internal_key" "$value" "$file" "$line_number" || return
             ;;
+          boolean)
+            case "$value" in
+              true|false) ;;
+              *) rig_fail "$file:$line_number: field '$key' must be true or false" || return ;;
+            esac
+            rig_add_field "$current_section" "$internal_key" "$value" "$file" "$line_number" || return
+            ;;
           string)
             rig_toml_parse_string "$value" "$file" "$line_number" || return
             value=$RIG_VALUE
@@ -2076,13 +2092,14 @@ rig_detect_profile_selection_mode() {
           rig_field_declared "$section_name" scheduled-job ||
           rig_field_declared "$section_name" setting ||
           rig_field_declared "$section_name" dock ||
+          rig_field_declared "$section_name" menu-bar ||
           rig_field_declared "$section_name" port ||
           rig_field_declared "$section_name" default-application ||
           rig_field_declared "$section_name" firewall; then
           central=1
         fi
         ;;
-    tool|skill|service|scheduled-job|setting|dock|default-application|firewall|port)
+    tool|skill|service|scheduled-job|setting|dock|menu-bar|default-application|firewall|port)
         if rig_field_declared "$section_name" member-profile; then
           item=1
         fi
@@ -2250,14 +2267,14 @@ rig_validate_provider_adapter() {
   adapter=$2
   case "$adapter" in
     custom) ;;
-    homebrew|mas|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-handlers|macos-pf|linux-nftables|skills-cli|ki) ;;
+    homebrew|mas|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-menu-bar|macos-handlers|macos-pf|linux-nftables|skills-cli|ki) ;;
     *) rig_fail "[$section_name] has unsupported adapter '$adapter'" || return ;;
   esac
 }
 
 rig_builtin_provider_adapter() {
   case "$1" in
-    homebrew|mas|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-handlers|macos-pf|linux-nftables|skills-cli|ki)
+    homebrew|mas|uv|mise|npm|chezmoi|direct-download|launchd|macos-applications|macos-defaults|macos-dock|macos-menu-bar|macos-handlers|macos-pf|linux-nftables|skills-cli|ki)
       RIG_VALUE=$1
       return 0
       ;;
@@ -2299,7 +2316,7 @@ rig_validate_binding_adapter() {
     custom:*) ;;
     homebrew:formula|homebrew:cask|mas:app|uv:tool|mise:tool|npm:global|chezmoi:target) ;;
     direct-download:executable) ;;
-    launchd:*|macos-applications:*|macos-defaults:*|macos-dock:*|macos-handlers:*|macos-pf:*|linux-nftables:*|skills-cli:*|ki:*)
+    launchd:*|macos-applications:*|macos-defaults:*|macos-dock:*|macos-menu-bar:*|macos-handlers:*|macos-pf:*|linux-nftables:*|skills-cli:*|ki:*)
       rig_fail "[$section_name] adapter '$adapter' cannot install tools" || return
       ;;
     homebrew:*|mas:*|uv:*|mise:*|npm:*|chezmoi:*|direct-download:*)
@@ -2693,6 +2710,64 @@ rig_validate_dock() {
   [ "$count" -gt 0 ] || rig_fail "[$section_name] requires field 'item'" || return
 }
 
+# A menu-bar layout shares the Dock's ordered item list, but its provider only
+# observes: Rig never writes a status item's position or visibility.
+rig_validate_menu_bar() {
+  local section_name section_index field_index field_end item seen count
+
+  section_name=$1
+  rig_require_field "$section_name" name || return
+  rig_require_field "$section_name" purpose || return
+  rig_require_field "$section_name" rationale || return
+  rig_require_field "$section_name" provider || return
+  [ "$RIG_VALUE" = macos-menu-bar ] ||
+    rig_fail "[$section_name] provider must be 'macos-menu-bar'" || return
+  rig_validate_macos_platforms "$section_name" || return
+  rig_section_index "$section_name" || return 2
+  section_index=$RIG_INDEX
+  rig_validate_references_for_field "$section_index" requires tool || return
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  seen=,
+  count=0
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = item ]; then
+      item=${RIG_FIELD_VALUES[$field_index]}
+      rig_valid_id "$item" && rig_reference_exists menu-bar-item "$item" ||
+        rig_fail "[$section_name] references unknown menu bar item '$item'" || return
+      case "$seen" in
+        *,$item,*) rig_fail "[$section_name] repeats menu bar item '$item'" || return ;;
+      esac
+      seen=$seen$item,
+      count=$((count + 1))
+    fi
+    field_index=$((field_index + 1))
+  done
+  [ "$count" -gt 0 ] || rig_fail "[$section_name] requires field 'item'" || return
+}
+
+rig_validate_menu_bar_item() {
+  local section_name domain autosave tool
+
+  section_name=$1
+  rig_require_field "$section_name" domain || return
+  domain=$RIG_VALUE
+  case "$domain" in
+    ''|-*|.*|*[!A-Za-z0-9._-]*) rig_fail "[$section_name] invalid domain '$domain'" || return ;;
+  esac
+  rig_require_field "$section_name" autosave || return
+  autosave=$RIG_VALUE
+  # The name is matched inside a quoted defaults key, so it cannot carry a quote.
+  case "$autosave" in
+    ''|*[\"\\]*|*[[:cntrl:]]*) rig_fail "[$section_name] invalid autosave name '$autosave'" || return ;;
+  esac
+  if rig_get_value "$section_name" tool; then
+    tool=$RIG_VALUE
+    rig_valid_id "$tool" && rig_reference_exists tool "$tool" ||
+      rig_fail "[$section_name] references unknown tool '$tool'" || return
+  fi
+}
+
 rig_validate_dock_item() {
   local section_name kind tool
 
@@ -3009,6 +3084,7 @@ rig_validate_model() {
         rig_validate_references_for_field "$index" scheduled-job scheduled-job || return
         rig_validate_references_for_field "$index" setting setting || return
         rig_validate_references_for_field "$index" dock dock || return
+        rig_validate_references_for_field "$index" menu-bar menu-bar || return
         rig_validate_references_for_field "$index" port port || return
         rig_validate_references_for_field "$index" default-application default-application || return
         rig_validate_references_for_field "$index" firewall firewall || return
@@ -3045,6 +3121,12 @@ rig_validate_model() {
         rig_validate_resource_dependencies "$section_name" "$index" || return
         ;;
       dock-item) rig_validate_dock_item "$section_name" || return ;;
+      menu-bar)
+        rig_validate_menu_bar "$section_name" || return
+        rig_validate_references_for_field "$index" member-profile profile || return
+        rig_validate_resource_dependencies "$section_name" "$index" || return
+        ;;
+      menu-bar-item) rig_validate_menu_bar_item "$section_name" || return ;;
       port) rig_validate_port "$section_name" "$index" || return ;;
     provider)
       if rig_get_value "$section_name" command; then
@@ -3626,7 +3708,7 @@ rig_select_item_memberships() {
     section_type=${RIG_SECTION_TYPES[$index]}
     section_name=${RIG_SECTION_NAMES[$index]}
     section_id=${RIG_SECTION_IDS[$index]}
-    case "$section_type" in tool|skill|service|scheduled-job|setting|dock|default-application|firewall|port) ;; *)
+    case "$section_type" in tool|skill|service|scheduled-job|setting|dock|menu-bar|default-application|firewall|port) ;; *)
       index=$((index + 1)); continue ;;
     esac
     if rig_item_selected_by_active_profiles "$section_name"; then
@@ -3662,6 +3744,7 @@ rig_select_central_profile() {
         scheduled-job) rig_select_resource scheduled-job "$target" "$platform" || return ;;
         setting) rig_select_resource setting "$target" "$platform" || return ;;
         dock) rig_select_resource dock "$target" "$platform" || return ;;
+        menu-bar) rig_select_resource menu-bar "$target" "$platform" || return ;;
         default-application) rig_select_resource default-application "$target" "$platform" || return ;;
         firewall) rig_select_resource firewall "$target" "$platform" || return ;;
         port) rig_select_port "$target" || return ;;
@@ -3760,6 +3843,7 @@ rig_resource_native_target() {
       RIG_VALUE=$provider:default-application:$RIG_VALUE
       ;;
     dock) RIG_VALUE=$provider:dock ;;
+    menu-bar) RIG_VALUE=$provider:menu-bar ;;
     firewall)
       rig_get_value "$section_name" locator || return 2
       RIG_VALUE=$provider:locator:$RIG_VALUE
@@ -4120,6 +4204,7 @@ rig_provider_has_capability() {
       macos-applications:inventory|\
       macos-defaults:resource-observe|macos-defaults:resource-apply|\
       macos-dock:resource-observe|macos-dock:resource-apply|\
+      macos-menu-bar:resource-observe|\
     macos-handlers:resource-observe|macos-handlers:resource-apply|\
       macos-pf:resource-observe|macos-pf:resource-apply|macos-pf:resource-retire|\
       linux-nftables:resource-observe|linux-nftables:resource-apply|linux-nftables:resource-retire|\
@@ -4229,9 +4314,7 @@ rig_append_resource_fields() {
   rig_section_index "$section_name" || return 2
   section_index=$RIG_INDEX
   section_type=${RIG_SECTION_TYPES[$section_index]}
-  if [ "$section_type" = dock ]; then
-    rig_dock_resolve_items "$section_name" || return
-  fi
+  case "$section_type" in dock|menu-bar) rig_dock_resolve_items "$section_name" || return ;; esac
   restart_policy=0
   start_policy=0
   run_policy=0
@@ -4244,7 +4327,7 @@ rig_append_resource_fields() {
     [ "$key" != resource-dependency ] || output_key=depends-on
     case "$section_type:$key" in
       *:provider|*:locator|*:subject) ;;
-      dock:item) rig_append_dock_item_field "${RIG_FIELD_VALUES[$field_index]}" ;;
+      dock:item|menu-bar:item) rig_append_dock_item_field "${RIG_FIELD_VALUES[$field_index]}" ;;
       *) RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]="$output_key=${RIG_FIELD_VALUES[$field_index]}" ;;
     esac
     case "$key" in
@@ -4881,13 +4964,15 @@ rig_setting_apply() {
   "$command" write "$domain" "$key" "-$value_type" "$value" 1>&2
 }
 
-# A layout's included items, in declared order: every unlinked item, and each
-# item whose linked tool the resolved profile selects. Without a resolved
-# profile every item is included. Membership never reads installed state.
+# A Dock or menu-bar layout's included items, in declared order: every
+# unlinked item, and each item whose linked tool the resolved profile selects.
+# Without a resolved profile every item is included. Membership never reads
+# installed state. A layout's items are the matching component kind.
 rig_dock_resolve_items() {
-  local section_name section_index field_index field_end item tool selected
+  local section_name section_index field_index field_end item item_kind tool selected
 
   section_name=$1
+  item_kind=${section_name%%.*}-item
   RIG_DOCK_INCLUDED_ITEMS=()
   RIG_DOCK_EXCLUDED_ITEMS=()
   RIG_DOCK_EXCLUDED_REASONS=()
@@ -4902,7 +4987,7 @@ rig_dock_resolve_items() {
   while [ "$field_index" -lt "$field_end" ]; do
     if [ "${RIG_FIELD_KEYS[$field_index]}" = item ]; then
       item=${RIG_FIELD_VALUES[$field_index]}
-      if [ -n "${RIG_RESOLVED_PROFILE:-}" ] && rig_get_value "dock-item.$item" tool; then
+      if [ -n "${RIG_RESOLVED_PROFILE:-}" ] && rig_get_value "$item_kind.$item" tool; then
         tool=$RIG_VALUE
         case "$selected" in
           *$'\n'"$tool"$'\n'*) RIG_DOCK_INCLUDED_ITEMS[${#RIG_DOCK_INCLUDED_ITEMS[@]}]=$item ;;
@@ -5216,6 +5301,131 @@ rig_dock_apply() {
   "$killall_command" Dock 1>&2
 }
 
+# Read one AppKit status-item value from a captured defaults domain. Keys with
+# spaces are quoted; a quoted value has its quotes removed.
+rig_menu_bar_value() {
+  local dump key line value
+
+  dump=$1
+  key=$2
+  while IFS= read -r line; do
+    line=${line#"${line%%[![:space:]]*}"}
+    case "$line" in
+      "\"$key\" = "*\;)
+        value=${line#"\"$key\" = "}
+        value=${value%\;}
+        value=${value#\"}
+        value=${value%\"}
+        RIG_VALUE=$value
+        return 0
+        ;;
+    esac
+  done <<< "$dump"
+  return 1
+}
+
+# Succeed when decimal offset $1 is strictly greater than $2.
+rig_menu_bar_offset_greater() {
+  local left right left_whole right_whole left_fraction right_fraction
+  local LC_ALL=C
+
+  left=$1
+  right=$2
+  left_whole=${left%%.*}
+  right_whole=${right%%.*}
+  left_fraction=
+  right_fraction=
+  [ "$left" = "$left_whole" ] || left_fraction=${left#*.}
+  [ "$right" = "$right_whole" ] || right_fraction=${right#*.}
+  [ "$((10#$left_whole))" -eq "$((10#$right_whole))" ] ||
+    { [ "$((10#$left_whole))" -gt "$((10#$right_whole))" ]; return; }
+  while [ "${#left_fraction}" -lt "${#right_fraction}" ]; do left_fraction=${left_fraction}0; done
+  while [ "${#right_fraction}" -lt "${#left_fraction}" ]; do right_fraction=${right_fraction}0; done
+  [[ "$left_fraction" > "$right_fraction" ]]
+}
+
+# Menu-bar order is AppKit's per-domain pixel offset from the right edge, so a
+# larger offset sits further left. Each domain is read once. Rig only observes:
+# the owner reorders the icons by Command-dragging them.
+rig_menu_bar_observe() {
+  local section_name command item item_section domain autosave declared dump index found
+  local position shown unreadable unplaced visibility order previous previous_position
+  local -a domains dumps readable
+
+  section_name=$1
+  rig_macos_defaults_command; command=$RIG_VALUE
+  rig_dock_resolve_items "$section_name" || return
+  domains=()
+  dumps=()
+  readable=()
+  unreadable=
+  unplaced=
+  visibility=
+  order=
+  previous=
+  previous_position=
+  for item in "${RIG_DOCK_INCLUDED_ITEMS[@]+"${RIG_DOCK_INCLUDED_ITEMS[@]}"}"; do
+    item_section=menu-bar-item.$item
+    rig_get_value "$item_section" domain || return 2; domain=$RIG_VALUE
+    rig_get_value "$item_section" autosave || return 2; autosave=$RIG_VALUE
+    declared=true
+    if rig_get_value "$item_section" visible; then declared=$RIG_VALUE; fi
+    found=
+    index=0
+    while [ "$index" -lt "${#domains[@]}" ]; do
+      [ "${domains[$index]}" != "$domain" ] || { found=$index; break; }
+      index=$((index + 1))
+    done
+    if [ -z "$found" ]; then
+      found=${#domains[@]}
+      domains[$found]=$domain
+      if dumps[$found]=$("$command" read "$domain" 2>/dev/null); then
+        readable[$found]=1
+      else
+        readable[$found]=0
+      fi
+    fi
+    if [ "${readable[$found]}" -ne 1 ]; then
+      [ -n "$unreadable" ] || unreadable=domain-unreadable:$domain
+      continue
+    fi
+    dump=${dumps[$found]}
+    position=
+    if rig_menu_bar_value "$dump" "NSStatusItem Preferred Position $autosave"; then
+      case "$RIG_VALUE" in
+        ''|.*|*.|*.*.*|*[!0-9.]*) ;;
+        *) position=$RIG_VALUE ;;
+      esac
+    fi
+    # An item with no recorded position has never been shown.
+    shown=false
+    [ -z "$position" ] || shown=true
+    if rig_menu_bar_value "$dump" "NSStatusItem VisibleCC $autosave"; then
+      case "$RIG_VALUE" in 1|true|YES) shown=true ;; 0|false|NO) shown=false ;; esac
+    fi
+    if [ "$declared" = true ] && [ -z "$position" ]; then
+      [ -n "$unplaced" ] || unplaced=menu-bar-item-unplaced:$item
+      continue
+    fi
+    if [ "$shown" != "$declared" ]; then
+      [ -n "$visibility" ] || visibility=visibility:$item
+    fi
+    # A hidden item takes no part in the order.
+    [ "$declared" = true ] || continue
+    if [ -n "$previous" ] && [ -z "$order" ] &&
+      ! rig_menu_bar_offset_greater "$previous_position" "$position"; then
+      order=order:$previous-before-$item
+    fi
+    previous=$item
+    previous_position=$position
+  done
+  if [ -n "$unreadable" ]; then RIG_OBSERVATION=unknown; RIG_OBSERVATION_DETAIL=$unreadable
+  elif [ -n "$unplaced" ]; then RIG_OBSERVATION=missing; RIG_OBSERVATION_DETAIL=$unplaced
+  elif [ -n "$visibility" ]; then RIG_OBSERVATION=drifted; RIG_OBSERVATION_DETAIL=$visibility
+  elif [ -n "$order" ]; then RIG_OBSERVATION=drifted; RIG_OBSERVATION_DETAIL=$order
+  else RIG_OBSERVATION=present; RIG_OBSERVATION_DETAIL=-; fi
+}
+
 rig_macos_resource_preflight() {
   local section_name verb adapter command killall_command paths path value_type value
 
@@ -5236,6 +5446,10 @@ rig_macos_resource_preflight() {
           rig_expand_home_value "$value" || return
         fi
       fi
+      ;;
+    macos-menu-bar)
+      rig_macos_defaults_command; command=$RIG_VALUE
+      rig_executable_available "$command" || rig_fail "provider '$adapter' executable unavailable: $command" || return
       ;;
     macos-dock)
       rig_macos_dockutil_command; command=$RIG_VALUE
@@ -5294,7 +5508,7 @@ rig_preflight_resource() {
     return
   fi
   case "$adapter" in
-    macos-defaults|macos-dock)
+    macos-defaults|macos-dock|macos-menu-bar)
       rig_macos_resource_preflight "$section_name" "$verb" "$adapter"
       return
       ;;
@@ -5338,6 +5552,7 @@ rig_observe_resource() {
   case "$adapter" in
     macos-defaults) rig_setting_observe "$section_name"; return ;;
     macos-dock) rig_dock_observe "$section_name"; return ;;
+    macos-menu-bar) rig_menu_bar_observe "$section_name"; return ;;
   esac
   rig_capture_invocation "$executable"
   if [ "$RIG_NATIVE_STATUS" -ne 0 ]; then
@@ -9326,6 +9541,11 @@ rig_preflight_apply() {
   while [ "$index" -lt "${#RIG_RESOURCE_PLAN_SECTIONS[@]}" ]; do
     section_name=${RIG_RESOURCE_PLAN_SECTIONS[$index]}
     RIG_RESOURCE_PREFLIGHT_DETAIL=
+    if rig_resource_observe_only "$section_name"; then
+      RIG_RESOURCE_PREFLIGHT_DETAILS[$index]=
+      index=$((index + 1))
+      continue
+    fi
     rig_preflight_resource "$section_name" apply-resource
     native_status=$?
     case "$native_status" in
@@ -9410,6 +9630,19 @@ rig_resource_blocker() {
   return 1
 }
 
+# A built-in observe-only provider reports drift for the owner to correct by
+# hand. A custom provider without resource-apply still fails its preflight.
+rig_resource_observe_only() {
+  local provider
+
+  rig_get_value "$1" provider || return 2
+  provider=$RIG_VALUE
+  rig_provider_adapter "$provider" || return 2
+  [ "$RIG_VALUE" != custom ] &&
+    rig_provider_has_capability "$provider" resource-observe &&
+    ! rig_provider_has_capability "$provider" resource-apply
+}
+
 rig_resource_locator_summary() {
   local section_name kind domain key
 
@@ -9423,7 +9656,7 @@ rig_resource_locator_summary() {
       RIG_VALUE=$domain/$key
       ;;
     default-application) rig_default_application_identity "$section_name" ;;
-    dock) RIG_VALUE=${section_name#*.} ;;
+    dock|menu-bar) RIG_VALUE=${section_name#*.} ;;
     *) return 2 ;;
   esac
 }
@@ -9463,7 +9696,7 @@ rig_print_resource_projection() {
   case "$adapter" in
     macos-pf) rig_firewall_print_projection "$section_name"; return ;;
     linux-nftables) rig_nftables_print_projection "$section_name"; return ;;
-    launchd|macos-defaults|macos-dock|macos-handlers)
+    launchd|macos-defaults|macos-dock|macos-menu-bar|macos-handlers)
     RIG_INVOKE_ARGUMENTS=()
     rig_append_resource_fields "$section_name" || return
     index=0
@@ -9645,7 +9878,7 @@ rig_apply_select_targets() {
         RIG_APPLY_PORT_TARGETS[${#RIG_APPLY_PORT_TARGETS[@]}]=$target
         RIG_APPLY_DIRECT[${#RIG_APPLY_DIRECT[@]}]=$owner
         ;;
-      service:*|scheduled-job:*|setting:*|dock:*|default-application:*|firewall:*)
+      service:*|scheduled-job:*|setting:*|dock:*|menu-bar:*|default-application:*|firewall:*)
         section_name=${target/:/.}
         rig_array_contains "$section_name" "${RIG_RESOURCE_PLAN_SECTIONS[@]+"${RIG_RESOURCE_PLAN_SECTIONS[@]}"}" ||
           { syntax_error "unknown target '$target' in profile '$RIG_RESOLVED_PROFILE'"; return 2; }
@@ -9979,6 +10212,12 @@ rig_command_apply_impl() {
       failed=$((failed + 1))
       operational_failure=1
       [ "$dry_run" -eq 1 ] || rig_progress_result failed "$provider:$kind.$id" declaration
+    elif rig_resource_observe_only "$section_name"; then
+      RIG_RESOURCE_PLAN_RESULTS[$index]=skipped
+      RIG_RESOURCE_PLAN_DETAILS[$index]=observe-only
+      skipped=$((skipped + 1))
+      printf 'rig: %s: observe-only; reorder by Command-dragging the icons\n' "$section_name" >&2
+      [ "$dry_run" -eq 1 ] || rig_progress_result skipped "$provider:$kind.$id" declaration
     elif [ "$dry_run" -eq 1 ]; then
       RIG_RESOURCE_PLAN_RESULTS[$index]=planned
       RIG_RESOURCE_PLAN_DETAILS[$index]=reconcile:$locator
@@ -13507,7 +13746,7 @@ rig_doctor_diagnostics() {
           profile) profiles=$((profiles + 1)) ;;
         tool) tools=$((tools + 1)) ;;
         skill) skills=$((skills + 1)) ;;
-          service|scheduled-job|setting|dock|default-application|firewall) resources=$((resources + 1)) ;;
+          service|scheduled-job|setting|dock|menu-bar|default-application|firewall) resources=$((resources + 1)) ;;
           port) ports=$((ports + 1)) ;;
         esac
         index=$((index + 1))
@@ -14573,7 +14812,7 @@ rig_resource_schedule_summary() {
 rig_print_profile_resource_tables() {
   local wanted label count section_name section_index id name provider desired schedule detail
 
-  for wanted in service scheduled-job setting dock default-application firewall; do
+  for wanted in service scheduled-job setting dock menu-bar default-application firewall; do
     count=0
     for section_name in "${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}"; do
       [ "${section_name%%.*}" = "$wanted" ] && count=$((count + 1))
@@ -14584,6 +14823,7 @@ rig_print_profile_resource_tables() {
       setting) label=Settings ;;
       default-application) label='Default applications' ;;
       dock) label='Dock layouts' ;;
+      menu-bar) label='Menu bar layouts (observe-only)' ;;
       firewall) label='Firewall restrictions' ;;
     esac
     printf '\n%s: %s\n' "$label" "$count"
@@ -14597,7 +14837,7 @@ rig_print_profile_resource_tables() {
       scheduled-job) rig_table_add_column DESIRED 24; rig_table_add_column SCHEDULE 40 ;;
       setting) rig_table_add_column VALUE 64 ;;
       default-application) rig_table_add_column HANDLER 64 ;;
-      dock) rig_table_add_column ITEMS 8 ;;
+      dock|menu-bar) rig_table_add_column ITEMS 8 ;;
       firewall) rig_table_add_column PORTS 40 ;;
     esac
     for section_name in "${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}"; do
@@ -14630,7 +14870,7 @@ rig_print_profile_resource_tables() {
           rig_get_value "$section_name" bundle-id || return 2
           rig_table_add_row "$id" "$name" "$provider" "$detail -> $RIG_VALUE"
           ;;
-        dock)
+        dock|menu-bar)
           rig_dock_resolve_items "$section_name" || return
           detail=${#RIG_DOCK_INCLUDED_ITEMS[@]}
           [ "${#RIG_DOCK_EXCLUDED_ITEMS[@]}" -eq 0 ] ||
@@ -14834,7 +15074,8 @@ rig_show_json() {
         done
         printf '],"allow":["tailnet"]'
         ;;
-      dock)
+      dock|menu-bar)
+        [ "$kind" != menu-bar ] || rig_json_field ',' apply observe-only
         rig_dock_resolve_items "$section_name" || return
         printf ',"items":['
         index=0
@@ -14924,7 +15165,7 @@ rig_command_show() {
   if [ -n "$item" ]; then
     [ "$all" -eq 0 ] && [ "$category_seen" -eq 0 ] || rig_command_syntax_error show || return
     case "$item" in
-      dock:*) RIG_SHOW_DOCK_PROFILE=$profile ;;
+      dock:*|menu-bar:*) RIG_SHOW_DOCK_PROFILE=$profile ;;
       *) [ "$profile_seen" -eq 0 ] || rig_command_syntax_error show || return ;;
     esac
     rig_show_item "$item" --format "$format"
@@ -15053,7 +15294,7 @@ rig_profile_contains_resource() {
       target=${RIG_FIELD_VALUES[$field_index]}
       case "$key" in
         profile|inherit) rig_profile_contains_resource "$target" "$wanted" && return 0 ;;
-        skill|service|scheduled-job|setting|dock|default-application|firewall|port) [ "$key.$target" = "$wanted" ] && return 0 ;;
+        skill|service|scheduled-job|setting|dock|menu-bar|default-application|firewall|port) [ "$key.$target" = "$wanted" ] && return 0 ;;
       esac
     fi
     field_index=$((field_index + 1))
@@ -15149,6 +15390,68 @@ rig_explain_dock_items() {
   done
 }
 
+rig_explain_menu_bar_items() {
+  local section_name section_index field_index field_end item item_section position value
+  local profile filtered selected included index
+
+  section_name=$1
+  rig_section_index "$section_name" || return 2
+  section_index=$RIG_INDEX
+  profile=$RIG_SHOW_DOCK_PROFILE
+  filtered=0
+  rig_current_platform || return
+  value=$RIG_VALUE
+  if [ -n "$profile" ] || rig_resource_supports_platform "$section_name" "$value"; then
+    rig_resolve_profile "$profile" "$value" || return
+    rig_dock_resolve_items "$section_name" || return
+    filtered=1
+    selected=no
+    if rig_array_contains "$section_name" "${RIG_SELECTED_RESOURCE_SECTIONS[@]+"${RIG_SELECTED_RESOURCE_SECTIONS[@]}"}"; then
+      selected=yes
+    fi
+    printf 'menu-bar-profile=%s\nmenu-bar-platform=%s\nmenu-bar-selected=%s\n' \
+      "$RIG_RESOLVED_PROFILE" "$RIG_RESOLVED_PLATFORM" "$selected"
+  fi
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  position=0
+  included=0
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = item ]; then
+      position=$((position + 1))
+      item=${RIG_FIELD_VALUES[$field_index]}
+      item_section=menu-bar-item.$item
+      printf 'menu-bar-item.%s.id=%s\n' "$position" "$item"
+      rig_get_value "$item_section" domain || return 2
+      printf 'menu-bar-item.%s.domain=%s\n' "$position" "$RIG_VALUE"
+      rig_get_value "$item_section" autosave || return 2
+      printf 'menu-bar-item.%s.autosave=%s\n' "$position" "$RIG_VALUE"
+      value=true
+      if rig_get_value "$item_section" visible; then value=$RIG_VALUE; fi
+      printf 'menu-bar-item.%s.visible=%s\n' "$position" "$value"
+      if rig_get_value "$item_section" tool; then
+        value=$RIG_VALUE
+        printf 'menu-bar-item.%s.tool=%s\n' "$position" "$value"
+      fi
+      if [ "$filtered" -eq 1 ]; then
+        value=
+        index=0
+        while [ "$index" -lt "${#RIG_DOCK_EXCLUDED_ITEMS[@]}" ]; do
+          [ "${RIG_DOCK_EXCLUDED_ITEMS[$index]}" != "$item" ] || value=${RIG_DOCK_EXCLUDED_REASONS[$index]}
+          index=$((index + 1))
+        done
+        if [ -n "$value" ]; then
+          printf 'menu-bar-item.%s.excluded=%s\n' "$position" "$value"
+        else
+          included=$((included + 1))
+          printf 'menu-bar-item.%s.position=%s\n' "$position" "$included"
+        fi
+      fi
+    fi
+    field_index=$((field_index + 1))
+  done
+}
+
 rig_explain_resource() {
   local target kind id section_name section_index field_index field_end key value profiles subject derived_pending
 
@@ -15157,7 +15460,7 @@ rig_explain_resource() {
   id=${target#*:}
   [ "$target" != "$id" ] && rig_valid_id "$id" ||
     rig_fail "unknown resource '$target'" || return
-  case "$kind" in service|scheduled-job|setting|dock|default-application|firewall|port) ;; *)
+  case "$kind" in service|scheduled-job|setting|dock|menu-bar|default-application|firewall|port) ;; *)
     rig_fail "unknown resource '$target'" || return ;;
   esac
   section_name=$kind.$id
@@ -15192,6 +15495,10 @@ rig_explain_resource() {
   done
   if [ "$kind" = dock ]; then
     rig_explain_dock_items "$section_name" || return
+  fi
+  if [ "$kind" = menu-bar ]; then
+    printf '%s\n' 'apply=observe-only'
+    rig_explain_menu_bar_items "$section_name" || return
   fi
   if [ "$kind" = firewall ]; then
     rig_explain_firewall "$section_name" || return
@@ -15246,7 +15553,7 @@ rig_command_explain_impl() {
   rig_load_config || return
   case "$tool" in
     skill:*) rig_explain_skill "$tool"; return ;;
-    service:*|scheduled-job:*|setting:*|dock:*|default-application:*|firewall:*|port:*) rig_explain_resource "$tool"; return ;;
+    service:*|scheduled-job:*|setting:*|dock:*|menu-bar:*|default-application:*|firewall:*|port:*) rig_explain_resource "$tool"; return ;;
   esac
   rig_valid_id "$tool" && rig_section_index "tool.$tool" ||
     rig_fail "unknown tool '$tool'" || return
