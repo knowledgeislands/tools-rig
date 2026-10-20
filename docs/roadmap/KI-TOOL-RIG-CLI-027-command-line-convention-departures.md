@@ -12,7 +12,7 @@ blocks: []
 blocked_by: []
 baseline_ref: 2b4e2efda0d8ce7e62427e5d29d0e8d737ec065c
 created_at: 2026-10-18T19:22:21Z
-updated_at: 2026-10-20T00:30:00Z
+updated_at: 2026-10-20T01:55:00Z
 ---
 
 # Command-Line Convention Departures
@@ -127,9 +127,13 @@ The approved boundary: one shared normaliser gives every Rig command the `ki-rep
 
 ### Outstanding concerns
 
-- `status` still accepts a repeated `--profile`, `--problems`, `--unmanaged` or `--retired`, last one winning, unlike `show` and `doctor`; RIG-PORT-014 says a repeated option exits 2, and this change enforced it only for `--format`.
-- `rig_buffer_mutation_report` pre-scans `remove`'s words for `--format` before the parser, so `remove --profile --format json` takes `--format json` as the format and exits 2 for the bare `--profile`, rather than reading `--format` as a profile name. The result is still a usage error; the pre-scan predates this change.
-- The command guide and manual `apply` synopses still omit `--sudo`, which help and completion list; this predates the change.
+None remain. Q-027-REPEATS: the blind review of 20 October 2026 confirmed the three concerns delivery had recorded as defects against this record's grammar and alignment promises: `status` accepted a repeated `--profile`, `--problems`, `--unmanaged` or `--retired`; `rig_buffer_mutation_report`'s `--format` pre-scan read a value option's word as the format, so `remove --profile --format --format json` took the wrong `--format`; and the command guide and `rig(1)` `apply` synopses omitted `--sudo`. The supervisor took its option a) under Kris's OVERNIGHT authority (20 October 2026, 00:28 BST): fix all three within this record before acceptance, with no new record. One follow-up commit:
+
+- `src/rig/22-observation.bash`: `status` exits 2 with its usage for a repeated `--profile`, `--problems`, `--unmanaged` or `--retired`, before discovery, as `show` and `doctor` already did.
+- `src/rig/30-commands.bash`: the pre-scan reads the command's value options from `rig_command_options` and copies each with its next word verbatim, and leaves every word after `--` to the parser, so `remove --profile --format` reports an invalid profile `--format` rather than a usage error.
+- `docs/guides/user/commands.md` and `man/rig.1`: the `apply` synopsis lists `[--sudo]` after `[-n|--dry-run]`, the order usage prints, per RIG-PORT-007.
+- `tests/rig-cli-surface.bats`: two cases, one for each parser defect; both fail against the previous parsers. `bin/rig` reassembled.
+- Verification: `bats tests/ </dev/null` 602 of 602; `shellcheck`, `bash -n` (including `/bin/bash` 3.2 on every module), `scripts/assemble-rig --check`, `scripts/benchmark-rig`, `scripts/smoke-native-providers`, `mandoc -T lint man/rig.1` and `git diff --check` clean; `ki repo audit --repo .` reports no failure.
 
 ### Post-change review
 

@@ -8199,9 +8199,10 @@ rig_status_json() {
 
 rig_command_status() {
   local profile index tool provider state detail unmanaged_requested format
-  local problems retired_requested format_seen
+  local problems retired_requested format_seen profile_seen
 
   profile=
+  profile_seen=0
   unmanaged_requested=0
   retired_requested=0
   format=text
@@ -8214,23 +8215,36 @@ rig_command_status() {
         return
         ;;
       --unmanaged)
+        if [ "$unmanaged_requested" -eq 1 ]; then
+          rig_command_syntax_error status
+          return
+        fi
         unmanaged_requested=1
         shift
         ;;
       --retired)
+        if [ "$retired_requested" -eq 1 ]; then
+          rig_command_syntax_error status
+          return
+        fi
         retired_requested=1
         shift
         ;;
       --problems)
+        if [ "$problems" -eq 1 ]; then
+          rig_command_syntax_error status
+          return
+        fi
         problems=1
         shift
         ;;
       --profile)
-        if [ "$#" -lt 2 ] || [ -z "$2" ]; then
+        if [ "$profile_seen" -eq 1 ] || [ "$#" -lt 2 ] || [ -z "$2" ]; then
           rig_command_syntax_error status
           return
         fi
         profile=$2
+        profile_seen=1
         shift 2
         ;;
       --format)
@@ -14253,6 +14267,7 @@ rig_capture_report_context() {
 
 rig_buffer_mutation_report() {
   local command backend format format_seen report status
+  local option value description choices required short values
   local -a args
 
   command=$1
@@ -14261,7 +14276,25 @@ rig_buffer_mutation_report() {
   format=text
   format_seen=0
   args=()
+  values=' '
+  while IFS='|' read -r option value description choices required short; do
+    [ -z "$value" ] || [ "$option" = --format ] || values="$values$option "
+  done < <(rig_command_options "$command")
   while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --)
+        # Words after the end of options belong to the parser, unread here.
+        while [ "$#" -gt 0 ]; do args[${#args[@]}]=$1; shift; done
+        break ;;
+    esac
+    case "$values" in
+      *" $1 "*)
+        # Another value option keeps its next word, even one like --format.
+        args[${#args[@]}]=$1
+        shift
+        [ "$#" -eq 0 ] || { args[${#args[@]}]=$1; shift; }
+        continue ;;
+    esac
     if [ "$1" = --format ]; then
       if [ "$format_seen" -eq 1 ] || [ "$#" -lt 2 ]; then
         rig_command_syntax_error "$command" || return

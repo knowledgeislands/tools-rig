@@ -1292,6 +1292,7 @@ rig_capture_report_context() {
 
 rig_buffer_mutation_report() {
   local command backend format format_seen report status
+  local option value description choices required short values
   local -a args
 
   command=$1
@@ -1300,7 +1301,25 @@ rig_buffer_mutation_report() {
   format=text
   format_seen=0
   args=()
+  values=' '
+  while IFS='|' read -r option value description choices required short; do
+    [ -z "$value" ] || [ "$option" = --format ] || values="$values$option "
+  done < <(rig_command_options "$command")
   while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --)
+        # Words after the end of options belong to the parser, unread here.
+        while [ "$#" -gt 0 ]; do args[${#args[@]}]=$1; shift; done
+        break ;;
+    esac
+    case "$values" in
+      *" $1 "*)
+        # Another value option keeps its next word, even one like --format.
+        args[${#args[@]}]=$1
+        shift
+        [ "$#" -eq 0 ] || { args[${#args[@]}]=$1; shift; }
+        continue ;;
+    esac
     if [ "$1" = --format ]; then
       if [ "$format_seen" -eq 1 ] || [ "$#" -lt 2 ]; then
         rig_command_syntax_error "$command" || return

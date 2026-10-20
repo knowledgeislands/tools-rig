@@ -10,7 +10,7 @@ Rig configuration describes the setup you want. Providers install or observe the
 - `rig status [--profile NAME] [--problems] [--unmanaged] [--retired] [--format text|json] [--json]`
 - `rig doctor [--profile NAME] [--verbose] [--format text|json] [--json]`
 - `rig diag [--full]`
-- `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID]... [-n|--dry-run] [--format text|json] [--json]`
+- `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID]... [-n|--dry-run] [--sudo] [--format text|json] [--json]`
 - `rig remove [--profile NAME] [--target ID] [-n|--dry-run] [--apply] [--format text|json] [--json]`
 - `rig upgrade [--profile NAME] [-n|--dry-run] [--unattended] [--format text|json] [--json]`
 - `rig capture [ITEM...] [--provider homebrew] [--profile NAME] [--category ID] [--purpose TEXT] [--rationale TEXT] [--output FILE] [-n|--dry-run]`

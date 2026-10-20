@@ -68,6 +68,31 @@ setup() {
   done
 }
 
+@test "status rejects repeated options before discovery" {
+  export RIG_CONFIG_HOME=$BATS_TEST_TMPDIR/absent
+  for arguments in '--profile default --profile default' '--problems --problems' '--unmanaged --unmanaged' '--retired --retired' '--profile=default --profile default'; do
+    read -r -a words <<< "$arguments"
+    run "$RIG" status "${words[@]}"
+    [ "$status" -eq 2 ] || false
+    [[ "$output" == *'usage: rig status'* ]] || false
+    [[ "$output" != *'no configuration sources'* ]] || false
+  done
+}
+
+@test "remove keeps an option-like profile value verbatim" {
+  for value in --format --json; do
+    run "$RIG" remove --profile "$value" --format json
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"profile '$value'"* ]] || false
+    [[ "$output" != *'usage: rig remove'* ]] || false
+  done
+  run "$RIG" remove --profile=--format
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"profile '--format'"* ]] || false
+  run "$RIG" remove -- --format json
+  [ "$status" -eq 2 ]
+}
+
 # JSON output stamps its observation time, so comparisons drop that field.
 without_time() {
   sed 's/"observed_at":"[^"]*"//'

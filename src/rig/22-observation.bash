@@ -1043,9 +1043,10 @@ rig_status_json() {
 
 rig_command_status() {
   local profile index tool provider state detail unmanaged_requested format
-  local problems retired_requested format_seen
+  local problems retired_requested format_seen profile_seen
 
   profile=
+  profile_seen=0
   unmanaged_requested=0
   retired_requested=0
   format=text
@@ -1058,23 +1059,36 @@ rig_command_status() {
         return
         ;;
       --unmanaged)
+        if [ "$unmanaged_requested" -eq 1 ]; then
+          rig_command_syntax_error status
+          return
+        fi
         unmanaged_requested=1
         shift
         ;;
       --retired)
+        if [ "$retired_requested" -eq 1 ]; then
+          rig_command_syntax_error status
+          return
+        fi
         retired_requested=1
         shift
         ;;
       --problems)
+        if [ "$problems" -eq 1 ]; then
+          rig_command_syntax_error status
+          return
+        fi
         problems=1
         shift
         ;;
       --profile)
-        if [ "$#" -lt 2 ] || [ -z "$2" ]; then
+        if [ "$profile_seen" -eq 1 ] || [ "$#" -lt 2 ] || [ -z "$2" ]; then
           rig_command_syntax_error status
           return
         fi
         profile=$2
+        profile_seen=1
         shift 2
         ;;
       --format)
