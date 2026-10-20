@@ -1043,12 +1043,13 @@ rig_status_json() {
 
 rig_command_status() {
   local profile index tool provider state detail unmanaged_requested format
-  local problems retired_requested
+  local problems retired_requested format_seen
 
   profile=
   unmanaged_requested=0
   retired_requested=0
   format=text
+  format_seen=0
   problems=0
   while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -1077,13 +1078,14 @@ rig_command_status() {
         shift 2
         ;;
       --format)
-        case "${2:-}" in
-          text|json) format=$2 ;;
+        case "$format_seen:${2:-}" in
+          0:text|0:json) format=$2 ;;
           *)
             rig_command_syntax_error status
             return
             ;;
         esac
+        format_seen=1
         shift 2
         ;;
       *)

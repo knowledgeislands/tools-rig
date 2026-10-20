@@ -133,6 +133,7 @@ RIG_LISTENER_OBSERVATION_AVAILABLE=0
 RIG_UNATTENDED=0
 RIG_APPLY_TARGETS=()
 RIG_APPLY_DIRECT=()
+RIG_ARGUMENTS=()
 
 print_help() {
   printf '%s\n' \
@@ -163,20 +164,20 @@ print_help() {
 }
 
 rig_command_options() {
-  # name | value placeholder | purpose | completion values | required
+  # name | value placeholder | purpose | completion values | required | short form
   # This is the authored option inventory for help, usage and both completions.
   case "$1" in
-    init) printf '%s\n' '--dry-run||Preview without writing configuration.||' ;;
+    init) printf '%s\n' '--dry-run||Preview without writing configuration.|||-n' ;;
     repair) printf '%s\n' '--output|PATH|Write a repaired proposal outside active configuration.|path|' ;;
     diag) printf '%s\n' '--full||Include local executable and XDG paths.||' ;;
-    show) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--all||Browse all catalogue tools.||' '--category|ID|Limit tools to a category.|category id|' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
+    show) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--all||Browse all catalogue tools.||' '--category|ID|Limit tools to a category.|category id|' '--format|FORMAT|Choose text or JSON output.|text json|' '--json||Print JSON output; the same as --format json.||' ;;
     completion) ;;
-    status) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--problems||Show only entries needing attention.||' '--unmanaged||Include observed items not declared by an installation.||' '--retired||Include private, informational retired-application evidence.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
-    remove) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--target|ID|Limit to one declared removal.||' '--dry-run||Preview native removals; this is the default.||' '--apply||Confirm the displayed preview before native uninstall.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
-    doctor) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--unmanaged||Include undeclared inventory as information.||' '--verbose||Include runtime and configuration diagnostics.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
-    apply) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--scope|SCOPE|Restrict to tools, skills, resources, or all.|tools skills resources all|' '--target|ID|Apply one selected entry; repeat for several targets.||' '--dry-run||Print the plan without invoking providers.||' '--sudo||Authorise and refresh native sudo for this attended run.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
-    upgrade) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--dry-run||Print the plan without invoking providers.||' '--unattended||Give native stdin EOF, skip App Store upgrades, and record outcomes.||' '--format|FORMAT|Choose text or JSON output.|text json|' ;;
-    capture) printf '%s\n' '--provider|NAME|Select an inventory provider.|homebrew|' '--profile|NAME|Select the profile for proposed membership.|profile name|' '--dry-run||Inspect and preview without writing a proposal.||' '--output|PATH|Write a new proposal outside active configuration.|path|' '--category|ID|Declare the category for selected items.|category id|' '--purpose|TEXT|Declare the purpose for selected items.|text|' '--rationale|TEXT|Declare the rationale for selected items.|text|' ;;
+    status) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--problems||Show only entries needing attention.||' '--unmanaged||Include observed items not declared by an installation.||' '--retired||Include private, informational retired-application evidence.||' '--format|FORMAT|Choose text or JSON output.|text json|' '--json||Print JSON output; the same as --format json.||' ;;
+    remove) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--target|ID|Limit to one declared removal.||' '--dry-run||Preview native removals; this is the default.|||-n' '--apply||Confirm the displayed preview before native uninstall.||' '--format|FORMAT|Choose text or JSON output.|text json|' '--json||Print JSON output; the same as --format json.||' ;;
+    doctor) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--unmanaged||Include undeclared inventory as information.||' '--verbose||Include runtime and configuration diagnostics.||' '--format|FORMAT|Choose text or JSON output.|text json|' '--json||Print JSON output; the same as --format json.||' ;;
+    apply) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--scope|SCOPE|Restrict to tools, skills, resources, or all.|tools skills resources all|' '--target|ID|Apply one selected entry; repeat for several targets.||' '--dry-run||Print the plan without invoking providers.|||-n' '--sudo||Authorise and refresh native sudo for this attended run.||' '--format|FORMAT|Choose text or JSON output.|text json|' '--json||Print JSON output; the same as --format json.||' ;;
+    upgrade) printf '%s\n' '--profile|NAME|Select a profile.|profile name|' '--dry-run||Print the plan without invoking providers.|||-n' '--unattended||Give native stdin EOF, skip App Store upgrades, and record outcomes.||' '--format|FORMAT|Choose text or JSON output.|text json|' '--json||Print JSON output; the same as --format json.||' ;;
+    capture) printf '%s\n' '--provider|NAME|Select an inventory provider.|homebrew|' '--profile|NAME|Select the profile for proposed membership.|profile name|' '--dry-run||Inspect and preview without writing a proposal.|||-n' '--output|PATH|Write a new proposal outside active configuration.|path|' '--category|ID|Declare the category for selected items.|category id|' '--purpose|TEXT|Declare the purpose for selected items.|text|' '--rationale|TEXT|Declare the rationale for selected items.|text|' ;;
     export) printf '%s\n' '--profile|NAME|Select the view profile to export.|profile name|required' '--output|DIRECTORY|Write the public data tree here.|directory|required' '--title|TEXT|Set the exported document title.|title|' '--base-url|URL|Set the published document canonical URL.|url|' ;;
   esac
 }
@@ -189,11 +190,71 @@ rig_command_positionals() {
   esac
 }
 
+rig_command_normalise() {
+  # Rewrites one command's words into the separate long forms its parser
+  # accepts, driven by the option inventory, and returns them in RIG_ARGUMENTS.
+  local command word mapped option value description choices required short
+  local values flags shorts operands
+  command=$1
+  shift
+  RIG_ARGUMENTS=()
+  values=' '; flags=' '; shorts=' '
+  while IFS='|' read -r option value description choices required short; do
+    [ -n "$option" ] || continue
+    if [ -n "$value" ]; then values="$values$option "; else flags="$flags$option "; fi
+    [ -z "$short" ] || shorts="$shorts$short=$option "
+  done < <(rig_command_options "$command")
+  case "$command" in show|capture|completion|help) operands=1 ;; *) operands=0 ;; esac
+  while [ "$#" -gt 0 ]; do
+    word=$1
+    shift
+    case "$word" in
+      --)
+        # Operand parsers keep the marker; elsewhere only a trailing one is
+        # accepted, and later words reach the parser to be rejected.
+        if [ "$operands" -eq 1 ] || [ "$#" -gt 0 ]; then
+          RIG_ARGUMENTS[${#RIG_ARGUMENTS[@]}]=--
+          while [ "$#" -gt 0 ]; do RIG_ARGUMENTS[${#RIG_ARGUMENTS[@]}]=$1; shift; done
+        fi
+        return 0 ;;
+      --*=*)
+        case "$values" in
+          *" ${word%%=*} "*)
+            RIG_ARGUMENTS[${#RIG_ARGUMENTS[@]}]=${word%%=*}
+            RIG_ARGUMENTS[${#RIG_ARGUMENTS[@]}]=${word#*=}
+            continue ;;
+        esac
+        case "$flags" in *" ${word%%=*} "*) rig_command_syntax_error "$command"; return ;; esac
+        RIG_ARGUMENTS[${#RIG_ARGUMENTS[@]}]=$word ;;
+      --json)
+        case "$flags" in
+          *' --json '*)
+            RIG_ARGUMENTS[${#RIG_ARGUMENTS[@]}]=--format
+            RIG_ARGUMENTS[${#RIG_ARGUMENTS[@]}]=json ;;
+          *) RIG_ARGUMENTS[${#RIG_ARGUMENTS[@]}]=$word ;;
+        esac ;;
+      *)
+        case "$shorts" in
+          *" $word="*)
+            mapped=${shorts#*" $word="}
+            RIG_ARGUMENTS[${#RIG_ARGUMENTS[@]}]=${mapped%% *}
+            continue ;;
+        esac
+        RIG_ARGUMENTS[${#RIG_ARGUMENTS[@]}]=$word
+        case "$values" in
+          *" $word "*)
+            # A value word is taken verbatim, even when it looks like an option.
+            [ "$#" -eq 0 ] || { RIG_ARGUMENTS[${#RIG_ARGUMENTS[@]}]=$1; shift; } ;;
+        esac ;;
+    esac
+  done
+}
+
 rig_command_usage() {
-  local option value description choices required
+  local option value description choices required short
   printf 'Usage: rig %s' "$1"
   rig_command_positionals "$1"
-  while IFS='|' read -r option value description choices required; do
+  while IFS='|' read -r option value description choices required short; do
     [ -n "$option" ] || continue
     case "$choices" in
       'text json') value='text|json' ;;
@@ -204,7 +265,7 @@ rig_command_usage() {
     elif [ -n "$value" ]; then
       printf ' [%s %s]' "$option" "$value"
     else
-      printf ' [%s]' "$option"
+      printf ' [%s%s]' "${short:+$short|}" "$option"
     fi
   done < <(rig_command_options "$1")
   printf '\n'
@@ -217,7 +278,7 @@ rig_command_syntax_error() {
 }
 
 rig_command_help() {
-  local command option value description choices required
+  local command option value description choices required short
   command=$1
   rig_command_usage "$command"
   if [ "$command" = apply ]; then
@@ -246,9 +307,9 @@ rig_command_help() {
       'It does not prevent terminal or graphical authentication or impose a time limit.'
   fi
   printf '%s\n' '' 'Options:' '  -h, --help  Show command help.'
-  while IFS='|' read -r option value description choices required; do
+  while IFS='|' read -r option value description choices required short; do
     [ -n "$option" ] || continue
-    printf '  %-20s %s\n' "$option${value:+ $value}" "$description"
+    printf '  %-20s %s\n' "${short:+$short, }$option${value:+ $value}" "$description"
   done < <(rig_command_options "$command")
   case "$command" in
     init|repair|status|doctor|diag|apply|remove|upgrade|capture|export)
@@ -693,13 +754,16 @@ require_home() {
 }
 
 rig_command_completion_words() {
-  local option value description choices required
+  local option value description choices required short
   printf '%s' '-h --help'
-  while IFS='|' read -r option value description choices required; do
+  while IFS='|' read -r option value description choices required short; do
     [ -n "$option" ] || continue
     printf ' %s' "$option"
   done < <(rig_command_options "$1")
-  while IFS='|' read -r option value description choices required; do
+  while IFS='|' read -r option value description choices required short; do
+    [ -z "$short" ] || printf ' %s' "$short"
+  done < <(rig_command_options "$1")
+  while IFS='|' read -r option value description choices required short; do
     case "$choices" in
       ''|'profile name'|'category id'|directory|path|text|title|url) ;;
       *) printf ' %s' "$choices" ;;
@@ -711,9 +775,9 @@ rig_command_completion_words() {
 }
 
 rig_command_zsh_arguments() {
-  local option value description choices required
+  local option value description choices required short
   printf " '(-h --help)'{-h,--help}'[show command help]'"
-  while IFS='|' read -r option value description choices required; do
+  while IFS='|' read -r option value description choices required short; do
     [ -n "$option" ] || continue
     if [ -n "$choices" ] && [ "$choices" != 'profile name' ] &&
       [ "$choices" != 'category id' ] && [ "$choices" != directory ] &&
@@ -722,6 +786,8 @@ rig_command_zsh_arguments() {
       printf " '%s[%s]:%s:(%s)'" "$option" "$description" "$value" "$choices"
     elif [ -n "$value" ]; then
       printf " '%s[%s]:%s:'" "$option" "$description" "$value"
+    elif [ -n "$short" ]; then
+      printf " '(%s %s)'{%s,%s}'[%s]'" "$short" "$option" "$short" "$option" "$description"
     else
       printf " '%s[%s]'" "$option" "$description"
     fi
@@ -8133,12 +8199,13 @@ rig_status_json() {
 
 rig_command_status() {
   local profile index tool provider state detail unmanaged_requested format
-  local problems retired_requested
+  local problems retired_requested format_seen
 
   profile=
   unmanaged_requested=0
   retired_requested=0
   format=text
+  format_seen=0
   problems=0
   while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -8167,13 +8234,14 @@ rig_command_status() {
         shift 2
         ;;
       --format)
-        case "${2:-}" in
-          text|json) format=$2 ;;
+        case "$format_seen:${2:-}" in
+          0:text|0:json) format=$2 ;;
           *)
             rig_command_syntax_error status
             return
             ;;
         esac
+        format_seen=1
         shift 2
         ;;
       *)
@@ -14807,6 +14875,12 @@ rig_command_show() {
           rig_command_syntax_error show || return
         case "$2" in text|json) format=$2 ;; *) rig_command_syntax_error show || return ;; esac
         format_seen=1; shift 2 ;;
+      --)
+        shift
+        [ "$#" -le 1 ] || rig_command_syntax_error show || return
+        [ "$#" -eq 1 ] || break
+        [ -z "$item" ] && [ -n "$1" ] || rig_command_syntax_error show || return
+        item=$1; break ;;
       -*) rig_command_syntax_error show || return ;;
       *)
         [ -z "$item" ] && [ -n "$1" ] || rig_command_syntax_error show || return
@@ -15666,6 +15740,8 @@ rig_command_capture() {
           --purpose) purpose=$option ;; --rationale) rationale=$option ;; --output) output=$option ;;
         esac
         shift 2 ;;
+      --) shift
+        while [ "$#" -gt 0 ]; do items[${#items[@]}]=$1; shift; done ;;
       -*) rig_command_syntax_error capture; return ;;
       *) items[${#items[@]}]=$arg; shift ;;
     esac
@@ -16649,7 +16725,7 @@ rig_command_diag() {
 }
 
 main() {
-  local command_name exit_code
+  local command_name exit_code operand
 
   set -u
   RIG_INVOKED_PATH=$0
@@ -16672,16 +16748,28 @@ main() {
   trap rig_progress_cleanup EXIT
   trap rig_progress_resize WINCH
   case "$command_name" in
+    init|repair|show|status|doctor|diag|apply|remove|upgrade|capture|export|help|completion)
+      shift
+      rig_command_normalise "$command_name" "$@" || return
+      set -- "$command_name" "${RIG_ARGUMENTS[@]+"${RIG_ARGUMENTS[@]}"}" ;;
+  esac
+  case "$command_name" in
     -h|--help)
       [ "$#" -eq 1 ] || syntax_error "unexpected arguments for $command_name" || return
       print_help
       ;;
     help)
+      operand=0
+      if [ "${2:-}" = -- ]; then
+        operand=1
+        set -- "$1" "${@:3}"
+      fi
       case "$#" in
         1) ;;
         2)
           case "$2" in
-            -h|--help|help) ;;
+            help) ;;
+            -h|--help) [ "$operand" -eq 0 ] || syntax_error "unknown command: $2" || return ;;
             init|repair|show|status|doctor|diag|apply|remove|upgrade|capture|export|completion)
               rig_command_help "$2"; return ;;
             *) syntax_error "unknown command: $2" || return ;;
@@ -16739,9 +16827,15 @@ main() {
       rig_command_export "$@"
       ;;
     completion)
+      operand=0
+      if [ "${2:-}" = -- ]; then
+        operand=1
+        set -- "$1" "${@:3}"
+      fi
       [ "$#" -eq 2 ] || rig_command_syntax_error completion || return
       case "$2" in
-        -h|--help) rig_command_help completion ;;
+        -h|--help) [ "$operand" -eq 0 ] || syntax_error "unsupported shell: $2" || return
+          rig_command_help completion ;;
         bash) print_bash_completion ;;
         zsh) print_zsh_completion ;;
         *) syntax_error "unsupported shell: $2" || return ;;

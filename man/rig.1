@@ -7,7 +7,7 @@ rig \- describe and manage a personal working setup
 \&
 .br
 .B rig init
-.RI [ \-\-dry-run ]
+.RI [ \-n|\-\-dry-run ]
 .br
 .B rig repair
 .RI [ \-\-output " PATH" ]
@@ -18,6 +18,7 @@ rig \- describe and manage a personal working setup
 .RI [ \-\-all ]
 .RI [ \-\-category " ID" ]
 .RI [ \-\-format " text|json" ]
+.RI [ \-\-json ]
 .br
 .B rig status
 .RI [ \-\-profile " NAME" ]
@@ -25,12 +26,13 @@ rig \- describe and manage a personal working setup
 .RI [ \-\-unmanaged ]
 .RI [ \-\-retired ]
 .RI [ \-\-format " text|json" ]
+.RI [ \-\-json ]
 .br
 .B rig capture
 .RI [ ITEM... ]
 .RI [ \-\-provider " homebrew" ]
 .RI [ \-\-profile " NAME" ]
-.RI [ \-\-dry-run ]
+.RI [ \-n|\-\-dry-run ]
 .RI [ \-\-output " PATH" ]
 .RI [ \-\-category " ID" ]
 .RI [ \-\-purpose " TEXT" ]
@@ -40,19 +42,30 @@ rig \- describe and manage a personal working setup
 .RI [ \-\-profile " NAME" ]
 .RI [ \-\-scope " tools|skills|resources|all" ]
 .RI [ \-\-target " ID" ]...
-.RI [ \-\-dry-run ]
+.RI [ \-n|\-\-dry-run ]
 .RI [ \-\-format " text|json" ]
+.RI [ \-\-json ]
+.br
+.B rig remove
+.RI [ \-\-profile " NAME" ]
+.RI [ \-\-target " ID" ]
+.RI [ \-n|\-\-dry-run ]
+.RI [ \-\-apply ]
+.RI [ \-\-format " text|json" ]
+.RI [ \-\-json ]
 .br
 .B rig upgrade
 .RI [ \-\-profile " NAME" ]
-.RI [ \-\-dry-run ]
+.RI [ \-n|\-\-dry-run ]
 .RI [ \-\-unattended ]
 .RI [ \-\-format " text|json" ]
+.RI [ \-\-json ]
 .br
 .B rig doctor
 .RI [ \-\-profile " NAME" ]
 .RI [ \-\-verbose ]
 .RI [ \-\-format " text|json" ]
+.RI [ \-\-json ]
 .br
 .B rig diag
 .RI [ \-\-full ]
@@ -212,7 +225,9 @@ selection options.
 and
 .B upgrade
 accept
-.BI "\-\-format " text|json .
+.BI "\-\-format " text|json
+or its equivalent
+.BR \-\-json .
 JSON retains lossless structured values; text columns wrap descriptive values.
 Mutation JSON
 groups complete rows by named columns; diagnostics remain on stderr.
@@ -744,6 +759,33 @@ Show command help.
 .TP
 .BR \-V , " \-\-version"
 Print the Rig release or development version.
+.PP
+Every command reads its options with one grammar.
+A long option that takes a value accepts it as the next word or after
+.BR = ,
+as in
+.B \-\-profile work
+or
+.BR \-\-profile=work ;
+the word after a value option is always its value, even when it begins with
+.BR \- .
+.B \-\-json
+is the same as
+.BR "\-\-format json" ,
+and giving both is a repeated option.
+.B \-n
+is the same as
+.B \-\-dry-run
+wherever that option exists.
+.B \-\-
+ends option processing: every later word is an operand, so
+.B rig show \-\- \-\-all
+looks up an item named
+.BR \-\-all .
+A command without operands accepts only a trailing
+.BR \-\- .
+A flag given a value, an unknown option, and a repeated option exit 2 with
+the command's usage.
 .SH CONFIGURATION
 \&
 .PP

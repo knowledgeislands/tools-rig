@@ -441,7 +441,7 @@ EOF
   run run_rig upgrade --unattended --unattended </dev/null
 
   [ "$status" -eq 2 ]
-  [[ "$output" == *'usage: rig upgrade [--profile NAME] [--dry-run] [--unattended]'* ]] || false
+  [[ "$output" == *'usage: rig upgrade [--profile NAME] [-n|--dry-run] [--unattended]'* ]] || false
 
   run run_rig apply --unattended </dev/null
 
@@ -450,7 +450,7 @@ EOF
   run run_rig upgrade --help </dev/null
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *'Usage: rig upgrade [--profile NAME] [--dry-run] [--unattended]'* ]] || false
+  [[ "$output" == *'Usage: rig upgrade [--profile NAME] [-n|--dry-run] [--unattended]'* ]] || false
 }
 
 hold_operation_lock() {

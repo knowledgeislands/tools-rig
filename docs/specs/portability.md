@@ -135,3 +135,13 @@ _Conformance:_ conforming
 _Verify:_ Isolated command tests exercise general and nested help, share-safe and full diagnostics, and doctor findings without provider mutation.
 
 _Evidence:_ `rig_command_diag`, `main`, and `tests/rig.bats` cover the root routes and diagnostic disclosure boundary; doctor findings are covered in `tests/rig-doctor-config.bats`.
+
+### RIG-PORT-014 — Command-line option grammar
+
+Every Rig command MUST read its options through one grammar derived from the authored option inventory. A long option that takes a value MUST accept it as the next word or after `=`, keeping the text after `=` literally, and the word after a value option MUST be taken as its value even when it begins with `-`. `--json` MUST be equivalent to `--format json` on every command that offers `--format`, and `--format text|json` MUST remain accepted. `-n` MUST be equivalent to `--dry-run` on every command that offers `--dry-run`. `--` MUST end option processing so that every later word is an operand; a command without operands MUST accept only a trailing `--`. A flag given a value, an unknown option, a repeated option, including `--json` with `--format`, and any word after `--` on a command without operands MUST exit 2 with the command's usage.
+
+_Conformance:_ conforming
+
+_Verify:_ Isolated Bats cases compare equals and separate value forms, `--json` and `--format json`, and `-n` and `--dry-run` output, exercise `--` with operand and operand-free commands, and assert exit 2 for each violation.
+
+_Evidence:_ `rig_command_normalise` in `src/rig/00-runtime.bash` applies the grammar from `rig_command_options` before `main` dispatches; `tests/rig-cli-surface.bats` covers the equals form, the JSON flag, the short dry run, verbatim values, end of options, violations, and the help and completion surfaces.

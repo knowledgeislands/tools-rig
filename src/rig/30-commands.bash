@@ -1914,6 +1914,12 @@ rig_command_show() {
           rig_command_syntax_error show || return
         case "$2" in text|json) format=$2 ;; *) rig_command_syntax_error show || return ;; esac
         format_seen=1; shift 2 ;;
+      --)
+        shift
+        [ "$#" -le 1 ] || rig_command_syntax_error show || return
+        [ "$#" -eq 1 ] || break
+        [ -z "$item" ] && [ -n "$1" ] || rig_command_syntax_error show || return
+        item=$1; break ;;
       -*) rig_command_syntax_error show || return ;;
       *)
         [ -z "$item" ] && [ -n "$1" ] || rig_command_syntax_error show || return

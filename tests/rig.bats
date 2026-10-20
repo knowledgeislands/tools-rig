@@ -2987,7 +2987,7 @@ bootstrap-profile = "default"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --help
   [ "$status" -eq 0 ]
-  [[ "$output" == *"Usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID] [--dry-run]"* ]] || false
+  [[ "$output" == *"Usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID] [-n|--dry-run]"* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --profile bootstrap --help
   [ "$status" -eq 0 ]
@@ -2995,7 +2995,7 @@ bootstrap-profile = "default"' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/bootstrap.
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --dry-run --dry-run
   [ "$status" -eq 2 ]
-  [[ "$output" == *'usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID] [--dry-run]'* ]] || false
+  [[ "$output" == *'usage: rig apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID] [-n|--dry-run]'* ]] || false
 
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$missing_config" "$RIG" apply --profile
   [ "$status" -eq 2 ]

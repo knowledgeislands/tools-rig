@@ -24,6 +24,7 @@ Run `rig help COMMAND` or `rig COMMAND --help` for options and exact arguments.
 
 ### Capabilities
 
+- Every command reads options with one grammar: a long option's value may follow `=` (`--profile=work`), `--json` is the same as `--format json`, `-n` is short for `--dry-run`, and `--` ends the options. `--format text|json` remains accepted, and `status` now rejects a repeated `--format` like the other commands.
 - Mac App Store applications have their own built-in `mas` provider, declared `install.provider = "mas"` with `install.kind = "app"` and a numeric App Store locator; Rig output names `mas`, never `homebrew`, for them. The former `homebrew` provider with kind `mas` still works as a deprecated alias that `rig doctor` lists under Warnings.
 - Tailnet-only macOS firewall restrictions: a `[firewall.ID]` declaration keeps chosen listener ports reachable only from loopback and the tailnet through a Rig-owned pf anchor and LaunchDaemon, changed only under `apply --sudo` and observed without administrator rights. The anchor passes tailnet sources only to the Mac's own tailnet addresses, read from `ifconfig` at each check and apply; an undiscoverable address leaves the firewall `unknown` with `tailnet-address-undiscoverable` and apply changes nothing, and a changed one reports `tailnet-address-stale`.
 - Tailnet-only Linux firewall restrictions: the `linux-nftables` provider applies the same `[firewall.ID]` declaration through a Rig-owned nftables table and systemd unit, leaving `ufw`, `iptables`, `/etc/nftables.conf` and every other table untouched.

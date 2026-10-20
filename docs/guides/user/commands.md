@@ -4,20 +4,23 @@ Rig configuration describes the setup you want. Providers install or observe the
 
 ## Command synopsis
 
-- `rig init [--dry-run]`
+- `rig init [-n|--dry-run]`
 - `rig repair [--output PATH]`
-- `rig show [ITEM] [--profile NAME] [--all] [--category ID] [--format text|json]`
-- `rig status [--profile NAME] [--problems] [--unmanaged] [--retired] [--format text|json]`
-- `rig doctor [--profile NAME] [--verbose] [--format text|json]`
+- `rig show [ITEM] [--profile NAME] [--all] [--category ID] [--format text|json] [--json]`
+- `rig status [--profile NAME] [--problems] [--unmanaged] [--retired] [--format text|json] [--json]`
+- `rig doctor [--profile NAME] [--verbose] [--format text|json] [--json]`
 - `rig diag [--full]`
-- `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID]... [--dry-run] [--format text|json]`
-- `rig upgrade [--profile NAME] [--dry-run] [--unattended] [--format text|json]`
-- `rig capture [ITEM...] [--provider homebrew] [--profile NAME] [--category ID] [--purpose TEXT] [--rationale TEXT] [--output FILE] [--dry-run]`
+- `rig apply [--profile NAME] [--scope tools|skills|resources|all] [--target ID]... [-n|--dry-run] [--format text|json] [--json]`
+- `rig remove [--profile NAME] [--target ID] [-n|--dry-run] [--apply] [--format text|json] [--json]`
+- `rig upgrade [--profile NAME] [-n|--dry-run] [--unattended] [--format text|json] [--json]`
+- `rig capture [ITEM...] [--provider homebrew] [--profile NAME] [--category ID] [--purpose TEXT] [--rationale TEXT] [--output FILE] [-n|--dry-run]`
 - `rig export --profile NAME --output DIRECTORY [--title TEXT] [--base-url URL]`
 - `rig completion bash|zsh`
 - `rig help [COMMAND]`
 
 Use `rig help COMMAND` or `rig COMMAND --help` for command-local details. Item lookup cannot be combined with selection filters, except `--profile` with a Dock target; `--all` and `--profile` are alternative selections. The optional `--profile` selects configuration; it is not a separate lifecycle.
+
+Every command reads its options the same way. A long option's value follows it as the next word or after `=`, so `--profile=work` equals `--profile work`, and the word after a value option is always its value. `--json` is the same as `--format json`; scripts may use either. `-n` is the same as `--dry-run`. `--` ends the options, so `rig show -- --all` looks up an item named `--all`. A misused option exits 2 with the command's usage.
 
 ## Set up configuration
 
@@ -31,7 +34,7 @@ Add categories and declarations to the resulting file, or use capture to prepare
 
 `rig show ITEM` explains one declaration, including purpose, rationale, relationships and native ownership. Qualify non-tool identities, such as `skill:caveman`, `service:daemon`, `setting:screenshots` or `port:api`. For a Dock target, `--profile NAME` (or the default profile) explains which items that profile includes, in order, and which it excludes and why. These queries never invoke providers.
 
-Human-readable tables preserve identifiers and wrap descriptive values rather than abbreviating them. Interactive tables use the terminal's current width; when the columns cannot fit, entries use a labelled, stacked layout. Exceptionally long identifiers remain intact even when wider than the terminal. Redirected output is plain and deterministic, using a 120-column budget independent of `COLUMNS`; unavailable terminal geometry uses the same fallback. Use `--format json` for lossless structured values.
+Human-readable tables preserve identifiers and wrap descriptive values rather than abbreviating them. Interactive tables use the terminal's current width; when the columns cannot fit, entries use a labelled, stacked layout. Exceptionally long identifiers remain intact even when wider than the terminal. Redirected output is plain and deterministic, using a 120-column budget independent of `COLUMNS`; unavailable terminal geometry uses the same fallback. Use `--json` for lossless structured values.
 
 Human cells show terminal control characters and malformed UTF-8 bytes as visible escapes, never executable terminal sequences. Valid UTF-8 characters are kept intact and conservatively budgeted at two display cells per non-ASCII code point, so combining marks and joined emoji can leave extra room. On an exceptionally small terminal, preserving a single wide glyph or identifier takes precedence over the width budget. JSON retains the original values.
 

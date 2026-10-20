@@ -6,13 +6,13 @@ purpose: debt
 theme: rig
 kind: deliver
 horizon: now
-status: ready
+status: awaiting-review
 size: m
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 2b4e2efda0d8ce7e62427e5d29d0e8d737ec065c
 created_at: 2026-10-18T19:22:21Z
-updated_at: 2026-10-19T22:52:00Z
+updated_at: 2026-10-20T00:30:00Z
 ---
 
 # Command-Line Convention Departures
@@ -57,13 +57,13 @@ The normaliser applies these rules left to right, up to `--`:
 
 ## Steps
 
-- [ ] Add one shared normaliser beside `rig_command_options` in `src/rig/00-runtime.bash`, driven by that inventory and following the rules under Design, which rewrites a command's arguments into the shape the existing parsers already accept and returns them through a global array. `main` in `90-main.bash` calls it for each command before dispatch, so no parser grows its own copy.
-- [ ] Give the operand-taking parsers an end-of-options branch so a word after `--` reaches them as an operand: `show` (`ITEM`), `capture` (`ITEM...`), `completion` (`bash|zsh`) and `help` (`COMMAND`). Keep each command's existing operand validation, so `show -- --all` is an unknown item, not a selector.
-- [ ] Extend the inventory with an optional short form, used only for `-n`, and add a `--json` entry to every command that has `--format`. Help prints `-n, --dry-run` and lists `--json`; Bash and Zsh completion offer both; the synopsis shows the same forms on every surface `RIG-PORT-007` aligns.
-- [ ] Add tests to `tests/rig-cli-surface.bats`: `--format=json` and `--json` give byte-identical output to `--format json` for `show` and `status`; `--profile=NAME`, `--category=ID`, `--scope=tools` and repeated `--target=ID` parse as their separate forms; `--dry-run=x` and `--json --format text` exit 2; `-n` matches `--dry-run` for `init` (no configuration written) and `apply` (no provider invocation, through `rig_test_provider`) and exits 2 on `show`; `show -- selected` resolves the item, `show -- --all` is an unknown item, `status --` succeeds and `status -- x` exits 2; `show --profile -n` reports an unknown profile rather than a dry run; `help -- apply` and `completion -- bash` work; the completion definitions expose `-n` and `--json`. Existing `--format json` tests stay unchanged as the compatibility proof.
-- [ ] Update `rig(1)`, the [command guide](../guides/user/commands.md), the README synopsis, the [command-surface guide](../guides/developer/command-surface.md) (the normaliser's ownership, and that parsers see normalised arguments) and the changelog baseline. Use `--json` in new machine-output examples; leave existing `--format json` examples where they read naturally.
-- [ ] Add `RIG-PORT-014 — Command-line option grammar` to [portability](../specs/portability.md): equals and separate long-option values, `--json` and `--format json` equivalence, `-n` for `--dry-run`, `--` as end of options, and exit 2 for every violation.
-- [ ] Regenerate `bin/rig` with `scripts/assemble-rig` and run the complete gate.
+- [x] Add one shared normaliser beside `rig_command_options` in `src/rig/00-runtime.bash`, driven by that inventory and following the rules under Design, which rewrites a command's arguments into the shape the existing parsers already accept and returns them through a global array. `main` in `90-main.bash` calls it for each command before dispatch, so no parser grows its own copy.
+- [x] Give the operand-taking parsers an end-of-options branch so a word after `--` reaches them as an operand: `show` (`ITEM`), `capture` (`ITEM...`), `completion` (`bash|zsh`) and `help` (`COMMAND`). Keep each command's existing operand validation, so `show -- --all` is an unknown item, not a selector.
+- [x] Extend the inventory with an optional short form, used only for `-n`, and add a `--json` entry to every command that has `--format`. Help prints `-n, --dry-run` and lists `--json`; Bash and Zsh completion offer both; the synopsis shows the same forms on every surface `RIG-PORT-007` aligns.
+- [x] Add tests to `tests/rig-cli-surface.bats`: `--format=json` and `--json` give byte-identical output to `--format json` for `show` and `status`; `--profile=NAME`, `--category=ID`, `--scope=tools` and repeated `--target=ID` parse as their separate forms; `--dry-run=x` and `--json --format text` exit 2; `-n` matches `--dry-run` for `init` (no configuration written) and `apply` (no provider invocation, through `rig_test_provider`) and exits 2 on `show`; `show -- selected` resolves the item, `show -- --all` is an unknown item, `status --` succeeds and `status -- x` exits 2; `show --profile -n` reports an unknown profile rather than a dry run; `help -- apply` and `completion -- bash` work; the completion definitions expose `-n` and `--json`. Existing `--format json` tests stay unchanged as the compatibility proof.
+- [x] Update `rig(1)`, the [command guide](../guides/user/commands.md), the README synopsis, the [command-surface guide](../guides/developer/command-surface.md) (the normaliser's ownership, and that parsers see normalised arguments) and the changelog baseline. Use `--json` in new machine-output examples; leave existing `--format json` examples where they read naturally.
+- [x] Add `RIG-PORT-014 — Command-line option grammar` to [portability](../specs/portability.md): equals and separate long-option values, `--json` and `--format json` equivalence, `-n` for `--dry-run`, `--` as end of options, and exit 2 for every violation.
+- [x] Regenerate `bin/rig` with `scripts/assemble-rig` and run the complete gate.
 
 ## Files touched
 
@@ -100,6 +100,44 @@ The command guide, command-surface guide, README and `rig(1)` gain the forms abo
 ### Roadmap
 
 This record moves to Awaiting review at delivery.
+
+## Review
+
+### Delivered
+
+The approved boundary: one shared normaliser gives every Rig command the `ki-repo-tools` option grammar. `--name=value` is accepted beside `--name value`, `--json` is the documented machine-output form with `--format text|json` kept as its equivalent, `-n` is short for `--dry-run` on `init`, `apply`, `remove`, `upgrade` and `capture`, and `--` ends option processing. Excluded as planned: `-f, --filter`, changes to the conventions, and other tools. Immutable baseline `2b4e2efda0d8ce7e62427e5d29d0e8d737ec065c`; the delivery commit follows it on `main`.
+
+### Change Summary
+
+- `src/rig/00-runtime.bash`: the option inventory gains a sixth, short-form field (`-n` on each `--dry-run`) and a `--json` entry beside every `--format`; `rig_command_normalise` applies the Design rules from that inventory and returns `RIG_ARGUMENTS`; usage prints `[-n|--dry-run]` and `[--json]`, help prints `-n, --dry-run`, and both completions offer `-n` and `--json`.
+- `src/rig/90-main.bash`: `main` normalises every command's words before dispatch; `help` and `completion` treat a word after `--` as an operand. `src/rig/30-commands.bash` (`show`) and `src/rig/35-adoption.bash` (`capture`) gain an end-of-options branch that keeps their operand validation.
+- `src/rig/22-observation.bash`: `status` now rejects a repeated `--format`, as the other commands already did, so `--json --format text` exits 2 there too. This is the planned "another parser module only if its duplicate handling needs it".
+- `bin/rig` reassembled.
+- Tests: seven cases in `tests/rig-cli-surface.bats` cover every Steps case; `observed_at` is masked where status and doctor JSON are compared. Two synopsis assertions in `tests/rig.bats` and two in `tests/rig-lifecycle.bats` now expect `[-n|--dry-run]`; every existing `--format json` case is unchanged.
+- Docs: `RIG-PORT-014` in portability; `man/rig.1` synopsis and an option-grammar paragraph under OPTIONS; the command guide synopsis and grammar paragraph; README; the command-surface guide; the changelog baseline. The man page and command guide synopses also gain the previously missing `rig remove` line, which now shows `-n`.
+- Decisions applied: CLI-DEPARTURES a) (18 October 2026) and RIG-ORDER a) (19 October 2026). No approved deviation.
+
+### Verification
+
+- `bats tests/ </dev/null`: 600 of 600 pass.
+- `bats tests/rig-cli-surface.bats </dev/null`: 11 of 11, three consecutive runs.
+- Shell gate: `shellcheck` clean, `bash -n` clean on every script, `scripts/assemble-rig --check` current, `scripts/benchmark-rig` and `scripts/smoke-native-providers` pass, `mandoc -T lint man/rig.1` clean, `git diff --check` clean.
+- `ki repo audit --repo .`: no failure once this Review is present; its warnings (`.rumdl.toml` template drift, Claude Desktop binding, roadmap `size` migration notes on other records) predate this change and touch no file it changed.
+- Manual probes used only `help`, `show`, `status`, `init -n` and completion in a disposable HOME and XDG tree. No live apply.
+
+### Outstanding concerns
+
+- `status` still accepts a repeated `--profile`, `--problems`, `--unmanaged` or `--retired`, last one winning, unlike `show` and `doctor`; RIG-PORT-014 says a repeated option exits 2, and this change enforced it only for `--format`.
+- `rig_buffer_mutation_report` pre-scans `remove`'s words for `--format` before the parser, so `remove --profile --format json` takes `--format json` as the format and exits 2 for the bare `--profile`, rather than reading `--format` as a profile name. The result is still a usage error; the pre-scan predates this change.
+- The command guide and manual `apply` synopses still omit `--sudo`, which help and completion list; this predates the change.
+
+### Post-change review
+
+The Goal holds: each of the four departures is fixed for every command that takes the options, and every existing separate-word form still parses as before, so no script needs to change. Scope held to the planned files plus the one parser module the Steps allowed (`status`'s duplicate `--format`) and two synopsis assertions in `tests/rig-lifecycle.bats`, which enumerate the changed usage line. Regression risk sits in `main`, which now rewrites every command's words: an unknown option or an operand passes through unchanged, so each parser keeps its own rejection. Ready for Kris's review.
+
+### Mini recap
+
+One inventory-driven normaliser now gives Rig the house option grammar, documented on every aligned surface and in `RIG-PORT-014`, with isolated tests; no live machine was touched. Proposed learning route: none beyond the command-surface guide already updated.
 
 ## Discussion
 

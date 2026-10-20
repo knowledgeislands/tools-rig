@@ -21,7 +21,7 @@ rig_command_diag() {
 }
 
 main() {
-  local command_name exit_code
+  local command_name exit_code operand
 
   set -u
   RIG_INVOKED_PATH=$0
@@ -44,16 +44,28 @@ main() {
   trap rig_progress_cleanup EXIT
   trap rig_progress_resize WINCH
   case "$command_name" in
+    init|repair|show|status|doctor|diag|apply|remove|upgrade|capture|export|help|completion)
+      shift
+      rig_command_normalise "$command_name" "$@" || return
+      set -- "$command_name" "${RIG_ARGUMENTS[@]+"${RIG_ARGUMENTS[@]}"}" ;;
+  esac
+  case "$command_name" in
     -h|--help)
       [ "$#" -eq 1 ] || syntax_error "unexpected arguments for $command_name" || return
       print_help
       ;;
     help)
+      operand=0
+      if [ "${2:-}" = -- ]; then
+        operand=1
+        set -- "$1" "${@:3}"
+      fi
       case "$#" in
         1) ;;
         2)
           case "$2" in
-            -h|--help|help) ;;
+            help) ;;
+            -h|--help) [ "$operand" -eq 0 ] || syntax_error "unknown command: $2" || return ;;
             init|repair|show|status|doctor|diag|apply|remove|upgrade|capture|export|completion)
               rig_command_help "$2"; return ;;
             *) syntax_error "unknown command: $2" || return ;;
@@ -111,9 +123,15 @@ main() {
       rig_command_export "$@"
       ;;
     completion)
+      operand=0
+      if [ "${2:-}" = -- ]; then
+        operand=1
+        set -- "$1" "${@:3}"
+      fi
       [ "$#" -eq 2 ] || rig_command_syntax_error completion || return
       case "$2" in
-        -h|--help) rig_command_help completion ;;
+        -h|--help) [ "$operand" -eq 0 ] || syntax_error "unsupported shell: $2" || return
+          rig_command_help completion ;;
         bash) print_bash_completion ;;
         zsh) print_zsh_completion ;;
         *) syntax_error "unsupported shell: $2" || return ;;

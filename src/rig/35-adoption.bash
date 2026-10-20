@@ -345,6 +345,8 @@ rig_command_capture() {
           --purpose) purpose=$option ;; --rationale) rationale=$option ;; --output) output=$option ;;
         esac
         shift 2 ;;
+      --) shift
+        while [ "$#" -gt 0 ]; do items[${#items[@]}]=$1; shift; done ;;
       -*) rig_command_syntax_error capture; return ;;
       *) items[${#items[@]}]=$arg; shift ;;
     esac
