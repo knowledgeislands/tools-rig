@@ -5,12 +5,12 @@ title: Tailnet-only listener firewall
 theme: rig
 kind: deliver
 horizon: now
-status: awaiting-review
+status: in-progress
 blocks: []
 blocked_by: []
 baseline_ref: 39499cd6566b2fa02f9c66476eda53f052ccb351
 created_at: 2026-10-13T22:48:41Z
-updated_at: 2026-10-19T23:45:00Z
+updated_at: 2026-10-20T05:33:29Z
 ---
 
 # KI-TOOL-RIG-CORE-047: Tailnet-Only Listener Firewall
@@ -337,3 +337,11 @@ The anchor passes a declared port `from 100.64.0.0/10 to 100.64.0.0/10` (and the
 Both are accepted residual risks of the delivered design, now stated in RIG-ORCH-023, the ADR and the operational-resources guide; the guide's earlier claim that such a device "cannot reach the port" was wrong. The same range rule applies to the `linux-nftables` provider. [KI-TOOL-RIG-CORE-062](/Users/krisbrown/workspaces/knowledge-islands/tools-rig/docs/roadmap/KI-TOOL-RIG-CORE-062-own-address-firewall-destination.md) captures narrowing the destination to each Mac's own tailnet addresses, refreshed at apply. This correction does not change the record's status or accept it.
 
 KI-TOOL-RIG-CORE-062 delivered that narrowing on 20 October 2026 for `macos-pf` and is awaiting review; the on-link targeted case it leaves is stated in RIG-ORCH-023, the ADR and the guide. An anchor installed under this record's range rule reports `drifted (anchor-changed)` under the new renderer until an attended `rig apply --sudo` rewrites it.
+
+### Independent acceptance review, 20 October 2026
+
+The six-heading Review packet, completed Steps and immutable baseline are present. Independent acceptance against the current code is refused: `ki repo audit --repo .` fails `ki-repo-tools`'s `SHELL-HOOK` criterion because the committed `.githooks/pre-commit` still runs Bats. This is a repository gate failure, not a newly reproduced firewall defect; `ki-accept` permits no waiver for a failing governing audit. Returned to `in-progress` under the independent acceptance brief. HOOK-GUARD remains in force: no conform, hook or runtime change was made.
+
+The review packet also still withholds the attended NordVPN on/off checks and Rig apply on `terra`; ADR-KI-TOOL-RIG-009 remains proposed. Those checks and decisions are not supplied by the overnight grant. No live apply or remote machine probe was attempted. After the gate is repaired, restore the review packet with fresh verification and retain the attended acceptance boundary.
+
+Independent local verification: 602 of 602 Bats tests pass normally and again with hostile inherited XDG configuration and state directories; their planted sentinels remain unchanged. ShellCheck, Bash syntax, assembly drift, the benchmark, bounded native-provider version probes, mandoc and diff checks pass. The roadmap and authoring audits have warnings only; the complete audit still fails the hook criterion above. Source reviewed at `590872732dde2a77bc118c2938d68b35d16068eb`; neither the runtime nor the hooks changed during this review.

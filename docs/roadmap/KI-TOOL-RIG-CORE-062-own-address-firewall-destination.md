@@ -6,13 +6,13 @@ purpose: capability
 theme: rig
 kind: deliver
 horizon: now
-status: awaiting-review
+status: in-progress
 size: m
 blocks: []
 blocked_by: []
 baseline_ref: 9dce7120fcaa8aefb6856876c614f5e40ae537b3
 created_at: 2026-10-18T09:45:00Z
-updated_at: 2026-10-19T23:47:35Z
+updated_at: 2026-10-20T05:33:29Z
 ---
 
 # Own-Address Firewall Destination
@@ -143,3 +143,11 @@ Own-address destinations, paired IPv4 and IPv6 discovery, stale and undiscoverab
 ## Discussion
 
 Origin: the ways-of-working rig-fixes run of 18 October 2026, from the rig-review finding on KI-TOOL-RIG-CORE-047. Planning questions: how to discover the address without privilege or a Tailscale CLI dependency (both Macs differ: Homebrew `tailscaled` on `terra`, Tailscale.app on `sol`); what the anchor does when no tailnet address is present (block, or keep the range rule); whether the address can change between applies without a Tailscale restart, which would need the LaunchDaemon to refresh it too; and whether the one-way forged-source exposure warrants an interface match despite unstable `utun` names. Kris's RIG-ORDER decision a) of 19 October 2026 at 23:27 BST ("All three are high confidence to do them") adopted this record for planning at horizon Now. Kris answered Q-062-SCOPE and Q-062-ABSENT a) on 20 October 2026 at 00:16 BST ("proceed with recommendation"), which approves the plan as written; the record moved to Ready.
+
+### Independent acceptance review, 20 October 2026
+
+The six-heading Review packet, completed Steps and immutable baseline are present, and the code and fixture cases implement paired own-address discovery, conservative refusal and stale-address reconciliation. Independent acceptance is refused: `ki repo audit --repo .` fails `ki-repo-tools`'s `SHELL-HOOK` criterion because the committed `.githooks/pre-commit` still runs Bats. The record's Verify requires both that governing audit and the complete gate; `ki-accept` permits no waiver. Returned to `in-progress` under the independent acceptance brief. HOOK-GUARD remains in force: no conform, hook or runtime change was made.
+
+Verify's read-only `ifconfig` confirmation on `terra` is still explicitly missing from the packet; the overnight brief permits no such remote machine probe. An attended rewrite of the installed range anchors also remains separately approved work. The remaining targeted on-link exposure is an approved limitation, not a new finding. After the gate is repaired, refresh verification and obtain the missing machine evidence before resubmitting.
+
+Independent local verification: 602 of 602 Bats tests pass normally and again with hostile inherited XDG configuration and state directories; their planted sentinels remain unchanged. ShellCheck, Bash syntax, assembly drift, the benchmark, bounded native-provider version probes, mandoc and diff checks pass. The roadmap and authoring audits have warnings only; the complete audit still fails the hook criterion above. Source reviewed at `590872732dde2a77bc118c2938d68b35d16068eb`; neither the runtime nor the hooks changed during this review.
