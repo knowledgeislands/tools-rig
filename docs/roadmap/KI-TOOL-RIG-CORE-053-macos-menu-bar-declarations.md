@@ -4,12 +4,14 @@ area: CORE
 title: macOS menu bar declarations
 purpose: capability
 theme: rig
-status: triage
+kind: deliver
+status: draft
+horizon: next
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-14T10:30:00Z
-updated_at: 2026-10-14T20:50:55Z
+updated_at: 2026-10-19T23:58:00Z
 ---
 
 # macOS Menu Bar Declarations
@@ -69,10 +71,46 @@ Out of scope: writing menu-bar module visibility or third-party positions; resta
 - In: unit 1's current-host read; unit 2's declaration, observation and drift reporting; unit 3's observation shape; specifications, guides and isolated tests with stubbed `defaults`.
 - Out: any write to a menu-bar value or position; personal values and order (the personal configuration's owner); menu-bar manager adoption; any live apply during delivery.
 
+## Current state
+
+Not yet grounded. `ki-plan` records the current source facts before Ready.
+
+## Steps
+
+- [ ] Plan this record under `ki-plan` before Ready, replacing these placeholder sections.
+
+## Files touched
+
+Not yet planned.
+
+## Verify
+
+Not yet planned.
+
 ## Dependencies / blocks
 
 Not blocked. Unit 2's profile filtering should reuse the mechanism KI-TOOL-RIG-CORE-042 delivers rather than invent another.
 
+## Documentation impact
+
+### Decision Records
+
+Not yet assessed.
+
+### Specifications
+
+Not yet assessed.
+
+### Guides
+
+Not yet assessed.
+
+### Roadmap
+
+Not yet assessed.
+
 ## Discussion
 
 Origin: Kris Brown's request on 2026-10-14, investigated read-only on terra and sol the same day. On 14 October 2026 Kris chose observe-only order over Rig writing positions with app restarts or adopting a menu-bar manager, and the record was trimmed to report-only: the earlier proposal to apply Control Centre module visibility and restart the reading process was dropped with the enforcement options. Capture only; adoption, priority and plan belong to this repository.
+
+Adoption: Kris's OVERNIGHT decision of 20 October 2026 at 00:28 BST ([mac-studio-setup decisions log](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.mac-studio-setup/decisions.md)) authorised acting on the [triage review](/Users/krisbrown/.local/state/ki/agents/mac-studio-setup/triage-review.report.md)'s high-confidence recommendations: adopted into Next, confidence high, as a portable, explicitly requested observe-only resource, with current-host reads and status-item ordering still to shape. [KI-TOOL-RIG-CORE-056](KI-TOOL-RIG-CORE-056-menu-bar-order-persistence.md) stays a separate Future investigation; the suggested merge was not taken.

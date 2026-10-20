@@ -4,14 +4,16 @@ area: CORE
 title: Dynamic-type handler fallback
 purpose: corrective
 theme: rig
-status: triage
+kind: deliver
+status: draft
+horizon: now
 priority: medium
 size: s
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-19T22:30:17Z
-updated_at: 2026-10-19T22:30:17Z
+updated_at: 2026-10-19T23:58:00Z
 ---
 
 # Set a Default Application for an Extension With No Declared Content Type
@@ -34,13 +36,47 @@ The [toml-review run](/Users/krisbrown/.local/state/ki/agents/chezmoi/toml-revie
 - **In: tests and guide.** Cover the dynamic-type branch in `tests/rig-default-applications.bats` through the bridge fixture, and state the behaviour in the [default applications guide](../guides/user/default-applications.md).
 - **Out:** Finder's per-file override, editing third-party `Info.plist` files, registering a type on an application's behalf, and any apply on `sol` or `terra` during delivery. The attended carry on each Mac follows the release.
 
+## Current state
+
+Not yet grounded. `ki-plan` records the current source facts before Ready.
+
+## Steps
+
+- [ ] Diagnose the dynamic-type failure in isolation and plan this record under `ki-plan`, replacing these placeholder sections; no live handler change.
+
+## Files touched
+
+Not yet planned.
+
+## Verify
+
+Not yet planned.
+
 ## Dependencies / blocks
 
 Not blocked. Until it lands, `sol` keeps the TOML drift finding and `terra`'s carry leaves out `default-application:toml`, as the apply-carry report recommends.
+
+## Documentation impact
+
+### Decision Records
+
+Not yet assessed.
+
+### Specifications
+
+Not yet assessed.
+
+### Guides
+
+Not yet assessed.
+
+### Roadmap
+
+Not yet assessed.
 
 ## Discussion
 
 - `NSWorkspace`'s setter is asynchronous and may need user consent for some types. Planning should check whether `osascript` can wait for its completion handler, or whether the bridge needs another route.
 - Pulling `[default-application.toml]` from the private declaration would hide the owner's intent, so the fix belongs here rather than in chezmoi.
 
-Capture only. Adoption, horizon and plan need Kris's approval.
+Adoption: Kris's OVERNIGHT decision of 20 October 2026 at 00:28 BST ([mac-studio-setup decisions log](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.mac-studio-setup/decisions.md)) authorised acting on the [triage review](/Users/krisbrown/.local/state/ki/agents/mac-studio-setup/triage-review.report.md)'s high-confidence recommendations: adopted into Now, confidence high, for diagnosis and planning, because a recorded assignment failure exposes a bounded portable handler gap whose exact cause and working fallback remain unproved. Diagnosis stays isolated: no live handler change, `duti` call or apply on `sol` or `terra` is authorised.

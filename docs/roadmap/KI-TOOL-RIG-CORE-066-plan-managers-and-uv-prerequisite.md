@@ -1,7 +1,7 @@
 ---
 id: KI-TOOL-RIG-CORE-066
 area: CORE
-title: Plan managers, uv prerequisite
+title: uv prerequisite from mise
 purpose: corrective
 theme: rig
 kind: deliver
@@ -13,14 +13,14 @@ blocks: []
 blocked_by: []
 baseline_ref: d0ea7430d4dd016596459b25c6612a30d70e4666
 created_at: 2026-10-19T20:49:28Z
-updated_at: 2026-10-19T23:08:40Z
+updated_at: 2026-10-19T23:58:00Z
 ---
 
-# Doctor Reports the Selected Plan's Managers, and uv Installs Before Its Tools
+# uv Installs Through mise Before Its Tools
 
 ## Goal
 
-`rig doctor` reports the availability of exactly the package managers the selected plan uses, including mas and custom providers, with an action when one is missing; and a first `rig apply` on a fresh Mac installs uv through mise before preflighting the uv tools that need it.
+A first `rig apply` on a fresh Mac installs uv through mise before preflighting the uv tools that need it. The doctor manager-availability outcome first captured here as G2 now belongs to [KI-TOOL-RIG-CORE-067](KI-TOOL-RIG-CORE-067-package-managers-as-catalogue-tools.md).
 
 ## Context
 
@@ -33,8 +33,8 @@ Kris chose on 19 October 2026 (MANAGERS-AS-TOOLS a), [Tools burndown decisions l
 
 ## Boundary
 
-- In: doctor deriving its manager list from the providers the selected plan binds, covering built-in and custom providers; a missing manager the plan needs reporting a non-`none` action; a uv-from-mise deferral case; a test-first reproduction of the G3 preflight failure under `tests/` with fixture providers; specification alignment in RIG-STATE and RIG-ORCH.
-- Out: the `provides` field and data-derived prerequisites (KI-TOOL-RIG-CORE-067); bringing Homebrew into the catalogue; reproducing G3 against the live workstation, which `AGENTS.md` forbids.
+- In: a uv-from-mise deferral case; a test-first reproduction of the G3 preflight failure under `tests/` with fixture providers; specification alignment in RIG-ORCH.
+- Out: G2, doctor's manager availability and its manager-level finding, folded into KI-TOOL-RIG-CORE-067; the `provides` field and data-derived prerequisites (KI-TOOL-RIG-CORE-067); bringing Homebrew into the catalogue; reproducing G3 against the live workstation, which `AGENTS.md` forbids.
 
 ## Current state
 
@@ -109,11 +109,11 @@ Within the narrowed boundary recorded under Current state: a first `rig apply` n
 
 ### Outstanding concerns
 
-G2 is undelivered and needs Kris's disposition: fold it into [KI-TOOL-RIG-CORE-067](KI-TOOL-RIG-CORE-067-package-managers-as-catalogue-tools.md), whose per-manager finding is the useful part, or re-scope it here. The fix is proven by fixture only; the first real proof is the next attended fresh-Mac apply.
+None for G2, which was folded into [KI-TOOL-RIG-CORE-067](KI-TOOL-RIG-CORE-067-package-managers-as-catalogue-tools.md) under RIG-MANAGERS a) (Discussion). The fix is proven by fixture only; the first real proof is the next attended fresh-Mac apply.
 
 ### Post-change review
 
-The G3 goal holds: the deferral matrix now covers the one manager Kris's configuration hosts on mise but Rig did not defer. The change adds two case patterns and stays inside RIG-ORCH-018's explicit-prerequisite rule, so regression risk is low; every other preflight refusal is unchanged. Ready for acceptance review of G3, with G2's disposition open.
+The G3 goal holds: the deferral matrix now covers the one manager Kris's configuration hosts on mise but Rig did not defer. The change adds two case patterns and stays inside RIG-ORCH-018's explicit-prerequisite rule, so regression risk is low; every other preflight refusal is unchanged. Ready for acceptance review against the narrowed G3 goal.
 
 ### Mini recap
 
@@ -124,6 +124,10 @@ Added uv-from-mise to apply's manager deferral, proved test-first, full gate gre
 ### Approval
 
 Kris, 19 October 2026 (TRIAGE-ALL, relayed by the mac-studio-setup State of play): every high-confidence Now recommendation is adopted and delivered to Awaiting review, tools burn-down work first. The rig-triage run of 19 October 2026 recommended this record for Now with high confidence, as the tools burn-down's smallest corrective item, and planned it to Ready with G2 narrowed out as recorded under Current state.
+
+### G2 disposition
+
+Kris's OVERNIGHT decision of 20 October 2026 at 00:28 BST ([mac-studio-setup decisions log](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.mac-studio-setup/decisions.md)) authorised acting on the [triage review](/Users/krisbrown/.local/state/ki/agents/mac-studio-setup/triage-review.report.md)'s high-confidence recommendations, among them RIG-MANAGERS a), confidence high: G2's useful outcome, built-in and custom-provider availability with one actionable manager-level finding, is folded into [KI-TOOL-RIG-CORE-067](KI-TOOL-RIG-CORE-067-package-managers-as-catalogue-tools.md), and this record's goal and boundary are narrowed to the delivered G3. The record stays at Awaiting review; acceptance remains Kris's. The review did not rerun the recorded verification.
 
 ### Origin
 

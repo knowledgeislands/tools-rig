@@ -4,14 +4,16 @@ area: CORE
 title: pf root ruleset bypass
 purpose: corrective
 theme: rig
-status: triage
+kind: deliver
+status: draft
+horizon: now
 priority: high
 size: m
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-19T22:14:04Z
-updated_at: 2026-10-19T22:14:04Z
+updated_at: 2026-10-19T23:58:00Z
 ---
 
 # Doctor Reports a Firewall Bypassed by a Replaced pf Root Ruleset
@@ -55,9 +57,43 @@ The attended N/P check in the [terra-nordvpn report](/Users/krisbrown/.local/sta
 
 The check's results set the scope: whether detection alone suffices, whether the kill switch keeps the bypass after a disconnect, and whether re-assertion is wanted. Implementation waits for them, but capturing and planning do not.
 
+## Current state
+
+Not yet grounded. `ki-plan` records the current source facts before Ready.
+
+## Steps
+
+- [ ] Plan this record and prepare the attended-check evidence under `ki-plan`, replacing these placeholder sections; implementation waits for Kris's attended NordVPN check and a tested restore path.
+
+## Files touched
+
+Not yet planned.
+
+## Verify
+
+Not yet planned.
+
 ## Dependencies / blocks
 
 Not blocked. It follows [KI-TOOL-RIG-CORE-047](KI-TOOL-RIG-CORE-047-tailnet-only-listener-firewall.md), whose resource it extends. [KI-TOOL-RIG-CORE-062](KI-TOOL-RIG-CORE-062-own-address-firewall-destination.md) narrows the same anchor's destination, and the two are independent.
+
+## Documentation impact
+
+### Decision Records
+
+Not yet assessed.
+
+### Specifications
+
+Not yet assessed.
+
+### Guides
+
+Not yet assessed.
+
+### Roadmap
+
+Not yet assessed.
 
 ## Discussion
 
@@ -65,4 +101,4 @@ Not blocked. It follows [KI-TOOL-RIG-CORE-047](KI-TOOL-RIG-CORE-047-tailnet-only
 - **Other residual risks.** These stay outside this record's fix, but planning should keep them in view. Meshnet NATs and filters `100.64.0.0/10`, which overlaps Tailscale's range. Tailnet SSH may depend on what NordVPN's block-all passes. The anchor's range and interface limits are covered in KI-TOOL-RIG-CORE-047's [Range correction](KI-TOOL-RIG-CORE-047-tailnet-only-listener-firewall.md#range-correction).
 - **One wildcard is a start.** Checking for root's `com.apple/*` call is an initial invariant, not a complete test of protection. Planning decides how far to go towards effective reachability before the evidence runs out.
 
-Capture only. Adoption, horizon and plan need Kris's approval.
+Adoption: Kris's OVERNIGHT decision of 20 October 2026 at 00:28 BST ([mac-studio-setup decisions log](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.mac-studio-setup/decisions.md)) authorised acting on the [triage review](/Users/krisbrown/.local/state/ki/agents/mac-studio-setup/triage-review.report.md)'s high-confidence recommendations: adopted into Now, confidence high, for planning and evidence preparation only, because the child-rule check cannot establish root reachability and misleading protection evidence deserves early attention. Implementation waits for Kris's attended NordVPN check and a tested restore path under the connection-critical rule; no root-ruleset re-assertion, `pfctl` change or other live machine change is authorised.
