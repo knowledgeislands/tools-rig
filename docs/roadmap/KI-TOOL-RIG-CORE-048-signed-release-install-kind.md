@@ -5,14 +5,13 @@ title: Signed-release install kind
 purpose: capability
 theme: rig
 kind: deliver
-status: awaiting-review
-horizon: now
+status: done
 size: m
 blocks: []
 blocked_by: []
 baseline_ref: b5a38db5b6806f6913368d456cb252ee212f69ed
 created_at: 2026-10-13T22:53:48Z
-updated_at: 2026-10-21T02:41:01Z
+updated_at: 2026-10-21T02:59:41Z
 ---
 
 # Signed-Release Install Kind
@@ -154,6 +153,10 @@ Reviewed the final change against the Goal and Boundary after verification. Auth
 
 Delivered authenticated, home-only signed-release installation, exact/minimum version reporting and native formula floors. Verified 625 fixture tests plus the complete local gate and restricted-PATH signed fixtures; no live host was changed. The worked user guide and existing specifications hold the durable configuration and composition learning. No new work record, Decision Record or cross-repository change was needed; downstream work keeps its existing holds.
 
+## Done
+
+Accepted 2026-10-21 by Codex (gpt-6.1-sol), under Kris Brown's named overnight acceptance grant, on the review packet above.
+
 ## Discussion
 
 Origin: `ki-principal`, state-of-play thread, under Kris Brown's acceptance of the audit decisions. Capture only; adoption, priority and plan belong to this repository.
@@ -174,3 +177,15 @@ Kris approved merging KI-TOOL-RIG-CORE-049 (shared agentic-rig role) into this r
 ### Release on 20 October 2026
 
 Released from hold to Soon under Kris's OVERNIGHT authority of 20 October 2026, answering the agent-host work's CHAIN-GATE query with option a), reviewed blind by query-review-6, which agreed. The hold waited for vega to be rebuilt, which happened on 14 October, and for the Techne harness's converge-through-Rig work to leave its hold, which itself waits for this kind, so the two holds only waited on each other. Release grants no planning, implementation or acceptance authority.
+
+### Independent acceptance on 21 October 2026
+
+The separate `wow-night-rig-048-accept-c` run independently reviewed candidate `d0df9afc3f261677b04022cf6dc34b7dad324bd5`, including the committed implementation `37ae667feb984e1e749ed68d612a124a6df82141` from execution baseline `b5a38db5b6806f6913368d456cb252ee212f69ed`, and the unchanged six-heading review packet. Every planned Step is complete. The coordinator's Writers section designated this run as the next sole tools-rig writer after the delivery run's committed DONE handoff.
+
+Authority is limited to this exact record: Kris's [20 October overnight grant](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.ways-of-working/decisions.md#2026-10-20-0520-bst---owner-answers-on-the-0422-send-overnight-burndown) states, "Each delivered record gets an independent blind review; a pass is accepted under this grant". The named acceptance dispatch explicitly overrides the standing prohibition for KI-TOOL-RIG-CORE-048 and requires retaining its terminal record.
+
+The independent whole-repository, roadmap and authoring audits passed within the enumerated baseline allowances: OWN-1, MATURITY-1 and the missing-size warnings on CORE-047 and CORE-064. ShellCheck, Bash 3.2 syntax, deterministic assembly, normal and two-second reference benchmarks, bounded version-only native-provider smoke, all 625 Bats fixtures with no skips, mandoc lint, rendered manual inspection and whitespace checks passed. All 14 signed-release fixtures also passed under restricted system-Bash PATH. An additional disposable fixture confirmed an authenticated NUL-containing manifest is rejected before archive download and preserves the destination.
+
+The first full-suite attempt unnecessarily placed fixtures under the audit's network-denial sandbox, which refused `/bin/ps` and caused 17 existing attended-operation fixture failures. An isolated process-check comparison reproduced that setup restriction; the normal runner passed all 33 affected fixtures, followed by the complete 625-test rerun. This was this review run's setup correction, with no candidate or repository implementation change. Audits and native-provider smoke remained under IP network denial. Evidence is retained beside the run report in `wow-night-rig-048-accept-c.work/evidence`.
+
+Independent verdict: pass within the authorised fixture boundary, with no unresolved acceptance finding. No live installation, workstation reconciliation, release publication, consumer configuration change or downstream hold release was performed or inferred. Only this record is accepted and retained; nothing is cancelled or pruned.
