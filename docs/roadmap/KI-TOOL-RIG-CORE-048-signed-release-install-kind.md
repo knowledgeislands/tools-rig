@@ -5,14 +5,14 @@ title: Signed-release install kind
 purpose: capability
 theme: rig
 kind: deliver
-status: ready
-horizon: next
+status: awaiting-review
+horizon: now
 size: m
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: b5a38db5b6806f6913368d456cb252ee212f69ed
 created_at: 2026-10-13T22:53:48Z
-updated_at: 2026-10-21T02:25:43Z
+updated_at: 2026-10-21T02:41:01Z
 ---
 
 # Signed-Release Install Kind
@@ -64,21 +64,21 @@ One synthetic role fragment owns one tool with Linux signed-release exact/minimu
 
 Immutable source baseline: `52d0d8b202931942b832e47821e47e23e350e1c2`, the exact local main commit, matching the local origin/main observation. The isolated worktree started clean. The canonical pre-commit matches its no-package asset byte-for-byte and contains no Bats invocation. A fresh copied audit home uses harness `7dc5bb8aa8d8a0e0fce3a34084a90260033ba643`, IP network denial and copied-home-only Capital registration. Full audit has no failures and only the expressly allowed OWN-1, MATURITY-1 and missing-size warnings. Every baseline gate passed. The complete Bats run passed with two interpreter-discovery skips; both skipped TOML-parser checks then passed explicitly with the installed Python 3.15 interpreter, covering all 611 tests. Activation changes stay local and uncommitted.
 
-Rig currently has no signed-release kind or version comparator. Existing inheritance and platform variants supply shared membership; minimum-version observation is the missing policy capability. Implementation records its separate immutable start commit after the Ready plan is committed.
+Rig currently has no signed-release kind or version comparator. Existing inheritance and platform variants supply shared membership; minimum-version observation is the missing policy capability. Implementation starts from the committed Ready plan at `b5a38db5b6806f6913368d456cb252ee212f69ed`.
 
 ## Steps
 
-- [ ] Complete the baseline, record the bounded choices and commit the approved Ready plan.
-- [ ] Extend and validate tool/variant installation fields and bounded version policies.
-- [ ] Implement fail-closed signature, manifest, digest, archive and atomic home-only command installation with preflight checks.
-- [ ] Report exact/minimum versions, retaining native Homebrew resolution for shared-role floors.
-- [ ] Add disposable signed fixtures and exact stubs covering supported platforms, tampering, wrong keys, unsafe archives and preserved destinations on failure.
-- [ ] Prove inherited shared-role composition, and align specifications, guide, help, manual and changelog.
-- [ ] Assemble the executable, complete all gates, review the delivered scope and submit awaiting-review with all six Review headings and the exact commit range.
+- [x] Complete the baseline, record the bounded choices and commit the approved Ready plan.
+- [x] Extend and validate tool/variant installation fields and bounded version policies.
+- [x] Implement fail-closed signature, manifest, digest, archive and atomic home-only command installation with preflight checks.
+- [x] Report exact/minimum versions, retaining native Homebrew resolution for shared-role floors.
+- [x] Add disposable signed fixtures and exact stubs covering supported platforms, tampering, wrong keys, unsafe archives and preserved destinations on failure.
+- [x] Prove inherited shared-role composition, and align specifications, guide, help, manual and changelog.
+- [x] Assemble the executable, complete all gates, review the delivered scope and submit awaiting-review with all six Review headings and the exact commit range.
 
 ## Files touched
 
-`src/rig/10-configuration.bash`, `src/rig/21-provider-state.bash`, `src/rig/21-signed-release.bash`, `src/rig/20-orchestration.bash`, `scripts/assemble-rig`, `src/rig/00-runtime.bash`, generated `bin/rig`, `tests/rig-signed-release.bats`, `docs/specs/configuration.md`, `docs/specs/orchestration.md`, `docs/guides/user/signed-releases.md`, `docs/guides/user/README.md`, `man/rig.1`, `CHANGELOG.md` and this record. Leave `.ki.toml`, `.rumdl.toml`, other records, producer releases, test isolation policy and host configuration unchanged.
+`src/rig/10-configuration.bash`, `src/rig/21-provider-state.bash`, `src/rig/21-signed-release.bash`, `scripts/assemble-rig`, `.github/workflows/ci.yml`, `docs/guides/developer/README.md`, `src/rig/00-runtime.bash`, generated `bin/rig`, `tests/rig-signed-release.bats`, `docs/specs/configuration.md`, `docs/specs/orchestration.md`, `docs/guides/user/signed-releases.md`, `docs/guides/user/README.md`, `man/rig.1`, `CHANGELOG.md` and this record. Leave `.ki.toml`, `.rumdl.toml`, other records, producer releases, test isolation policy and host configuration unchanged.
 
 ## Verify
 
@@ -107,6 +107,52 @@ Add a user guide with a complete worked inherited shared-role example, verificat
 ### Roadmap
 
 Only this existing record changes. Downstream Techne host convergence and profile relocation remain held; no acceptance, new record or downstream change is authorised.
+
+## Review
+
+### Delivered
+
+Delivered the approved signed-release installation kind and shared-role fixture example. Immutable source baseline: `52d0d8b202931942b832e47821e47e23e350e1c2`; implementation baseline: `b5a38db5b6806f6913368d456cb252ee212f69ed`. Exact planning and delivery range: `52d0d8b202931942b832e47821e47e23e350e1c2..37ae667feb984e1e749ed68d612a124a6df82141`. This frozen range excludes the subsequent review-packet metadata commit.
+
+All delivery and failure scenarios used disposable generated signing keys, local archives and download/native-provider stubs. No live installation, host convergence, personal configuration change, release publication or downstream hold release occurred.
+
+### Change Summary
+
+Added bounded installation fields and variant/binding synthesis in `src/rig/10-configuration.bash`, dispatch in `src/rig/21-provider-state.bash` and the authored `src/rig/21-signed-release.bash` module. `scripts/assemble-rig` includes the module and generates `bin/rig`. The existing `executable` kind remains intact.
+
+The kind verifies an Ed25519 signature against a regular local PEM public key before parsing a manifest or downloading an archive, then checks the archive digest, exact regular member layout and staged version before one home-only command rename. Exact and minimum policies use bounded numeric stable-version comparison; minimum-only installations retain compatible newer commands. Homebrew formula floors preserve native install/upgrade semantics; cask updater policies are outside this extension.
+
+Added `tests/rig-signed-release.bats` with 14 fixture tests, including all four targets, macOS/Linux minimum coverage, version drift, tampering, unsupported keys/platforms, malformed manifests, unsafe archives, failed rename cleanup and inherited shared-role composition. Aligned configuration/orchestration specifications, apply/status help, the manual, changelog, user guide/index and developer verification guidance. The bounded CI adjustment passes its installed OpenSSL explicitly into the macOS restricted-PATH test job, following the existing Python pattern; it installs no dependency.
+
+### Verification
+
+Whole-repository audit passed with only the permitted OWN-1, MATURITY-1 and other records' missing-size findings; `.rumdl.toml` and `.ki.toml` are unchanged.
+
+ShellCheck passed for the assembled executable, installer, authored modules and developer scripts.
+
+Bash syntax and deterministic assembly checks passed.
+
+Normal benchmark and the two-second reference-budget benchmark passed.
+
+Native-provider smoke passed with bounded version-only probes under IP network denial; absent optional managers remained skips, with no install, apply or reconciliation.
+
+The complete `bats tests/ </dev/null` run passed all 625 tests with no skips, using the installed TOML-capable interpreter explicitly. All 14 new signed-release tests also passed with the macOS system Bash 3.2 and restricted PATH, using an explicit installed OpenSSL.
+
+Mandoc lint and rendered manual inspection passed. Whitespace checks passed.
+
+The complete command list remains in `docs/guides/developer/README.md`. Detailed local proof is retained beside the run report under `wow-night-rig-048-g.work/evidence`, not in the repository.
+
+### Outstanding concerns
+
+No unresolved local implementation concern. Remote CI and real Linux/macOS host convergence were not run or claimed: platform coverage here is fixture-driven, and native smoke is version-only. Status observes a local command's reported version; it does not attest an existing binary's provenance. Signature verification authenticates a release fetched for installation. Independent review and acceptance remain with the coordinator. Techne host convergence and profile relocation remain held.
+
+### Post-change review
+
+Reviewed the final change against the Goal and Boundary after verification. Authentication precedes manifest interpretation and archive download; signed but malformed metadata and unsafe archives remain fail-closed. Streaming only the command avoids archive-path extraction, and the final rename/cleanup fixtures preserve prior destinations on failures. Existing profile inheritance and distinct fragments cover the shared role without an overlay mechanism or consumer edits. Optional verifier handling and stable numeric version limits are explicit on the public surfaces. Existing provider regressions and portability checks remain green. The record is ready for independent review, without self-acceptance.
+
+### Mini recap
+
+Delivered authenticated, home-only signed-release installation, exact/minimum version reporting and native formula floors. Verified 625 fixture tests plus the complete local gate and restricted-PATH signed fixtures; no live host was changed. The worked user guide and existing specifications hold the durable configuration and composition learning. No new work record, Decision Record or cross-repository change was needed; downstream work keeps its existing holds.
 
 ## Discussion
 
