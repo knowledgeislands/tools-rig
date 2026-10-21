@@ -10,6 +10,7 @@ on:
 env:
   BATS_VERSION: v1.11.1
   KI_VERSION: v0.12.0
+  KI_HARNESS_REVISION: 7dc5bb8aa8d8a0e0fce3a34084a90260033ba643
 
 jobs:
   governance:
@@ -41,6 +42,12 @@ jobs:
           export PATH="$KI_CLI_INSTALL_DIR:$PATH"
           test "$(command -v ki)" = "$KI_CLI_INSTALL_DIR/ki"
           test "v$(ki --version)" = "$KI_VERSION"
+          # KI v0.12.0 bundles an older hook rubric; use Rig's verified harness contract.
+          harness="$KI_DATA_HOME/harnesses/knowledgeislands/ki-agentic-harness"
+          mkdir -p "$harness"
+          curl --fail -sSL --proto '=https' -o "$RUNNER_TEMP/harness.tar.gz" \
+            "https://codeload.github.com/knowledgeislands/ki-agentic-harness/tar.gz/$KI_HARNESS_REVISION"
+          tar -xzf "$RUNNER_TEMP/harness.tar.gz" --strip-components=1 -C "$harness"
           ki bootstrap
           ki registry add --repo .
           ki repo repair --repo .
