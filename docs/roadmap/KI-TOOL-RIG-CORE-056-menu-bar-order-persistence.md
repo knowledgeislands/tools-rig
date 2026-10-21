@@ -5,14 +5,13 @@ title: Menu bar order persistence
 purpose: capability
 theme: rig
 kind: investigate
-status: awaiting-review
-horizon: now
+status: done
 size: m
 blocks: []
 blocked_by: []
 baseline_ref: ee0bfa387e4360eb1a78a995d889bc362ff4a038
 created_at: 2026-10-14T20:50:55Z
-updated_at: 2026-10-21T04:15:28Z
+updated_at: 2026-10-21T04:26:13Z
 ---
 
 # Menu Bar Order Persistence
@@ -156,6 +155,7 @@ A written investigation with nine evidence entries, five answers and six explici
 - The unchanged-main full audit passed with zero failures and four pre-existing warnings: OWN-1 on `.rumdl.toml`, MATURITY-1 on `.ki.toml`, and ITEM-2 missing size on KI-TOOL-RIG-CORE-047 and KI-TOOL-RIG-CORE-064. Those files remain unchanged. This record has `size: m`.
 - Integration requires the focused roadmap audit, full repository audit, complete manual gate in [Develop Rig](../guides/developer/README.md#verify-the-repository), `git diff --check` and hook-backed commit. Exact outcomes and evidence are retained in the [run report](/Users/krisbrown/.local/state/ki/agents/ways-of-working/wow-night-rig-056-f.report.md).
 - The committed pre-commit hook now matches the canonical tools hook and runs no Bats suite; Bats remains in the manual gate and CI. The historical hook failure below records the earlier review, not the current baseline.
+- Fresh independent acceptance by Codex (gpt-6.1-sol) reviewed exact candidate `7f294b42395ddcf3cf94ec5abe0bf52f33fb3eea` against the archived observations: 72 exact evidence predicates passed, with observations, inferences and gaps kept distinct. The unchanged-main whole-repository, roadmap and authoring audits passed with the four allowed baseline warnings. The complete manual gate passed, including all 645 Bats fixtures without skips. See the [independent acceptance report](/Users/krisbrown/.local/state/ki/agents/ways-of-working/wow-night-rig-056-accept-f.report.md).
 
 ### Outstanding concerns
 
@@ -165,11 +165,15 @@ A written investigation with nine evidence entries, five answers and six explici
 
 ### Post-change review
 
-The written finding supports a moderate-confidence recommendation to keep report-only while the required write and persistence behaviour remains untested. Archived evidence supports the qualified observations and inferences, without establishing a universal access restriction, an authoritative storage format or impossibility of a later declaration. The recommendation carries no implementation authority. Fresh independent review is still required before acceptance.
+The written finding supports a moderate-confidence recommendation to keep report-only while the required write and persistence behaviour remains untested. Archived evidence supports the qualified observations and inferences, without establishing a universal access restriction, an authoritative storage format or impossibility of a later declaration. The recommendation carries no implementation authority. Fresh independent review of the exact reconciled candidate passed on 21 October 2026; the written finding is accepted under the named overnight grant.
 
 ### Mini recap
 
-The archived windows and binary strings suggest MenuBarAgent centralises menu-bar placement and persistence. The terminal refusal and examined headers justify a conservative report-only recommendation, with access, storage, timing, writes and durability left uncertain. The existing attended owner check is retained for CORE-053, and neither record is accepted here.
+The archived windows and binary strings suggest MenuBarAgent centralises menu-bar placement and persistence. The terminal refusal and examined headers justify a conservative report-only recommendation, with access, storage, timing, writes and durability left uncertain. The existing attended owner check is retained for CORE-053. This closure accepts only the written finding; CORE-053 remains awaiting review.
+
+## Done
+
+Accepted 2026-10-21 by Codex (gpt-6.1-sol), under Kris Brown's named overnight acceptance grant, on the review packet above.
 
 ## Discussion
 
@@ -204,3 +208,9 @@ The report-only recommendation still follows, at moderate rather than high confi
 ### Evidence reconciliation - 21 October 2026
 
 Under the coordinator's RIG-056-EVIDENCE answer, integrated the written rework from `3160dcc744c3f78788a5f17090a38a2456a06ba1` onto current green main without importing either historical branch. Archived literal output settles the Fujitsu domain/autosave distinction and the `displayablesInfo` wrapper with its nested empty `displayableInfos` list. The claim sweep also narrowed window placement, allow timing, application absence, raw visibility-key attribution and Control Centre payload conclusions to what the archive actually supports. Protected-store and experiment gaps remain. No workstation observation was rerun and no implementation authority was added. The prior failed review and response are preserved above; a fresh independent review must assess this reconciled record.
+
+### Independent acceptance - 21 October 2026
+
+A separate acceptance run reviewed the committed finding at `7f294b42395ddcf3cf94ec5abe0bf52f33fb3eea`, from its immutable Ready baseline `ee0bfa387e4360eb1a78a995d889bc362ff4a038`, and checked the source observations directly rather than adopting the delivery recommendation. The nine evidence entries and five answers distinguish snapshot observations from inferred mechanisms and untested behaviour. The Fujitsu domain and autosave name, Control Centre JSON wrapper and nested list, literal binary strings, preference counts, window ownership and examined header surface match the archive. The hook repair `f92d9a1cef403c80ddcc640c8672f3538e43fa26` is on main and matches the canonical tools hook.
+
+This accepts the written finding only, under Kris's 20 October OVERNIGHT-BURNDOWN authority: "Each delivered record gets an independent blind review; a pass is accepted under this grant", carried into the named 21 October acceptance dispatch. The six evidence gaps remain, including protected-store contents, format and wider access, legacy-key refresh, live writes, restarts and durability. No observation, protected-store probe, preference write, owner Command-drag, app launch or restart was repeated, and no installed release was required. The existing owning-work message and its immutable original retain the attended check for KI-TOOL-RIG-CORE-053; that record stays awaiting review. No additional follow-up was needed. This record is retained and nothing is pruned.
