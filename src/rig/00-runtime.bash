@@ -283,6 +283,8 @@ rig_command_help() {
   rig_command_usage "$command"
   if [ "$command" = apply ]; then
     printf '%s\n' '' 'Reconciles the selection; applying resources may restart applications mid-run.'
+    printf '%s\n' 'Signed releases require a local Ed25519 public key, an exact version or minimum, and a home-only destination.'
+    printf '%s\n' 'Signature and archive verification precede atomic command replacement; compatible newer minimum versions are retained.'
     printf '%s\n' 'Explicit app CLI companions follow their installer; provider-owned repair may reinstall its cask.'
     printf '%s\n' 'Records apply outcomes; later success clears the matching historical failure.'
     printf '%s\n' 'Healthy self-updating applications are satisfied without reinstalling; foreign managed copies require manual source review.'
@@ -300,6 +302,9 @@ rig_command_help() {
       printf '%s\n' '' 'Offline facts include installation provenance, runtime host and configuration presence.' \
         'Paths are included only with --full; configuration values are never printed.' ;;
   esac
+  if [ "$command" = status ]; then
+    printf '%s\n' '' 'Signed-release and Homebrew formula floor observations include the installed version and required policy.'
+  fi
   if [ "$command" = upgrade ]; then
     printf '%s\n' '' 'Interactive progress uses an owned footer and compact native-batch handoffs.'
     printf '%s\n' 'Self-updating applications are reported as skipped; Rig never upgrades or adopts their bundles.'

@@ -54,6 +54,8 @@ mandoc -T lint man/rig.1
 git diff --check
 ```
 
+Signed-release fixtures generate disposable Ed25519 keys using an installed compatible OpenSSL. If it is not the default on PATH, set `RIG_TEST_OPENSSL` to its absolute executable path before running Bats. The macOS CI job passes its already installed Homebrew OpenSSL explicitly before restricting PATH to the system Bash; it does not install a verifier. `RIG_TEST_PYTHON` similarly selects an installed TOML-capable Python for the parser checks.
+
 After a manual layout change, also inspect its rendered form:
 
 ```sh

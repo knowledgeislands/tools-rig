@@ -283,6 +283,9 @@ rig_field_kind() {
     provider:adapter|provider:command|provider:executable|provider:manifest|\
     provider:autoupdate-interval|\
     binding:kind|binding:locator|binding:destination|binding:checksum|binding:variant|\
+    binding:release-name|binding:public-key|binding:version|binding:minimum-version|\
+    tool:install-release-name|tool:install-public-key|tool:install-version|tool:install-minimum-version|\
+    tool:variant:*:install-release-name|tool:variant:*:install-public-key|tool:variant:*:install-version|tool:variant:*:install-minimum-version|\
     tool:variant:*:install-provider|tool:variant:*:install-kind|\
     tool:variant:*:install-locator|tool:variant:*:install-destination|\
     tool:variant:*:install-checksum|\
@@ -357,6 +360,10 @@ rig_toml_variant_field() {
     install.locator) canonical=install-locator; RIG_TOML_FIELD_TYPE=string ;;
     install.destination) canonical=install-destination; RIG_TOML_FIELD_TYPE=string ;;
     install.checksum) canonical=install-checksum; RIG_TOML_FIELD_TYPE=string ;;
+    install.release-name) canonical=install-release-name; RIG_TOML_FIELD_TYPE=string ;;
+    install.public-key) canonical=install-public-key; RIG_TOML_FIELD_TYPE=string ;;
+    install.version) canonical=install-version; RIG_TOML_FIELD_TYPE=string ;;
+    install.minimum-version) canonical=install-minimum-version; RIG_TOML_FIELD_TYPE=string ;;
     install.arguments) canonical=install-argument; RIG_TOML_FIELD_TYPE=array ;;
     install.executables) canonical=install-executable; RIG_TOML_FIELD_TYPE=array ;;
     *) return 1 ;;
@@ -433,6 +440,10 @@ rig_toml_field() {
     tool:install.locator) RIG_TOML_FIELD_KEY=install-locator; RIG_TOML_FIELD_TYPE=string ;;
     tool:install.destination) RIG_TOML_FIELD_KEY=install-destination; RIG_TOML_FIELD_TYPE=string ;;
     tool:install.checksum) RIG_TOML_FIELD_KEY=install-checksum; RIG_TOML_FIELD_TYPE=string ;;
+    tool:install.release-name) RIG_TOML_FIELD_KEY=install-release-name; RIG_TOML_FIELD_TYPE=string ;;
+    tool:install.public-key) RIG_TOML_FIELD_KEY=install-public-key; RIG_TOML_FIELD_TYPE=string ;;
+    tool:install.version) RIG_TOML_FIELD_KEY=install-version; RIG_TOML_FIELD_TYPE=string ;;
+    tool:install.minimum-version) RIG_TOML_FIELD_KEY=install-minimum-version; RIG_TOML_FIELD_TYPE=string ;;
     tool:platforms) RIG_TOML_FIELD_KEY=platform ; RIG_TOML_FIELD_TYPE=array ;;
     tool:requires) RIG_TOML_FIELD_KEY=requires ; RIG_TOML_FIELD_TYPE=array ;;
     tool:related) RIG_TOML_FIELD_KEY=related ; RIG_TOML_FIELD_TYPE=array ;;
@@ -783,7 +794,8 @@ rig_add_field() {
 
   if [ "$section_type:$key" = provider:executable ] ||
     [ "$section_type:$key" = provider:manifest ] ||
-    [ "$section_type:$key" = binding:destination ]; then
+    [ "$section_type:$key" = binding:destination ] ||
+    [ "$section_type:$key" = binding:public-key ]; then
     case "$value" in
       \~/*)
         [ -n "${HOME:-}" ] || rig_fail "$file:$line: HOME is required to expand '$key'" || return
@@ -962,6 +974,10 @@ rig_synthesise_binding_fields() {
       "$prefix"install-locator) target=locator ;;
       "$prefix"install-destination) target=destination ;;
       "$prefix"install-checksum) target=checksum ;;
+      "$prefix"install-release-name) target='release-name' ;;
+      "$prefix"install-public-key) target='public-key' ;;
+      "$prefix"install-version) target=version ;;
+      "$prefix"install-minimum-version) target='minimum-version' ;;
       "$prefix"install-platform) target=platform ;;
       "$prefix"platform) [ -z "$prefix" ] || target=platform ;;
       "$prefix"install-argument) target=argument ;;
@@ -1389,7 +1405,7 @@ rig_validate_binding_adapter() {
   case "$adapter:$kind" in
     custom:*) ;;
     homebrew:formula|homebrew:cask|mas:app|uv:tool|mise:tool|npm:global|chezmoi:target) ;;
-    direct-download:executable) ;;
+    direct-download:executable|direct-download:signed-release) ;;
     launchd:*|macos-applications:*|macos-defaults:*|macos-dock:*|macos-menu-bar:*|macos-handlers:*|macos-pf:*|linux-nftables:*|skills-cli:*|ki:*)
       rig_fail "[$section_name] adapter '$adapter' cannot install tools" || return
       ;;
@@ -1412,7 +1428,10 @@ rig_validate_binding_adapter() {
     done
   fi
 
-  if [ "$adapter" = direct-download ]; then
+  rig_validate_version_policy "$section_name" "$adapter" "$kind" || return
+  if [ "$adapter:$kind" = direct-download:signed-release ]; then
+    rig_validate_signed_release "$section_name" || return
+  elif [ "$adapter" = direct-download ]; then
     case "$locator" in
       https://*) ;;
       *) rig_fail "[$section_name] direct-download locator must use HTTPS" || return ;;
@@ -2132,7 +2151,11 @@ rig_validate_model() {
           rig_get_value "$section_name" install-checksum ||
           rig_get_value "$section_name" install-platform ||
           rig_get_value "$section_name" install-argument ||
-          rig_get_value "$section_name" install-executable; then
+          rig_get_value "$section_name" install-executable ||
+          rig_get_value "$section_name" install-release-name ||
+          rig_get_value "$section_name" install-public-key ||
+          rig_get_value "$section_name" install-version ||
+          rig_get_value "$section_name" install-minimum-version; then
           rig_fail "[$section_name] install metadata requires install.provider" || return
         fi
       fi

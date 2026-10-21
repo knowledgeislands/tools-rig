@@ -18,6 +18,7 @@ assemble() {
     10-configuration.bash \
     20-orchestration.bash \
     21-provider-state.bash \
+    21-signed-release.bash \
     22-observation.bash \
     23-application.bash \
     24-app-clis.bash \

@@ -590,8 +590,12 @@ rig_prepare_builtin_invocation() {
       rig_append_arguments "$binding" || return
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$observation_locator
       ;;
-    homebrew:formula:apply|homebrew:cask:apply)
-      RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=install
+    homebrew:formula:apply|homebrew:cask:apply|homebrew:formula:upgrade-minimum)
+      if [ "$verb" = upgrade-minimum ]; then
+        RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=upgrade
+      else
+        RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=install
+      fi
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--$kind
       rig_append_arguments "$binding" || return
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
@@ -658,7 +662,7 @@ rig_prepare_builtin_invocation() {
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=$locator
       ;;
-    direct-download:executable:apply)
+    direct-download:executable:apply|direct-download:signed-release:apply)
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--fail
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--location
       RIG_INVOKE_ARGUMENTS[${#RIG_INVOKE_ARGUMENTS[@]}]=--proto
@@ -1057,6 +1061,10 @@ rig_observe_provider() {
     return 0
   fi
 
+  if [ "$adapter:$kind" = direct-download:signed-release ]; then
+    rig_observe_signed_release "$binding"
+    return
+  fi
   if [ "$adapter" = direct-download ]; then
     rig_get_value "$binding" destination || return 2
     destination=$RIG_VALUE
@@ -1109,7 +1117,13 @@ rig_observe_provider() {
     return 0
   fi
   case "$adapter:$kind" in
-    homebrew:formula|homebrew:cask|npm:global) RIG_OBSERVATION=present ;;
+    homebrew:formula|homebrew:cask)
+      RIG_OBSERVATION=present
+      if rig_get_value "$binding" minimum-version; then
+        rig_observe_homebrew_minimum "$binding" "$locator" "$RIG_CAPTURED_OUTPUT"
+      fi
+      ;;
+    npm:global) RIG_OBSERVATION=present ;;
     mas:app|uv:tool)
       rig_normalize_provider_identity "$adapter" "$kind" "$locator"
       observation_locator=$RIG_VALUE
@@ -1459,6 +1473,10 @@ rig_preflight_provider() {
     fi
     rig_fail "provider '$provider' executable is unavailable: $executable" || return
   fi
+  if [ "$adapter:$kind" = direct-download:signed-release ]; then
+    rig_preflight_signed_release "$binding"
+    return
+  fi
   if [ "$adapter" = direct-download ]; then
     rig_sha256_available ||
       rig_fail "provider '$provider' checksum executable is unavailable" || return
@@ -1540,7 +1558,14 @@ rig_apply_provider() {
     executable=$RIG_VALUE
     "$executable" "${RIG_INVOKE_ARGUMENTS[@]}" 1>&2
   elif [ "$adapter" = direct-download ]; then
-    rig_apply_direct_download "$binding" "$provider"
+    rig_get_value "$binding" kind || return 2
+    if [ "$RIG_VALUE" = signed-release ]; then
+      rig_apply_signed_release "$binding" "$provider"
+    else
+      rig_apply_direct_download "$binding" "$provider"
+    fi
+  elif [ "$adapter" = homebrew ] && rig_get_value "$binding" minimum-version; then
+    rig_apply_homebrew_minimum "$tool" "$binding" "$provider"
   else
     rig_prepare_builtin_invocation apply "$binding" "$provider" || return 2
     executable=$RIG_EXECUTABLE

@@ -4,6 +4,8 @@ Rig is for people who want their working setup to be understandable as a whole. 
 
 You do not need to understand Rig's internal provider protocol to begin. Start with one readable catalogue entry and one complete profile, inspect what Rig resolved, and add richer declarations only when they solve a real need.
 
+[Install signed releases and share role policies](signed-releases.md) when a tool publishes signed archives and hosts need exact pins or minimum versions.
+
 ## Begin with the everyday loop
 
 The normal progression is:

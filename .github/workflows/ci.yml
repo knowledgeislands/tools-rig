@@ -108,7 +108,9 @@ jobs:
           /bin/bash --version
           bats_bin=$(command -v bats)
           test_python=$(command -v python3)
-          RIG_TEST_PYTHON="$test_python" PATH=/usr/bin:/bin:/usr/sbin:/sbin \
+          test_openssl="$(brew --prefix openssl@3)/bin/openssl"
+          test -x "$test_openssl"
+          RIG_TEST_OPENSSL="$test_openssl" RIG_TEST_PYTHON="$test_python" PATH=/usr/bin:/bin:/usr/sbin:/sbin \
             "$bats_bin" --print-output-on-failure tests/ </dev/null
 
   manual:

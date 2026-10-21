@@ -1690,6 +1690,62 @@ to write a sibling temporary file, verifies SHA-256, sets executable mode, and
 renames it over a regular destination. Rig refuses symlink and non-regular
 destinations, restricts redirects to HTTPS, rechecks destination safety before
 replacement, and removes failed temporary files.
+.SS SIGNED RELEASE INSTALLATIONS
+\&
+.PP
+The direct-download
+.B signed-release
+kind consumes signed release archives using an HTTPS repository base in
+.BR install.locator .
+Declare
+.BR install.release-name ,
+a local PEM
+.BR install.public-key ,
+a command
+.B install.destination
+strictly inside HOME, and
+.B install.version
+or
+.BR install.minimum-version .
+Leading ~/ expands in the key and destination. Prepare the destination's
+existing writable parent directory. Symlink ancestors, symlink destinations,
+non-regular destinations and paths outside HOME are refused. Checksum-only
+metadata and install.arguments are not accepted by this kind.
+.PP
+Versions use canonical vMAJOR.MINOR.PATCH with at most nine decimal digits
+per component and no leading zeros except zero. Exact pins must meet any
+minimum. A minimum without a pin installs that immutable release only when
+missing or too old; compatible newer installed versions remain. No latest
+release lookup occurs. Status reports the installed version and policy.
+Homebrew formulae also accept install.minimum-version: absent formulae use
+native install, below-floor formulae use native upgrade, and satisfying
+formulae need no mutation. Numeric formula revisions do not change upstream
+version comparisons; unparseable versions remain unknown.
+.PP
+Rig requests NAME-checksums.txt and NAME-checksums.txt.sig under
+/releases/download/VERSION/ and verifies the detached Ed25519 signature
+against the declared regular local public key before parsing the manifest
+or fetching NAME-VERSION-TARGET.tar.gz. RIG_OPENSSL selects an installed
+OpenSSL verifier; no verifier download or SHA-256-only fallback occurs.
+Authenticated manifests start with format=NAME-release-checksums-v1 and
+version=VERSION, followed by one to four unique target rows containing a
+lowercase SHA-256 digest, two spaces and the exact versioned archive name.
+Every line must end in LF. Supported targets are darwin-arm64, darwin-x64,
+linux-arm64 and linux-x64. RIG_ARCH overrides native architecture using
+arm64/aarch64 or x64/x86_64/amd64. Unsupported or missing targets fail closed.
+.PP
+The verified archive must contain exactly two regular members in order:
+NAME and man/NAME.1. Links, directories, duplicates, extra or unsafe paths
+are refused. Only the command is streamed into sibling staging; the manual
+is not installed. Rig checks the staged command's version and destination
+safety before one final rename. Failure preserves any previous command,
+creates no partial command and removes staging.
+.PP
+A shared role may place Linux signed-release exact/minimum fields and a
+macOS Homebrew formula minimum in platform variants of one tool. Put the
+shared tool and role profile in one conf.d fragment and a host profile that
+inherits the role in another. Fragments define distinct tables; duplicate
+tables are rejected rather than overlaid.
 .SS PROVIDER LIFECYCLE
 \&
 .PP
