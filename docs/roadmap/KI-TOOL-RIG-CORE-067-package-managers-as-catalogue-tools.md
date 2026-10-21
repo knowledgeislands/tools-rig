@@ -5,15 +5,14 @@ title: Managers as catalogue tools
 purpose: capability
 theme: rig
 kind: deliver
-status: awaiting-review
-horizon: now
+status: done
 priority: medium
 size: l
 blocks: []
 blocked_by: []
 baseline_ref: 47845d714b652e118216056f5b3a740778988f56
 created_at: 2026-10-19T20:49:28Z
-updated_at: 2026-10-21T03:28:13Z
+updated_at: 2026-10-21T03:48:48Z
 ---
 
 # Package Managers as Catalogue Tools
@@ -138,6 +137,10 @@ Fresh self-review checked the selected-platform graph, union cycle rejection, fi
 
 Manager identity now belongs to catalogue tools, while native managers retain installation semantics and state. The approved contract is fixture-verified and submitted for independent review.
 
+## Done
+
+Accepted 2026-10-21 by Codex (gpt-6.1-sol), under Kris Brown's named overnight acceptance grant, on the review packet above.
+
 ## Discussion
 
 A no-code interim exists: declare `[tool.homebrew]` as a catalogue-only public tool in chezmoi and add `requires = ["homebrew"]` where wanted, at the cost of 128 hand edits this record would then police. Planning questions: whether derived edges sit beside or replace hand-written manager `requires`, and whether a hand-written edge that duplicates a derived one warns; how `provides` interacts with platform variants, since a tool's manager differs by platform; whether the mise-hosted runtimes (node for npm, uv) are modelled as providers of their managers or as ordinary prerequisites; and whether this warrants a Decision Record, since it moves manager knowledge from code into the catalogue. Capture only; adoption, priority and plan belong to this repository.
@@ -147,3 +150,15 @@ G2 fold: KI-TOOL-RIG-CORE-066's G2 asked doctor to derive its manager list from 
 Adoption: Kris's OVERNIGHT decision of 20 October 2026 at 00:28 BST ([mac-studio-setup decisions log](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.mac-studio-setup/decisions.md)) authorised acting on the [triage review](/Users/krisbrown/.local/state/ki/agents/mac-studio-setup/triage-review.report.md)'s high-confidence recommendations: RIG-MANAGERS a), confidence high, folds G2 here, and RIG-TRIAGE's Next adoption, confidence high, follows because catalogue-derived manager prerequisites and one manager-level finding sit inside Rig's manager-of-managers boundary while platform variants and edge semantics need design before Ready.
 
 Gate: Kris's sign-off of 20 October 2026 at 23:16 BST in the [ways-of-working decisions log](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.ways-of-working/decisions.md), "query sign-offs, first batch", took PLAN067-READY as a) with the four recommended answers: PLAN067-EDGES a), derived manager edges sit beside hand-written `requires` and a duplicate is accepted silently; PLAN067-OPTIN a), the missing-provider check runs only once the catalogue declares a `provides`; PLAN067-MATRIX a), the fixed deferral matrix stays as the fallback for a manager no catalogue tool provides; PLAN067-ADR a), ADR-KI-TOOL-RIG-011 records the move. The plan above is adjusted to those answers and the record is Ready.
+
+### Independent acceptance on 21 October 2026
+
+The separate `wow-night-rig-067-accept-d` run independently reviewed delivery commit `25e1f9069c440f00fa2e3f4e304f6ba5e4c31c91` against immutable baseline `47845d714b652e118216056f5b3a740778988f56`, its complete committed diff and the unchanged six-heading review packet. Every planned Step is complete. The coordinator designated this run as the sole tools-rig writer, with this run's isolated worktree as its dispatched writing checkout.
+
+Authority is limited to this exact record: Kris's [20 October overnight grant](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.ways-of-working/decisions.md#2026-10-20-0520-bst---owner-answers-on-the-0422-send-overnight-burndown) states, "Each delivered record gets an independent blind review; a pass is accepted under this grant". The named acceptance dispatch explicitly overrides the standing acceptance prohibition for this record and requires retention without pruning. The coordinator's 21 October baseline-warning allowance passes existing warnings while leaving their files unchanged.
+
+Fresh whole-repository, roadmap and authoring audits passed with zero failures. The four unchanged baseline warnings are OWN-1 on `.rumdl.toml`, MATURITY-1 on `.ki.toml`, and ITEM-2 missing size on the existing CORE-047 and CORE-064 records. ShellCheck, Bash 3.2 syntax, assembly drift, the two-second reference benchmark, all six bounded native-provider version probes, all 645 repository fixtures, mandoc lint, rendered manual inspection and the whitespace gate passed. Three independently authored isolated fixtures also passed: two levels of derived manager creation in a targeted apply, a bootstrap that fails to create its manager being caught before consumer dispatch, and an unrelated unavailable provider preventing every mutation.
+
+An initial full-suite run under additional network-denial sandboxing was interrupted after macOS denied process inspection used by attended-operation fixtures. All 33 affected fixtures then passed without that additional sandbox, followed by the complete successful 645-test run; no partial run is counted as a pass. The repository's isolation helper and exact native stubs remained in force. Audits, benchmark, supplemental fixtures and native-provider smoke retained network denial. Surviving receipts and the independent fixture source are beside the [run report](/Users/krisbrown/.local/state/ki/agents/ways-of-working/wow-night-rig-067-accept-d.report.md).
+
+Independent verdict: pass within the authorised fixture boundary, with no unresolved acceptance finding and no implementation repair. Only this record is accepted and retained. No live apply, manager installation, workstation reconciliation, personal configuration change, publication, cancellation or pruning occurred or is inferred.
