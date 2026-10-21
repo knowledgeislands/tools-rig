@@ -15,4 +15,4 @@ Rig keeps living product, architecture, security, and governance decisions in th
 11. [ADR-KI-TOOL-RIG-008](ADR-KI-TOOL-RIG-008-catalogue-scoped-resource-retirement.md) — Catalogue-Scoped Resource Retirement.
 12. [ADR-KI-TOOL-RIG-009](ADR-KI-TOOL-RIG-009-system-domain-resources-under-an-attended-grant.md) — System-Domain Resources Under an Attended Grant.
 13. [ADR-KI-TOOL-RIG-010](ADR-KI-TOOL-RIG-010-linux-firewall-through-a-rig-owned-nftables-table.md) — Linux Firewall Through a Rig-Owned nftables Table.
-14. [ADR-KI-TOOL-RIG-011](ADR-KI-TOOL-RIG-011-package-managers-as-catalogue-tools.md) - Package Managers as Catalogue Tools.
+14. [ADR-KI-TOOL-RIG-011](ADR-KI-TOOL-RIG-011-package-managers-as-catalogue-tools.md) - Package Managers Catalogue Tools: catalogue manager identity and observation-only Homebrew.

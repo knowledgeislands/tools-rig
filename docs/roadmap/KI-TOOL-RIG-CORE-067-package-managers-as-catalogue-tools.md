@@ -5,15 +5,15 @@ title: Managers as catalogue tools
 purpose: capability
 theme: rig
 kind: deliver
-status: ready
-horizon: next
+status: awaiting-review
+horizon: now
 priority: medium
 size: l
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 47845d714b652e118216056f5b3a740778988f56
 created_at: 2026-10-19T20:49:28Z
-updated_at: 2026-10-20T22:21:02Z
+updated_at: 2026-10-21T03:28:13Z
 ---
 
 # Package Managers as Catalogue Tools
@@ -55,14 +55,14 @@ Grounded at `973073e` on 20 October 2026 from source only.
 
 - [x] **Gate.** The five queries answered and this plan adjusted to the answers. Without that, stop.
 - [x] **1. Decision Record.** Per PLAN067-ADR, write [ADR-KI-TOOL-RIG-011](../decisions/ADR-KI-TOOL-RIG-011-package-managers-as-catalogue-tools.md) (proposed): managers are catalogue tools that declare `provides`; Rig derives manager edges from the consumer's bound provider; Homebrew is observed and never installed. Written and indexed with the Ready sign-off, as the owner directed; delivery marks it current once the code lands.
-- [ ] **2. `provides` field.** Accept optional `provides` on `[tool.*]`, naming one of the built-in manager adapters (`homebrew`, `mas`, `mise`, `npm`, `uv`, `chezmoi`). Reject an unknown manager, two tools providing the same manager, and `provides` on a variant. A tool with `provides = "homebrew"` needs no installation binding.
-- [ ] **3. Derived edges.** During plan resolution, for each selected tool bound to a built-in manager that a selected tool provides, add an ordering edge to the providing tool, using the binding for the resolved platform. Edges sit beside hand-written `requires` (PLAN067-EDGES): the plan order is their union, a duplicate is accepted silently, both enter cycle detection, and `rig explain` labels each edge `derived` or `declared`. They are never written into the public projection.
-- [ ] **4. Data-driven deferral.** `rig_apply_provider_prerequisite` defers a missing manager when the providing tool is earlier in the selected plan, whether by derived or declared edge. The fixed matrix stays as the fallback for a manager no selected tool provides (PLAN067-MATRIX). Homebrew is never deferred: a tool providing it is observation-only.
-- [ ] **5. One manager-level finding.** A missing provided manager reports once, on the providing tool (`homebrew: unavailable (manager-missing); action=install-homebrew`, other managers `action=run-rig-apply`), and each dependant reports `unknown (blocked-by:<manager tool>)`. Without `provides`, today's per-tool finding stays.
-- [ ] **6. Doctor manager report (G2).** On the loaded-configuration path, doctor adds one `managers` block listing each manager the selected plan binds, built-in and custom, with `available` or `unavailable`, the owning tool or `provider:<id>`, and an action. A custom provider's availability is its executable's. The broken-configuration path keeps its fixed list, extended with `mas`.
-- [ ] **7. Missing-provider check (G4).** Only once the catalogue declares at least one `provides` (PLAN067-OPTIN), `rig doctor` warns `manager-not-declared:<manager>` for a selected tool bound to a built-in manager that no selected tool provides.
-- [ ] **8. Fixtures.** Extend `tests/rig-provider-fixtures.bats` (or a new `tests/rig-managers.bats`) with `rig_test_provider` stubs: derived order without `requires`, a duplicate hand-written edge accepted and labelled `declared`, the fixed-matrix fallback with no `provides`, Homebrew observed and never installed, one manager finding with blocked dependants, deferral through a derived edge, duplicate and unknown `provides` rejected, variant platforms choosing different managers, the doctor block including a custom provider, and an unchanged configuration without `provides`.
-- [ ] **9. Documents and assembly.** Amend the specifications and guides under [Documentation impact](#documentation-impact), add a CHANGELOG entry, run `scripts/assemble-rig`, then the gate under [Verify](#verify).
+- [x] **2. `provides` field.** Accept optional `provides` on `[tool.*]`, naming one of the built-in manager adapters (`homebrew`, `mas`, `mise`, `npm`, `uv`, `chezmoi`). Reject an unknown manager, two tools providing the same manager, and `provides` on a variant. A tool with `provides = "homebrew"` needs no installation binding.
+- [x] **3. Derived edges.** During plan resolution, for each selected tool bound to a built-in manager that a selected tool provides, add an ordering edge to the providing tool, using the binding for the resolved platform. Edges sit beside hand-written `requires` (PLAN067-EDGES): the plan order is their union, a duplicate is accepted silently, both enter cycle detection, and `rig explain` labels each edge `derived` or `declared`. They are never written into the public projection.
+- [x] **4. Data-driven deferral.** `rig_apply_provider_prerequisite` defers a missing manager when the providing tool is earlier in the selected plan, whether by derived or declared edge. The fixed matrix stays as the fallback for a manager no selected tool provides (PLAN067-MATRIX). Homebrew is never deferred: a tool providing it is observation-only.
+- [x] **5. One manager-level finding.** A missing provided manager reports once, on the providing tool (`homebrew: unavailable (manager-missing); action=install-homebrew`, other managers `action=run-rig-apply`), and each dependant reports `unknown (blocked-by:<manager tool>)`. Without `provides`, today's per-tool finding stays.
+- [x] **6. Doctor manager report (G2).** On the loaded-configuration path, doctor adds one `managers` block listing each manager the selected plan binds, built-in and custom, with `available` or `unavailable`, the owning tool or `provider:<id>`, and an action. A custom provider's availability is its executable's. The broken-configuration path keeps its fixed list, extended with `mas`.
+- [x] **7. Missing-provider check (G4).** Only once the catalogue declares at least one `provides` (PLAN067-OPTIN), `rig doctor` warns `manager-not-declared:<manager>` for a selected tool bound to a built-in manager that no selected tool provides.
+- [x] **8. Fixtures.** Extend `tests/rig-provider-fixtures.bats` (or a new `tests/rig-managers.bats`) with `rig_test_provider` stubs: derived order without `requires`, a duplicate hand-written edge accepted and labelled `declared`, the fixed-matrix fallback with no `provides`, Homebrew observed and never installed, one manager finding with blocked dependants, deferral through a derived edge, duplicate and unknown `provides` rejected, variant platforms choosing different managers, the doctor block including a custom provider, and an unchanged configuration without `provides`.
+- [x] **9. Documents and assembly.** Amend the specifications and guides under [Documentation impact](#documentation-impact), add a CHANGELOG entry, run `scripts/assemble-rig`, then the gate under [Verify](#verify).
 
 ## Files touched
 
@@ -101,6 +101,42 @@ The getting-started guide's fresh-Mac stage says to declare `[tool.homebrew]` wi
 ### Roadmap
 
 This record only.
+
+## Review
+
+### Delivered
+
+Delivered the approved managers-as-catalogue-tools contract from immutable baseline `47845d714b652e118216056f5b3a740778988f56` in the designated isolated writer worktree. The isolated baseline passed the whole-repository audit with only the four authorised warnings and all 625 existing fixtures. Personal configuration, provider-native ownership and public-export boundaries are preserved.
+
+### Change Summary
+
+Added validated top-level provides identities, platform-resolved manager dependencies beside declared requires, silent duplicate edges and cycle rejection. Apply uses selected providing tools for deferral, keeps the fixed matrix when none provides the manager, and never installs or defers Homebrew. Observation attributes a missing manager to its providing tool and blocks its consumers. Doctor lists built-in and custom executable availability and opts catalogues declaring provides into undeclared-manager warnings.
+
+The explanation labels use the current public `rig show TOOL` route, whose implementation is `rig_command_explain_impl`; the plan's `rig explain` wording names that explanation behaviour. No additional public command was introduced. The existing targeted-apply closure in `src/rig/23-application.bash` also needed a bounded integration change: keep an absent derived manager even when its package observation is present, and retain its own prerequisites. These implement the approved ordering contract without changing the locked decisions.
+
+Updated the catalogue, orchestration and state specifications; both user guides; the manual; the changelog; the existing ADR and its index. ADR-KI-TOOL-RIG-011 is current. The executable was regenerated solely by `scripts/assemble-rig --write`.
+
+### Verification
+
+`ki repo audit --repo .` passed in the copied offline audit home. The only findings are the authorised OWN-1 and MATURITY-1 warnings and the unchanged missing-size warnings on CORE-047 and CORE-064. Neither policy file nor any other roadmap record changed.
+
+The complete ShellCheck, Bash 3.2 syntax and assembly drift checks passed. The reference benchmark passed with `RIG_BENCHMARK_BUDGET_SECONDS=2`; the script retains its separate bounded status budget. The bounded native-provider smoke passed using version probes only under network denial.
+
+`bats tests/ </dev/null` passed all 645 fixtures with an already installed Ed25519-capable OpenSSL. The 20 manager fixtures cover accepted identities and schema rejection, declared/derived union and cycles, platform variants, explanation labels, arbitrary manager deferral and targeted closure, fixed fallback, Homebrew observation and refusal to defer it, one finding with multiple blocked consumers, built-in/custom doctor availability, opt-in warnings, broken-configuration mas availability and unchanged configurations without provides. Public exports are byte-identical with and without the new field.
+
+`mandoc -T lint man/rig.1` and `git diff --check` passed; the rendered manual was reviewed. Evidence is retained under the run's `evidence/` directory beside its supervisor report. An initial five-minute baseline runner cutoff was corrected and the complete unchanged suite rerun successfully; it is not counted as a passed partial run.
+
+### Outstanding concerns
+
+None within the approved portable contract. Independent acceptance remains with the next designated review run. Adding provides to Kris's configuration remains a separate chezmoi step.
+
+### Post-change review
+
+Fresh self-review checked the selected-platform graph, union cycle rejection, fixed fallback, missing-manager attribution, targeted closure and executable rechecks, warning opt-in, Bash 3.2 compatibility and public projection. The source uses no new runtime dependency. Native writers and managers remain isolated in fixtures; no personal configuration was edited and no live apply, package-manager installation, release or package/site publication was performed.
+
+### Mini recap
+
+Manager identity now belongs to catalogue tools, while native managers retain installation semantics and state. The approved contract is fixture-verified and submitted for independent review.
 
 ## Discussion
 

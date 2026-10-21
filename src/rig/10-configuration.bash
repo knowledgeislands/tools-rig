@@ -272,7 +272,7 @@ rig_field_kind() {
     default-application:name|default-application:purpose|default-application:rationale|\
     default-application:provider|default-application:kind|default-application:value|default-application:bundle-id|\
     firewall:name|firewall:purpose|firewall:rationale|firewall:provider|firewall:locator|\
-    tool:name|tool:category|tool:purpose|tool:rationale|\
+    tool:name|tool:category|tool:purpose|tool:rationale|tool:provides|\
     skill:name|skill:purpose|skill:rationale|skill:authority|skill:source|\
     skill:source-skill|skill:trust|skill:public-source|\
     profile:name|profile:purpose|profile:kind|\
@@ -401,7 +401,7 @@ rig_toml_field() {
     default-application:name|default-application:purpose|default-application:rationale|\
     default-application:provider|default-application:kind|default-application:value|default-application:bundle-id|\
     firewall:name|firewall:purpose|firewall:rationale|firewall:provider|firewall:locator|\
-    tool:name|tool:category|tool:purpose|tool:rationale|\
+    tool:name|tool:category|tool:purpose|tool:rationale|tool:provides|\
     skill:name|skill:purpose|skill:rationale|skill:authority|skill:source|\
     skill:source-skill|skill:trust|skill:public-source|\
     provider:adapter|provider:command|provider:executable|provider:manifest|\
@@ -2101,10 +2101,53 @@ rig_validate_skill() {
   rig_validate_references_for_field "$section_index" member-profile profile
 }
 
+rig_manager_is_builtin() {
+  case "$1" in homebrew|mas|mise|npm|uv|chezmoi) return 0 ;; esac
+  return 1
+}
+
+rig_manager_tool() {
+  local index
+  RIG_VALUE=
+  index=0
+  while [ "$index" -lt "${#RIG_MANAGER_NAMES[@]}" ]; do
+    if [ "${RIG_MANAGER_NAMES[$index]}" = "$1" ]; then
+      RIG_VALUE=${RIG_MANAGER_TOOLS[$index]}
+      return 0
+    fi
+    index=$((index + 1))
+  done
+  return 1
+}
+
+rig_validate_manager_tools() {
+  local index section manager
+  RIG_MANAGER_NAMES=()
+  RIG_MANAGER_TOOLS=()
+  index=0
+  while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+    if [ "${RIG_SECTION_TYPES[$index]}" = tool ]; then
+      section=${RIG_SECTION_NAMES[$index]}
+      if rig_get_value "$section" provides; then
+        manager=$RIG_VALUE
+        rig_manager_is_builtin "$manager" ||
+          rig_fail "[$section] provides unknown manager '$manager'" || return
+        if rig_manager_tool "$manager"; then
+          rig_fail "[$section] duplicates manager '$manager' provided by '$RIG_VALUE'" || return
+        fi
+        RIG_MANAGER_NAMES[${#RIG_MANAGER_NAMES[@]}]=$manager
+        RIG_MANAGER_TOOLS[${#RIG_MANAGER_TOOLS[@]}]=${RIG_SECTION_IDS[$index]}
+      fi
+    fi
+    index=$((index + 1))
+  done
+}
+
 rig_validate_model() {
   local index section_name section_type section_id secondary_id adapter provider profile
   local field_index field_end
 
+  rig_validate_manager_tools || return
   rig_section_index rig || rig_fail 'missing [rig] section' || return
   if rig_get_value rig schema; then
     [ "$RIG_VALUE" = 1 ] || rig_fail "unsupported schema version '$RIG_VALUE'" || return

@@ -460,6 +460,9 @@ rig_apply_tool_needs_dispatch() {
   local index
   rig_plan_index "$1" || return 2
   index=$RIG_INDEX
+  if rig_observe_manager_tool "$1" "${RIG_PLAN_BINDINGS[$index]}"; then
+    [ "$RIG_OBSERVATION" = present ] || return 0
+  fi
   [ -n "${RIG_PLAN_BINDINGS[$index]}" ] || return 0
   rig_observe_provider "${RIG_PLAN_TOOLS[$index]}" \
     "${RIG_PLAN_BINDINGS[$index]}" "${RIG_PLAN_PROVIDERS[$index]}" || return 2
@@ -505,6 +508,10 @@ rig_apply_mark_dependencies() {
   while [ "$RIG_APPLY_CHANGED" -eq 1 ]; do
     RIG_APPLY_CHANGED=0
     for tool in "${RIG_APPLY_KEEP_TOOLS[@]+"${RIG_APPLY_KEEP_TOOLS[@]}"}"; do
+      if rig_tool_manager_edge "$tool"; then
+        dependency=$RIG_VALUE
+        rig_apply_include_tool_dependency "$dependency" || return
+      fi
       section_name=tool.$tool
       rig_section_index "$section_name" || return 2
       section_index=$RIG_INDEX

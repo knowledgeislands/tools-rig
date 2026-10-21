@@ -1280,6 +1280,79 @@ rig_doctor_incompatible_tools() {
   RIG_VALUE=${information%$'\n'}
 }
 
+rig_observe_manager_tool() {
+  local tool binding manager executable
+  tool=$1
+  binding=$2
+  rig_get_value "tool.$tool" provides || return 1
+  manager=$RIG_VALUE
+  rig_provider_executable "$manager" "$manager" manager || return 2
+  executable=$RIG_VALUE
+  if ! rig_executable_available "$executable"; then
+    RIG_OBSERVATION=unavailable
+    RIG_OBSERVATION_DETAIL='manager-missing'
+    return 0
+  fi
+  if [ "$manager" = homebrew ] || [ -z "$binding" ]; then
+    RIG_OBSERVATION=present
+    RIG_OBSERVATION_DETAIL='manager-available'
+    return 0
+  fi
+  return 1
+}
+
+rig_doctor_managers() {
+  local index tool binding provider adapter manager owner executable state action seen
+  RIG_DOCTOR_MANAGERS=
+  RIG_DOCTOR_MANAGER_WARNINGS=
+  RIG_DOCTOR_MANAGER_WARNING_COUNT=0
+  seen=$'\n'
+  index=0
+  while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
+    tool=${RIG_PLAN_TOOLS[$index]}
+    binding=${RIG_PLAN_BINDINGS[$index]}
+    provider=${RIG_PLAN_PROVIDERS[$index]}
+    index=$((index + 1))
+    [ -n "$binding" ] || continue
+    rig_provider_adapter "$provider" || return 2
+    adapter=$RIG_VALUE
+    if [ "$adapter" = custom ]; then
+      manager=provider:$provider
+      rig_custom_provider_executable "$provider" || return 2
+      executable=$RIG_VALUE
+    elif rig_manager_is_builtin "$adapter"; then
+      manager=$adapter
+      rig_get_value "$binding" kind || return 2
+      rig_provider_executable "$provider" "$adapter" "$RIG_VALUE" || return 2
+      executable=$RIG_VALUE
+    else
+      continue
+    fi
+    case "$seen" in *$'\n'"$manager"$'\n'*) continue ;; esac
+    seen=$seen$manager$'\n'
+    owner=provider:$provider
+    if [ "$adapter" != custom ] && rig_selected_manager_tool "$adapter"; then
+      owner=$RIG_VALUE
+    elif [ "$adapter" != custom ] && [ "${#RIG_MANAGER_NAMES[@]}" -gt 0 ]; then
+      RIG_DOCTOR_MANAGER_WARNINGS="${RIG_DOCTOR_MANAGER_WARNINGS}  manager-not-declared:$manager; owner=configuration; action=declare-manager-tool"$'\n'
+      RIG_DOCTOR_MANAGER_WARNING_COUNT=$((RIG_DOCTOR_MANAGER_WARNING_COUNT + 1))
+    fi
+    state=available
+    action=none
+    if ! rig_executable_available "$executable"; then
+      state=unavailable
+      case "$adapter:$owner" in
+        homebrew:*) action=install-homebrew ;;
+        custom:*|*:provider:*) action=install-or-configure-provider ;;
+        *) action=run-rig-apply ;;
+      esac
+    fi
+    RIG_DOCTOR_MANAGERS="${RIG_DOCTOR_MANAGERS}  $manager: $state; owner=$owner; action=$action"$'\n'
+  done
+  RIG_DOCTOR_MANAGERS=${RIG_DOCTOR_MANAGERS%$'\n'}
+  RIG_DOCTOR_MANAGER_WARNINGS=${RIG_DOCTOR_MANAGER_WARNINGS%$'\n'}
+}
+
 rig_observe_plan() {
   local index tool binding provider adapter state detail findings present catalogue_only
   local findings_output progress_label
@@ -1306,7 +1379,15 @@ rig_observe_plan() {
     esac
     rig_progress_begin "$progress_label"
     detail=-
-    if [ -z "$binding" ]; then
+    if rig_observe_manager_tool "$tool" "$binding"; then
+      state=$RIG_OBSERVATION
+      detail=$RIG_OBSERVATION_DETAIL
+      if [ "$state" = present ]; then
+        RIG_PLAN_RESULTS[$index]=observed
+      else
+        RIG_PLAN_RESULTS[$index]=failed
+      fi
+    elif [ -z "$binding" ]; then
       state=unavailable
       detail=catalogue-only
       RIG_PLAN_RESULTS[$index]=neutral
@@ -1362,6 +1443,14 @@ rig_observe_plan() {
         unknown:blocked-by:*) RIG_OBSERVATION_DETAIL=resolve-${detail#blocked-by:} ;;
         unavailable:unsupported-capability:*) RIG_OBSERVATION_DETAIL=declare-observe-capability ;;
         unavailable:unsupported-adapter:*) RIG_OBSERVATION_DETAIL=select-supported-adapter ;;
+        unavailable:manager-missing)
+          rig_get_value "tool.$tool" provides || return 2
+          if [ "$RIG_VALUE" = homebrew ]; then
+            RIG_OBSERVATION_DETAIL=install-homebrew
+          else
+            RIG_OBSERVATION_DETAIL=run-rig-apply
+          fi
+          ;;
         unavailable:executable-unavailable) RIG_OBSERVATION_DETAIL=install-or-configure-provider ;;
         *) RIG_OBSERVATION_DETAIL=inspect-provider-diagnostics ;;
       esac
@@ -1526,7 +1615,7 @@ rig_doctor_platform_locks() {
 rig_doctor_native_availability() {
   local executable state
 
-  for executable in brew uv mise npm chezmoi; do
+  for executable in brew uv mise npm chezmoi mas; do
     if rig_executable_available "$executable"; then
       state=available
     else
@@ -1542,10 +1631,11 @@ rig_command_doctor() {
   local index section_name state detail port owner action skill authority format information config_finding config_loaded
   local verbose profile_seen format_seen checks_passed checks_skipped checks_total checks_coverage
 
-  local unmanaged_requested removal_findings warnings warning_count declaration
+  local unmanaged_requested removal_findings warnings warning_count declaration managers
   unmanaged_requested=0
   removal_findings=
   warnings=
+  managers=
   warning_count=0
   profile=
   format=text
@@ -1637,8 +1727,14 @@ rig_command_doctor() {
       "$RIG_DIAG_CONFIG_HOME" "$RIG_DIAG_DATA_HOME" "$RIG_DIAG_STATE_HOME" "$RIG_DIAG_CACHE_HOME"; \
       rig_doctor_native_availability)
   else
-  rig_observe_plan || return
-  tool_findings=$RIG_VALUE
+    rig_observe_plan || return
+    tool_findings=$RIG_VALUE
+    rig_doctor_managers || return
+    managers=$RIG_DOCTOR_MANAGERS
+    warning_count=$((warning_count + RIG_DOCTOR_MANAGER_WARNING_COUNT))
+    if [ -n "$RIG_DOCTOR_MANAGER_WARNINGS" ]; then
+      warnings="${warnings}${warnings:+$'\n'}$RIG_DOCTOR_MANAGER_WARNINGS"
+    fi
   findings=$RIG_DOCTOR_FINDINGS
   rig_doctor_command_line_tools
   if [ -n "$RIG_VALUE" ]; then
@@ -1835,7 +1931,9 @@ rig_command_doctor() {
     rig_json_lines "$skill_findings"
     printf ',"locks":'
     rig_json_lines "$RIG_DOCTOR_LOCK_FINDINGS"
-    printf '},"warnings":'
+    printf '},"managers":'
+    rig_json_lines "$managers"
+    printf ',"warnings":'
     rig_json_lines "$warnings"
     printf ',"information":'
     rig_json_lines "$information"
@@ -1859,6 +1957,9 @@ rig_command_doctor() {
   fi
   if [ -n "$xdg_findings" ]; then
     printf 'XDG findings:\n%s\n' "$xdg_findings"
+  fi
+  if [ -n "$managers" ]; then
+    printf 'Managers:\n%s\n' "$managers"
   fi
   if [ -n "$tool_findings" ]; then
     printf 'Tool findings:\n%s\n' "$tool_findings"

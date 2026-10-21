@@ -2,7 +2,7 @@
 id: ADR-KI-TOOL-RIG-011
 title: 'Package Managers as Catalogue Tools'
 date: 2026-10-20
-status: proposed
+status: current
 decision_type: architecture
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/adr
 decision_depends_on: [PDR-KI-TOOL-RIG-001, ADR-KI-TOOL-RIG-003, ADR-KI-TOOL-RIG-005]

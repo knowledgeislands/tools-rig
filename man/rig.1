@@ -508,12 +508,15 @@ stale resources, records only reconciled resources in its receipt, and labels
 requested versus dependency-included rows. A port target selects its declared
 owner; Rig never materialises the port itself.
 .PP
-Apply also stages selected declarations that explicitly provide missing native
-managers. Required Homebrew-to-mise and mise-to-Node/npm prerequisites must be
-in the selected dependency closure; Rig does not infer unselected tools.
-Configuration, trust, and shared safety checks complete before the first
-mutation, and downstream executable availability is rechecked after each
-prerequisite stage. It does not use a Brewfile or configure Homebrew autoupdate.
+Apply stages selected manager tools before consumers through the union of
+declared requires and platform-resolved derived manager dependencies.
+Absent prerequisites remain in a targeted apply's selected dependency closure;
+Rig never infers unselected manager tools.
+Configuration, trust and safety checks complete before the first mutation,
+and manager availability is rechecked before dependent dispatch.
+Homebrew is observed, never installed or deferred.
+Without a selected providing tool, the existing explicit-prerequisite matrix
+remains the fallback. Rig does not use a Brewfile or configure Homebrew policy.
 .TP
 .BI "rig apply \-\-profile " NAME
 Apply a named resolved profile without changing the configured default.
@@ -1932,6 +1935,28 @@ a non-zero provider exit becomes
 with detail
 .BR exit:N .
 Application output is routed to stderr so Rig alone owns deterministic stdout.
+.SS CATALOGUE MANAGERS
+\&
+.PP
+A tool may declare one top-level provides value: homebrew, mas, mise, npm, uv
+or chezmoi. Unknown values, duplicate providers of one manager and variant-level
+provides fields are rejected. Select the providing tool alongside its consumers.
+Homebrew needs no installation binding and remains observation-only.
+.PP
+The selected platform binding determines the derived prerequisite.
+Declared requires remain valid; duplicates are silent.
+Explain labels the manager dependency as declared or derived.
+Derived edges and provides never enter public export.
+.PP
+Doctor's Managers block reports selected built-in and custom manager executable
+availability, the owning tool or provider:ID, and an action.
+JSON adds a managers array.
+A missing provided manager has one manager-missing finding; consumers report
+blocked-by:TOOL. Homebrew requests install-homebrew; other provided managers
+request run-rig-apply.
+A catalogue declaring provides opts into manager-not-declared warnings when
+a selected built-in manager has no selected providing tool.
+Without provides, the existing per-tool findings remain.
 .SH DEVELOPMENT INSTALLATIONS
 \&
 .PP

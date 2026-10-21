@@ -153,6 +153,30 @@ rig status
 
 Observations come from built-in providers or explicitly trusted extension observations. `unknown` and `unavailable` are deliberate results when Rig cannot establish state safely; they are not guessed into `present` or `missing`.
 
+## Declare the package managers
+
+Select a catalogue tool providing each manager alongside its consumers in the complete profile. Add a top-level `provides` value of `mas`, `mise`, `npm`, `uv` or `chezmoi` to the tool that supplies that manager. Keep the tool's native installation binding. Rig derives the prerequisite from each consumer's active platform binding, so an explicit manager `requires` is optional; existing declarations remain valid and duplicate edges are accepted silently.
+
+Homebrew is an observed prerequisite. Declare it without installation metadata and select it in the same profile:
+
+```toml
+[category.managers]
+name = "Package managers"
+purpose = "Explain the managers used by this setup"
+
+[tool.homebrew]
+name = "Homebrew"
+category = "managers"
+purpose = "Provide formula and cask installation"
+rationale = "Keep native Homebrew ownership visible"
+platforms = ["macos", "linux"]
+provides = "homebrew"
+```
+
+On a fresh machine, install Homebrew through its native process before applying Homebrew consumers. Rig reports missing Homebrew once and blocks its dependants; it never installs or defers Homebrew. Other selected manager tools can be installed before their consumers in the same apply. A catalogue without provides keeps the existing explicit-prerequisite fallback.
+
+Use doctor to see the selected managers and any manager-not-declared warnings. The warning starts only when at least one tool declares provides, and selection matters: an unselected manager tool does not satisfy a selected consumer. Public export retains the authored catalogue relationships and adds no derived manager edges.
+
 ## Preview the first application
 
 Review the complete materialisation plan without changing provider state:

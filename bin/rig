@@ -1203,7 +1203,7 @@ rig_field_kind() {
     default-application:name|default-application:purpose|default-application:rationale|\
     default-application:provider|default-application:kind|default-application:value|default-application:bundle-id|\
     firewall:name|firewall:purpose|firewall:rationale|firewall:provider|firewall:locator|\
-    tool:name|tool:category|tool:purpose|tool:rationale|\
+    tool:name|tool:category|tool:purpose|tool:rationale|tool:provides|\
     skill:name|skill:purpose|skill:rationale|skill:authority|skill:source|\
     skill:source-skill|skill:trust|skill:public-source|\
     profile:name|profile:purpose|profile:kind|\
@@ -1332,7 +1332,7 @@ rig_toml_field() {
     default-application:name|default-application:purpose|default-application:rationale|\
     default-application:provider|default-application:kind|default-application:value|default-application:bundle-id|\
     firewall:name|firewall:purpose|firewall:rationale|firewall:provider|firewall:locator|\
-    tool:name|tool:category|tool:purpose|tool:rationale|\
+    tool:name|tool:category|tool:purpose|tool:rationale|tool:provides|\
     skill:name|skill:purpose|skill:rationale|skill:authority|skill:source|\
     skill:source-skill|skill:trust|skill:public-source|\
     provider:adapter|provider:command|provider:executable|provider:manifest|\
@@ -3032,10 +3032,53 @@ rig_validate_skill() {
   rig_validate_references_for_field "$section_index" member-profile profile
 }
 
+rig_manager_is_builtin() {
+  case "$1" in homebrew|mas|mise|npm|uv|chezmoi) return 0 ;; esac
+  return 1
+}
+
+rig_manager_tool() {
+  local index
+  RIG_VALUE=
+  index=0
+  while [ "$index" -lt "${#RIG_MANAGER_NAMES[@]}" ]; do
+    if [ "${RIG_MANAGER_NAMES[$index]}" = "$1" ]; then
+      RIG_VALUE=${RIG_MANAGER_TOOLS[$index]}
+      return 0
+    fi
+    index=$((index + 1))
+  done
+  return 1
+}
+
+rig_validate_manager_tools() {
+  local index section manager
+  RIG_MANAGER_NAMES=()
+  RIG_MANAGER_TOOLS=()
+  index=0
+  while [ "$index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
+    if [ "${RIG_SECTION_TYPES[$index]}" = tool ]; then
+      section=${RIG_SECTION_NAMES[$index]}
+      if rig_get_value "$section" provides; then
+        manager=$RIG_VALUE
+        rig_manager_is_builtin "$manager" ||
+          rig_fail "[$section] provides unknown manager '$manager'" || return
+        if rig_manager_tool "$manager"; then
+          rig_fail "[$section] duplicates manager '$manager' provided by '$RIG_VALUE'" || return
+        fi
+        RIG_MANAGER_NAMES[${#RIG_MANAGER_NAMES[@]}]=$manager
+        RIG_MANAGER_TOOLS[${#RIG_MANAGER_TOOLS[@]}]=${RIG_SECTION_IDS[$index]}
+      fi
+    fi
+    index=$((index + 1))
+  done
+}
+
 rig_validate_model() {
   local index section_name section_type section_id secondary_id adapter provider profile
   local field_index field_end
 
+  rig_validate_manager_tools || return
   rig_section_index rig || rig_fail 'missing [rig] section' || return
   if rig_get_value rig schema; then
     [ "$RIG_VALUE" = 1 ] || rig_fail "unsupported schema version '$RIG_VALUE'" || return
@@ -4116,6 +4159,64 @@ rig_dump_resolution() {
 # Cross-module state is intentionally consumed by later assembled modules.
 # shellcheck disable=SC2004,SC2034,SC2094
 
+rig_selected_manager_tool() {
+  local index
+  RIG_VALUE=
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_MANAGER_NAMES[@]}" ]; do
+    if [ "${RIG_SELECTED_MANAGER_NAMES[$index]}" = "$1" ]; then
+      RIG_VALUE=${RIG_SELECTED_MANAGER_TOOLS[$index]}
+      return 0
+    fi
+    index=$((index + 1))
+  done
+  return 1
+}
+
+rig_build_manager_edges() {
+  local index tool binding provider adapter section_index
+  RIG_SELECTED_MANAGER_NAMES=()
+  RIG_SELECTED_MANAGER_TOOLS=()
+  RIG_TOOL_MANAGER_EDGES=()
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
+    tool=${RIG_SELECTED_TOOLS[$index]}
+    if rig_get_value "tool.$tool" provides; then
+      RIG_SELECTED_MANAGER_NAMES[${#RIG_SELECTED_MANAGER_NAMES[@]}]=$RIG_VALUE
+      RIG_SELECTED_MANAGER_TOOLS[${#RIG_SELECTED_MANAGER_TOOLS[@]}]=$tool
+    fi
+    index=$((index + 1))
+  done
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
+    tool=${RIG_SELECTED_TOOLS[$index]}
+    binding=${RIG_SELECTED_BINDINGS[$index]:-}
+    # Homebrew is an observed prerequisite, never a dispatchable installation.
+    if rig_get_value "tool.$tool" provides && [ "$RIG_VALUE" = homebrew ]; then
+      binding=
+    fi
+    if [ -n "$binding" ]; then
+      rig_section_index "$binding" || return 2
+      provider=${RIG_SECTION_SECONDARY_IDS[$RIG_INDEX]}
+      rig_provider_adapter "$provider" || return 2
+      adapter=$RIG_VALUE
+      if rig_selected_manager_tool "$adapter"; then
+        tool=$RIG_VALUE
+        rig_section_index "tool.${RIG_SELECTED_TOOLS[$index]}" || return 2
+        section_index=$RIG_INDEX
+        RIG_TOOL_MANAGER_EDGES[$section_index]=$tool
+      fi
+    fi
+    index=$((index + 1))
+  done
+}
+
+rig_tool_manager_edge() {
+  rig_section_index "tool.$1" || return 1
+  RIG_VALUE=${RIG_TOOL_MANAGER_EDGES[$RIG_INDEX]:-}
+  [ -n "$RIG_VALUE" ]
+}
+
 rig_plan_index() {
   local wanted index
 
@@ -4147,6 +4248,10 @@ rig_tool_dependencies_planned() {
     fi
     field_index=$((field_index + 1))
   done
+  dependency=${RIG_TOOL_MANAGER_EDGES[$section_index]:-}
+  if [ -n "$dependency" ]; then
+    case "$RIG_PLAN_MEMBERS" in *$'\n'"$dependency"$'\n'*) ;; *) return 1 ;; esac
+  fi
   return 0
 }
 
@@ -4159,6 +4264,10 @@ rig_plan_append_selected() {
   if [ -n "$binding" ]; then
     rig_section_index "$binding" || return 2
     provider=${RIG_SECTION_SECONDARY_IDS[$RIG_INDEX]}
+  fi
+  if rig_get_value "tool.${RIG_SELECTED_TOOLS[$index]}" provides && [ "$RIG_VALUE" = homebrew ]; then
+    binding=
+    provider=homebrew
   fi
   RIG_PLAN_TOOLS[${#RIG_PLAN_TOOLS[@]}]=${RIG_SELECTED_TOOLS[$index]}
   RIG_PLAN_BINDINGS[${#RIG_PLAN_BINDINGS[@]}]=$binding
@@ -4179,6 +4288,7 @@ rig_build_plan() {
   RIG_PLAN_RESULTS=()
   RIG_PLAN_DETAILS=()
   RIG_PLAN_MEMBERS=$'\n'
+  rig_build_manager_edges || return
   selected_count=${#RIG_SELECTED_TOOLS[@]}
   waiting=()
   position=0
@@ -5621,6 +5731,19 @@ rig_plan_blocker() {
     fi
     field_index=$((field_index + 1))
   done
+  dependency=${RIG_TOOL_MANAGER_EDGES[$section_index]:-}
+  if [ -n "$dependency" ]; then
+    rig_plan_index "$dependency" || return 2
+    dependency_index=$RIG_INDEX
+    dependency_result=${RIG_PLAN_RESULTS[$dependency_index]:-}
+    if [ "$dependency_result" = failed ] ||
+      { [ "$dependency_result" = skipped ] &&
+        [ "${RIG_PLAN_DETAILS[$dependency_index]:-}" != catalogue-only ]; }; then
+      if [ -z "$blocker" ] || [[ "$dependency" < "$blocker" ]]; then
+        blocker=$dependency
+      fi
+    fi
+  fi
   [ -n "$blocker" ] || return 1
   RIG_VALUE=$blocker
 }
@@ -7039,6 +7162,15 @@ rig_apply_provider_prerequisite() {
 
   adapter=$1
   consumer=$2
+  [ "$adapter" != homebrew ] || return 1
+  if rig_selected_manager_tool "$adapter"; then
+    prerequisite=$RIG_VALUE
+    rig_plan_index "$consumer" || return 1
+    consumer_index=$RIG_INDEX
+    rig_plan_index "$prerequisite" || return 1
+    [ "$RIG_INDEX" -lt "$consumer_index" ]
+    return
+  fi
   rig_plan_index "$consumer" || return 1
   consumer_index=$RIG_INDEX
   index=0
@@ -9006,6 +9138,79 @@ rig_doctor_incompatible_tools() {
   RIG_VALUE=${information%$'\n'}
 }
 
+rig_observe_manager_tool() {
+  local tool binding manager executable
+  tool=$1
+  binding=$2
+  rig_get_value "tool.$tool" provides || return 1
+  manager=$RIG_VALUE
+  rig_provider_executable "$manager" "$manager" manager || return 2
+  executable=$RIG_VALUE
+  if ! rig_executable_available "$executable"; then
+    RIG_OBSERVATION=unavailable
+    RIG_OBSERVATION_DETAIL='manager-missing'
+    return 0
+  fi
+  if [ "$manager" = homebrew ] || [ -z "$binding" ]; then
+    RIG_OBSERVATION=present
+    RIG_OBSERVATION_DETAIL='manager-available'
+    return 0
+  fi
+  return 1
+}
+
+rig_doctor_managers() {
+  local index tool binding provider adapter manager owner executable state action seen
+  RIG_DOCTOR_MANAGERS=
+  RIG_DOCTOR_MANAGER_WARNINGS=
+  RIG_DOCTOR_MANAGER_WARNING_COUNT=0
+  seen=$'\n'
+  index=0
+  while [ "$index" -lt "${#RIG_PLAN_TOOLS[@]}" ]; do
+    tool=${RIG_PLAN_TOOLS[$index]}
+    binding=${RIG_PLAN_BINDINGS[$index]}
+    provider=${RIG_PLAN_PROVIDERS[$index]}
+    index=$((index + 1))
+    [ -n "$binding" ] || continue
+    rig_provider_adapter "$provider" || return 2
+    adapter=$RIG_VALUE
+    if [ "$adapter" = custom ]; then
+      manager=provider:$provider
+      rig_custom_provider_executable "$provider" || return 2
+      executable=$RIG_VALUE
+    elif rig_manager_is_builtin "$adapter"; then
+      manager=$adapter
+      rig_get_value "$binding" kind || return 2
+      rig_provider_executable "$provider" "$adapter" "$RIG_VALUE" || return 2
+      executable=$RIG_VALUE
+    else
+      continue
+    fi
+    case "$seen" in *$'\n'"$manager"$'\n'*) continue ;; esac
+    seen=$seen$manager$'\n'
+    owner=provider:$provider
+    if [ "$adapter" != custom ] && rig_selected_manager_tool "$adapter"; then
+      owner=$RIG_VALUE
+    elif [ "$adapter" != custom ] && [ "${#RIG_MANAGER_NAMES[@]}" -gt 0 ]; then
+      RIG_DOCTOR_MANAGER_WARNINGS="${RIG_DOCTOR_MANAGER_WARNINGS}  manager-not-declared:$manager; owner=configuration; action=declare-manager-tool"$'\n'
+      RIG_DOCTOR_MANAGER_WARNING_COUNT=$((RIG_DOCTOR_MANAGER_WARNING_COUNT + 1))
+    fi
+    state=available
+    action=none
+    if ! rig_executable_available "$executable"; then
+      state=unavailable
+      case "$adapter:$owner" in
+        homebrew:*) action=install-homebrew ;;
+        custom:*|*:provider:*) action=install-or-configure-provider ;;
+        *) action=run-rig-apply ;;
+      esac
+    fi
+    RIG_DOCTOR_MANAGERS="${RIG_DOCTOR_MANAGERS}  $manager: $state; owner=$owner; action=$action"$'\n'
+  done
+  RIG_DOCTOR_MANAGERS=${RIG_DOCTOR_MANAGERS%$'\n'}
+  RIG_DOCTOR_MANAGER_WARNINGS=${RIG_DOCTOR_MANAGER_WARNINGS%$'\n'}
+}
+
 rig_observe_plan() {
   local index tool binding provider adapter state detail findings present catalogue_only
   local findings_output progress_label
@@ -9032,7 +9237,15 @@ rig_observe_plan() {
     esac
     rig_progress_begin "$progress_label"
     detail=-
-    if [ -z "$binding" ]; then
+    if rig_observe_manager_tool "$tool" "$binding"; then
+      state=$RIG_OBSERVATION
+      detail=$RIG_OBSERVATION_DETAIL
+      if [ "$state" = present ]; then
+        RIG_PLAN_RESULTS[$index]=observed
+      else
+        RIG_PLAN_RESULTS[$index]=failed
+      fi
+    elif [ -z "$binding" ]; then
       state=unavailable
       detail=catalogue-only
       RIG_PLAN_RESULTS[$index]=neutral
@@ -9088,6 +9301,14 @@ rig_observe_plan() {
         unknown:blocked-by:*) RIG_OBSERVATION_DETAIL=resolve-${detail#blocked-by:} ;;
         unavailable:unsupported-capability:*) RIG_OBSERVATION_DETAIL=declare-observe-capability ;;
         unavailable:unsupported-adapter:*) RIG_OBSERVATION_DETAIL=select-supported-adapter ;;
+        unavailable:manager-missing)
+          rig_get_value "tool.$tool" provides || return 2
+          if [ "$RIG_VALUE" = homebrew ]; then
+            RIG_OBSERVATION_DETAIL=install-homebrew
+          else
+            RIG_OBSERVATION_DETAIL=run-rig-apply
+          fi
+          ;;
         unavailable:executable-unavailable) RIG_OBSERVATION_DETAIL=install-or-configure-provider ;;
         *) RIG_OBSERVATION_DETAIL=inspect-provider-diagnostics ;;
       esac
@@ -9252,7 +9473,7 @@ rig_doctor_platform_locks() {
 rig_doctor_native_availability() {
   local executable state
 
-  for executable in brew uv mise npm chezmoi; do
+  for executable in brew uv mise npm chezmoi mas; do
     if rig_executable_available "$executable"; then
       state=available
     else
@@ -9268,10 +9489,11 @@ rig_command_doctor() {
   local index section_name state detail port owner action skill authority format information config_finding config_loaded
   local verbose profile_seen format_seen checks_passed checks_skipped checks_total checks_coverage
 
-  local unmanaged_requested removal_findings warnings warning_count declaration
+  local unmanaged_requested removal_findings warnings warning_count declaration managers
   unmanaged_requested=0
   removal_findings=
   warnings=
+  managers=
   warning_count=0
   profile=
   format=text
@@ -9363,8 +9585,14 @@ rig_command_doctor() {
       "$RIG_DIAG_CONFIG_HOME" "$RIG_DIAG_DATA_HOME" "$RIG_DIAG_STATE_HOME" "$RIG_DIAG_CACHE_HOME"; \
       rig_doctor_native_availability)
   else
-  rig_observe_plan || return
-  tool_findings=$RIG_VALUE
+    rig_observe_plan || return
+    tool_findings=$RIG_VALUE
+    rig_doctor_managers || return
+    managers=$RIG_DOCTOR_MANAGERS
+    warning_count=$((warning_count + RIG_DOCTOR_MANAGER_WARNING_COUNT))
+    if [ -n "$RIG_DOCTOR_MANAGER_WARNINGS" ]; then
+      warnings="${warnings}${warnings:+$'\n'}$RIG_DOCTOR_MANAGER_WARNINGS"
+    fi
   findings=$RIG_DOCTOR_FINDINGS
   rig_doctor_command_line_tools
   if [ -n "$RIG_VALUE" ]; then
@@ -9561,7 +9789,9 @@ rig_command_doctor() {
     rig_json_lines "$skill_findings"
     printf ',"locks":'
     rig_json_lines "$RIG_DOCTOR_LOCK_FINDINGS"
-    printf '},"warnings":'
+    printf '},"managers":'
+    rig_json_lines "$managers"
+    printf ',"warnings":'
     rig_json_lines "$warnings"
     printf ',"information":'
     rig_json_lines "$information"
@@ -9585,6 +9815,9 @@ rig_command_doctor() {
   fi
   if [ -n "$xdg_findings" ]; then
     printf 'XDG findings:\n%s\n' "$xdg_findings"
+  fi
+  if [ -n "$managers" ]; then
+    printf 'Managers:\n%s\n' "$managers"
   fi
   if [ -n "$tool_findings" ]; then
     printf 'Tool findings:\n%s\n' "$tool_findings"
@@ -10088,6 +10321,9 @@ rig_apply_tool_needs_dispatch() {
   local index
   rig_plan_index "$1" || return 2
   index=$RIG_INDEX
+  if rig_observe_manager_tool "$1" "${RIG_PLAN_BINDINGS[$index]}"; then
+    [ "$RIG_OBSERVATION" = present ] || return 0
+  fi
   [ -n "${RIG_PLAN_BINDINGS[$index]}" ] || return 0
   rig_observe_provider "${RIG_PLAN_TOOLS[$index]}" \
     "${RIG_PLAN_BINDINGS[$index]}" "${RIG_PLAN_PROVIDERS[$index]}" || return 2
@@ -10133,6 +10369,10 @@ rig_apply_mark_dependencies() {
   while [ "$RIG_APPLY_CHANGED" -eq 1 ]; do
     RIG_APPLY_CHANGED=0
     for tool in "${RIG_APPLY_KEEP_TOOLS[@]+"${RIG_APPLY_KEEP_TOOLS[@]}"}"; do
+      if rig_tool_manager_edge "$tool"; then
+        dependency=$RIG_VALUE
+        rig_apply_include_tool_dependency "$dependency" || return
+      fi
       section_name=tool.$tool
       rig_section_index "$section_name" || return 2
       section_index=$RIG_INDEX
@@ -15106,6 +15346,7 @@ rig_describe_compatible_binding() {
   total=0
   matches=0
   binding_index=
+  RIG_DESCRIBED_BINDING=
   while [ "$section_index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
     if [ "${RIG_SECTION_TYPES[$section_index]}" = binding ] &&
       [ "${RIG_SECTION_IDS[$section_index]}" = "$tool" ]; then
@@ -15130,6 +15371,7 @@ rig_describe_compatible_binding() {
     return
   fi
 
+  RIG_DESCRIBED_BINDING=${RIG_SECTION_NAMES[$binding_index]}
   provider=${RIG_SECTION_SECONDARY_IDS[$binding_index]}
   rig_get_value "${RIG_SECTION_NAMES[$binding_index]}" kind || return
   kind=$RIG_VALUE
@@ -15894,6 +16136,33 @@ rig_explain_skill() {
     "$platforms" "$runtimes" "$requires" "$profiles" "$public_source"
 }
 
+rig_explain_manager_dependency() {
+  local tool binding provider adapter manager label section_index field_index field_end
+  tool=$1
+  binding=$2
+  [ -n "$binding" ] || return 0
+  rig_section_index "$binding" || return 2
+  provider=${RIG_SECTION_SECONDARY_IDS[$RIG_INDEX]}
+  rig_provider_adapter "$provider" || return 2
+  adapter=$RIG_VALUE
+  rig_manager_tool "$adapter" || return 0
+  manager=$RIG_VALUE
+  rig_tool_supports_platform "$manager" "$RIG_RESOLVED_PLATFORM" || return 0
+  label=derived
+  rig_section_index "tool.$tool" || return 2
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = requires ] &&
+      [ "${RIG_FIELD_VALUES[$field_index]}" = "$manager" ]; then
+      label=declared
+    fi
+    field_index=$((field_index + 1))
+  done
+  printf 'Manager dependency: %s (%s)\n' "$manager" "$label"
+}
+
 rig_command_explain_impl() {
   local tool name category category_name purpose rationale platforms requires related alternatives profiles platform binding
   local artifacts configured_by
@@ -15958,6 +16227,7 @@ rig_command_explain_impl() {
     "$platforms" "$requires" "$related" "$alternatives" "$profiles"
   printf 'Configured by: %s\n' "$configured_by"
   printf 'Installation: %s\n' "$binding"
+  rig_explain_manager_dependency "$tool" "${RIG_DESCRIBED_BINDING:-}" || return
     printf 'Artifacts: %s\n' "$artifacts"
   rig_show_tool_clis "$tool" "$platform"
 }

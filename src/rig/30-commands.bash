@@ -1537,6 +1537,7 @@ rig_describe_compatible_binding() {
   total=0
   matches=0
   binding_index=
+  RIG_DESCRIBED_BINDING=
   while [ "$section_index" -lt "${#RIG_SECTION_NAMES[@]}" ]; do
     if [ "${RIG_SECTION_TYPES[$section_index]}" = binding ] &&
       [ "${RIG_SECTION_IDS[$section_index]}" = "$tool" ]; then
@@ -1561,6 +1562,7 @@ rig_describe_compatible_binding() {
     return
   fi
 
+  RIG_DESCRIBED_BINDING=${RIG_SECTION_NAMES[$binding_index]}
   provider=${RIG_SECTION_SECONDARY_IDS[$binding_index]}
   rig_get_value "${RIG_SECTION_NAMES[$binding_index]}" kind || return
   kind=$RIG_VALUE
@@ -2325,6 +2327,33 @@ rig_explain_skill() {
     "$platforms" "$runtimes" "$requires" "$profiles" "$public_source"
 }
 
+rig_explain_manager_dependency() {
+  local tool binding provider adapter manager label section_index field_index field_end
+  tool=$1
+  binding=$2
+  [ -n "$binding" ] || return 0
+  rig_section_index "$binding" || return 2
+  provider=${RIG_SECTION_SECONDARY_IDS[$RIG_INDEX]}
+  rig_provider_adapter "$provider" || return 2
+  adapter=$RIG_VALUE
+  rig_manager_tool "$adapter" || return 0
+  manager=$RIG_VALUE
+  rig_tool_supports_platform "$manager" "$RIG_RESOLVED_PLATFORM" || return 0
+  label=derived
+  rig_section_index "tool.$tool" || return 2
+  section_index=$RIG_INDEX
+  field_index=${RIG_SECTION_FIELD_STARTS[$section_index]}
+  field_end=${RIG_SECTION_FIELD_ENDS[$section_index]}
+  while [ "$field_index" -lt "$field_end" ]; do
+    if [ "${RIG_FIELD_KEYS[$field_index]}" = requires ] &&
+      [ "${RIG_FIELD_VALUES[$field_index]}" = "$manager" ]; then
+      label=declared
+    fi
+    field_index=$((field_index + 1))
+  done
+  printf 'Manager dependency: %s (%s)\n' "$manager" "$label"
+}
+
 rig_command_explain_impl() {
   local tool name category category_name purpose rationale platforms requires related alternatives profiles platform binding
   local artifacts configured_by
@@ -2389,6 +2418,7 @@ rig_command_explain_impl() {
     "$platforms" "$requires" "$related" "$alternatives" "$profiles"
   printf 'Configured by: %s\n' "$configured_by"
   printf 'Installation: %s\n' "$binding"
+  rig_explain_manager_dependency "$tool" "${RIG_DESCRIBED_BINDING:-}" || return
     printf 'Artifacts: %s\n' "$artifacts"
   rig_show_tool_clis "$tool" "$platform"
 }

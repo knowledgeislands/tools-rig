@@ -529,3 +529,13 @@ _Conformance:_ conforming
 _Verify:_ An isolated `defaults` fixture that accepts only `read DOMAIN` covers a present layout read once per domain, order drift including tied and fractional positions, a hidden item excluded from the order, visibility drift in both directions, unplaced precedence, an unreadable domain, and profile and platform exclusion, and asserts that the native log holds reads only.
 
 _Evidence:_ `rig_menu_bar_observe`, `rig_menu_bar_value` and `rig_menu_bar_offset_greater` implement the observation; `tests/rig-menu-bar.bats` covers every outcome and its precedence.
+
+### RIG-STATE-049 — Manager availability and attribution
+
+A missing selected provided manager MUST produce one `unavailable (manager-missing)` finding on its providing tool; dependent tools MUST report `unknown (blocked-by:TOOL)`. Homebrew MUST request `install-homebrew`, and other provided managers MUST request `run-rig-apply`. With a loaded configuration, doctor MUST report a managers block for built-in managers and custom providers bound by the selected plan, including executable availability, the owning selected tool or `provider:ID`, and an action. Custom availability MUST mean executable availability. Only a catalogue declaring at least one `provides` MUST opt into `manager-not-declared:MANAGER` warnings for built-in managers without a selected providing tool. Configuration without provides MUST retain per-tool findings and existing ordering; the broken-configuration availability fallback MUST include mas.
+
+_Conformance:_ conforming
+
+_Verify:_ Run manager attribution, doctor text/JSON, custom provider, opt-in and unchanged-configuration fixtures.
+
+_Evidence:_ `tests/rig-managers.bats` verifies one manager finding, blocked consumers, doctor availability and actions, custom executables and the opt-in boundary.

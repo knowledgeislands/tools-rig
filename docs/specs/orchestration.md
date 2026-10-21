@@ -26,13 +26,13 @@ _Evidence:_ `rig_resolve_profile` accepts an explicit profile independently of t
 
 ### RIG-ORCH-018 — Declared apply prerequisites
 
-Apply MUST preflight the selected plan before mutation and MAY defer only a missing built-in manager with a selected, explicitly required supported prerequisite. Homebrew itself MUST already be available. A declared Homebrew mise prerequisite, a declared Homebrew mas prerequisite, a declared mise node prerequisite and a declared mise uv prerequisite MAY make later mise, mas, npm and uv work available; Rig MUST recheck availability before dependent dispatch and MUST NOT suppress unrelated preflight failures. Targeted apply MUST NOT expand to unrelated manager declarations. Rig MUST NOT read a Brewfile or manage Homebrew autoupdate policy.
+Apply MUST preflight the selected plan before mutation. It MAY defer a missing built-in manager when the selected tool providing it occurs earlier in the dependency-ordered plan through a declared or derived edge. With no selected providing tool, the fixed Homebrew-to-mise, Homebrew-to-mas, mise-node-to-npm and mise-uv-to-uv prerequisite matrix MUST remain the fallback for explicitly required tools. Homebrew MUST be observed, MUST NOT be installed and MUST NOT be deferred. Rig MUST recheck manager availability before dependent dispatch and MUST NOT suppress unrelated preflight failures. Targeted apply MUST retain absent manager prerequisites from its selected dependency closure and MUST NOT infer unselected manager tools. Rig MUST NOT read a Brewfile or manage Homebrew autoupdate policy.
 
 _Conformance:_ conforming
 
 _Verify:_ Isolated Bats fixtures exercise successful, invalid and dry-run behavior without changing the live workstation.
 
-_Evidence:_ `rig_apply_provider_prerequisite`, `rig_preflight_apply` and `tests/rig-bootstrap-staging.bats` cover selected closure, staging, rechecks and failures, including the mise uv prerequisite and its refusal without an explicit `requires`.
+_Evidence:_ `tests/rig-bootstrap-staging.bats` retains fixed-matrix staging and executable rechecks; `tests/rig-managers.bats` covers derived deferral through an arbitrary custom installation, targeted closure, Homebrew observation and refusal to defer Homebrew.
 
 ### RIG-ORCH-007 — Profile composition
 

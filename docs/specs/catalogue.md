@@ -38,7 +38,7 @@ _Evidence:_ `tests/rig.bats` resolves exact-platform and `any` tools, filters un
 
 ### RIG-CAT-004 — Typed relationships
 
-Rig MUST support `requires`, `related`, and `alternatives` relationships between declared tool identifiers and reject unknown relationship endpoints.
+Rig MUST support declared `requires`, `related`, and `alternatives` relationships between known tool identifiers. For the active platform, the selected plan MUST also order a bound tool after the selected tool providing its built-in manager. Declared and derived prerequisite edges MUST form one dependency graph and participate in cycle rejection. A duplicate declared manager edge MUST be accepted silently, and `rig show TOOL` MUST label that manager dependency `declared` rather than `derived`. Derived edges MUST NOT enter the public projection.
 
 _Conformance:_ conforming
 
@@ -95,3 +95,13 @@ _Conformance:_ conforming
 _Verify:_ run isolated application-policy and source fixtures.
 
 _Evidence:_ `rig_application_policy`, `rig_observe_application` and `rig_application_apply_skip`; `tests/rig-application-updates.bats` covers public observation and mutation outcomes.
+
+### RIG-CAT-010 — Catalogue manager identities
+
+A tool MAY declare one scalar `provides` naming `homebrew`, `mas`, `mise`, `npm`, `uv`, or `chezmoi`. Rig MUST reject unknown managers, two catalogue tools providing the same manager, and a variant-level `provides`. Manager identity MUST remain on the tool while the consumer binding resolves for the active platform. A Homebrew-providing tool MUST be observation-only and MUST NOT require an installation binding. Rig MUST NOT include `provides` or derived manager edges in the public projection.
+
+_Conformance:_ conforming
+
+_Verify:_ Run isolated manager validation, platform, cycle and export fixtures.
+
+_Evidence:_ `tests/rig-managers.bats` covers manager schema rejection, union ordering, platform-resolved edges, explain labels and byte-identical public exports with and without provides.

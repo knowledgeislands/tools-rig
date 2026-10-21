@@ -1413,6 +1413,15 @@ rig_apply_provider_prerequisite() {
 
   adapter=$1
   consumer=$2
+  [ "$adapter" != homebrew ] || return 1
+  if rig_selected_manager_tool "$adapter"; then
+    prerequisite=$RIG_VALUE
+    rig_plan_index "$consumer" || return 1
+    consumer_index=$RIG_INDEX
+    rig_plan_index "$prerequisite" || return 1
+    [ "$RIG_INDEX" -lt "$consumer_index" ]
+    return
+  fi
   rig_plan_index "$consumer" || return 1
   consumer_index=$RIG_INDEX
   index=0

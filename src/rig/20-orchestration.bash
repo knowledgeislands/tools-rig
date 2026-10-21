@@ -3,6 +3,64 @@
 # Cross-module state is intentionally consumed by later assembled modules.
 # shellcheck disable=SC2004,SC2034,SC2094
 
+rig_selected_manager_tool() {
+  local index
+  RIG_VALUE=
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_MANAGER_NAMES[@]}" ]; do
+    if [ "${RIG_SELECTED_MANAGER_NAMES[$index]}" = "$1" ]; then
+      RIG_VALUE=${RIG_SELECTED_MANAGER_TOOLS[$index]}
+      return 0
+    fi
+    index=$((index + 1))
+  done
+  return 1
+}
+
+rig_build_manager_edges() {
+  local index tool binding provider adapter section_index
+  RIG_SELECTED_MANAGER_NAMES=()
+  RIG_SELECTED_MANAGER_TOOLS=()
+  RIG_TOOL_MANAGER_EDGES=()
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
+    tool=${RIG_SELECTED_TOOLS[$index]}
+    if rig_get_value "tool.$tool" provides; then
+      RIG_SELECTED_MANAGER_NAMES[${#RIG_SELECTED_MANAGER_NAMES[@]}]=$RIG_VALUE
+      RIG_SELECTED_MANAGER_TOOLS[${#RIG_SELECTED_MANAGER_TOOLS[@]}]=$tool
+    fi
+    index=$((index + 1))
+  done
+  index=0
+  while [ "$index" -lt "${#RIG_SELECTED_TOOLS[@]}" ]; do
+    tool=${RIG_SELECTED_TOOLS[$index]}
+    binding=${RIG_SELECTED_BINDINGS[$index]:-}
+    # Homebrew is an observed prerequisite, never a dispatchable installation.
+    if rig_get_value "tool.$tool" provides && [ "$RIG_VALUE" = homebrew ]; then
+      binding=
+    fi
+    if [ -n "$binding" ]; then
+      rig_section_index "$binding" || return 2
+      provider=${RIG_SECTION_SECONDARY_IDS[$RIG_INDEX]}
+      rig_provider_adapter "$provider" || return 2
+      adapter=$RIG_VALUE
+      if rig_selected_manager_tool "$adapter"; then
+        tool=$RIG_VALUE
+        rig_section_index "tool.${RIG_SELECTED_TOOLS[$index]}" || return 2
+        section_index=$RIG_INDEX
+        RIG_TOOL_MANAGER_EDGES[$section_index]=$tool
+      fi
+    fi
+    index=$((index + 1))
+  done
+}
+
+rig_tool_manager_edge() {
+  rig_section_index "tool.$1" || return 1
+  RIG_VALUE=${RIG_TOOL_MANAGER_EDGES[$RIG_INDEX]:-}
+  [ -n "$RIG_VALUE" ]
+}
+
 rig_plan_index() {
   local wanted index
 
@@ -34,6 +92,10 @@ rig_tool_dependencies_planned() {
     fi
     field_index=$((field_index + 1))
   done
+  dependency=${RIG_TOOL_MANAGER_EDGES[$section_index]:-}
+  if [ -n "$dependency" ]; then
+    case "$RIG_PLAN_MEMBERS" in *$'\n'"$dependency"$'\n'*) ;; *) return 1 ;; esac
+  fi
   return 0
 }
 
@@ -46,6 +108,10 @@ rig_plan_append_selected() {
   if [ -n "$binding" ]; then
     rig_section_index "$binding" || return 2
     provider=${RIG_SECTION_SECONDARY_IDS[$RIG_INDEX]}
+  fi
+  if rig_get_value "tool.${RIG_SELECTED_TOOLS[$index]}" provides && [ "$RIG_VALUE" = homebrew ]; then
+    binding=
+    provider=homebrew
   fi
   RIG_PLAN_TOOLS[${#RIG_PLAN_TOOLS[@]}]=${RIG_SELECTED_TOOLS[$index]}
   RIG_PLAN_BINDINGS[${#RIG_PLAN_BINDINGS[@]}]=$binding
@@ -66,6 +132,7 @@ rig_build_plan() {
   RIG_PLAN_RESULTS=()
   RIG_PLAN_DETAILS=()
   RIG_PLAN_MEMBERS=$'\n'
+  rig_build_manager_edges || return
   selected_count=${#RIG_SELECTED_TOOLS[@]}
   waiting=()
   position=0
@@ -1508,6 +1575,19 @@ rig_plan_blocker() {
     fi
     field_index=$((field_index + 1))
   done
+  dependency=${RIG_TOOL_MANAGER_EDGES[$section_index]:-}
+  if [ -n "$dependency" ]; then
+    rig_plan_index "$dependency" || return 2
+    dependency_index=$RIG_INDEX
+    dependency_result=${RIG_PLAN_RESULTS[$dependency_index]:-}
+    if [ "$dependency_result" = failed ] ||
+      { [ "$dependency_result" = skipped ] &&
+        [ "${RIG_PLAN_DETAILS[$dependency_index]:-}" != catalogue-only ]; }; then
+      if [ -z "$blocker" ] || [[ "$dependency" < "$blocker" ]]; then
+        blocker=$dependency
+      fi
+    fi
+  fi
   [ -n "$blocker" ] || return 1
   RIG_VALUE=$blocker
 }
