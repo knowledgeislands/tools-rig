@@ -38,16 +38,10 @@ Profiles select the active items that belong on a machine or in a role. The cata
 
 ## Install the public preview
 
-Install the latest immutable release, currently `v0.7.0`:
+This checkout is the unpublished `v0.8.0` candidate; the latest published immutable release is `v0.7.0`. The candidate installer below becomes available only after publication:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.7.0/install.sh | bash
-```
-
-To make the selected release explicit:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.7.0/install.sh | bash -s -- v0.7.0
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.8.0/install.sh | bash -s -- v0.8.0
 ```
 
 The executable defaults to `~/.local/bin/rig`. The manual defaults beneath `${XDG_DATA_HOME:-$HOME/.local/share}/man/man1`. Set `RIG_INSTALL_DIR` or `RIG_MAN_INSTALL_DIR` before running the installer when you need different destinations.
@@ -59,9 +53,9 @@ rig --version
 man rig
 ```
 
-The released command reports `rig 0.7.0`.
+After publication, the released command reports `rig 0.8.0`. Review the [migration notes](migrating-command-surface.md#move-from-v070-to-v080) for an existing setup.
 
-For a local checkout now, use `./install.sh --link`. It links the executable and manual so subsequent repository changes are visible without reinstalling. The current checkout reports `rig 0.7.0+dev`; the marker means development after the latest immutable release and does not choose the next preview number.
+For a local checkout now, use `./install.sh --link`. It links the executable and manual so subsequent repository changes are visible without reinstalling. The current checkout reports `rig 0.8.0` and exercises the candidate before publication.
 
 ## Create a small catalogue
 

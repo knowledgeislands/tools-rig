@@ -1,4 +1,4 @@
-.TH RIG 1 "2026-10-14" "Knowledge Islands" "User Commands"
+.TH RIG 1 "2026-10-21" "Knowledge Islands" "User Commands"
 .SH NAME
 \&
 .PP
@@ -145,23 +145,18 @@ restarts, and other imperative actions.
 .SH INSTALLATION
 \&
 .PP
-Install the latest immutable release, currently v0.7.0:
+This checkout is the unpublished v0.8.0 candidate. The
+latest published immutable release is v0.7.0. The candidate installer below
+becomes available only after publication:
 .PP
 .nf
-curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.7.0/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.8.0/install.sh | bash -s -- v0.8.0
 .fi
 .PP
-Pin an exact release explicitly:
-.PP
-.nf
-curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.7.0/install.sh | bash -s -- v0.7.0
-.fi
-.PP
-These URLs name the latest documented immutable release. From a local
-checkout, run
+For a local checkout, run
 .B ./install.sh \-\-link
-to link both the executable and manual; the linked executable reports a
-development version marker until a release candidate is explicitly selected.
+to link both executable and manual; the linked executable reports rig 0.8.0.
+Review the migration notes in the user guide before changing an existing setup.
 .PP
 The installer writes the executable to
 .I ~/.local/bin
