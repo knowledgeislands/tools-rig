@@ -4,13 +4,12 @@ area: CORE
 title: Rig manages app configuration
 purpose: capability
 theme: rig
-status: cancelled
-resolution: superseded
+status: triage
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-18T17:11:08Z
-updated_at: 2026-10-22T01:29:08Z
+updated_at: 2026-10-22T01:50:14Z
 ---
 
 # Rig Manages App Configuration
@@ -32,11 +31,9 @@ No existing tools-rig record owns this concern; the earlier mention Kris recalls
 - In: a design for Rig declaring and managing an application's configuration alongside its installation, and how that divides with chezmoi's source of truth.
 - Out: the recurring scan of configuration not yet under chezmoi, which went to ki.chezmoi as an Activity on 20 October; writing to the chezmoi source or running `chezmoi apply`, which stay with ki.chezmoi and Kris's `chezmoi diff` review; bringing `~/.config/mgit/` itself under chezmoi, which the mgit learn work routes through ki.chezmoi; reading or capturing secrets; any live apply.
 
-## Cancelled
+## Dependencies / blocks
 
-Cancelled on 22 October 2026 under the explicitly named overnight burn-down instruction and Kris's SWEEP-CONVERT decision of 20 October 2026: sweeps become messages, and the recurring unmanaged-configuration scan belongs to the chezmoi repository, not a Rig roadmap record. The successor is a message to the chezmoi work to maintain that recurring scan; no replacement roadmap record is created.
-
-The record had already been narrowed on 20 October to Rig's possible role in managing application configuration alongside installation. That separate design question is preserved in the coordinator's message handoff rather than silently treated as delivered or as part of the recurring scan. No configuration, scheduler, source store or live machine was changed. This cancelled record is retained for independent review and later coordinator-owned pruning.
+None. Blocks nothing.
 
 ## Discussion
 
