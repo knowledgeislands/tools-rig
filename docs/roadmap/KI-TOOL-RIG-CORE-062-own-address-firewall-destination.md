@@ -6,13 +6,13 @@ purpose: capability
 theme: rig
 kind: deliver
 horizon: now
-status: in-progress
+status: awaiting-review
 size: m
 blocks: []
 blocked_by: []
 baseline_ref: 9dce7120fcaa8aefb6856876c614f5e40ae537b3
 created_at: 2026-10-18T09:45:00Z
-updated_at: 2026-10-20T05:33:29Z
+updated_at: 2026-10-22T01:29:08Z
 ---
 
 # Own-Address Firewall Destination
@@ -125,6 +125,12 @@ The approved boundary: a `macos-pf` anchor now passes each declared port from Ta
 - Read-only discovery on `sol`: `rig show firewall:probe` with a throwaway catalogue, the real `/sbin/ifconfig` and stubbed `launchctl`, `netstat`, `sudo` and `pfctl` names `100.90.130.74` and `fd7a:115c:a1e0::b636:824c`, logs no escalation and writes nothing.
 - Not run: the read-only `ifconfig` on `terra` (no remote call in this run) and any live apply, which stays for Kris's separate, attended approval.
 
+#### Fresh gate evidence, 22 October 2026
+
+Rechecked in the primary checkout at `a2bc10939462e387b18dcdaedb54e886ac00386a` with only this batch's roadmap edits. The earlier SHELL-HOOK refusal is resolved by the existing `chore(hooks): adopt canonical tools commit gates` change (`f92d9a1`): `.githooks/pre-commit` matches the installed `ki-repo-tools` no-package canonical asset byte for byte and contains no Bats invocation. No hook modification or bypass was needed in this batch.
+
+The complete local gate in Develop Rig passes: governing repository audit (no failures), ShellCheck, Bash syntax, deterministic assembly, benchmark, bounded native-provider version probes, the full Bats suite, mandoc and whitespace checks. The full Bats suite also passes with hostile inherited XDG configuration and state directories, and their planted sentinels remain unchanged. The focused `ki-repo-tools` audit has no SHELL-HOOK or SHELL-FATAL failure. Verification uses fixtures; no live apply, handler setter, pf change or remote machine check was run.
+
 ### Outstanding concerns
 
 - `sol` and `terra` carry anchors rendered by KI-TOOL-RIG-CORE-047's range rule. Under the new renderer both report `drifted (anchor-changed)`, not `tailnet-address-stale`, because the header comment changed too; an attended `rig apply --sudo` rewrites them. That rollout is connection-critical, needs Kris's separate approval, is attended at the screen, and carries KI-TOOL-RIG-CORE-047's tested SSH rollback and restore path.
@@ -151,3 +157,7 @@ The six-heading Review packet, completed Steps and immutable baseline are presen
 Verify's read-only `ifconfig` confirmation on `terra` is still explicitly missing from the packet; the overnight brief permits no such remote machine probe. An attended rewrite of the installed range anchors also remains separately approved work. The remaining targeted on-link exposure is an approved limitation, not a new finding. After the gate is repaired, refresh verification and obtain the missing machine evidence before resubmitting.
 
 Independent local verification: 602 of 602 Bats tests pass normally and again with hostile inherited XDG configuration and state directories; their planted sentinels remain unchanged. ShellCheck, Bash syntax, assembly drift, the benchmark, bounded native-provider version probes, mandoc and diff checks pass. The roadmap and authoring audits have warnings only; the complete audit still fails the hook criterion above. Source reviewed at `590872732dde2a77bc118c2938d68b35d16068eb`; neither the runtime nor the hooks changed during this review.
+
+### Resubmitted for review, 22 October 2026
+
+The overnight gate recheck above passes in the primary checkout, resolving the sole audit refusal recorded by the independent acceptance review. Returned to awaiting-review with fresh fixture and whole-repository evidence. The original immutable delivery baseline is preserved. The read-only terra interface check and the separate attended rollout remain unchecked, explicitly carried in Outstanding concerns; this transition does not claim them complete or accept the record.

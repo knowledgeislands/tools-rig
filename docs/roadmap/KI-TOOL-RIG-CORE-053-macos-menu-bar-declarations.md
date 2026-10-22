@@ -12,7 +12,7 @@ blocks: []
 blocked_by: []
 baseline_ref: 2054674ff4c58e87b16c3a38d6ee0961489d6960
 created_at: 2026-10-14T10:30:00Z
-updated_at: 2026-10-20T22:21:02Z
+updated_at: 2026-10-22T01:29:08Z
 ---
 
 # macOS Menu Bar Declarations
@@ -161,9 +161,15 @@ Run on 20 October 2026 in the delivery worktree at baseline `2054674` plus this 
 - `ki repo audit --repo .`: fails only RUNTIMES-2 in the worktree, as Outstanding concerns explains; on the primary checkout at baseline it fails only the pre-existing SHELL-HOOK check.
 - Every menu bar test asserts through the `defaults` fixture log that only `defaults read DOMAIN` ran, and that the `killall` and isolated `defaults` logs are empty. No test or delivery step wrote a preference or restarted a process.
 
+#### Fresh gate evidence, 22 October 2026
+
+Rechecked in the primary checkout at `a2bc10939462e387b18dcdaedb54e886ac00386a` with only this batch's roadmap edits. The earlier SHELL-HOOK refusal is resolved by the existing `chore(hooks): adopt canonical tools commit gates` change (`f92d9a1`): `.githooks/pre-commit` matches the installed `ki-repo-tools` no-package canonical asset byte for byte and contains no Bats invocation. No hook modification or bypass was needed in this batch.
+
+The complete local gate in Develop Rig passes: governing repository audit (no failures), ShellCheck, Bash syntax, deterministic assembly, benchmark, bounded native-provider version probes, the full Bats suite, mandoc and whitespace checks. The full Bats suite also passes with hostile inherited XDG configuration and state directories, and their planted sentinels remain unchanged. The focused `ki-repo-tools` audit has no SHELL-HOOK or SHELL-FATAL failure. Verification uses fixtures; no live apply, handler setter, pf change or remote machine check was run.
+
 ### Outstanding concerns
 
-- The whole-tree `ki repo audit` fails the pre-existing SHELL-HOOK check on `main` because `.githooks/pre-commit` runs Bats. It is outside this record and was left alone because another session changed `.githooks/` in the last day. In the delivery worktree the audit also reports RUNTIMES-2, because the ignored runtime activation directories exist only in the primary checkout.
+- The historical SHELL-HOOK refusal and delivery-worktree runtime activation finding are resolved in the primary checkout; the fresh gate evidence above replaces them. The existing read-only live owner check remains after release.
 - During test development one run unset `RIG_DEFAULTS` and reached the real `/usr/bin/defaults read` for two domains on this workstation. Those were reads only and nothing was written; the test now uses the isolation stub.
 - A menu bar layout cannot be a `depends-on` target, because nothing can wait for a layout Rig never applies.
 - A sandboxed application whose preferences live in its container observes as `unknown` (`domain-unreadable`), as Current state predicted; container domains are not supported.
