@@ -5,14 +5,13 @@ title: macOS menu bar declarations
 purpose: capability
 theme: rig
 kind: deliver
-status: awaiting-review
-horizon: now
+status: done
 size: l
 blocks: []
 blocked_by: []
 baseline_ref: 2054674ff4c58e87b16c3a38d6ee0961489d6960
 created_at: 2026-10-14T10:30:00Z
-updated_at: 2026-10-22T01:29:08Z
+updated_at: 2026-10-23T02:03:36Z
 ---
 
 # macOS Menu Bar Declarations
@@ -167,6 +166,10 @@ Rechecked in the primary checkout at `a2bc10939462e387b18dcdaedb54e886ac00386a` 
 
 The complete local gate in Develop Rig passes: governing repository audit (no failures), ShellCheck, Bash syntax, deterministic assembly, benchmark, bounded native-provider version probes, the full Bats suite, mandoc and whitespace checks. The full Bats suite also passes with hostile inherited XDG configuration and state directories, and their planted sentinels remain unchanged. The focused `ki-repo-tools` audit has no SHELL-HOOK or SHELL-FATAL failure. Verification uses fixtures; no live apply, handler setter, pf change or remote machine check was run.
 
+#### Acceptance verification, 23 October 2026
+
+Independently verified the observe-only delivery in the primary checkout at `87fa26134638507a94210b4eaabb280437bbecc7`, including implementation commit `c55f2e9d0149e9dd6714008f10d988cd4efca4db`. The 37 focused menu-bar and Dock tests pass. The complete local gate in Develop Rig passes: repository audit, ShellCheck, Bash syntax, deterministic assembly, benchmark, all six bounded native-provider version probes, the full Bats suite (643 passed and two interpreter-dependent parser checks skipped), mandoc and whitespace checks. Both skipped parser checks pass in a focused rerun with `RIG_TEST_PYTHON` set to the installed Python 3.14; all 645 tests are therefore verified. The focused roadmap and authoring audits also pass. The menu-bar fixtures prove read-only observation and no native call during apply; no live apply, release or live-convergence check was performed.
+
 ### Outstanding concerns
 
 - The historical SHELL-HOOK refusal and delivery-worktree runtime activation finding are resolved in the primary checkout; the fresh gate evidence above replaces them. The existing read-only live owner check remains after release.
@@ -183,6 +186,10 @@ The gate decisions are recorded under Discussion. Design choices a reviewer shou
 
 Rig can now declare a menu bar once and report how each Mac differs, while leaving every icon where the owner put it.
 
+## Done
+
+Accepted 2026-10-23 by Kris Brown on the review packet above.
+
 ## Discussion
 
 Origin: Kris Brown's request on 2026-10-14, investigated read-only on terra and sol the same day. On 14 October 2026 Kris chose observe-only order over Rig writing positions with app restarts or adopting a menu-bar manager, and the record was trimmed to report-only: the earlier proposal to apply Control Centre module visibility and restart the reading process was dropped with the enforcement options. Capture only; adoption, priority and plan belong to this repository.
@@ -192,3 +199,5 @@ Adoption: Kris's OVERNIGHT decision of 20 October 2026 at 00:28 BST ([mac-studio
 Gate: the coordinator's decision of 2026-10-20 06:53 BST in the [ways-of-working decisions log](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.ways-of-working/decisions.md), under Kris's OVERNIGHT-BURNDOWN authority of 20 October 2026, directed delivery of this record. PLAN053-MODEL, PLAN053-LOGIN and PLAN053-READY were each taken as their recommended a): the user-domain `NSStatusItem` keys replace unit 1's current-host scope, unit 3 stays out, and the plan is Ready. PLAN053-READY carried medium confidence because this is the first observe-only setup resource; the owner should confirm that shape at review.
 
 Shape sign-off: Kris's sign-off of 20 October 2026 at 23:16 BST in the [ways-of-working decisions log](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.ways-of-working/decisions.md), "query sign-offs, first batch", took RIG-053-SHAPE as a): Kris accepts the observe-only shape as delivered. A menu bar layout is declared, status and doctor report its drift, apply skips it with the Command-drag reminder, and Rig never writes a menu bar value and never fails a run over one. This settles the shape PLAN053-READY left for review; it is not acceptance. The record stays Awaiting review until the broken pre-commit test hook is repaired, which the tools burndown owns.
+
+Acceptance authority: Kris's decisions of 23 October 2026 at 02:10 and 02:12 BST in the [ways-of-working decisions log](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.ways-of-working/decisions.md): "it's probably okay to accept anything with the high confidence level that's awaiting review and it's also then okay to then prune everything that's done", and "I approve all of those things you've requested in line with your recommendations". The named acceptance task applies that authority to this record after the [take-stock review](/Users/krisbrown/.local/state/ki/agents/ways-of-working/wow-take-stock.report.md)'s high-confidence recommendation and this run's independent verification. Acceptance covers the observe-only delivery only; it grants neither release nor live-convergence permission. The terminal record is retained.
