@@ -13,7 +13,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-19T22:30:17Z
-updated_at: 2026-10-20T00:36:04Z
+updated_at: 2026-10-23T06:45:00Z
 ---
 
 # Set a Default Application for an Extension With No Declared Content Type
@@ -128,5 +128,11 @@ function run(a) {
   throw new Error("rung must be observe, legacy, modern or workspace");
 }
 ```
+
+Evidence from `terra`, 23 October 2026 (Rig `87fa261`, macOS 27), from the chezmoi work's attended applies ([stage3](/Users/krisbrown/.local/state/ki/agents/chezmoi/stage3.report.md), [handlers-retry](/Users/krisbrown/.local/state/ki/agents/chezmoi/handlers-retry.report.md), [drift-resolve](/Users/krisbrown/.local/state/ki/agents/chezmoi/drift-resolve.report.md)):
+
+- `rig apply --target default-application:toml` on `terra` did not fail with -50. macOS showed a confirmation prompt, the apply reported "handler assignment not effective; native confirmation may be required" (exit 1), and after Kris accepted the prompt `.toml` resolved to Zed (`dev.zed.Zed`). A second, unprompted apply completed (`reconciled:extension:toml`) and cleared the 19 October failed-apply record. `rig doctor` on `terra` no longer reports `default-application.toml`. So on `terra` the existing Launch Services route took effect for the dynamic type once the prompt was answered; step 1's probe on `sol` should establish whether `sol`'s -50 is a difference of machine or macOS build rather than of the type.
+- `.sh` and `.zsh` failed in exactly the same way first time and now resolve to Zed after the same accept-then-re-run sequence. They are declared types (`public.shell-script`, `public.zsh-script`), not dynamic ones, so their failure is not this record's defect: it is the read-back timing captured as [KI-TOOL-RIG-CORE-070](KI-TOOL-RIG-CORE-070-handler-read-back-after-confirmation.md), which very likely also explains the first `.toml` failure on `terra`.
+- All three extensions now open in Zed on `terra`; `sol` still has `.toml` held.
 
 Adoption: Kris's OVERNIGHT decision of 20 October 2026 at 00:28 BST ([mac-studio-setup decisions log](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.mac-studio-setup/decisions.md)) authorised acting on the [triage review](/Users/krisbrown/.local/state/ki/agents/mac-studio-setup/triage-review.report.md)'s high-confidence recommendations: adopted into Now, confidence high, for diagnosis and planning, because a recorded assignment failure exposes a bounded portable handler gap whose exact cause and working fallback remain unproved. Diagnosis stays isolated: no live handler change, `duti` call or apply on `sol` or `terra` is authorised.
