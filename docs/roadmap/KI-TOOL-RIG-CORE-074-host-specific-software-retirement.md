@@ -83,11 +83,11 @@ Kris settled these dispositions on 24 October 2026 at 13:27 BST. In the table, *
 | `paperclip-agents` | U, unknown | U, unknown | Retain settings ‡ | High |
 | `davinci-resolve` | U, bundle absent | S, historical presence | sol | High |
 | `delta` | S, present | U, unknown | terra | High |
-| `orca` | S, bundle and receipt | U, unknown | Unchanged † | Conflict |
+| `orca` | S, bundle and receipt | U, unknown | Both; keep Trial † | High |
 | `prime-video` | S, present | U, historical keep if present | Both | High |
 | `webex` | S, present | U, unknown | terra | High |
 
-† Orca stays unchanged at laptop-only selection. Kris’s 24 October 00:49 BST decision places the Orca adoption and per-pane work on sol, while the current declaration and this brief’s default place it on terra. The brief explicitly requires leaving it unchanged and reporting that conflict rather than choosing a host. No sol observation or change is authorised.
+† At 14:00 BST on 24 October 2026 Kris clarified: "orca is in trial on both laptop and studio". This supersedes the earlier host conflict: select Orca on both terra (laptop) and sol (studio), keeping Trial and private trial prose off the public site. The observation columns remain historical; sol’s installation is queued for its local pass, with no sol observation or live change in this pass.
 
 ‡ Keep the agent configuration and data unchanged, with reconciliation still unselected; empty selection is not deletion authority. Kris requested a chezmoi roadmap item to study the settings for learnings before deciding their future. The Paperclip program is selected on neither host and its persistent data stays.
 
