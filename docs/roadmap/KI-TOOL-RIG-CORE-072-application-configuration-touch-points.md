@@ -4,14 +4,16 @@ area: CORE
 title: Application configuration touch points
 purpose: capability
 theme: rig
-status: triage
+kind: deliver
+status: draft
+horizon: soon
 priority: medium
 size: m
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-24T09:55:48Z
-updated_at: 2026-10-24T09:55:48Z
+updated_at: 2026-10-24T10:16:13Z
 ---
 
 # KI-TOOL-RIG-CORE-072: Record Each Tool's Configuration Touch Points
@@ -41,6 +43,16 @@ Rig already has two neighbouring pieces:
 - **In:** a catalogue field on a tool for its touch points, each entry carrying a kind (preferences domain, Application Support, cache, container, group container, WebKit data, log, launch agent, launch daemon, or other configuration file), a literal path or domain, and its scope (user or system); `rig explain` showing them; observation of each touch point in `rig status` or `rig doctor`; carrying a tool's touch points into its `retired-application` evidence so the declaration need not repeat them; the catalogue specification, the retired application guide and Bats coverage.
 - **Out:** user output files such as documents, exports and downloads the application produces; any automatic deletion, which stays a reviewed, owner-run step as in the worked examples until a separate record proposes otherwise; discovery by scanning the file system or tracing file access; managing configuration contents, which [KI-TOOL-RIG-CORE-064](KI-TOOL-RIG-CORE-064-unmanaged-configuration-scan.md) owns; reading or printing secrets held at a touch point; the personal catalogue data itself.
 
+## Shaping
+
+The intended approach is one list per tool. A declared tool carries its touch points in the catalogue, each with a kind, a literal path or preferences domain, and a user or system scope. `rig explain` shows the list, `rig status` or `rig doctor` observes each entry, and a later `retired-application` declaration inherits the list rather than repeating it in `data-paths`. Observation reads only: it reports whether each touch point exists, never its contents, and Rig deletes nothing. A removal aid at most lists the touch points for review, or writes a script for the owner to run, in the shape of the Fileside, Tagception and Adobe worked examples.
+
+Known dependencies: the existing retired application report and its `data-paths`, which this record either extends or moves onto the tool; [RIG-CAT-007](../specs/catalogue.md#rig-cat-007--tool-owned-generated-artifacts), which stays the owner of artifacts Rig or a provider generates; and the `defaults` stub in `tests/helpers/isolate.bash`, which any test of a preferences domain must go through. The personal touch-point data lives in the chezmoi source under `dot_config/rig/conf.d/` and is not part of this record's delivery.
+
+Decisions still needed are the planning questions under Discussion: a new field or `data-paths` moved onto the tool; how a preferences domain is expressed apart from its plist, and tested without reaching the real user domain; whether conventional bundle-identifier candidates are derived on an active tool and marked as candidates; how a system-scope touch point is observed and reported without `sudo`; and whether the removal aid stops at a list or generates a script. The split with KI-TOOL-RIG-CORE-064 is settled at adoption, below, but the shape of the shared list is decided in the joint design.
+
+Conditions for promotion to Next: the field shape is agreed in the joint design with KI-TOOL-RIG-CORE-064, so 064's declaration can reuse the same list; the remaining planning questions have answers or an agreed default; and the record still fits size `m`, or is split before planning.
+
 ## Dependencies / blocks
 
 None. Blocks nothing. Planning should settle the overlap with KI-TOOL-RIG-CORE-064 before either is designed: this record lists where an application keeps its configuration, and 064 would manage what is in it, so 064's declaration could reuse this list.
@@ -58,3 +70,7 @@ tools-rig owns the schema, validation, `explain`, observation and any doctor or 
 - Whether Rig derives the conventional bundle-identifier candidates on an active tool as the retired report already does, and marks them as candidates rather than declared touch points.
 - How a system-scope touch point is observed without `sudo`, and reported when it cannot be read.
 - Whether a removal aid stops at listing the touch points for review, or generates a script like the worked examples for the owner to run; either way Rig never deletes without that step.
+
+### Adoption
+
+Kris adopted this record on 24 October 2026 as Deliver / draft at Soon, choosing interactively after a blind review recommended it with high confidence. It stays a separate record from [KI-TOOL-RIG-CORE-064](KI-TOOL-RIG-CORE-064-unmanaged-configuration-scan.md) and is designed alongside it. This record says where an application keeps its configuration and state; 064 would manage what is in that configuration, so its declaration could reuse this list. Adoption grants no plan, implementation, personal declaration or live operation.
