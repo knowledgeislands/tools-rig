@@ -13,7 +13,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-24T09:55:48Z
-updated_at: 2026-10-24T10:16:13Z
+updated_at: 2026-10-24T10:50:17Z
 ---
 
 # KI-TOOL-RIG-CORE-072: Record Each Tool's Configuration Touch Points
@@ -74,3 +74,7 @@ tools-rig owns the schema, validation, `explain`, observation and any doctor or 
 ### Adoption
 
 Kris adopted this record on 24 October 2026 as Deliver / draft at Soon, choosing interactively after a blind review recommended it with high confidence. It stays a separate record from [KI-TOOL-RIG-CORE-064](KI-TOOL-RIG-CORE-064-unmanaged-configuration-scan.md) and is designed alongside it. This record says where an application keeps its configuration and state; 064 would manage what is in that configuration, so its declaration could reuse this list. Adoption grants no plan, implementation, personal declaration or live operation.
+
+### Folded scope
+
+- 24 October 2026: Kris (11:38 BST) folds awareness of each application's configuration and keybinding files into this record ("I think this gets folded into the piece of work ... where rig needs to become more aware of both configurations and files and such for the particular pieces of software"), for example Zed's `keymap.json` and Codex's `keybindings.json`.
