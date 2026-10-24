@@ -11,7 +11,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-24T11:57:59Z
-updated_at: 2026-10-24T12:05:36Z
+updated_at: 2026-10-24T12:29:56Z
 ---
 
 # KI-TOOL-RIG-CORE-074: Host-specific Software Retirement
@@ -65,29 +65,35 @@ Terra selection is verified from the local rendered Rig configuration. Presence 
 
 **Every sol observation and selection projection is unverified on sol.** No connection to sol was made. Its historical evidence comes from [KB-DOTFILES-UE-086](/Users/krisbrown/.local/share/chezmoi/docs/roadmap/KB-DOTFILES-UE-086-finish-software-alignment.md), [KB-DOTFILES-UE-112](/Users/krisbrown/.local/share/chezmoi/docs/roadmap/KB-DOTFILES-UE-112-review-workstation-software.md), the preceding rig-removal findings retained above and Kris's 12:48 statement. Unknown sol presence is not absence. A projected selection difference is not proof that sol has received the current configuration.
 
-In the table, **U** means unselected and **S** selected in the current terra catalogue's host-profile resolution. **Unknown** means presence was not established. The last column recommends where the tool should be selected; **neither** means a removal candidate on either host if present. Recommendations do not change selection, approve an install or authorise removal. Until a wanted entry is actually selected, its observed unselected installation still meets Kris's candidate rule.
+Kris settled these dispositions on 24 October 2026 at 13:27 BST. In the table, **U** means unselected and **S** selected in the pre-decision terra catalogue’s host-profile resolution; the observation columns and counts above remain historical evidence. **Unknown** means presence was not established. The decided column records intended selection, not proof of installation or permission for a general apply. Neither makes observed software a removal candidate; retained data and agent configuration have separate boundaries.
 
-| Tool identifier | terra now | sol, unverified | Recommend selection | Confidence |
+| Tool identifier | terra before | sol, unverified | Decided disposition | Confidence |
 | --- | --- | --- | --- | --- |
 | `builtin-safari` | U, present | U, owner says present | Both | High |
 | `microsoft-365-copilot-shim` | U, present | U, owner says present | Both | High |
-| `microsoft-defender-shim` | U, present | U, helper evidence | Both | Medium |
-| `claude-code-url-handler` | U, bundle present | U, unknown | Both | Medium |
+| `microsoft-defender-shim` | U, present | U, helper evidence | Both | High |
+| `claude-code-url-handler` | U, bundle present | U, unknown | Both | High |
 | `google-drive-shortcuts` | U, three present | U, historical presence | Both | High |
-| `msdisplaymanager` | U, present | U, unknown | terra | Low |
-| `chatgpt-current` | U, cask receipt | U, unknown | terra | Medium |
-| `rekordbox` | U, bundle and receipt | U, unknown | terra | Medium |
-| `tigervnc` | U, bundle and receipt | U, unknown | terra | Medium |
-| `pi-coding-agent` | U, older Node install | U, removal recorded | Neither | High |
-| `paperclip` | U, unknown | U, unknown | Neither | Medium |
-| `paperclip-agents` | U, unknown | U, unknown | Neither | Medium |
+| `msdisplaymanager` | U, present | U, unknown | terra; sol undecided | High |
+| `chatgpt-current` | U, cask receipt | U, unknown | Both | High |
+| `rekordbox` | U, bundle and receipt | U, unknown | Both | High |
+| `tigervnc` | U, bundle and receipt | U, unknown | Neither; remove | High |
+| `pi-coding-agent` | U, older Node install | U, removal recorded | Neither; keep Trial | High |
+| `paperclip` | U, unknown | U, unknown | Neither; retain data | High |
+| `paperclip-agents` | U, unknown | U, unknown | Retain settings ‡ | High |
 | `davinci-resolve` | U, bundle absent | S, historical presence | sol | High |
 | `delta` | S, present | U, unknown | terra | High |
-| `orca` | S, bundle and receipt | U, unknown | terra | High |
-| `prime-video` | S, present | U, historical keep if present | Both | Medium |
+| `orca` | S, bundle and receipt | U, unknown | Unchanged † | Conflict |
+| `prime-video` | S, present | U, historical keep if present | Both | High |
 | `webex` | S, present | U, unknown | terra | High |
 
-The per-tool reasons and limits are part of the recommendation:
+† Orca stays unchanged at laptop-only selection. Kris’s 24 October 00:49 BST decision places the Orca adoption and per-pane work on sol, while the current declaration and this brief’s default place it on terra. The brief explicitly requires leaving it unchanged and reporting that conflict rather than choosing a host. No sol observation or change is authorised.
+
+‡ Keep the agent configuration and data unchanged, with reconciliation still unselected; empty selection is not deletion authority. Kris requested a chezmoi roadmap item to study the settings for learnings before deciding their future. The Paperclip program is selected on neither host and its persistent data stays.
+
+TigerVNC is unwanted on every Mac because macOS supplies the replacement VNC client. Kris authorised terra’s native uninstall outright without a backup; sol’s uninstall is queued for its local pass. This decision does not authorise removing Pi, Paperclip or retained data in the current selection pass. Pi’s Trial ring remains independent of empty machine selection. MSDisplayManager stays unselected on sol pending its own decision. No missing selected tool is installed in this pass.
+
+The per-tool reasons below are historical review recommendations, superseded by the decided dispositions above:
 
 - **Safari:** select on both, expected present without an install route. Kris explicitly names its presence on both hosts; its system cryptex symlink is no reason to leave it unselected.
 - **Microsoft 365 Copilot Shim:** select on both, expected helper presence without an install route. This is the Office installer helper in the earlier example, covered by Kris's correction; it does not select standalone Copilot.
