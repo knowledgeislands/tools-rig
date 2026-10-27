@@ -3,8 +3,7 @@ name: Notify Homebrew tap
 # Manual releases are created with the maintainer's own token, so publication
 # raises this event; the tap's daily backstop covers any missed dispatch.
 on:
-  release:
-    types: [published]
+  workflow_dispatch:
 
 permissions: {}
 
