@@ -5,15 +5,14 @@ title: Native tool absolute-path fallback
 purpose: corrective
 theme: rig
 kind: deliver
-status: awaiting-review
-horizon: now
+status: done
 priority: medium
 size: s
 blocks: []
 blocked_by: []
 baseline_ref: 4944b1b420140a6a44cc1bf3d75d57a98fe69c7d
 created_at: 2026-10-24T10:50:17Z
-updated_at: 2026-10-27T02:40:00Z
+updated_at: 2026-10-27T05:10:23Z
 ---
 
 # KI-TOOL-RIG-CORE-073: Find Native macOS Tools Outside a Minimal PATH
@@ -121,6 +120,16 @@ Goal met: `lsof` is found in its system directory when `PATH` stops at `/bin`, a
 ### Mini recap
 
 Delivered the shared native-tool discovery rule with its named missing-tool detail, test and documents; the existing full-gate evidence is retained, and the missing normal/minimal-PATH macOS observation is now complete on Sol using real native tools. The scheduled terra follow-up remains unobserved and proves no fallback when its PATH already includes `/usr/sbin`. Lifecycle remains Awaiting review for the separate acceptance actor. Learning route: none proposed.
+
+## Done
+
+Accepted 2026-10-27T05:10:23Z by the ways-of-working coordinator under Kris's explicit ACCEPT-PRUNE-CONFIDENT grant of 27 October 2026, applying the six-part Review above at high confidence. The exact qualifying subset was frozen before mutation: KI-TOOL-RIG-CORE-071 and KI-TOOL-RIG-CORE-073 only. Human source: [ways-of-working decisions](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.ways-of-working/decisions.md), SHA-256 `6f6ff470fa8bc94d46643f59568d121f5e9e594de2ce5351652c5cc487abe2c8`, Git blob `37d8e1aed2df5dbaa258b9a02321340161f59d35`: "you can just accept them and then you can get things pruned out as well".
+
+Reviewed source revision `0472b4a11950f418995d2dc31c6191d5a5395a0c`, record blob `2af7caec1b111e591d43583563e91bb4dca49fc6` and SHA-256 `6705446cc294bde0e6cb5d00682cb27c25e40b66b31ed61b4f7f1625592577e9`. Both prerequisite runs were DONE before mutation. The missing normal/minimal-PATH macOS observation is supplied by the committed 27 October Sol evidence at 0472b4a11950f418995d2dc31c6191d5a5395a0c, against unchanged executable source at 00f688618b1a817931a8669b031d717b0c037e41. Terra scheduled-job confirmation remains an operational follow-up, outside the completed fallback criterion; no job or environment was changed.
+
+Current governing repository audit passed with zero failures, superseding the recorded historical hook failure. One shared full verification pass covered both Rig records on unchanged source: all 648 Bats tests, ShellCheck, Bash syntax, assembly drift, benchmark, native-provider version smoke, mandoc lint and diff checks passed. No build, deployment, release or live mutation was performed. Baseline and creation timestamp are preserved.
+
+Acceptance records completion only. Retain this Done record until committed terminal history, accessible recovery locators and surviving peer/owning references satisfy the separate prune preflight; no pruning is included here.
 
 ## Discussion
 

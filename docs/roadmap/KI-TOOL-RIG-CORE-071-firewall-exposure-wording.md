@@ -5,15 +5,14 @@ title: Firewall exposure wording
 purpose: corrective
 theme: rig
 kind: deliver
-status: awaiting-review
-horizon: now
+status: done
 priority: low
 size: s
 blocks: []
 blocked_by: []
 baseline_ref: a3b7f574cd0ebb95ee58fabde2dcd52268fb9e62
 created_at: 2026-10-23T06:43:00Z
-updated_at: 2026-10-27T04:46:09Z
+updated_at: 2026-10-27T05:10:23Z
 ---
 
 # KI-TOOL-RIG-CORE-071: Word Firewall Exposure as a Listener Observation
@@ -169,6 +168,16 @@ Every planned wording surface is covered: status carries the qualified observati
 ### Mini recap
 
 Completed the previously disclosed doctor-wording gap, verified the affected display cases once and returned Awaiting review with the original goal and history intact. No new durable learning route is proposed.
+
+## Done
+
+Accepted 2026-10-27T05:10:23Z by the ways-of-working coordinator under Kris's explicit ACCEPT-PRUNE-CONFIDENT grant of 27 October 2026, applying the six-part Review above at high confidence. The exact qualifying subset was frozen before mutation: KI-TOOL-RIG-CORE-071 and KI-TOOL-RIG-CORE-073 only. Human source: [ways-of-working decisions](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.ways-of-working/decisions.md), SHA-256 `6f6ff470fa8bc94d46643f59568d121f5e9e594de2ce5351652c5cc487abe2c8`, Git blob `37d8e1aed2df5dbaa258b9a02321340161f59d35`: "you can just accept them and then you can get things pruned out as well".
+
+Reviewed source revision `0472b4a11950f418995d2dc31c6191d5a5395a0c`, record blob `40f6425bfbcd4c1b03b94a4bb7bea03ddcda3af9` and SHA-256 `1ef2f963642c9d64f1c428f2b340a0771648b61fa862da7ee25db890224b7394`. Both prerequisite runs were DONE before mutation. The corrected doctor/show wording now covers the approved boundary on both platforms; kernel-rule uncertainty remains explicit. No firewall operation, privileged observation or live reachability claim is part of this acceptance.
+
+Current governing repository audit passed with zero failures, superseding the recorded historical hook failure. One shared full verification pass covered both Rig records on unchanged source: all 648 Bats tests, ShellCheck, Bash syntax, assembly drift, benchmark, native-provider version smoke, mandoc lint and diff checks passed. No build, deployment, release or live mutation was performed. Baseline and creation timestamp are preserved.
+
+Acceptance records completion only. Retain this Done record until committed terminal history, accessible recovery locators and surviving peer/owning references satisfy the separate prune preflight; no pruning is included here.
 
 ## Discussion
 
