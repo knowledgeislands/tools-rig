@@ -29,7 +29,7 @@ Choose a lifecycle mode that matches the owner:
 - `on-demand` permits absence, but an active listener must match the expected scope and owner.
 - `allocated` records planning ownership; absence is healthy, while a positively different occupant is a conflict.
 
-The owner must be a qualified `tool:ID`, `service:ID`, or `scheduled-job:ID`. Rig observes supported listeners but never opens, reserves, closes, or kills a socket. `rig status --unmanaged` can show listeners whose port has no declaration.
+The owner must be a qualified `tool:ID`, `service:ID`, or `scheduled-job:ID`. Rig observes supported listeners but never opens, reserves, closes, or kills a socket. `rig status --unmanaged` can show listeners whose port has no declaration. Rig finds `lsof` through `RIG_LSOF_COMMAND`, then `PATH`, then its fixed system directories, so a scheduled job whose `PATH` stops at `/bin` observes ports exactly as an interactive run does; a port reported `unavailable` with `lsof-missing` means no location named the tool, while `listener-observation-unavailable` means it ran and failed.
 
 Port declarations and observations are always private. They never enter exported data, even if a port is accidentally assigned to a view.
 

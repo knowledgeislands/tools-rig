@@ -336,11 +336,11 @@ _Evidence:_ `rig_select_resource`, `rig_sort_selected_resources`, `rig_resource_
 
 ### RIG-ORCH-031 — Read-only macOS listener observation
 
-On macOS, Rig MUST inspect selected private TCP allocations through one cached built-in listener snapshot for each command, MUST aggregate IPv4 and IPv6 records to the least-safe observed scope, and MUST optionally report undeclared listeners through `rig status --unmanaged`. On other platforms or when the native source fails, Rig MUST report observation unavailable. Rig MUST NOT open, reserve, close, kill, or otherwise mutate a socket, and port declarations MUST NOT enter apply plans or reconciliation receipts.
+On macOS, Rig MUST inspect selected private TCP allocations through one cached built-in listener snapshot for each command, MUST aggregate IPv4 and IPv6 records to the least-safe observed scope, and MUST optionally report undeclared listeners through `rig status --unmanaged`. Rig MUST find the native tools it observes with, `lsof`, `ps` and the firewall probe's `netstat`, by one rule: the explicit `RIG_LSOF_COMMAND`, `RIG_PS_COMMAND` or `RIG_NETSTAT_COMMAND` override, then `PATH`, then the fixed system directories `/usr/sbin`, `/sbin`, `/usr/bin` and `/bin`, which `RIG_NATIVE_TOOL_DIRS` replaces for fixtures, so a run under launchd, cron or any other minimal `PATH` observes as an interactive run does. When no location names `lsof`, Rig MUST report observation unavailable with the detail `lsof-missing`; on other platforms or when the native source fails, Rig MUST report observation unavailable. Rig MUST NOT open, reserve, close, kill, or otherwise mutate a socket, and port declarations MUST NOT enter apply plans or reconciliation receipts.
 
 _Conformance:_ conforming
 
-_Verify:_ Bats uses a deterministic `lsof -F` fake, asserts one exact read-only invocation across selected and unmanaged reporting, proves no real sockets are opened, and verifies apply and dry-run omit ports.
+_Verify:_ Bats uses a deterministic `lsof -F` fake, asserts one exact read-only invocation across selected and unmanaged reporting, proves no real sockets are opened, verifies apply and dry-run omit ports, and runs status under a `PATH` of `/usr/bin:/bin` alone with the fake standing in the fallback directory, then with no fallback, asserting `lsof-missing`.
 
 _Evidence:_ `rig_load_listeners`, `rig_print_unmanaged_listeners`, and private-port tests implement the bounded built-in source and no-mutation boundary.
 

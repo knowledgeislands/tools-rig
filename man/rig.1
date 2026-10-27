@@ -275,6 +275,20 @@ budget per non-ASCII code point; combining marks and joined emoji may underfill
 rows. A wide glyph on a one-cell terminal remains intact even when it exceeds
 the budget. JSON retains original values.
 The spacing is not a machine-readable interface.
+Listener observation finds
+.B lsof
+through
+.BR RIG_LSOF_COMMAND ,
+then PATH, then the fixed system directories
+.IR /usr/sbin ", " /sbin ", " /usr/bin " and " /bin ,
+so a scheduled job whose PATH stops at /bin observes ports as an interactive
+run does; a port is
+.B unavailable
+with
+.B lsof-missing
+when no location names the tool. RIG_PS_COMMAND and RIG_NETSTAT_COMMAND follow
+the same rule, and RIG_NATIVE_TOOL_DIRS replaces the fixed directories for
+fixtures.
 A declared private port compares its owner against the whole command line of
 the bound process, so a listener started through an interpreter still matches
 the service program or tool locator it was declared to run.

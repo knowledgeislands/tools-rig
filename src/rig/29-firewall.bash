@@ -270,13 +270,7 @@ rig_firewall_pfctl() {
 }
 
 rig_firewall_netstat() {
-  if [ -n "${RIG_NETSTAT_COMMAND:-}" ]; then
-    [ -x "$RIG_NETSTAT_COMMAND" ] || return 1
-    RIG_VALUE=$RIG_NETSTAT_COMMAND
-    return 0
-  fi
-  RIG_VALUE=/usr/sbin/netstat
-  [ -x "$RIG_VALUE" ]
+  rig_native_command netstat "${RIG_NETSTAT_COMMAND:-}"
 }
 
 # Run one native command through the attended grant; sudo never prompts here.

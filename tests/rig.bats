@@ -4864,6 +4864,28 @@ ports = ["required-api", "on-demand-api", "allocated-api", "free-allocation"]' \
   output_has_table_row $'allocated-api\t4103\ttcp\tallocated\ttool:alpha\tconflicting\towner:foreign;expected:alpha'
 }
 
+@test "listener observation finds lsof in its system directory when PATH stops at /bin" {
+  write_port_fixture
+  local fallback_dir listener_output
+  fallback_dir=$BATS_TEST_TMPDIR/fallback-sbin-$BATS_TEST_NUMBER
+  mkdir -p "$fallback_dir"
+  cp "$PORT_LSOF" "$fallback_dir/lsof"
+  listener_output=$'p101\ncalpha\nn127.0.0.1:4101 (LISTEN)\n'
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos PATH=/usr/bin:/bin \
+    RIG_LSOF_COMMAND= RIG_NATIVE_TOOL_DIRS="$fallback_dir" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" \
+    RIG_TEST_LSOF_OUTPUT="$listener_output" "$RIG" status
+  [ "$status" -eq 0 ]
+  output_has_table_row $'required-api\t4101\ttcp\trequired\ttool:alpha\tpresent\tlistening:loopback;owner:alpha'
+  grep -q -- '-nP -iTCP -sTCP:LISTEN -Fpcn' "$PORT_LSOF_LOG" || false
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos PATH=/usr/bin:/bin \
+    RIG_LSOF_COMMAND= RIG_NATIVE_TOOL_DIRS="$BATS_TEST_TMPDIR/no-such-sbin" "$RIG" status
+  [ "$status" -eq 1 ]
+  output_has_table_row $'required-api\t4101\ttcp\trequired\ttool:alpha\tunavailable\tlsof-missing'
+  [[ "$output" != *'listener-observation-unavailable'* ]] || false
+}
+
 @test "port absence and unavailable observation preserve mode and platform semantics" {
   write_port_fixture
 

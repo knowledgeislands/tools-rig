@@ -38,25 +38,42 @@ rig_observe_resource_plan() {
   rig_progress_finish
 }
 
-rig_lsof_command() {
-  if [ -n "${RIG_LSOF_COMMAND:-}" ]; then
-    [ -x "$RIG_LSOF_COMMAND" ] || return 1
-    RIG_VALUE=$RIG_LSOF_COMMAND
+# Where macOS keeps the tools Rig observes with when PATH does not name them;
+# a launchd or cron PATH often stops at /bin. RIG_NATIVE_TOOL_DIRS replaces
+# the list, so a fixture can stand a stub in for the real system directory.
+RIG_NATIVE_TOOL_DIRS_DEFAULT=/usr/sbin:/sbin:/usr/bin:/bin
+
+# Resolve a native tool by name: the explicit RIG_*_COMMAND override given as
+# $2, which must be executable; then PATH; then the fixed system directories.
+rig_native_command() {
+  local tool override dirs dir
+  tool=$1
+  override=$2
+  if [ -n "$override" ]; then
+    [ -x "$override" ] || return 1
+    RIG_VALUE=$override
     return 0
   fi
-  RIG_VALUE=$(command -v lsof 2>/dev/null) || return 1
-  [ -n "$RIG_VALUE" ]
+  if RIG_VALUE=$(command -v "$tool" 2>/dev/null) && [ -n "$RIG_VALUE" ]; then
+    return 0
+  fi
+  dirs=${RIG_NATIVE_TOOL_DIRS:-$RIG_NATIVE_TOOL_DIRS_DEFAULT}
+  local IFS=:
+  for dir in $dirs; do
+    [ -n "$dir" ] && [ -x "$dir/$tool" ] || continue
+    RIG_VALUE=$dir/$tool
+    return 0
+  done
+  RIG_VALUE=
+  return 1
+}
+
+rig_lsof_command() {
+  rig_native_command lsof "${RIG_LSOF_COMMAND:-}"
 }
 
 rig_ps_command() {
-  if [ -n "${RIG_PS_COMMAND:-}" ]; then
-    [ -x "$RIG_PS_COMMAND" ] || return 1
-    RIG_VALUE=$RIG_PS_COMMAND
-    return 0
-  fi
-
-  RIG_VALUE=$(command -v ps 2>/dev/null) || return 1
-  [ -n "$RIG_VALUE" ]
+  rig_native_command ps "${RIG_PS_COMMAND:-}"
 }
 
 rig_load_listener_argvs() {
@@ -115,7 +132,9 @@ rig_load_listeners() {
   platform=$RIG_RESOLVED_PLATFORM
   [ "$platform" = macos ] || { RIG_LISTENER_OBSERVATION_AVAILABLE=-1; return 0; }
   if ! rig_lsof_command; then
+    # Name the tool, so a minimal PATH or a missing lsof is told apart from a failed run.
     RIG_LISTENER_OBSERVATION_AVAILABLE=-1
+    RIG_LISTENER_OBSERVATION_DETAIL=lsof-missing
     return 0
   fi
   command=$RIG_VALUE
@@ -253,7 +272,7 @@ rig_observe_ports() {
     rig_progress_begin "$section_name"
     if [ "$RIG_LISTENER_OBSERVATION_AVAILABLE" -ne 1 ]; then
       RIG_PORT_STATES[$index]=unavailable
-      RIG_PORT_DETAILS[$index]=$([ "$RIG_RESOLVED_PLATFORM" = macos ] && printf listener-observation-unavailable || printf unsupported-platform)
+      RIG_PORT_DETAILS[$index]=$([ "$RIG_RESOLVED_PLATFORM" = macos ] && printf '%s' "$RIG_LISTENER_OBSERVATION_DETAIL" || printf unsupported-platform)
       rig_progress_result succeeded "$section_name"
       index=$((index + 1))
       continue
@@ -403,7 +422,7 @@ rig_print_unmanaged_listeners() {
   rig_table_add_column DETAIL 60
   if [ "$RIG_LISTENER_OBSERVATION_AVAILABLE" -ne 1 ]; then
     rig_table_add_row - tcp - unavailable \
-      "$([ "$RIG_RESOLVED_PLATFORM" = macos ] && printf listener-observation-unavailable || printf unsupported-platform)" || return 2
+      "$([ "$RIG_RESOLVED_PLATFORM" = macos ] && printf '%s' "$RIG_LISTENER_OBSERVATION_DETAIL" || printf unsupported-platform)" || return 2
     rig_table_print
     printf 'Unmanaged listeners: unavailable\n'
     return 0
