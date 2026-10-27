@@ -5,14 +5,13 @@ title: Own-address firewall destination
 purpose: capability
 theme: rig
 kind: deliver
-horizon: now
-status: awaiting-review
+status: done
 size: m
 blocks: []
 blocked_by: []
 baseline_ref: 9dce7120fcaa8aefb6856876c614f5e40ae537b3
 created_at: 2026-10-18T09:45:00Z
-updated_at: 2026-10-22T01:29:08Z
+updated_at: 2026-10-27T01:22:02Z
 ---
 
 # Own-Address Firewall Destination
@@ -145,6 +144,10 @@ The Goal holds for the common case: a neighbour scanning a CGNAT or hotspot netw
 ### Mini recap
 
 Own-address destinations, paired IPv4 and IPv6 discovery, stale and undiscoverable reporting, fixture tests and documentation are delivered and verified locally; no live machine was touched. Proposed learning route: none beyond the specification and guide already updated.
+
+## Done
+
+Accepted 2026-10-27 by Kris Brown on the review packet above, under SWEEP-ACCEPT and his instruction of 27 October 2026 at 01:15 GMT, read back in the ways-of-working decisions log of ki-principal, entry "2026-10-27 01:15 GMT". Closed under `ki-accept` by the wow-accept-prune run.
 
 ## Discussion
 
