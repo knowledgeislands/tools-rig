@@ -230,7 +230,13 @@ install_present() {
 
 status_row() {
   run "$RIG" status
-  printf '%s\n' "$output" | /usr/bin/grep '^screen-sharing ' | /usr/bin/awk '{ print $4, $5 }'
+  # DETAIL wraps at 42 characters; retain its continuation in this assertion.
+  printf '%s\n' "$output" | /usr/bin/awk '
+    /^screen-sharing / { state=$4; detail=$5; reading=1; next }
+    reading && NF == 1 && /^ / { detail=detail $1; next }
+    reading { reading=0 }
+    END { print state, detail }
+  '
 }
 
 assert_no_global_firewall() {
@@ -345,14 +351,17 @@ assert_no_global_firewall() {
 @test "observation distinguishes present missing drifted exposed and unavailable" {
   [ "$(status_row)" = 'missing -' ]
   printf '%s\n' 'tcp46      0      0  *.5900                 *.*                    LISTEN' >"$FW_STATE/netstat"
-  [ "$(status_row)" = 'missing listening-all-addresses' ]
+  [ "$(status_row)" = 'missing listening-all-addresses,kernel-rules-unverified' ]
+  run "$RIG" doctor
+  [ "$status" -eq 1 ]
+  [[ "$output" == *'firewall.screen-sharing: missing (listening-all-addresses,kernel-rules-unverified)'* ]] || false
   run "$RIG" show firewall:screen-sharing
-  [[ "$output" == *'Observed state: missing (listening-all-addresses)'* ]] || false
-  [[ "$output" == *'Listener evidence: tcp:5900 seen listening on every address in this run; loaded rules unread (kernel-rules-unverified)'* ]] || false
+  [[ "$output" == *'Observed state: missing (listening-all-addresses,kernel-rules-unverified)'* ]] || false
+  [[ "$output" == *'Listener evidence: tcp:5900 seen listening on every address in this run; loaded rules unread (kernel-rules-unverified), so this is not proof of reachability.'* ]] || false
   printf '%s\n' 'tcp4       0      0  100.101.1.2.5900       *.*                    LISTEN' >"$FW_STATE/netstat"
   [ "$(status_row)" = 'missing -' ]
   printf '%s\n' 'udp4       0      0  *.5900                 *.*' >"$FW_STATE/netstat"
-  [ "$(status_row)" = 'missing listening-all-addresses' ]
+  [ "$(status_row)" = 'missing listening-all-addresses,kernel-rules-unverified' ]
 
   install_present
   # A restricted listener still binds every address; pf, not netstat, filters it.
@@ -374,7 +383,15 @@ assert_no_global_firewall() {
   printf '1\n' >"$FW_STATE/last-exit"
   [ "$(status_row)" = 'drifted daemon-last-exit:1' ]
   printf '%s\n' 'tcp6       0      0  *.5900                 *.*                    LISTEN' >"$FW_STATE/netstat"
-  [ "$(status_row)" = 'drifted daemon-last-exit:1,listening-all-addresses' ]
+  [ "$(status_row)" = 'drifted daemon-last-exit:1,listening-all-addresses,kernel-rules-unverified' ]
+  run "$RIG" doctor
+  [ "$status" -eq 1 ]
+  [[ "$output" == *'firewall.screen-sharing: drifted (daemon-last-exit:1,listening-all-addresses,kernel-rules-unverified)'* ]] || false
+  run "$RIG" show firewall:screen-sharing
+  [[ "$output" == *'Observed state: drifted (daemon-last-exit:1,listening-all-addresses,kernel-rules-unverified)'* ]] || false
+  [[ "$output" == *'Listener evidence: tcp:5900 seen listening on every address in this run; loaded rules unread (kernel-rules-unverified), so this is not proof of reachability.'* ]] || false
+  /bin/rm "$FW_STATE/netstat"
+  [ "$(status_row)" = 'drifted daemon-last-exit:1' ]
 
   install_present
   FW_PRINT=fail

@@ -13,7 +13,7 @@ blocks: []
 blocked_by: []
 baseline_ref: a3b7f574cd0ebb95ee58fabde2dcd52268fb9e62
 created_at: 2026-10-23T06:43:00Z
-updated_at: 2026-10-27T03:00:00Z
+updated_at: 2026-10-27T04:46:09Z
 ---
 
 # KI-TOOL-RIG-CORE-071: Word Firewall Exposure as a Listener Observation
@@ -79,7 +79,25 @@ RIG-STATE-045 in `docs/specs/state.md` names `listening-all-addresses`, says wha
 
 This record only.
 
-## Review
+## Corrective return and bounded implementation decision
+
+The 27 October 2026 closure review retained this record: its approved Boundary requires kernel-rule uncertainty in doctor and explain, while the initial delivery explicitly deferred the narrower doctor wording. The checked original Steps and passing tests did not complete that Boundary. The initial review below is retained as history, not acceptance; its completion claim is superseded by this return.
+
+Under the current SUCCESSIVE-WAVES and CONFIDENT-UNATTENDED outcome authority and this run's explicit instruction, the routine missing wording is returned for bounded implementation. No new wording policy is chosen: reuse the already-approved `kernel-rules-unverified` qualification whenever the existing observers report `listening-all-addresses`. Doctor carries the complete reason list; the existing show/explain implementation already prints the listener explanation. The status DETAIL column wraps at 42 characters; full detail remains available in doctor and show. The decision to retain volatile listener evidence in drift reasons remains unchanged.
+
+The original goal, Boundary, baseline_ref and initial delivery history remain intact. Corrective starting HEAD: `0f6947c6e8c6da31b3a9927351b36d17f164e790`. No acceptance or pruning is authorised to this run.
+
+### Corrective plan
+
+- [x] Append `kernel-rules-unverified` to listener evidence in both existing observer detail strings, without changing observation states, probes, security decisions, rendered rules or apply/retire paths.
+- [x] Keep the existing show listener line and extend the existing observation fixtures on both platforms to check missing/drifted doctor detail and show explanations, including a disappearing listener without repaired firewall files.
+- [x] Align RIG-STATE-045, the operational-resources guide, manual and existing changelog entry with the completed wording.
+- [x] Assemble once, run the two affected observation fixtures once, check deterministic assembly, and pass compulsory commit hooks; no live firewall command or host mutation and no repeated full suite/build loop.
+- [x] Supply current evidence in the six-part Review packet and return Awaiting review for the separate authorised closure pass.
+
+Allowed paths are exactly the existing Files touched list, including this record; the immutable pre-edit scope and source hash are frozen in this run's temporary scope-freeze.json. No other repository path is in scope.
+
+## Initial delivery review (retained history)
 
 ### Delivered
 
@@ -116,6 +134,41 @@ Goal met: the finding names what was observed and the show command says what it 
 ### Mini recap
 
 Renamed the listener reason, added the show line, aligned documents and tests; verified by the full gate; outstanding is the doctor wording narrower than the In clause. Learning route: none proposed.
+
+## Review
+
+### Delivered
+
+Completed the original approved Boundary after the failed-review return recorded above. Both observers now qualify wildcard listener evidence with `listening-all-addresses,kernel-rules-unverified`, so doctor states kernel-rule uncertainty whenever it reports that evidence. The existing `show firewall:ID` explanation (the public surface implemented by `rig_explain_firewall` and `rig_nftables_explain`) names the observed port, states loaded rules are unread and disclaims proof of reachability. No new CLI verb or wording policy was introduced.
+
+Original baseline_ref `a3b7f574cd0ebb95ee58fabde2dcd52268fb9e62` and initial delivery history are preserved. This correction starts from `0f6947c6e8c6da31b3a9927351b36d17f164e790`. Observation states, listener probes, firewall rules, application and retirement paths are unchanged. No live firewall or workstation operation was performed. This is Awaiting review, not acceptance.
+
+### Change Summary
+
+- `src/rig/29-firewall.bash` and `src/rig/29-firewall-nftables.bash`: append the already-approved kernel-rule qualification alongside listener evidence. The runtime delta is exactly these two display-string replacements; `bin/rig` is deterministically reassembled.
+- `tests/rig-firewall.bats` and `tests/rig-firewall-linux.bats`: extend the existing observation cases with full doctor findings and show explanations for missing and drifted firewalls; verify disappearing listener evidence leaves actual drift. The status helper joins wrapped DETAIL lines so it continues checking the complete text-table detail.
+- `docs/specs/state.md` (RIG-STATE-045), `docs/guides/user/operational-resources.md`, `man/rig.1` and `CHANGELOG.md`: align the existing descriptions with the qualified detail in doctor and the existing show explanation.
+- This record: explicit failed-review return, bounded decision and corrective plan, retained initial evidence, and this current review packet.
+
+### Verification
+
+- `bats --filter 'observation distinguishes' tests/rig-firewall.bats tests/rig-firewall-linux.bats </dev/null`: both existing meaningful observation fixtures pass. They cover both platforms, missing/drifted/present/unavailable states, complete doctor and show wording, listener disappearance without repair, and assertions against privileged or mutating native calls. Every native boundary uses the existing isolated fixture; no live pf/nft command was run.
+- `scripts/assemble-rig --write` followed by `scripts/assemble-rig --check`: deterministic assembled payload passes; one assembly, no build loop.
+- Exact source comparison against the corrective starting HEAD confirms the only authored runtime changes are the two qualified display strings; original Goal, Boundary and baseline_ref remain unchanged.
+- This task explicitly replaces a repeated full local gate with the one focused verification above and compulsory hooks. The full suite, benchmarks, native-manager smoke and general audits were not repeated; their initial-delivery results remain historical evidence only.
+- The resulting commit is subject to the compulsory staged Markdown, shellcheck/Bash syntax, manual and commit-message hooks. A successful hook-backed commit is the evidence for those gates; none is bypassed.
+
+### Outstanding concerns
+
+None within the approved wording scope. Loaded kernel rules and real reachability remain unverified by these unprivileged commands, exactly as the output says. Any live firewall repair or attended verification remains outside this record's wording correction. Separate authorised closure review is still required; this run does not accept or prune the record.
+
+### Post-change review
+
+Every planned wording surface is covered: status carries the qualified observation detail (wrapped within its existing column), doctor carries the full qualified finding, and show carries the full listener explanation on both platforms. Existing tests prove listener evidence can disappear while firewall drift persists. The original decision to retain volatile listener evidence is preserved. The missing kernel-rule qualification is complete without changing security behaviour.
+
+### Mini recap
+
+Completed the previously disclosed doctor-wording gap, verified the affected display cases once and returned Awaiting review with the original goal and history intact. No new durable learning route is proposed.
 
 ## Discussion
 

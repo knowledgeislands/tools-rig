@@ -212,7 +212,13 @@ install_present() {
 
 status_row() {
   run "$RIG" status
-  printf '%s\n' "$output" | /usr/bin/grep '^dev-server ' | /usr/bin/awk '{ print $4, $5 }'
+  # DETAIL wraps at 42 characters; retain its continuation in this assertion.
+  printf '%s\n' "$output" | /usr/bin/awk '
+    /^dev-server / { state=$4; detail=$5; reading=1; next }
+    reading && NF == 1 && /^ / { detail=detail $1; next }
+    reading { reading=0 }
+    END { print state, detail }
+  '
 }
 
 # Rig never touches another firewall or the distribution's ruleset.
@@ -311,13 +317,17 @@ platforms = ["linux"]'
 @test "observation distinguishes present missing drifted exposed and unavailable" {
   [ "$(status_row)" = 'missing -' ]
   printf '%s\n' 'tcp LISTEN 0 511 0.0.0.0:3000 0.0.0.0:*' >"$FW_STATE/ss"
-  [ "$(status_row)" = 'missing listening-all-addresses' ]
+  [ "$(status_row)" = 'missing listening-all-addresses,kernel-rules-unverified' ]
+  run "$RIG" doctor
+  [ "$status" -eq 1 ]
+  [[ "$output" == *'firewall.dev-server: missing (listening-all-addresses,kernel-rules-unverified)'* ]] || false
   run "$RIG" show firewall:dev-server
-  [[ "$output" == *'Listener evidence: tcp:3000 seen listening on every address in this run; loaded rules unread (kernel-rules-unverified)'* ]] || false
+  [[ "$output" == *'Observed state: missing (listening-all-addresses,kernel-rules-unverified)'* ]] || false
+  [[ "$output" == *'Listener evidence: tcp:3000 seen listening on every address in this run; loaded rules unread (kernel-rules-unverified), so this is not proof of reachability.'* ]] || false
   printf '%s\n' 'tcp LISTEN 0 511 [::]:3000 [::]:*' >"$FW_STATE/ss"
-  [ "$(status_row)" = 'missing listening-all-addresses' ]
+  [ "$(status_row)" = 'missing listening-all-addresses,kernel-rules-unverified' ]
   printf '%s\n' 'udp UNCONN 0 0 *%eth0:3000 *:*' >"$FW_STATE/ss"
-  [ "$(status_row)" = 'missing listening-all-addresses' ]
+  [ "$(status_row)" = 'missing listening-all-addresses,kernel-rules-unverified' ]
   printf '%s\n' 'tcp LISTEN 0 511 100.101.1.2:3000 0.0.0.0:*' 'tcp LISTEN 0 511 127.0.0.1:3000 0.0.0.0:*' \
     'tcp LISTEN 0 511 *%lo:3000 *:*' 'tcp LISTEN 0 511 0.0.0.0:30000 0.0.0.0:*' 'udp UNCONN 0 0 0.0.0.0:5353 *:*' \
     >"$FW_STATE/ss"
@@ -329,7 +339,13 @@ platforms = ["linux"]'
   [ "$(status_row)" = 'present kernel-rules-unverified' ]
 
   printf '# edited\n' >>"$RULES"
-  [ "$(status_row)" = 'drifted rules-changed,listening-all-addresses' ]
+  [ "$(status_row)" = 'drifted rules-changed,listening-all-addresses,kernel-rules-unverified' ]
+  run "$RIG" doctor
+  [ "$status" -eq 1 ]
+  [[ "$output" == *'firewall.dev-server: drifted (rules-changed,listening-all-addresses,kernel-rules-unverified)'* ]] || false
+  run "$RIG" show firewall:dev-server
+  [[ "$output" == *'Observed state: drifted (rules-changed,listening-all-addresses,kernel-rules-unverified)'* ]] || false
+  [[ "$output" == *'Listener evidence: tcp:3000 seen listening on every address in this run; loaded rules unread (kernel-rules-unverified), so this is not proof of reachability.'* ]] || false
   rm "$FW_STATE/ss"
   [ "$(status_row)" = 'drifted rules-changed' ]
   install_present

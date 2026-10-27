@@ -441,7 +441,7 @@ rig_firewall_observe() {
   fi
   if [ -n "$exposed" ]; then
     [ "$reasons" != - ] || reasons=
-    reasons="$reasons${reasons:+,}listening-all-addresses"
+    reasons="$reasons${reasons:+,}listening-all-addresses,kernel-rules-unverified"
   fi
   RIG_OBSERVATION_DETAIL=$reasons
 }

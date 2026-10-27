@@ -2149,7 +2149,9 @@ Doctor, status and show observe without administrator rights: file content,
 daemon load state and last exit code, and listeners on every address through
 netstat -an. A matching firewall is present with kernel-rules-unverified. A
 declared port seen listening on every address while the firewall is missing or
-drifted adds listening-all-addresses: a point-in-time observation, not proof
+drifted adds listening-all-addresses,kernel-rules-unverified to the
+observation detail, including the full doctor finding (status may wrap it):
+a point-in-time observation, not proof
 of reachability from beyond the tailnet, and show firewall:ID says beside it
 that the loaded rules were not read.
 Only apply --sudo changes a firewall: pfctl -n first, root-owned file
