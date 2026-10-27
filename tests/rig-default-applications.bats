@@ -34,10 +34,19 @@ case "$6" in
   observe)
     [ "$RIG_HANDLER_FIXTURE_BEHAVIOUR" != observe-fail ] || exit 9
     [ "$RIG_HANDLER_FIXTURE_BEHAVIOUR" != invalid ] || { printf 'invalid handler response\n'; exit 0; }
+    if [ -f "$key.pending" ]; then
+      polls=$(( $(cat "$key.polls" 2>/dev/null || echo 0) + 1 ))
+      printf '%s\n' "$polls" >"$key.polls"
+      [ "$polls" -lt "${RIG_HANDLER_FIXTURE_BEHAVIOUR#confirm-after:}" ] || mv "$key.pending" "$key"
+    fi
     if [ -f "$key" ]; then cat "$key"; else printf 'org.legacy.Editor\n'; fi ;;
   apply)
     [ "$RIG_HANDLER_FIXTURE_BEHAVIOUR" != apply-fail ] || exit 9
-    [ "$RIG_HANDLER_FIXTURE_BEHAVIOUR" = decline ] || printf '%s\n' "$9" >"$key"
+    case "$RIG_HANDLER_FIXTURE_BEHAVIOUR" in
+      decline) ;;
+      confirm-after:*) printf '%s\n' "$9" >"$key.pending" ;;
+      *) printf '%s\n' "$9" >"$key" ;;
+    esac
     printf 'assigned\n' ;;
   *) exit 99 ;;
 esac
@@ -166,7 +175,34 @@ healthy_app() {
     [ "$status" -eq 1 ]
     [ ! -f "$RIG_HANDLER_FIXTURE_STATE/uti-org.example.notes" ]
   done
-  [[ "$output" == *'native confirmation may be required'* ]] || false
+  [[ "$output" == *'handler assignment awaits native confirmation (handler-mismatch:current:org.legacy.Editor:expected:org.example.Editor); nothing waited for the macOS prompt'* ]] || false
+  [ "$(/usr/bin/grep -c '^observe|' "$RIG_HANDLER_FIXTURE_LOG")" -eq 3 ]
+}
+
+@test "an attended apply records the handler once macOS confirms it" {
+  write_config
+  healthy_app
+  export RIG_HANDLER_FIXTURE_BEHAVIOUR=confirm-after:3
+  run env RIG_HANDLER_CONFIRMATION_TIMEOUT=10 RIG_HANDLER_CONFIRMATION_INTERVAL=0 "$RIG" apply
+  [ "$status" -eq 0 ]
+  [ "$(cat "$RIG_HANDLER_FIXTURE_STATE/uti-org.example.notes")" = org.example.Editor ]
+  [ "$(/usr/bin/grep -c '^observe|' "$RIG_HANDLER_FIXTURE_LOG")" -eq 4 ]
+  [ "$(/usr/bin/grep -c '^apply|' "$RIG_HANDLER_FIXTURE_LOG")" -eq 1 ]
+  [[ "$output" != *'not effective'* ]] || false
+  run "$RIG" apply
+  [ "$status" -eq 0 ]
+  [ "$(/usr/bin/grep -c '^apply|' "$RIG_HANDLER_FIXTURE_LOG")" -eq 1 ]
+}
+
+@test "a declined or unanswered confirmation fails once the wait budget is spent" {
+  write_config
+  healthy_app
+  export RIG_HANDLER_FIXTURE_BEHAVIOUR=decline
+  run env RIG_HANDLER_CONFIRMATION_TIMEOUT=2 RIG_HANDLER_CONFIRMATION_INTERVAL=0 "$RIG" apply
+  [ "$status" -eq 1 ]
+  [ ! -f "$RIG_HANDLER_FIXTURE_STATE/uti-org.example.notes" ]
+  [[ "$output" == *'handler assignment not confirmed within 2s (handler-mismatch:current:org.legacy.Editor:expected:org.example.Editor); the macOS prompt was declined or not answered.'* ]] || false
+  [ "$(/usr/bin/grep -c '^observe|' "$RIG_HANDLER_FIXTURE_LOG")" -eq 4 ]
 }
 
 @test "a handler dispatch publishes its qualified outcome in the apply history" {

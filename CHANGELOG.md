@@ -64,6 +64,7 @@ Run `rig help COMMAND` or `rig COMMAND --help` for options and exact arguments.
 - Provider and observation fixes preserve stable identities, distinguish unavailable evidence from proven conflicts, handle dual-stack listeners without duplicate rows, and keep native diagnostics intact through terminal progress.
 - A drifted or missing firewall whose declared port is seen listening on every address reports `listening-all-addresses` in place of `exposed-beyond-tailnet`, naming the point-in-time listener evidence without claiming reachability from beyond the tailnet; `show firewall:ID` adds that the loaded rules were not read.
 - Listener observation finds `lsof`, `ps` and `netstat` by one rule, the `RIG_*_COMMAND` override, then `PATH`, then the fixed system directories, so a scheduled job whose `PATH` stops at `/bin` observes ports as an interactive run does, and a port whose tool no location names reports `lsof-missing`.
+- A default-application apply whose native setter succeeds while macOS still asks the person to confirm the handler now waits for the answer, up to `RIG_HANDLER_CONFIRMATION_TIMEOUT` seconds (120 at a terminal, none unattended), and records the handler as applied on the run the person accepts; a declined or unanswered prompt fails once the wait is spent, and an unattended apply fails at once saying nothing waited for the prompt.
 
 ### Distribution baseline
 

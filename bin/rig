@@ -132,6 +132,8 @@ RIG_APPLY_ALLOW_DEFERRED_PROVIDERS=0
 RIG_LISTENER_OBSERVATION_AVAILABLE=0
 RIG_LISTENER_OBSERVATION_DETAIL=listener-observation-unavailable
 RIG_UNATTENDED=0
+RIG_HANDLER_CONFIRMATION=
+RIG_HANDLER_CONFIRMATION_BUDGET=0
 RIG_APPLY_TARGETS=()
 RIG_APPLY_DIRECT=()
 RIG_ARGUMENTS=()
@@ -12657,12 +12659,60 @@ rig_default_application_apply() {
     printf 'rig: %s: native handler assignment failed (exit %s).\n' "$section" "$RIG_NATIVE_STATUS" >&2
     return 1
   fi
-  rig_default_application_observe "$section" || return
-  if [ "$RIG_OBSERVATION" != present ]; then
-    printf 'rig: %s: handler assignment not effective (%s); native confirmation may be required.\n' \
-      "$section" "$RIG_OBSERVATION_DETAIL" >&2
-    return 1
+  rig_default_application_confirmed "$section" || return
+  case "$RIG_HANDLER_CONFIRMATION" in
+    confirmed) return 0 ;;
+    unanswered)
+      printf 'rig: %s: handler assignment not confirmed within %ss (%s); the macOS prompt was declined or not answered.\n' \
+        "$section" "$RIG_HANDLER_CONFIRMATION_BUDGET" "$RIG_OBSERVATION_DETAIL" >&2 ;;
+    unattended)
+      printf 'rig: %s: handler assignment awaits native confirmation (%s); nothing waited for the macOS prompt (not a terminal, or RIG_HANDLER_CONFIRMATION_TIMEOUT=0), so answer it and apply again.\n' \
+        "$section" "$RIG_OBSERVATION_DETAIL" >&2 ;;
+    *)
+      printf 'rig: %s: handler assignment not effective (%s).\n' "$section" "$RIG_OBSERVATION_DETAIL" >&2 ;;
+  esac
+  return 1
+}
+
+# macOS may answer a successful setter with a confirmation prompt, and Launch
+# Services shows the new handler only once the person accepts it. After the
+# setter, reobserve until the handler matches or the wait budget runs out:
+# RIG_HANDLER_CONFIRMATION_TIMEOUT seconds when set, else 120 at a terminal and
+# 0 unattended, polling every RIG_HANDLER_CONFIRMATION_INTERVAL seconds
+# (default 2). Declining the prompt looks the same as not answering it.
+rig_default_application_confirmed() {
+  local section interval step waited
+  section=$1
+  if [ -n "${RIG_HANDLER_CONFIRMATION_TIMEOUT:-}" ]; then
+    RIG_HANDLER_CONFIRMATION_BUDGET=$RIG_HANDLER_CONFIRMATION_TIMEOUT
+  elif [ -t 0 ]; then
+    RIG_HANDLER_CONFIRMATION_BUDGET=120
+  else
+    RIG_HANDLER_CONFIRMATION_BUDGET=0
   fi
+  interval=${RIG_HANDLER_CONFIRMATION_INTERVAL:-2}
+  step=$interval
+  [ "$step" -gt 0 ] || step=1
+  waited=0
+  RIG_HANDLER_CONFIRMATION=ineffective
+  while :; do
+    rig_default_application_observe "$section" || return
+    if [ "$RIG_OBSERVATION" = present ]; then
+      RIG_HANDLER_CONFIRMATION=confirmed
+      return 0
+    fi
+    case "$RIG_OBSERVATION_DETAIL" in handler-mismatch:*) ;; *) return 0 ;; esac
+    if [ "$RIG_HANDLER_CONFIRMATION_BUDGET" -le 0 ]; then
+      RIG_HANDLER_CONFIRMATION=unattended
+      return 0
+    fi
+    if [ "$waited" -ge "$RIG_HANDLER_CONFIRMATION_BUDGET" ]; then
+      RIG_HANDLER_CONFIRMATION=unanswered
+      return 0
+    fi
+    sleep "$interval"
+    waited=$((waited + step))
+  done
 }
 # rig-module: 29-firewall
 # shellcheck shell=bash

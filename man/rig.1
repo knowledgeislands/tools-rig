@@ -2102,9 +2102,15 @@ extension.
 .PP
 Doctor and status compare native handlers without assigning them. Apply follows
 tool installation, skips a correct handler, registers the verified app before
-assignment and checks the effective result. Native failure or pending
-confirmation
-keeps apply incomplete; macOS consent is never bypassed. Dry-run invokes no
+assignment and checks the effective result. When macOS asks the person to
+confirm the new handler, apply reobserves until the handler appears or a
+bounded wait is spent: RIG_HANDLER_CONFIRMATION_TIMEOUT seconds when set,
+else 120 at a terminal and 0 unattended, polling every
+RIG_HANDLER_CONFIRMATION_INTERVAL seconds (default 2). An accepted prompt
+records the handler as applied on that run; a declined or unanswered prompt
+fails once the wait is spent, and an unattended apply fails at once without
+waiting. Native failure keeps apply incomplete; macOS consent is never
+bypassed. Dry-run invokes no
 native handler operation. Linux reports unsupported state without native calls.
 .PP
 The adapter uses existing osascript/plutil and Launch Services, with no duti or
