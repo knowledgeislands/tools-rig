@@ -200,7 +200,7 @@ Nothing under `/etc`, `/Library` or any live Mac. `package.json`, `bun.lock`, `.
 
 ## Dependencies / blocks
 
-Gated on Kris's attended NordVPN check, which is not a roadmap record. It follows [KI-TOOL-RIG-CORE-047](KI-TOOL-RIG-CORE-047-tailnet-only-listener-firewall.md), whose resource it extends and whose Risks it corrects. [KI-TOOL-RIG-CORE-062](KI-TOOL-RIG-CORE-062-own-address-firewall-destination.md) changed the same anchor's destinations; the two are independent, and this plan assumes 062's rendering as it is at `6e060d0`.
+Gated on Kris's attended NordVPN check, which is not a roadmap record. It follows [KI-TOOL-RIG-CORE-047](KI-TOOL-RIG-CORE-047-tailnet-only-listener-firewall.md), whose resource it extends and whose Risks it corrects. [KI-TOOL-RIG-CORE-062](https://github.com/knowledgeislands/tools-rig/blob/223ba459/docs/roadmap/KI-TOOL-RIG-CORE-062-own-address-firewall-destination.md) changed the same anchor's destinations; the two are independent, and this plan assumes 062's rendering as it is at `6e060d0`.
 
 ## Documentation impact
 
