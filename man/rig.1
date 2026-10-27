@@ -2141,7 +2141,11 @@ reloads it at boot and whenever /etc/pf.conf changes. Rig never edits
 .PP
 Doctor, status and show observe without administrator rights: file content,
 daemon load state and last exit code, and listeners on every address through
-netstat -an. A matching firewall is present with kernel-rules-unverified.
+netstat -an. A matching firewall is present with kernel-rules-unverified. A
+declared port seen listening on every address while the firewall is missing or
+drifted adds listening-all-addresses: a point-in-time observation, not proof
+of reachability from beyond the tailnet, and show firewall:ID says beside it
+that the loaded rules were not read.
 Only apply --sudo changes a firewall: pfctl -n first, root-owned file
 installation, launchctl bootstrap system, pfctl -E, then a reread that must
 match. Without the grant a firewall needing work is skipped with

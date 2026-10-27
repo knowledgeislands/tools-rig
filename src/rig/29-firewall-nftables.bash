@@ -305,7 +305,7 @@ rig_nftables_observe() {
   fi
   if [ -n "$exposed" ]; then
     [ "$reasons" != - ] || reasons=
-    reasons="$reasons${reasons:+,}exposed-beyond-tailnet"
+    reasons="$reasons${reasons:+,}listening-all-addresses"
   fi
   RIG_OBSERVATION_DETAIL=$reasons
 }
@@ -483,4 +483,5 @@ rig_nftables_explain() {
   RIG_RESOLVED_PLATFORM=$RIG_VALUE
   rig_nftables_observe "$section" || return
   printf 'Observed state: %s (%s)\n' "$RIG_OBSERVATION" "$RIG_OBSERVATION_DETAIL"
+  rig_firewall_explain_listeners
 }

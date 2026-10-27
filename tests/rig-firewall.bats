@@ -345,11 +345,14 @@ assert_no_global_firewall() {
 @test "observation distinguishes present missing drifted exposed and unavailable" {
   [ "$(status_row)" = 'missing -' ]
   printf '%s\n' 'tcp46      0      0  *.5900                 *.*                    LISTEN' >"$FW_STATE/netstat"
-  [ "$(status_row)" = 'missing exposed-beyond-tailnet' ]
+  [ "$(status_row)" = 'missing listening-all-addresses' ]
+  run "$RIG" show firewall:screen-sharing
+  [[ "$output" == *'Observed state: missing (listening-all-addresses)'* ]] || false
+  [[ "$output" == *'Listener evidence: tcp:5900 seen listening on every address in this run; loaded rules unread (kernel-rules-unverified)'* ]] || false
   printf '%s\n' 'tcp4       0      0  100.101.1.2.5900       *.*                    LISTEN' >"$FW_STATE/netstat"
   [ "$(status_row)" = 'missing -' ]
   printf '%s\n' 'udp4       0      0  *.5900                 *.*' >"$FW_STATE/netstat"
-  [ "$(status_row)" = 'missing exposed-beyond-tailnet' ]
+  [ "$(status_row)" = 'missing listening-all-addresses' ]
 
   install_present
   # A restricted listener still binds every address; pf, not netstat, filters it.
@@ -371,7 +374,7 @@ assert_no_global_firewall() {
   printf '1\n' >"$FW_STATE/last-exit"
   [ "$(status_row)" = 'drifted daemon-last-exit:1' ]
   printf '%s\n' 'tcp6       0      0  *.5900                 *.*                    LISTEN' >"$FW_STATE/netstat"
-  [ "$(status_row)" = 'drifted daemon-last-exit:1,exposed-beyond-tailnet' ]
+  [ "$(status_row)" = 'drifted daemon-last-exit:1,listening-all-addresses' ]
 
   install_present
   FW_PRINT=fail

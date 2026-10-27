@@ -311,11 +311,13 @@ platforms = ["linux"]'
 @test "observation distinguishes present missing drifted exposed and unavailable" {
   [ "$(status_row)" = 'missing -' ]
   printf '%s\n' 'tcp LISTEN 0 511 0.0.0.0:3000 0.0.0.0:*' >"$FW_STATE/ss"
-  [ "$(status_row)" = 'missing exposed-beyond-tailnet' ]
+  [ "$(status_row)" = 'missing listening-all-addresses' ]
+  run "$RIG" show firewall:dev-server
+  [[ "$output" == *'Listener evidence: tcp:3000 seen listening on every address in this run; loaded rules unread (kernel-rules-unverified)'* ]] || false
   printf '%s\n' 'tcp LISTEN 0 511 [::]:3000 [::]:*' >"$FW_STATE/ss"
-  [ "$(status_row)" = 'missing exposed-beyond-tailnet' ]
+  [ "$(status_row)" = 'missing listening-all-addresses' ]
   printf '%s\n' 'udp UNCONN 0 0 *%eth0:3000 *:*' >"$FW_STATE/ss"
-  [ "$(status_row)" = 'missing exposed-beyond-tailnet' ]
+  [ "$(status_row)" = 'missing listening-all-addresses' ]
   printf '%s\n' 'tcp LISTEN 0 511 100.101.1.2:3000 0.0.0.0:*' 'tcp LISTEN 0 511 127.0.0.1:3000 0.0.0.0:*' \
     'tcp LISTEN 0 511 *%lo:3000 *:*' 'tcp LISTEN 0 511 0.0.0.0:30000 0.0.0.0:*' 'udp UNCONN 0 0 0.0.0.0:5353 *:*' \
     >"$FW_STATE/ss"
@@ -327,7 +329,7 @@ platforms = ["linux"]'
   [ "$(status_row)" = 'present kernel-rules-unverified' ]
 
   printf '# edited\n' >>"$RULES"
-  [ "$(status_row)" = 'drifted rules-changed,exposed-beyond-tailnet' ]
+  [ "$(status_row)" = 'drifted rules-changed,listening-all-addresses' ]
   rm "$FW_STATE/ss"
   [ "$(status_row)" = 'drifted rules-changed' ]
   install_present

@@ -441,7 +441,7 @@ rig_firewall_observe() {
   fi
   if [ -n "$exposed" ]; then
     [ "$reasons" != - ] || reasons=
-    reasons="$reasons${reasons:+,}exposed-beyond-tailnet"
+    reasons="$reasons${reasons:+,}listening-all-addresses"
   fi
   RIG_OBSERVATION_DETAIL=$reasons
 }
@@ -669,4 +669,12 @@ rig_explain_firewall() {
   rig_firewall_observe "$section" || return
   state=$RIG_OBSERVATION
   printf 'Observed state: %s (%s)\n' "$state" "$RIG_OBSERVATION_DETAIL"
+  rig_firewall_explain_listeners
+}
+
+# The listener row is this run's netstat or ss snapshot, not the loaded rules.
+rig_firewall_explain_listeners() {
+  [ -n "$RIG_FIREWALL_EXPOSED" ] || return 0
+  printf 'Listener evidence: %s seen listening on every address in this run; loaded rules unread (kernel-rules-unverified), so this is not proof of reachability.\n' \
+    "$RIG_FIREWALL_EXPOSED"
 }
