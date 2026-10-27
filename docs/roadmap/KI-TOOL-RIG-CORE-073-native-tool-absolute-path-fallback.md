@@ -56,7 +56,7 @@ Grounded at `4944b1b420140a6a44cc1bf3d75d57a98fe69c7d` on 27 October 2026. `rig_
 
 - `bats tests/` passes, including the new test under a `PATH` of `/usr/bin:/bin` alone.
 - `shellcheck` and `bash -n` over the modules and executable, `scripts/assemble-rig --check`, `scripts/benchmark-rig`, `scripts/smoke-native-providers`, `mandoc -T lint man/rig.1`, `git diff --check` and `ki repo audit --repo .` pass.
-- A status run with `RIG_LSOF_COMMAND` unset and `PATH=/usr/bin:/bin` finds `/usr/sbin/lsof` on macOS; `terra`'s scheduled health job is left to confirm on its next run, since its environment is not changed here.
+- A status run with `RIG_LSOF_COMMAND` unset and `PATH=/usr/bin:/bin` finds `/usr/sbin/lsof` on macOS: completed on `sol.local` on 27 October 2026; actual normal/minimal-PATH evidence is recorded below. `terra`'s scheduled health job is left to confirm on its next run, since its environment is not changed here.
 
 ## Dependencies / blocks
 
@@ -104,7 +104,10 @@ Adopted from triage to Now and delivered on 27 October 2026 under Kris's "Do the
 - `scripts/assemble-rig --check`, `scripts/benchmark-rig` (show 1s, show-all 2s, status 3s, all within budget), `scripts/smoke-native-providers` (npm, chezmoi, mas pass), `mandoc -T lint man/rig.1`, `git diff --check`: pass.
 - `ki repo audit --repo .`: FAIL=1 WARN=5, the one failure being SHELL-HOOK's reading of the untouched `.githooks/pre-commit` (it takes the hook's `quiet_audit` function as a non-check-only gate), present at baseline and not changed by this record.
 - Pre-commit hook (shellcheck, `bash -n`, mandoc lint, staged `ki-repo-tools` audit): ran on the commit.
-- Not run: a live `rig status` under a minimal `PATH` against the workstation.
+- Local macOS observation completed on `sol.local`, 27 October 2026 at 04:51–04:52 GMT, against unchanged assembled `bin/rig` at `00f688618b1a817931a8669b031d717b0c037e41`. The read-only path was checked first: status resolves the profile, skips unbound catalogue-only tools, observes selected ports, and reads history; the isolated profile declares no providers, installations or managed resources, and its private state directory contains no receipt or history.
+- Ran `main status --profile observation --json` from the sourced, unchanged executable in `/bin/bash` once with the inherited normal `PATH`, and once with `PATH=/usr/bin:/bin`. A shell DEBUG observer recorded only the selected native executable paths; no function or native tool was replaced. Each subprocess had stdin from `/dev/null`, a 30-second process-group timeout, private captures, and isolated HOME/config/data/state/cache paths. `RIG_LSOF_COMMAND`, `RIG_PS_COMMAND`, `RIG_NATIVE_TOOL_DIRS` and `RIG_PLATFORM` were absent, rather than set empty; the parent environment was preserved.
+- Both status captures identify macOS and report the same existing TCP listener on loopback port 3333, owner `tool:node`, as `present` with `listening:loopback;owner:node`. Both dispatched the installed `/usr/sbin/lsof -nP -iTCP -sTCP:LISTEN -Fpcn` and `/bin/ps -axo pid=,command=` exactly once. Under the minimal PATH, `command -v lsof` failed before the real fallback dispatched `/usr/sbin/lsof`. The minimal status exited 0; both JSON reports have `healthy=true`.
+- Harness accounting: an initial sourcing guard error stopped before status; the normal status then completed, but the harness assertion misread literal newline separators in its dispatch capture. That capture was parsed correctly without rerunning status. The normal status exit code was not separately retained before that assertion; its complete JSON and native dispatch evidence were retained. The minimal run recorded its exit code before checking predicates. Neither required status observation was repeated. No listener was created, provider invoked, setting changed, or remote endpoint contacted.
 
 ### Outstanding concerns
 
@@ -117,7 +120,7 @@ Goal met: `lsof` is found in its system directory when `PATH` stops at `/bin`, a
 
 ### Mini recap
 
-Delivered the shared native-tool discovery rule with its named missing-tool detail, test and documents; verified by the full gate; outstanding is a by-hand confirmation under a minimal `PATH` on a workstation. Learning route: none proposed.
+Delivered the shared native-tool discovery rule with its named missing-tool detail, test and documents; the existing full-gate evidence is retained, and the missing normal/minimal-PATH macOS observation is now complete on Sol using real native tools. The scheduled terra follow-up remains unobserved and proves no fallback when its PATH already includes `/usr/sbin`. Lifecycle remains Awaiting review for the separate acceptance actor. Learning route: none proposed.
 
 ## Discussion
 
