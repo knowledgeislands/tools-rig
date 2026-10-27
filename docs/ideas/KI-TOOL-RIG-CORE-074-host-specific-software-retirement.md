@@ -14,6 +14,8 @@ created_at: 2026-10-24T11:57:59Z
 updated_at: 2026-10-24T12:29:56Z
 ---
 
+> **Idea, not on the roadmap.** Keep a retired tool's identity in the catalogue so a later discovery on a host where it is not selected is reported as a removal candidate; needs host and profile identity settled first. Moved out of `docs/roadmap/` on 27 October 2026 under the roadmap sweep, with its record kept in full here so that it can return when Kris brings it back; it was `KI-TOOL-RIG-CORE-074`.
+
 # KI-TOOL-RIG-CORE-074: Host-specific Software Retirement
 
 ## Goal

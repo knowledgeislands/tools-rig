@@ -16,6 +16,8 @@ created_at: 2026-10-24T09:55:48Z
 updated_at: 2026-10-24T10:50:17Z
 ---
 
+> **Idea, not on the roadmap.** Let a declared tool record where on the machine it keeps its configuration and state, so Rig can say what each application changes and what to review when it is removed; carries the configuration scan idea. Moved out of `docs/roadmap/` on 27 October 2026 under the roadmap sweep, with its record kept in full here so that it can return when Kris brings it back; it was `KI-TOOL-RIG-CORE-072`.
+
 # KI-TOOL-RIG-CORE-072: Record Each Tool's Configuration Touch Points
 
 ## Goal

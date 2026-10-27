@@ -12,6 +12,8 @@ created_at: 2026-10-18T17:11:08Z
 updated_at: 2026-10-22T01:50:14Z
 ---
 
+> **Idea, not on the roadmap.** Let Rig manage an application's configuration as well as its installation, dividing cleanly with chezmoi; folded into the application configuration touch points idea. Moved out of `docs/roadmap/` on 27 October 2026 under the roadmap sweep, with its record kept in full here so that it can return when Kris brings it back; it was `KI-TOOL-RIG-CORE-064`.
+
 # Rig Manages App Configuration
 
 ## Goal
