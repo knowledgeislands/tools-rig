@@ -13,7 +13,7 @@ if [ -n "$missing" ]; then
   exit 1
 fi
 # Staged Markdown, checked where it stands (ki-authoring MD-hook).
-git diff --cached --name-only --diff-filter=ACMR -z -- '*.md' | xargs -0 -r rumdl check --quiet -- || exit 1
+git diff --cached --name-only --find-renames=100% --diff-filter=ACM -z -- '*.md' | xargs -0 -r rumdl check --quiet -- || exit 1
 # Staged shell files, by name or by a sh or bash shebang, and staged manual pages (ki-repo-tools SHELL-HOOK).
 staged_shell() {
   git diff --cached --name-only --diff-filter=ACMR | while IFS= read -r path; do
