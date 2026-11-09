@@ -1,5 +1,6 @@
 ---
 areas: { CLI: 27, CORE: 76, DIST: 12, MIG: 8 }
+work: ki.sop.tools
 ---
 
 # Roadmap issue ledger
