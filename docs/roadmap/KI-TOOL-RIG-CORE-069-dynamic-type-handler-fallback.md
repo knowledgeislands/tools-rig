@@ -13,7 +13,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-19T22:30:17Z
-updated_at: 2026-10-30T00:28:30Z
+updated_at: 2026-11-14T03:05:00Z
 ---
 
 # Set a Default Application for an Extension With No Declared Content Type
@@ -169,3 +169,7 @@ Planning on 30 October 2026 is bounded by GO-PLAN a) under ORCA-HOST: no live pr
 Adoption: Kris's OVERNIGHT decision of 20 October 2026 at 00:28 BST ([mac-studio-setup decisions log](/Users/krisbrown/workspaces/knowledge-islands/ki-principal/+/_WORK/ki.mac-studio-setup/decisions.md)) authorised acting on the [triage review](/Users/krisbrown/.local/state/ki/agents/mac-studio-setup/triage-review.report.md)'s high-confidence recommendations: adopted into Now, confidence high, for diagnosis and planning, because a recorded assignment failure exposes a bounded portable handler gap whose exact cause and working fallback remain unproved. Diagnosis stays isolated: no live handler change, `duti` call or apply on `sol` or `terra` is authorised.
 
 RIG-069-PROBE, from household-sol's offload of the [Mac Studio setup handover](/Users/krisbrown/kis/knowledge-islands/ki-principal/+/_WORK/ki.prj.mac-studio-setup/setup/handover.md) on 3 November 2026: the attended sol probe above is still owed and this record is still draft. On 2 November, and again at 00:59 GMT on 3 November, sol's `rig doctor` reports `default-application.toml` drifted, VS Code where Zed is declared. household-sol runs the probe with Kris at sol; the tools-rig owner then decides whether the record is Ready.
+
+### Terra, 13 November 2026
+
+Terra's housekeeper, from its HK-TERRA-4 level on 13 November 2026 (macOS 27.0.1, Rig `83bd2ae`), answers the first and third unproved points for `toml`. `rig apply --target default-application:toml` failed: `LSSetDefaultRoleHandlerForContentType` returned -50 for the extension, and the apply exited 1. Setting the handler through `NSWorkspace` `setDefaultApplicationAtURL:toOpenContentType:completionHandler:` worked, after which the same scoped `rig apply` reconciled and `rig doctor` reported no findings. So the -50 is not specific to sol, and the `NSWorkspace` route this record names as the candidate fallback works for a dynamic type on macOS 27.0.1. Sol has no handler drifted on 14 November, so it has nothing to probe now; a new or drifted extension handler on either Mac will hit the -50 until the fallback lands.
