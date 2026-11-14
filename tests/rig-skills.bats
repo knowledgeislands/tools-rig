@@ -146,7 +146,7 @@ write_skill_config() {
   write_skill_config
   sed \
     -e 's/authority = "skills-cli"/authority = "ki"/' \
-    -e 's#source = "JuliusBrussee/caveman"#source = "knowledgeislands/ki-agentic-harness:caveman"#' \
+    -e 's#source = "JuliusBrussee/caveman"#source = "knowledgeislands/ki-agent-backpack:caveman"#' \
     "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME/ki.toml"
   mv "$CONFIG_HOME/ki.toml" "$CONFIG_HOME/rig.toml"
   printf '%s\n' '#!/usr/bin/env bash' 'printf invoked >"$RIG_TEST_KI_LOG"' >"$BIN/ki"
