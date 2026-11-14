@@ -38,4 +38,4 @@ None in this repository. The first consumer is PERSONAL-DOTFILES-UE-101 in the d
 
 ## Discussion
 
-Captured from the 30 October Headroom incident on `sol`; no source has been read for the restart path yet. Source revision at capture: `9297c9caeb23e77c1d6a02eafc38361104de8d5f`. Untriaged: adopt it under `ki-next` and plan it under `ki-plan`. The open design question is whether restart is the default for a linked running service or an opt-in per service.
+Captured from the 30 October Headroom incident on `sol`; no source has been read for the restart path yet. Source revision at capture: `9297c9caeb23e77c1d6a02eafc38361104de8d5f`. Untriaged: adopt it under `ki-work next` and plan it under `ki-work plan`. The open design question is whether restart is the default for a linked running service or an opt-in per service.

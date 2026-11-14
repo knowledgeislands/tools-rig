@@ -38,4 +38,4 @@ None in this repository. PERSONAL-DOTFILES-UE-115 waits on this to declare sol's
 
 ## Discussion
 
-Untriaged: adopt under `ki-next` and plan under `ki-plan`. Planning settles which `pmset` keys to allow (at least `displaysleep`, `sleep` and `disksleep`), how a power source is named in the declaration, and whether the host scope is a field on the existing setting table or a separate provider. Source revision at capture: `9297c9caeb23e77c1d6a02eafc38361104de8d5f`.
+Untriaged: adopt under `ki-work next` and plan under `ki-work plan`. Planning settles which `pmset` keys to allow (at least `displaysleep`, `sleep` and `disksleep`), how a power source is named in the declaration, and whether the host scope is a field on the existing setting table or a separate provider. Source revision at capture: `9297c9caeb23e77c1d6a02eafc38361104de8d5f`.
