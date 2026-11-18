@@ -3989,7 +3989,11 @@ write_launchd_fixture() {
     'shift' \
     'case "$verb" in' \
     '  print)' \
-    '    grep -Fxq "$1" "$RIG_LAUNCHD_STATE" && { printf "loaded = true\n"; exit 0; }' \
+    '    if grep -Fxq "$1" "$RIG_LAUNCHD_STATE"; then' \
+    '      printf "loaded = true\n"' \
+    '      [ -z "${RIG_LAUNCHD_SERVICE_PID:-}" ] || printf "\tpid = %s\n" "$RIG_LAUNCHD_SERVICE_PID"' \
+    '      exit 0' \
+    '    fi' \
     '    if [ -n "${RIG_LAUNCHD_LINGER:-}" ] && [ -s "$RIG_LAUNCHD_LINGER" ] && grep -Fxq "$1" "$RIG_LAUNCHD_LINGER"; then' \
     '      grep -Fxv "$1" "$RIG_LAUNCHD_LINGER" >"$RIG_LAUNCHD_LINGER.next" || :' \
     '      mv "$RIG_LAUNCHD_LINGER.next" "$RIG_LAUNCHD_LINGER"' \
@@ -4245,6 +4249,8 @@ working-directory = "~/workspaces/site"|' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME
 }
 
 @test "built-in launchd bootstraps a replaced service only once launchd releases it" {
+  local plist
+
   write_launchd_fixture
   LAUNCHD_LINGER=$BATS_TEST_TMPDIR/launchd-linger-$BATS_TEST_NUMBER
   : >"$LAUNCHD_LINGER"
@@ -4259,7 +4265,11 @@ working-directory = "~/workspaces/site"|' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME
   # launchctl bootout returns while a service that takes a moment to exit is
   # still in the domain, and a bootstrap issued in that window fails with
   # status 5. Replacing the plist of a loaded service must therefore leave it
-  # loaded, not booted out and abandoned.
+  # loaded, not booted out and abandoned. Each plist drifts first, because an
+  # unchanged loaded resource is left alone.
+  for plist in "$TEST_HOME"/Library/LaunchAgents/example.test.*.plist; do
+    printf '\n<!-- drift -->\n' >>"$plist"
+  done
   : >"$LAUNCHD_LOG"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
     RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RIG_PLATFORM=macos \
@@ -4274,6 +4284,9 @@ working-directory = "~/workspaces/site"|' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME
 
   # The wait is bounded: a service that never leaves the domain is a failure
   # naming itself, not an apply that hangs.
+  for plist in "$TEST_HOME"/Library/LaunchAgents/example.test.*.plist; do
+    printf '\n<!-- drift -->\n' >>"$plist"
+  done
   : >"$LAUNCHD_LOG"
   run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
     RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RIG_PLATFORM=macos \
@@ -4285,6 +4298,96 @@ working-directory = "~/workspaces/site"|' "$CONFIG_HOME/rig.toml" >"$CONFIG_HOME
   output_has_table_row $'daemon\tservice\tlaunchd\tfailed\texit:1\tdeclaration'
   output_has_table_row $'morning\tscheduled-job\tlaunchd\tfailed\texit:1\tdeclaration'
   [ "$(grep -c '^bootstrap ' "$LAUNCHD_LOG")" -eq 0 ]
+}
+
+@test "built-in launchd leaves an unchanged loaded resource alone" {
+  local daemon_plist
+
+  write_launchd_fixture
+  daemon_plist=$TEST_HOME/Library/LaunchAgents/example.test.daemon.plist
+  launchd_apply() {
+    run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
+      RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RIG_PLATFORM=macos \
+      RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
+      RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
+      "$RIG" apply --scope resources
+  }
+
+  launchd_apply
+  [ "$status" -eq 0 ]
+  [ "$(grep -c '^bootstrap ' "$LAUNCHD_LOG")" -eq 3 ]
+
+  # A full apply over an estate that already matches its declarations must not
+  # restart a single job: the plist is byte-identical and each job is loaded.
+  : >"$LAUNCHD_LOG"
+  launchd_apply
+  [ "$status" -eq 0 ]
+  output_has_table_row $'daemon\tservice\tlaunchd\tcompleted\treconciled:example.test.daemon\tdeclaration'
+  ! grep -Eq '^(bootout|bootstrap) ' "$LAUNCHD_LOG" || false
+  [ "$(grep -c '^gui/test/' "$LAUNCHD_STATE")" -eq 3 ]
+
+  # A drifted load state alone is reloaded without a bootout or a rewrite.
+  grep -Fxv gui/test/example.test.daemon "$LAUNCHD_STATE" >"$LAUNCHD_STATE.next" || :
+  mv "$LAUNCHD_STATE.next" "$LAUNCHD_STATE"
+  : >"$LAUNCHD_LOG"
+  launchd_apply
+  [ "$status" -eq 0 ]
+  [ "$(grep -c '^bootstrap ' "$LAUNCHD_LOG")" -eq 1 ]
+  grep -Fq "bootstrap gui/test $daemon_plist" "$LAUNCHD_LOG"
+  ! grep -q '^bootout ' "$LAUNCHD_LOG" || false
+
+  # A drifted plist reloads only its own job.
+  printf '\n<!-- drift -->\n' >>"$daemon_plist"
+  : >"$LAUNCHD_LOG"
+  launchd_apply
+  [ "$status" -eq 0 ]
+  [ "$(grep -c '^bootout ' "$LAUNCHD_LOG")" -eq 1 ]
+  grep -Fxq 'bootout gui/test/example.test.daemon' "$LAUNCHD_LOG"
+  [ "$(grep -c '^bootstrap ' "$LAUNCHD_LOG")" -eq 1 ]
+  [[ "$(<"$daemon_plist")" != *'<!-- drift -->'* ]] || false
+}
+
+@test "built-in launchd refuses to unload the job that hosts rig" {
+  local daemon_plist
+
+  write_launchd_fixture
+  daemon_plist=$TEST_HOME/Library/LaunchAgents/example.test.daemon.plist
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
+    RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RIG_PLATFORM=macos \
+    RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
+    RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
+    "$RIG" apply --scope resources
+  [ "$status" -eq 0 ]
+
+  # Every loaded job reports this test's own process, an ancestor of the rig it
+  # runs, as the terminal server behind an Orca shell would be. Only the
+  # drifted daemon needs a reload, and Rig must refuse it rather than boot out
+  # the process it runs under.
+  printf '\n<!-- drift -->\n' >>"$daemon_plist"
+  : >"$LAUNCHD_LOG"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
+    RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RIG_PLATFORM=macos \
+    RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
+    RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
+    RIG_LAUNCHD_SERVICE_PID=$$ "$RIG" apply --scope resources
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"rig: launchd: refusing to unload example.test.daemon: its process $$ hosts this rig; run rig from a terminal outside it"* ]] || false
+  output_has_table_row $'daemon\tservice\tlaunchd\tfailed\texit:1\tdeclaration'
+  output_has_table_row $'morning\tscheduled-job\tlaunchd\tcompleted\treconciled:example.test.morning\tdeclaration'
+  ! grep -Eq '^(bootout|bootstrap) ' "$LAUNCHD_LOG" || false
+  grep -Fxq gui/test/example.test.daemon "$LAUNCHD_STATE"
+  [[ "$(<"$daemon_plist")" == *'<!-- drift -->'* ]] || false
+
+  # A job whose process is not in rig's ancestry is reloaded as before.
+  : >"$LAUNCHD_LOG"
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" \
+    RIG_STATE_HOME="$BATS_TEST_TMPDIR/state" RIG_PLATFORM=macos \
+    RIG_LAUNCHCTL="$LAUNCHD_COMMAND" RIG_LAUNCHD_DOMAIN=gui/test \
+    RIG_LAUNCHD_LOG="$LAUNCHD_LOG" RIG_LAUNCHD_STATE="$LAUNCHD_STATE" \
+    RIG_LAUNCHD_SERVICE_PID=999999999 "$RIG" apply --scope resources
+  [ "$status" -eq 0 ]
+  grep -Fxq 'bootout gui/test/example.test.daemon' "$LAUNCHD_LOG"
+  [ "$(grep -c '^bootstrap ' "$LAUNCHD_LOG")" -eq 1 ]
 }
 
 @test "built-in launchd rejects unsafe plist targets before invocation" {

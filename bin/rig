@@ -4800,17 +4800,29 @@ rig_launchd_plist_path() {
 }
 
 rig_launchd_load_state() {
-  local label command domain output native_status
+  local label command domain output native_status line
 
   label=$1
   rig_launchd_command
   command=$RIG_VALUE
   rig_launchd_domain || return
   domain=$RIG_VALUE
+  RIG_LAUNCHD_PID=
   output=$("$command" print "$domain/$label" 2>&1)
   native_status=$?
   if [ "$native_status" -eq 0 ]; then
     RIG_LAUNCHD_LOAD_STATE=loaded
+    # The first 'pid = N' line names the running process of a loaded job; a
+    # job that is loaded but not running has none.
+    while IFS= read -r line; do
+      line=${line#"${line%%[![:space:]]*}"}
+      case "$line" in
+        'pid = '*) RIG_LAUNCHD_PID=${line#pid = }; break ;;
+      esac
+    done <<< "$output"
+    case "$RIG_LAUNCHD_PID" in
+      *[!0-9]*) RIG_LAUNCHD_PID= ;;
+    esac
     return 0
   fi
   case "$output" in
@@ -4823,12 +4835,47 @@ rig_launchd_load_state() {
   return 1
 }
 
+# Succeed when PID is this Rig process or one of its ancestors. Without ps the
+# chain cannot be walked, and the check finds no ancestor.
+rig_process_is_caller_ancestor() {
+  local target pid command parent steps
+
+  target=$1
+  case "$target" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+  rig_ps_command || return 1
+  command=$RIG_VALUE
+  pid=$$
+  steps=0
+  while [ "$steps" -lt 128 ]; do
+    case "$pid" in
+      ''|*[!0-9]*) return 1 ;;
+    esac
+    [ "$pid" -gt 1 ] || return 1
+    [ "$pid" != "$target" ] || return 0
+    parent=$("$command" -o ppid= -p "$pid" 2>/dev/null) || return 1
+    pid=${parent//[[:space:]]/}
+    steps=$((steps + 1))
+  done
+  return 1
+}
+
 rig_launchd_unload() {
   local label command domain waited timeout
 
   label=$1
   rig_launchd_load_state "$label" || return
   [ "$RIG_LAUNCHD_LOAD_STATE" != absent ] || return 0
+  # Booting out the job that hosts this process, such as the server behind the
+  # terminal Rig runs in, kills Rig before it loads the replacement and leaves
+  # the job unloaded. Refuse it, and say how to proceed.
+  if [ -n "$RIG_LAUNCHD_PID" ] && rig_process_is_caller_ancestor "$RIG_LAUNCHD_PID"; then
+    printf 'rig: launchd: refusing to unload %s: its process %s hosts this rig; run rig from a terminal outside it\n' \
+      "$label" "$RIG_LAUNCHD_PID" >&2
+    RIG_OBSERVATION_DETAIL=hosts-caller
+    return 1
+  fi
   rig_launchd_command
   command=$RIG_VALUE
   rig_launchd_domain || return
@@ -4937,6 +4984,11 @@ rig_launchd_apply_resource() {
   local section_name label target temporary command domain native_status
 
   section_name=$1
+  # A resource whose installed plist matches the rendered one byte for byte
+  # and whose load state is the declared one is already reconciled; reloading
+  # it would only restart a healthy job.
+  rig_launchd_observe_resource "$section_name" || return
+  [ "$RIG_OBSERVATION" != present ] || return 0
   rig_get_value "$section_name" locator || return 2
   label=$RIG_VALUE
   rig_launchd_plist_path "$label" || return

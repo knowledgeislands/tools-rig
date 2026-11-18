@@ -56,6 +56,8 @@ profiles = ["workstation"]
 
 The provider field identifies native authority. Rig already knows how supported launchd resources are observed, rendered, loaded, stopped, and retired.
 
+An apply reloads a launch agent only when it differs: a plist that already matches the rendered one, with the agent loaded or unloaded as declared, is left alone, so a full `rig apply` does not restart healthy services. Rig also refuses to unload the agent that hosts it, such as the server behind the terminal you run it in, and fails that resource with a message; run that apply from a terminal outside the agent.
+
 `tool = "example"` says that this service configures the catalogue tool `example`. Settings, scheduled jobs, firewalls and default applications take the same field. The tool is also a prerequisite, exactly as `requires = ["example"]` would make it, so selecting the resource selects the tool. Use `requires` alone when a resource only needs a tool without configuring it, as a Dock layout needs `dockutil`.
 
 `rig show TOOL` then lists the resource under `Configured by`, and `rig show --format json` reports it in that tool's `configured_by` array for each profile that selects the resource. The tool table gains a `CONFIGURED` column when the profile configures any selected tool.

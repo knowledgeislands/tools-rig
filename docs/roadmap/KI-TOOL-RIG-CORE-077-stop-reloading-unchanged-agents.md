@@ -9,12 +9,12 @@ priority: high
 size: m
 assignee: owner
 horizon: now
-status: in-progress
+status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: c552d7f2fcb83194a5c92776a24898e37902fcda
 created_at: 2026-11-18T05:00:00Z
-updated_at: 2026-11-18T05:30:00Z
+updated_at: 2026-11-18T06:00:00Z
 ---
 
 # KI-TOOL-RIG-CORE-077: Stop reloading unchanged agents
@@ -52,11 +52,11 @@ Interim rule until fixes 1 and 2 are released and installed: housekeepers use on
 
 ## Steps
 
-- [ ] Observe first in `rig_launchd_apply_resource` and return when the resource is `present`.
-- [ ] Read the job's `pid` in `rig_launchd_load_state`, walk Rig's ancestry with `ps`, and refuse in `rig_launchd_unload` when the job's process is in it, with a message naming the label and process.
-- [ ] Teach the fixture to report a `pid`; add tests for the no-op, a load-state-only reload, a single drifted plist, the refusal and a non-ancestor reload; keep the release-wait test exercising a replacement.
-- [ ] Update RIG-ORCH-023, the changelog and the operational-resources guide; reassemble `bin/rig`.
-- [ ] Run the complete gate in [Develop Rig](../guides/developer/README.md#verify-the-repository).
+- [x] Observe first in `rig_launchd_apply_resource` and return when the resource is `present`.
+- [x] Read the job's `pid` in `rig_launchd_load_state`, walk Rig's ancestry with `ps`, and refuse in `rig_launchd_unload` when the job's process is in it, with a message naming the label and process.
+- [x] Teach the fixture to report a `pid`; add tests for the no-op, a load-state-only reload, a single drifted plist, the refusal and a non-ancestor reload; keep the release-wait test exercising a replacement.
+- [x] Update RIG-ORCH-023, the changelog and the operational-resources guide; reassemble `bin/rig`.
+- [x] Run the complete gate in [Develop Rig](../guides/developer/README.md#verify-the-repository).
 
 ## Files touched
 
@@ -90,7 +90,41 @@ The operational-resources user guide says when an apply reloads a launch agent a
 
 KI-TOOL-RIG-CORE-078 carries fix 3.
 
+## Review
+
+### Delivered
+
+Fixes 1 and 2 within the Boundary, against baseline `c552d7f2fcb83194a5c92776a24898e37902fcda`: a launchd apply observes first and changes nothing when the installed plist is byte-identical to the rendered one and the load state is the declared one; a job whose process is the running `rig` or one of its ancestors is never unloaded, and its resource fails with `rig: launchd: refusing to unload LABEL: its process PID hosts this rig; run rig from a terminal outside it`. Fix 3 is excluded and carried by KI-TOOL-RIG-CORE-078. Nothing was applied, released or installed on a live machine.
+
+### Change Summary
+
+- `src/rig/20-orchestration.bash`: `rig_launchd_apply_resource` returns early on a `present` observation; `rig_launchd_load_state` reads the job's `pid` from `launchctl print`; the new `rig_process_is_caller_ancestor` walks Rig's ancestry with `ps -o ppid=` from `$$`; `rig_launchd_unload` refuses a job in that ancestry, which also covers retirement. `bin/rig` reassembled.
+- `tests/rig.bats`: the `launchctl` fixture reports `pid = N` when `RIG_LAUNCHD_SERVICE_PID` is set; two new tests; the release-wait test now drifts each plist first, since an unchanged loaded resource is no longer reloaded.
+- `docs/specs/orchestration.md` (RIG-ORCH-023), `CHANGELOG.md`, `docs/guides/user/operational-resources.md`.
+- Decision: the check is generic, by process ancestry, rather than naming Orca's label, because the executable carries no personal label. Without `ps` the walk finds no ancestor and the unload proceeds as before; macOS always has `/bin/ps`.
+
+### Verification
+
+- The complete gate in Develop Rig: ShellCheck, `bash -n`, `scripts/assemble-rig --check`, `scripts/benchmark-rig`, `scripts/smoke-native-providers`, `mandoc -T lint man/rig.1` and `git diff --check` pass; `bats tests/ </dev/null` passes 650 of 650.
+- The two new tests fail against the baseline executable and pass after the change; the three existing launchd tests pass on both.
+- `ki repo audit --repo .` reports no finding for this record; its one failure, FILES-6 on `.gitignore`, predates the change.
+
+### Outstanding concerns
+
+- The ancestry check catches a terminal whose process tree hangs off the job, as an agent session under Orca's server does on `sol`; a helper that daemonised away from the job's tree would not be caught, though fix 1 already spares it unless its plist changed.
+- The interim rule stands until a release carrying this change is installed on `sol` and `terra`; releasing is outside this record.
+- Fix 3 is KI-TOOL-RIG-CORE-078.
+
+### Post-change review
+
+The goal is met for both fixes within the Boundary. Regression risk is low: a drifted plist or load state follows the old path unchanged, and a no-op still reports `completed reconciled:LABEL`, so output contracts hold. A loaded job that should be reloaded for a reason the observation does not see, such as a changed program binary behind an unchanged plist, is no longer restarted by apply; that is the intended contract, and `rig upgrade`'s restart question is KI-TOOL-RIG-CORE-075. Ready for acceptance.
+
+### Mini recap
+
+A full `rig apply` no longer restarts healthy launch agents, and never unloads the agent hosting the running `rig`, both proved with stubbed `launchctl` and the full gate green. Learning route proposed, not promoted: the dotfiles repository's interim rule can lift once a release with this change is installed.
+
 ## Discussion
 
 - 18 November 2026, Kitteth (the Cairn summit's guardian), under CASCADE-DOWN while no ki.tools session runs: captured from Hob Sol's report and Kris's words above. Fixes 1 and 2 are small and testable through the stateful `launchctl` fixture in `tests/rig.bats`; fix 3 touches the apply-history transaction and is left for separate shaping.
 - 18 November 2026, Kitteth: adopted for immediate delivery of fixes 1 and 2 on the overnight brief's authority, without a live apply; fix 3 split to KI-TOOL-RIG-CORE-078 so this record's boundary matches what lands.
+- 18 November 2026, Kitteth: fixes 1 and 2 delivered and verified without a live apply; awaiting Kris's review.
