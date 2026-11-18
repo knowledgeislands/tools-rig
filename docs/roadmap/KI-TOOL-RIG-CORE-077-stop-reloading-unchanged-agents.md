@@ -13,8 +13,8 @@ status: awaiting-review
 blocks: []
 blocked_by: []
 baseline_ref: c552d7f2fcb83194a5c92776a24898e37902fcda
-created_at: 2026-11-18T05:00:00Z
-updated_at: 2026-11-18T06:00:00Z
+created_at: 2026-11-18T04:15:23Z
+updated_at: 2026-11-18T04:27:12Z
 ---
 
 # KI-TOOL-RIG-CORE-077: Stop reloading unchanged agents

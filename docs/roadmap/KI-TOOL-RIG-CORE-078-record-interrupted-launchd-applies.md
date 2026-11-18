@@ -9,8 +9,8 @@ status: triage
 blocks: []
 blocked_by: []
 baseline_ref: null
-created_at: 2026-11-18T05:30:00Z
-updated_at: 2026-11-18T05:30:00Z
+created_at: 2026-11-18T04:19:19Z
+updated_at: 2026-11-18T04:19:19Z
 ---
 
 # KI-TOOL-RIG-CORE-078: Record interrupted launchd applies
