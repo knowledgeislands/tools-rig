@@ -2,22 +2,26 @@
 id: KI-TOOL-RIG-CORE-077
 area: CORE
 title: Stop reloading unchanged agents
+kind: deliver
+purpose: corrective
+component: orchestration
 priority: high
 size: m
 assignee: owner
-status: triage
+horizon: now
+status: in-progress
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: c552d7f2fcb83194a5c92776a24898e37902fcda
 created_at: 2026-11-18T05:00:00Z
-updated_at: 2026-11-18T05:00:00Z
+updated_at: 2026-11-18T05:30:00Z
 ---
 
 # KI-TOOL-RIG-CORE-077: Stop reloading unchanged agents
 
 ## Goal
 
-A full `rig apply --scope resources` leaves a launch agent alone when its rendered plist and its load state already match the declaration, never boots out the launch agent that hosts the running `rig`, and leaves a record behind when a launchd apply is interrupted.
+A full `rig apply --scope resources` leaves a launch agent alone when its rendered plist and its load state already match the declaration, and never boots out the launch agent that hosts the running `rig`.
 
 ## Context
 
@@ -35,13 +39,58 @@ The three fixes, in order:
 2. **Never boot out the service that hosts the caller.** When the launch agent to unload is the running `rig`'s own process or one of its ancestors, refuse with a named failure rather than killing the apply halfway.
 3. **Record a launchd apply as started before it acts,** so an interrupted one leaves a row that `rig doctor` can report.
 
-Interim rule until fixes 1 and 2 land: housekeepers use only targeted `rig apply --scope resources --target kind:id` runs that leave `service:orca-serve` alone, and no full `rig apply` runs from an Orca terminal.
+Interim rule until fixes 1 and 2 are released and installed: housekeepers use only targeted `rig apply --scope resources --target kind:id` runs that leave `service:orca-serve` alone, and no full `rig apply` runs from an Orca terminal.
 
 ## Boundary
 
-- **In:** the three fixes above in the built-in launchd adapter and apply history; the RIG-ORCH-023 specification; isolated Bats coverage with `launchctl` and `ps` stubbed.
-- **Out:** a live apply on `sol` or `terra` during delivery; Orca's own updater; the hourly load-state check and reload, which the dotfiles repository owns; any personal label in the executable.
+- **In:** fixes 1 and 2 in the built-in launchd adapter; the RIG-ORCH-023 specification; the changelog and the operational-resources guide; isolated Bats coverage with `launchctl` stubbed.
+- **Out:** fix 3, which touches the apply-history transaction and is KI-TOOL-RIG-CORE-078; a live apply on `sol` or `terra` during delivery; a release or install of Rig; Orca's own updater; the hourly load-state check and reload, which the dotfiles repository owns; any personal label in the executable.
+
+## Current state
+
+`rig_launchd_apply_resource` renders, unloads, moves and bootstraps unconditionally. `rig_launchd_observe_resource` already compares the rendered plist byte for byte and the load state with the declared one, so fix 1 can reuse it. `rig_launchd_load_state` discards `launchctl print` output, so nothing reads the job's process. `tests/rig.bats` has a stateful `launchctl` fixture, `write_launchd_fixture`, that records every call and keeps a load-state file, so both fixes can be proved without touching a real launchd domain.
+
+## Steps
+
+- [ ] Observe first in `rig_launchd_apply_resource` and return when the resource is `present`.
+- [ ] Read the job's `pid` in `rig_launchd_load_state`, walk Rig's ancestry with `ps`, and refuse in `rig_launchd_unload` when the job's process is in it, with a message naming the label and process.
+- [ ] Teach the fixture to report a `pid`; add tests for the no-op, a load-state-only reload, a single drifted plist, the refusal and a non-ancestor reload; keep the release-wait test exercising a replacement.
+- [ ] Update RIG-ORCH-023, the changelog and the operational-resources guide; reassemble `bin/rig`.
+- [ ] Run the complete gate in [Develop Rig](../guides/developer/README.md#verify-the-repository).
+
+## Files touched
+
+- `src/rig/20-orchestration.bash` and the assembled `bin/rig`.
+- `tests/rig.bats`.
+- `docs/specs/orchestration.md`, `CHANGELOG.md`, `docs/guides/user/operational-resources.md`.
+
+## Verify
+
+`bats tests/ </dev/null` passes, including `built-in launchd leaves an unchanged loaded resource alone` and `built-in launchd refuses to unload the job that hosts rig`, with the rest of the gate in Develop Rig.
+
+## Dependencies / blocks
+
+None in this repository. The dotfiles repository's hourly load-state check and reload wait on fix 1 being released and installed on `sol`; that need is handed over along the work tree, not recorded here.
+
+## Documentation impact
+
+### Decision Records
+
+None: the change restores the declared contract rather than choosing between designs.
+
+### Specifications
+
+RIG-ORCH-023 gains the no-op and the hosting-caller refusal, with their evidence.
+
+### Guides
+
+The operational-resources user guide says when an apply reloads a launch agent and what the refusal means.
+
+### Roadmap
+
+KI-TOOL-RIG-CORE-078 carries fix 3.
 
 ## Discussion
 
 - 18 November 2026, Kitteth (the Cairn summit's guardian), under CASCADE-DOWN while no ki.tools session runs: captured from Hob Sol's report and Kris's words above. Fixes 1 and 2 are small and testable through the stateful `launchctl` fixture in `tests/rig.bats`; fix 3 touches the apply-history transaction and is left for separate shaping.
+- 18 November 2026, Kitteth: adopted for immediate delivery of fixes 1 and 2 on the overnight brief's authority, without a live apply; fix 3 split to KI-TOOL-RIG-CORE-078 so this record's boundary matches what lands.
