@@ -5,15 +5,14 @@ title: Handler read-back after confirmation
 purpose: corrective
 theme: rig
 kind: deliver
-status: awaiting-review
-horizon: now
+status: done
 priority: medium
 size: s
 blocks: []
 blocked_by: []
 baseline_ref: 5d2472f5898ef9cc3b5813fbc2780b4171ee49d9
 created_at: 2026-10-23T06:43:00Z
-updated_at: 2026-10-27T02:55:00Z
+updated_at: 2026-11-22T11:30:00Z
 ---
 
 # KI-TOOL-RIG-CORE-070: Read Back a Default Handler Only After macOS Confirms It
@@ -111,6 +110,7 @@ Adopted from triage to Now and delivered on 27 October 2026 under Kris's "Do the
 - A declined prompt and an unanswered one are indistinguishable by observation, since both leave the previous handler in place; the message says so rather than guessing, and the budget is the only bound on a decline.
 - Attended is read from standard input being a terminal; a run piped from a terminal session gets no wait unless it sets `RIG_HANDLER_CONFIRMATION_TIMEOUT`.
 - The prompt is characterised on `terra` only; `sol` is left to Kris's attended apply.
+- At acceptance, 22 November 2026: `RIG_HANDLER_CONFIRMATION_TIMEOUT` and `RIG_HANDLER_CONFIRMATION_INTERVAL` are not checked to be whole numbers, so `2m` or `1.5` makes an attended apply poll until interrupted (blind review, 18 November; reproduced in the review brief). That fix and a first attended check against a real prompt are KI-TOOL-RIG-CORE-079.
 
 ### Post-change review
 
@@ -119,6 +119,10 @@ Goal met: an accepted prompt is recorded as applied on the run it is accepted, a
 ### Mini recap
 
 Delivered the bounded confirmation wait with its distinct outcomes, fixture behaviours, tests and documents; verified by the full gate; outstanding is the decline and no-answer ambiguity and an attended apply on `sol`. Learning route: none proposed.
+
+## Done
+
+Accepted 2026-11-22 by Kris Brown on the review packet above, on Orca item 153: "Accept, with the follow-up", ACCEPT-THREE a: accept this record, with the timeout validation and a real-prompt check as the follow-up KI-TOOL-RIG-CORE-079. Recorded in the Cairn store's ki.summit change document `work/ki/ki.summit/20-ki-sop-main-legacy.change.md`, section 4.2, at `512c04e5`. Closed under `ki-work accept` by a Loreward background run.
 
 ## Discussion
 
