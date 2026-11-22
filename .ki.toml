@@ -98,9 +98,3 @@ CLI = "Command-line interface"
 CORE = "Core engine"
 DIST = "Releases and distribution"
 MIG = "Migration from chezmoi"
-
-# -----------------------------------------------------------------------------
-# Relationships
-# -----------------------------------------------------------------------------
-
-[skills.ki-trades]
