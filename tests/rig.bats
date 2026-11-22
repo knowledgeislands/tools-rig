@@ -4977,7 +4977,7 @@ ports = ["required-api", "on-demand-api", "allocated-api", "free-allocation"]' \
   mkdir -p "$minimal_path"
   for tool in /usr/bin/* /bin/*; do
     name=${tool##*/}
-    [ "$name" = lsof ] || [ -e "$minimal_path/$name" ] || ln -s "$tool" "$minimal_path/$name"
+    [ "$name" = lsof ] || [ -L "$minimal_path/$name" ] || ln -s "$tool" "$minimal_path/$name"
   done
   cp "$PORT_LSOF" "$fallback_dir/lsof"
   listener_output=$'p101\ncalpha\nn127.0.0.1:4101 (LISTEN)\n'
