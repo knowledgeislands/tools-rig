@@ -4,7 +4,7 @@ Use this guide to review an existing Rig setup before changing configuration or 
 
 ## Move from v0.7.0 to v0.8.0
 
-The v0.8.0 candidate is unpublished. These notes describe its changes since v0.7.0; the sections below also cover older transitions. No command is removed, and this range introduces no mandatory configuration or persisted-state migration.
+These notes describe v0.8.0's changes since v0.7.0; the sections below also cover older transitions. No command is removed, and this range introduces no mandatory configuration or persisted-state migration.
 
 ### Review scripts and query consumers
 

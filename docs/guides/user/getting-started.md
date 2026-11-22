@@ -38,7 +38,7 @@ Profiles select the active items that belong on a machine or in a role. The cata
 
 ## Install the public preview
 
-This checkout is the unpublished `v0.8.0` candidate; the latest published immutable release is `v0.7.0`. The candidate installer below becomes available only after publication:
+Install the latest immutable release, currently `v0.8.0`:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/knowledgeislands/tools-rig/v0.8.0/install.sh | bash -s -- v0.8.0
@@ -53,9 +53,9 @@ rig --version
 man rig
 ```
 
-After publication, the released command reports `rig 0.8.0`. Review the [migration notes](migrating-command-surface.md#move-from-v070-to-v080) for an existing setup.
+The released command reports `rig 0.8.0`. Review the [migration notes](migrating-command-surface.md#move-from-v070-to-v080) for an existing setup.
 
-For a local checkout now, use `./install.sh --link`. It links the executable and manual so subsequent repository changes are visible without reinstalling. The current checkout reports `rig 0.8.0` and exercises the candidate before publication.
+For a local checkout now, use `./install.sh --link`. It links the executable and manual so subsequent repository changes are visible without reinstalling. The current checkout reports `rig 0.8.0+dev`; the marker means development after the latest immutable release.
 
 ## Create a small catalogue
 
