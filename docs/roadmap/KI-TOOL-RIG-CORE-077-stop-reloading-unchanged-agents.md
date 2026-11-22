@@ -8,13 +8,12 @@ component: orchestration
 priority: high
 size: m
 assignee: owner
-horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: c552d7f2fcb83194a5c92776a24898e37902fcda
 created_at: 2026-11-18T04:15:23Z
-updated_at: 2026-11-18T04:27:12Z
+updated_at: 2026-11-22T03:08:46Z
 ---
 
 # KI-TOOL-RIG-CORE-077: Stop reloading unchanged agents
@@ -122,6 +121,10 @@ The goal is met for both fixes within the Boundary. Regression risk is low: a dr
 ### Mini recap
 
 A full `rig apply` no longer restarts healthy launch agents, and never unloads the agent hosting the running `rig`, both proved with stubbed `launchctl` and the full gate green. Learning route proposed, not promoted: the dotfiles repository's interim rule can lift once a release with this change is installed.
+
+## Done
+
+Accepted 2026-11-22 by Kris Brown on the review packet above, on Orca item 143 at about 03:00 UTC: "Yes, except the um recommended and high-confidence item." The answer is speech-to-text and "except" is read as "accept", taking the recommended option, ACCEPT-RIG077 a: accept this record and release Rig. Recorded in the Cairn store's ki.summit change document `work/ki/ki.summit/20-ki-sop-main-legacy.change.md`, section 4.2, at `af572d0e`. Closed under `ki-work accept` by a ki.summit background run. KI-TOOL-RIG-CORE-078, fix 3, stays open.
 
 ## Discussion
 
