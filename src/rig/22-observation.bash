@@ -230,10 +230,26 @@ rig_expected_owner_identity() {
   return 1
 }
 
+# Fold ASCII capitals to lower case through RIG_VALUE; Bash 3.2 has no ${VAR,,}.
+rig_owner_fold_case() {
+  local value index uppercase=ABCDEFGHIJKLMNOPQRSTUVWXYZ lowercase=abcdefghijklmnopqrstuvwxyz LC_ALL=C
+
+  value=$1
+  index=0
+  while [ "$index" -lt 26 ]; do
+    value=${value//"${uppercase:$index:1}"/"${lowercase:$index:1}"}
+    index=$((index + 1))
+  done
+  RIG_VALUE=$value
+}
+
 # A tool owner also matches an interpreter entry point, `-m MODULE[.sub]`, whose top-level
 # module is the tool identifier or its distribution name with hyphens as underscores.
+# The executable name is compared without regard to case, because a macOS application
+# runs as a capitalised bundle executable, such as Orca.app/Contents/MacOS/Orca for
+# tool:orca; module names keep their exact case.
 rig_owner_matches_listener() {
-  local argv process identity command modules module
+  local argv process identity command modules module folded_argv folded_identity
 
   argv=$1
   process=$2
@@ -241,8 +257,12 @@ rig_owner_matches_listener() {
   command=$4
   modules=${5:-}
   if [ -n "$argv" ]; then
-    case "$argv" in
-      "$identity"|"$identity "*|*" $identity"|*" $identity "*|*"/$identity/"*|*"/$identity"|*"/$identity "*) return 0 ;;
+    rig_owner_fold_case "$argv"
+    folded_argv=$RIG_VALUE
+    rig_owner_fold_case "$identity"
+    folded_identity=$RIG_VALUE
+    case "$folded_argv" in
+      "$folded_identity"|"$folded_identity "*|*" $folded_identity"|*" $folded_identity "*|*"/$folded_identity/"*|*"/$folded_identity"|*"/$folded_identity "*) return 0 ;;
     esac
     for module in $modules; do
       case "$argv" in
@@ -252,7 +272,11 @@ rig_owner_matches_listener() {
     return 1
   fi
 
-  [ -n "$process" ] && [ "$process" = "$command" ]
+  [ -n "$process" ] || return 1
+  rig_owner_fold_case "$process"
+  process=$RIG_VALUE
+  rig_owner_fold_case "$command"
+  [ "$process" = "$RIG_VALUE" ]
 }
 
 rig_observe_ports() {

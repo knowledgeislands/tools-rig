@@ -4916,6 +4916,29 @@ ports = ["required-api", "on-demand-api", "allocated-api", "free-allocation"]' \
   [ "$status" -eq 0 ] || { printf "%s\n" "$output" >&3; false; }
 }
 
+@test "a capitalised application executable matches its lower-case owner and a different one still conflicts" {
+  write_port_fixture
+  listener_output=$'p101\ncAlpha\nn127.0.0.1:4101 (LISTEN)\np103\ncAlphabet\nn127.0.0.1:4103 (LISTEN)\n'
+  ps_output=$'  101 /Applications/Alpha.app/Contents/MacOS/Alpha\n  103 /Applications/Alphabet.app/Contents/MacOS/Alphabet --serve\n'
+
+  run env HOME="$TEST_HOME" RIG_CONFIG_HOME="$CONFIG_HOME" RIG_PLATFORM=macos \
+    RIG_LSOF_COMMAND="$PORT_LSOF" RIG_TEST_LSOF_LOG="$PORT_LSOF_LOG" \
+    RIG_TEST_LSOF_OUTPUT="$listener_output" RIG_TEST_PS_OUTPUT="$ps_output" \
+    "$RIG" status
+  output_has_table_row $'required-api\t4101\ttcp\trequired\ttool:alpha\tpresent\tlistening:loopback;owner:alpha' || {
+    printf '%s\n' "$output" >&3; false; }
+  output_has_table_row $'allocated-api\t4103\ttcp\tallocated\ttool:alpha\tconflicting\towner:Alphabet;expected:alpha'
+
+  run bash -c '
+    . "$1"
+    rig_owner_matches_listener "/Applications/Orca.app/Contents/MacOS/Orca" Orca orca orca "orca" || exit 1
+    rig_owner_matches_listener "" Orca orca orca "orca" || exit 2
+    ! rig_owner_matches_listener "/Applications/Orcas.app/Contents/MacOS/Orcas" Orcas orca orca "orca" || exit 3
+    ! rig_owner_matches_listener "" Orcas orca orca "orca" || exit 4
+  ' _ "$RIG"
+  [ "$status" -eq 0 ] || { printf "%s\n" "$output" >&3; false; }
+}
+
 @test "one process on both stacks of a port is a single unmanaged listener" {
   write_port_fixture
   listener_output=$'p104\ncdynamic\nn127.0.0.1:4999 (LISTEN)\np104\ncdynamic\nn[::1]:4999 (LISTEN)\np105\ncsibling\nn*:5001 (LISTEN)\np105\ncsibling\nn[::]:5001 (LISTEN)\np105\ncsibling\nn*:5002 (LISTEN)\n'
