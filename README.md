@@ -60,7 +60,7 @@ The [user-guide journey](docs/guides/user/README.md) then introduces profiles, m
 
 - [User guides](docs/guides/user/README.md) explain how to adopt and operate Rig.
 - [Developer guides](docs/guides/developer/README.md) explain how to change and release Rig.
-- [Decision Records](docs/decisions/README.md) explain durable architectural choices.
+- [Decision Records](docs/decisions/_index.md) explain durable architectural choices.
 - [Specifications](docs/specs/index.md) define accepted, testable behaviour.
 - [Roadmap](ROADMAP.md) identifies canonical forward work.
 

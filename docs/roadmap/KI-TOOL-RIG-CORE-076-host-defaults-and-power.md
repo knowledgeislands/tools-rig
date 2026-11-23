@@ -4,6 +4,7 @@ area: CORE
 title: Host defaults and power
 priority: medium
 size: m
+assignee: owner
 status: triage
 blocks: []
 blocked_by: []

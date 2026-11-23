@@ -4,6 +4,7 @@ area: CORE
 title: Restart services after upgrade
 priority: medium
 size: m
+assignee: owner
 status: triage
 blocks: []
 blocked_by: []

@@ -9,6 +9,7 @@ status: draft
 horizon: now
 priority: high
 size: m
+assignee: owner
 blocks: []
 blocked_by: []
 baseline_ref: null
