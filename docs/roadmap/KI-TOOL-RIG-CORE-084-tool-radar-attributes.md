@@ -10,7 +10,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-11-24T12:02:30Z
-updated_at: 2026-11-24T12:02:30Z
+updated_at: 2026-11-26T03:00:00Z
 ---
 
 # KI-TOOL-RIG-CORE-084: Tool radar attributes
@@ -30,4 +30,4 @@ Kris asked on 6 November 2026 for tools-rig to take this up (RIG-RADAR-ATTRIBUTE
 
 ## Discussion
 
-Planning settles how the sector relates to `category`, and treats the export as a versioned publication contract change. When it lands, personal.site-rig and chezmoi are told, under change 11's step 6. Captured as triage for Kris to adopt or cancel.
+Planning settles how the sector relates to `category`, and treats the export as a versioned publication contract change. When it lands, personal.site-rig and chezmoi are told along the tree, as its rollout (ki.tools reset map, 26 November 2026). Captured as triage for Kris to adopt or cancel.

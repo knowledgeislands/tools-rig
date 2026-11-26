@@ -14,7 +14,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-19T22:14:04Z
-updated_at: 2026-10-20T00:51:09Z
+updated_at: 2026-11-26T03:00:00Z
 ---
 
 # Doctor Reports a Firewall Bypassed by a Replaced pf Root Ruleset
@@ -226,6 +226,8 @@ KI-TOOL-RIG-CORE-047's Risks ("Covered by the live NordVPN check; a periodic re-
 ## Queries
 
 Planning raises these three. They are answered before the gate; none blocks the attended check.
+
+**PLAN068, parked, for Kris through Loreward** (ki.tools reset map, [4.2](https://github.com/krisb/ki-cairn-store/blob/d28c5faeca6ddcf069354dea49e8a645a37d7efb/work/ki/ki.tools/13-reset-map.change.md#42-the-rig-lane-11), 26 November 2026): the three are one question, how this record reaches Ready, parked until Kris's attended NordVPN check on terra is scheduled. Two of its three parts, PLAN068-UNPRIV and PLAN068-READY, were never blind-reviewed, so the question is split and reviewed before it goes to Kris. The attended check is this record's precondition, its Gate step; sol's NordVPN and firewall reports from the retired `ki agent` run state fold into Context before that state is deleted (ki.tools' Retired `ki agent` run state (12)).
 
 - **PLAN068-VERIFY-GRANT.** Should an explicit `apply --sudo` take the grant to verify a present `macos-pf` firewall? Recommended a), confidence high: otherwise the attended apply never reaches the new root check on a correct-looking Mac, which is exactly where the bypass hides; plain `apply` stays promptless. b) keeps today's rule and adds the root check only after a repair.
 - **PLAN068-UNPRIV.** The Goal says doctor reports unknown, not healthy, without privilege. Should that change the observation from `present` to `unknown`? Recommended a), confidence medium: keep `present` with `kernel-rules-unverified` and make its meaning explicit, because `unknown` would make every firewall a permanent doctor finding on every Mac and drown the signal. b) report `unknown` with `kernel-rules-unverified`, and accept that permanent finding.

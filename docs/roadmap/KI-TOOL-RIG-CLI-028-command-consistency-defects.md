@@ -10,7 +10,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-11-24T12:02:30Z
-updated_at: 2026-11-24T12:02:30Z
+updated_at: 2026-11-26T03:00:00Z
 ---
 
 # KI-TOOL-RIG-CLI-028: Command consistency defects
@@ -40,4 +40,4 @@ A spot check on sol on 24 November 2026, with `rig 0.8.0+dev`: `rig --help` stil
 
 ## Discussion
 
-Consistency questions carried for planning, not defects: (1) `rig remove` previews by default and needs `--apply`, while `apply` and `upgrade` act by default and take `--dry-run`, which is by specification; (2) `rig upgrade` takes no `--target` or `--scope`, which `rig apply` has; (7) tools take bare `--target` ids, but resources need `--scope resources --target default-application:toml`; (10) progress lines on stderr are on by default and fill the output. Original report: [ki-principal messages, L128](https://github.com/knowledgeislands/ki-principal/blob/fbe4ebb0/+/_WORK/ki/messages.md?plain=1#L128). Captured as triage for Kris to adopt or cancel.
+Consistency questions carried for planning, not defects: (1) `rig remove` previews by default and needs `--apply`, while `apply` and `upgrade` act by default and take `--dry-run`, which is by specification; (2) `rig upgrade` takes no `--target` or `--scope`, which `rig apply` has; (7) tools take bare `--target` ids, but resources need `--scope resources --target default-application:toml`; (10) progress lines on stderr are on by default and fill the output; (11) RIG-MULTI-TARGET, folded in here from the ki.tools reset map (26 November 2026): on 22 November 2026 on terra several targets in one `rig apply --scope tools` call printed the usage text (Hob Terra, via Kitteth). On sol on 26 November, `rig apply --dry-run --scope tools --target jq --target ripgrep` planned both, as `apply` has accepted a repeated `--target` since f63b044, while `--target jq ripgrep` printed only the usage line, whose `[--target ID]` does not say the flag repeats. Planning decides whether the usage line shows the repeat, and whether `remove`, which takes one `--target`, should take several. Original report: [ki-principal messages, L128](https://github.com/knowledgeislands/ki-principal/blob/fbe4ebb0/+/_WORK/ki/messages.md?plain=1#L128). Captured as triage for Kris to adopt or cancel.

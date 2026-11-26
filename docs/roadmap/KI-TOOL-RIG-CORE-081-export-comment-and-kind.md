@@ -10,7 +10,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-11-24T12:02:30Z
-updated_at: 2026-11-24T12:02:30Z
+updated_at: 2026-11-26T03:00:00Z
 ---
 
 # KI-TOOL-RIG-CORE-081: Export comment and kind
@@ -30,4 +30,4 @@ Kris chose this on 20 October 2026 for the Rig site's tool table (RIG-COMMENT-KI
 
 ## Discussion
 
-This is a versioned publication contract change and planning must treat it as one. When it lands, personal.site-rig is told, under change 11's step 6. Captured as triage for Kris to adopt or cancel.
+This is a versioned publication contract change and planning must treat it as one. When it lands, personal.site-rig is told along the tree, as its rollout (ki.tools reset map, 26 November 2026). Captured as triage for Kris to adopt or cancel.
